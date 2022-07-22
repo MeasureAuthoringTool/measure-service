@@ -1,62 +1,63 @@
 package cms.gov.madie.measure.resources;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 import cms.gov.madie.measure.exceptions.CqlElmTranslationErrorException;
 import cms.gov.madie.measure.exceptions.CqlElmTranslationServiceException;
-import gov.cms.madie.models.measure.Group;
-import gov.cms.madie.models.measure.MeasureGroupTypes;
-import gov.cms.madie.models.measure.MeasurePopulation;
-import gov.cms.madie.models.measure.MeasureScoring;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.ModelType;
+import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.ActionLogService;
 import cms.gov.madie.measure.services.MeasureService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.measure.Group;
+import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureGroupTypes;
+import gov.cms.madie.models.measure.MeasureScoring;
+import gov.cms.madie.models.measure.Population;
+import gov.cms.madie.models.measure.PopulationType;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import gov.cms.madie.models.measure.Measure;
-import cms.gov.madie.measure.repositories.MeasureRepository;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
+import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 @WebMvcTest({MeasureController.class})
 public class MeasureControllerMvcTest {
@@ -888,12 +889,15 @@ public class MeasureControllerMvcTest {
         Group.builder()
             .scoring("Cohort")
             .id("test-id")
-            .population(Map.of(MeasurePopulation.INITIAL_POPULATION, "Initial Population"))
+            .populations(
+                List.of(
+                    new Population(
+                        "id-1", PopulationType.INITIAL_POPULATION, "Initial Population")))
             .measureGroupTypes(List.of(MeasureGroupTypes.PROCESS))
             .build();
 
     final String groupJson =
-        "{\"scoring\":\"Cohort\",\"population\":{\"initialPopulation\":\"Initial Population\"},\"measureGroupTypes\":[\"Process\"]}";
+        "{\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-1\",\"name\":\"initialPopulation\",\"definition\":\"Initial Population\"}],\"measureGroupTypes\":[\"Process\"]}";
     when(measureService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
         .thenReturn(group);
 
@@ -914,9 +918,9 @@ public class MeasureControllerMvcTest {
 
     Group persistedGroup = groupCaptor.getValue();
     assertEquals(group.getScoring(), persistedGroup.getScoring());
+    assertEquals("Initial Population", persistedGroup.getPopulations().get(0).getDefinition());
     assertEquals(
-        "Initial Population",
-        persistedGroup.getPopulation().get(MeasurePopulation.INITIAL_POPULATION));
+        PopulationType.INITIAL_POPULATION, persistedGroup.getPopulations().get(0).getName());
     assertEquals(group.getMeasureGroupTypes().get(0), persistedGroup.getMeasureGroupTypes().get(0));
   }
 
@@ -927,12 +931,14 @@ public class MeasureControllerMvcTest {
         Group.builder()
             .scoring("Cohort")
             .id("test-id")
-            .population(Map.of(MeasurePopulation.INITIAL_POPULATION, updateIppDefinition))
+            .populations(
+                List.of(
+                    new Population("id-1", PopulationType.INITIAL_POPULATION, updateIppDefinition)))
             .measureGroupTypes(List.of(MeasureGroupTypes.PROCESS))
             .build();
 
     final String groupJson =
-        "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"population\":{\"initialPopulation\":\"FactorialOfFive\"},\"measureGroupTypes\":[\"Process\"]}";
+        "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-2\",\"name\":\"initialPopulation\",\"definition\":\"FactorialOfFive\"}],\"measureGroupTypes\":[\"Process\"]}";
     when(measureService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
         .thenReturn(group);
 
@@ -953,9 +959,9 @@ public class MeasureControllerMvcTest {
 
     Group persistedGroup = groupCaptor.getValue();
     assertEquals(group.getScoring(), persistedGroup.getScoring());
+    assertEquals(updateIppDefinition, persistedGroup.getPopulations().get(0).getDefinition());
     assertEquals(
-        updateIppDefinition,
-        persistedGroup.getPopulation().get(MeasurePopulation.INITIAL_POPULATION));
+        PopulationType.INITIAL_POPULATION, persistedGroup.getPopulations().get(0).getName());
     assertEquals(group.getMeasureGroupTypes().get(0), persistedGroup.getMeasureGroupTypes().get(0));
   }
 

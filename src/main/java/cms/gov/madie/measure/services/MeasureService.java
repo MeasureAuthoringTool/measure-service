@@ -1,15 +1,21 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.exceptions.BundleOperationException;
+import cms.gov.madie.measure.exceptions.CqlElmTranslationErrorException;
+import cms.gov.madie.measure.exceptions.CqlElmTranslationServiceException;
+import cms.gov.madie.measure.exceptions.InvalidDeletionCredentialsException;
+import cms.gov.madie.measure.exceptions.InvalidMeasurementPeriodException;
+import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.exceptions.UnauthorizedException;
+import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.resources.DuplicateKeyException;
 import gov.cms.madie.models.measure.ElmJson;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.Population;
 import gov.cms.madie.models.measure.TestCase;
 import gov.cms.madie.models.measure.TestCaseGroupPopulation;
 import gov.cms.madie.models.measure.TestCasePopulationValue;
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.exceptions.InvalidDeletionCredentialsException;
-import cms.gov.madie.measure.resources.DuplicateKeyException;
 import io.micrometer.core.instrument.util.StringUtils;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -47,19 +53,8 @@ public class MeasureService {
       // if group already exists, just update it
       if (existingGroupOpt.isPresent()) {
         Group existingGroup = existingGroupOpt.get();
-
-        // When a group scoring is not changed, existing population values for all test cases should
-        // be preserved
-        // and only the modified group population should be updated. This will be handled in future
-        // story.
-        //        if (!(existingGroup.getScoring() != null
-        //                && existingGroup.getScoring().equals(group.getScoring()))
-        //            || existingGroup.getScoring() == null && group.getScoring() != null) {
-        //          measure.setTestCases(setPopulationValuesForGroup(group,
-        // measure.getTestCases()));
-        //        }
         existingGroup.setScoring(group.getScoring());
-        existingGroup.setPopulation(group.getPopulation());
+        existingGroup.setPopulations(group.getPopulations());
         existingGroup.setGroupDescription(group.getGroupDescription());
         existingGroup.setImprovementNotation(group.getImprovementNotation());
         existingGroup.setRateAggregation(group.getRateAggregation());
@@ -126,18 +121,19 @@ public class MeasureService {
   /** @return a list of TestCasePopulationValues for those defines are assigned. */
   private List<TestCasePopulationValue> getTestCasePopulationsForMeasureGroupPopulations(
       Group group) {
-    if (group.getPopulation() != null && !group.getPopulation().isEmpty()) {
-      return group.getPopulation().keySet().stream()
+    List<Population> groupPopulations = group.getPopulations();
+    if (CollectionUtils.isEmpty(groupPopulations)) {
+      return List.of();
+    } else {
+      return groupPopulations.stream()
           .map(
-              measurePopulation ->
+              groupPopulation ->
                   TestCasePopulationValue.builder()
                       .expected(false)
                       .actual(false)
-                      .name(measurePopulation)
+                      .name(groupPopulation.getName())
                       .build())
           .collect(Collectors.toList());
-    } else {
-      return List.of();
     }
   }
 

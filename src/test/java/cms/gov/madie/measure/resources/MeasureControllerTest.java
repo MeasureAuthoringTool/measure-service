@@ -301,7 +301,10 @@ class MeasureControllerTest {
     Group group =
         Group.builder()
             .scoring("Cohort")
-            .population(Map.of(MeasurePopulation.INITIAL_POPULATION, "Initial Population"))
+            .populations(
+                List.of(
+                    new Population(
+                        "id-1", PopulationType.INITIAL_POPULATION, "Initial Population")))
             .build();
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -316,7 +319,7 @@ class MeasureControllerTest {
     assertNotNull(response.getBody());
     assertEquals(group.getId(), response.getBody().getId());
     assertEquals(group.getScoring(), response.getBody().getScoring());
-    assertEquals(group.getPopulation(), response.getBody().getPopulation());
+    assertEquals(group.getPopulations(), response.getBody().getPopulations());
   }
 
   @Test
@@ -324,7 +327,10 @@ class MeasureControllerTest {
     Group group =
         Group.builder()
             .scoring("Cohort")
-            .population(Map.of(MeasurePopulation.INITIAL_POPULATION, "Initial Population"))
+            .populations(
+                List.of(
+                    new Population(
+                        "id-2", PopulationType.INITIAL_POPULATION, "Initial Population")))
             .build();
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -339,7 +345,7 @@ class MeasureControllerTest {
     assertNotNull(response.getBody());
     assertEquals(group.getId(), response.getBody().getId());
     assertEquals(group.getScoring(), response.getBody().getScoring());
-    assertEquals(group.getPopulation(), response.getBody().getPopulation());
+    assertEquals(group.getPopulations(), response.getBody().getPopulations());
   }
 
   @Test

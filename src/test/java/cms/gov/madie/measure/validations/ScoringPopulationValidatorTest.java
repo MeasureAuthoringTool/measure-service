@@ -1,12 +1,13 @@
 package cms.gov.madie.measure.validations;
 
+import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
-import gov.cms.madie.models.measure.MeasurePopulation;
 import gov.cms.madie.models.measure.MeasureScoring;
+import gov.cms.madie.models.measure.Population;
+import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.TestCaseGroupPopulation;
 import gov.cms.madie.models.measure.TestCasePopulationValue;
-import cms.gov.madie.measure.repositories.MeasureRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,14 +16,13 @@ import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import javax.validation.ConstraintValidatorContext;
-
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -43,7 +43,10 @@ class ScoringPopulationValidatorTest {
         Group.builder()
             .id("GroupId")
             .scoring("Cohort")
-            .population(Map.of(MeasurePopulation.INITIAL_POPULATION, "Initial Population"))
+            .populations(
+                List.of(
+                    new Population(
+                        "id-1", PopulationType.INITIAL_POPULATION, "Initial Population")))
             .groupDescription("Description")
             .build();
     List<Group> groups = new ArrayList<>();
@@ -78,7 +81,7 @@ class ScoringPopulationValidatorTest {
             .populationValues(
                 List.of(
                     TestCasePopulationValue.builder()
-                        .name(MeasurePopulation.INITIAL_POPULATION)
+                        .name(PopulationType.INITIAL_POPULATION)
                         .build()))
             .build();
     boolean output = validator.isValid(testCaseGroupPopulation, validatorContext);
@@ -127,8 +130,7 @@ class ScoringPopulationValidatorTest {
         TestCaseGroupPopulation.builder()
             .groupId("GroupId")
             .populationValues(
-                List.of(
-                    TestCasePopulationValue.builder().name(MeasurePopulation.DENOMINATOR).build()))
+                List.of(TestCasePopulationValue.builder().name(PopulationType.DENOMINATOR).build()))
             .scoring(MeasureScoring.COHORT.toString())
             .build();
     boolean output = validator.isValid(testCaseGroupPopulation, validatorContext);
@@ -144,7 +146,7 @@ class ScoringPopulationValidatorTest {
             .populationValues(
                 List.of(
                     TestCasePopulationValue.builder()
-                        .name(MeasurePopulation.INITIAL_POPULATION)
+                        .name(PopulationType.INITIAL_POPULATION)
                         .build()))
             .scoring(MeasureScoring.COHORT.toString())
             .build();

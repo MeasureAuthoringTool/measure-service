@@ -3,12 +3,12 @@ package cms.gov.madie.measure.validations;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
-import gov.cms.madie.models.measure.MeasurePopulation;
 import gov.cms.madie.models.measure.MeasureScoring;
+import gov.cms.madie.models.measure.Population;
+import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.TestCaseGroupPopulation;
 import gov.cms.madie.models.measure.TestCasePopulationValue;
 import gov.cms.madie.models.validators.ValidScoringPopulation;
-
 import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.validation.ConstraintValidator;
@@ -16,7 +16,6 @@ import javax.validation.ConstraintValidatorContext;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 public class ScoringPopulationValidator
@@ -49,7 +48,7 @@ public class ScoringPopulationValidator
       return false;
     }
 
-    List<MeasurePopulation> receivedPopulations =
+    List<PopulationType> receivedPopulations =
         populationValues.stream()
             .map(TestCasePopulationValue::getName)
             .distinct()
@@ -65,9 +64,13 @@ public class ScoringPopulationValidator
               .filter(group -> group.getId().equals(testCaseGroupPopulation.getGroupId()))
               .findFirst();
       if (measureGroup.isPresent()) {
-        Set<MeasurePopulation> measurePopulationSet = measureGroup.get().getPopulation().keySet();
-        return receivedPopulations.size() == measurePopulationSet.size()
-            && measurePopulationSet.containsAll(receivedPopulations);
+        List<Population> groupPopulations = measureGroup.get().getPopulations();
+        return receivedPopulations.size() == groupPopulations.size()
+            && receivedPopulations.stream()
+                .allMatch(
+                    population ->
+                        groupPopulations.stream()
+                            .anyMatch(gp -> Objects.equals(gp.getName(), population)));
       }
     }
     return false;
