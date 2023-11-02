@@ -5,7 +5,7 @@
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.0.9</version>
-    <relativePath></relativePath>
+    <relativePath/>
     <!-- lookup parent from repository -->
   </parent>
   <groupId>com.semanticbits.measureservice</groupId>
@@ -87,7 +87,7 @@
     <dependency>
       <groupId>com.okta.spring</groupId>
       <artifactId>okta-spring-boot-starter</artifactId>
-      <version>2.1.7</version>
+      <version>3.0.0</version>
     </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
@@ -199,7 +199,7 @@
                     </goals>
                   </pluginExecutionFilter>
                   <action>
-                    <ignore></ignore>
+                    <ignore/>
                   </action>
                 </pluginExecution>
               </pluginExecutions>
