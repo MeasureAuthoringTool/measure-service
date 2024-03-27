@@ -5,7 +5,7 @@
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>3.0.12</version>
-    <relativePath></relativePath>
+    <relativePath/>
     <!-- lookup parent from repository -->
   </parent>
   <groupId>com.semanticbits.measureservice</groupId>
@@ -20,7 +20,7 @@
     <mvn.checkstyle.version>3.1.2</mvn.checkstyle.version>
     <mvnreports.version>3.1.1</mvnreports.version>
     <mvnsite.version>3.9.1</mvnsite.version>
-    <springdoc.version>1.7.0</springdoc.version>
+    <springdoc.version>1.8.0</springdoc.version>
   </properties>
 
   <!--  https://docs.mongock.io/index.html  -->
@@ -199,7 +199,7 @@
                     </goals>
                   </pluginExecutionFilter>
                   <action>
-                    <ignore></ignore>
+                    <ignore/>
                   </action>
                 </pluginExecution>
               </pluginExecutions>
