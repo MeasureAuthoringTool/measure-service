@@ -43,6 +43,14 @@ public class ErrorHandlingControllerAdvice {
     return errorAttributes;
   }
 
+  // Handle HQMFServiceException separately
+  @ExceptionHandler(HQMFServiceException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ResponseBody
+  Map<String, Object> handleHQMFServiceException(WebRequest request) {
+    return getErrorAttributes(request, HttpStatus.BAD_REQUEST);
+  }
+
   @ExceptionHandler(DuplicateKeyException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ResponseBody

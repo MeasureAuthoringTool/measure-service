@@ -3,6 +3,7 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.config.QdmServiceConfig;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
+import cms.gov.madie.measure.exceptions.HQMFServiceException;
 import cms.gov.madie.measure.exceptions.InternalServerException;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import gov.cms.madie.models.cqm.CqmMeasure;
@@ -12,6 +13,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -45,17 +47,29 @@ public class QdmPackageService implements PackageService {
     headers.set(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
     HttpEntity<Measure> entity = new HttpEntity<>(measure, headers);
     try {
-      log.info("requesting measure package for measure [{}] from qdm service", measure.getId());
+      log.info("Requesting measure package for measure [{}] from QDM service", measure.getId());
       byte[] exportPackage =
           qdmServiceRestTemplate.exchange(uri, HttpMethod.PUT, entity, byte[].class).getBody();
+
       return PackageDto.builder().exportPackage(exportPackage).fromStorage(false).build();
+
+    } catch (HttpClientErrorException ex) {
+      String errorMessage = ex.getResponseBodyAsString();
+
+      log.error("Error from QDM service for measure [{}]: {}", measure.getId(), errorMessage);
+      if (ex.getMessage().contains("HQMF")) {
+        throw new HQMFServiceException();
+      }
+      throw new InternalServerException("QDM service error: " + errorMessage);
+
     } catch (RestClientException ex) {
       log.error(
-          "An error occurred while creating package for QDM measure: "
-              + measure.getId()
-              + ", please check qdm service logs for more information",
+          "An error occurred while creating package for QDM measure: {}. Please check QDM service logs for more information.",
+          measure.getId(),
           ex);
-      throw new InternalServerException("An error occurred while creating a measure package.");
+
+      throw new InternalServerException(
+          "An unexpected error occurred while creating a measure package." + ex.getMessage());
     }
   }
 
