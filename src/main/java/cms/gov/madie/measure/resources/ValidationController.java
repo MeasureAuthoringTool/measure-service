@@ -4,6 +4,7 @@ import cms.gov.madie.measure.services.FhirServicesClient;
 import cms.gov.madie.measure.services.VirusScanClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.HapiOperationOutcome;
 import gov.cms.madie.models.scanner.ScanValidationDto;
 import gov.cms.madie.models.scanner.VirusScanResponseDto;
@@ -38,10 +39,13 @@ public class ValidationController {
       consumes = MediaType.APPLICATION_JSON_VALUE,
       produces = MediaType.APPLICATION_JSON_VALUE)
   public ResponseEntity<String> validateBundle(
-      HttpEntity<String> request, @RequestHeader("Authorization") String accessToken) {
+      HttpEntity<String> request,
+      @RequestParam String model,
+      @RequestHeader("Authorization") String accessToken) {
     try {
+      ModelType modelType = ModelType.valueOfName(model);
       ResponseEntity<HapiOperationOutcome> output =
-          fhirServicesClient.validateBundle(request.getBody(), accessToken);
+          fhirServicesClient.validateBundle(request.getBody(), modelType, accessToken);
       return ResponseEntity.ok(mapper.writeValueAsString(output.getBody()));
 
     } catch (JsonProcessingException ex) {

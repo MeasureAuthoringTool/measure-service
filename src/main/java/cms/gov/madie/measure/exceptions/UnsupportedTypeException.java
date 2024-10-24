@@ -11,4 +11,8 @@ public class UnsupportedTypeException extends RuntimeException {
                 + " as the following are not yet support: %s",
             factory, Arrays.toString(params)));
   }
+
+  public UnsupportedTypeException(String message) {
+    super(message);
+  }
 }

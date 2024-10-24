@@ -4,6 +4,7 @@ import cms.gov.madie.measure.services.FhirServicesClient;
 import cms.gov.madie.measure.services.VirusScanClient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.HapiOperationOutcome;
 import gov.cms.madie.models.scanner.ScanValidationDto;
 import gov.cms.madie.models.scanner.VirusScanResponseDto;
@@ -48,7 +49,7 @@ class ValidationControllerTest {
   @InjectMocks private ValidationController validationController;
 
   @Captor ArgumentCaptor<String> testCaseJsonCaptor;
-
+  @Captor ArgumentCaptor<ModelType> testCaseModelCaptor;
   @Captor ArgumentCaptor<String> accessTokenCaptor;
 
   @Test
@@ -59,19 +60,23 @@ class ValidationControllerTest {
     final String goodOutcomeJson = "{ \"code\": 200, \"successful\": true }";
     HttpEntity<String> request = new HttpEntity<>(testCaseJson, headers);
 
-    when(fhirServicesClient.validateBundle(anyString(), anyString()))
+    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
         .thenReturn(
             ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()));
 
     when(mapper.writeValueAsString(any())).thenReturn(goodOutcomeJson);
 
-    ResponseEntity<String> output = validationController.validateBundle(request, accessToken);
+    ResponseEntity<String> output =
+        validationController.validateBundle(request, ModelType.QI_CORE.getValue(), accessToken);
 
     assertThat(output, is(notNullValue()));
     assertThat(output.getBody(), is(notNullValue()));
     assertThat(output.getBody(), is(equalTo(goodOutcomeJson)));
     verify(fhirServicesClient, times(1))
-        .validateBundle(testCaseJsonCaptor.capture(), accessTokenCaptor.capture());
+        .validateBundle(
+            testCaseJsonCaptor.capture(),
+            testCaseModelCaptor.capture(),
+            accessTokenCaptor.capture());
     assertThat(testCaseJsonCaptor.getValue(), is(equalTo(testCaseJson)));
     assertThat(accessTokenCaptor.getValue(), is(equalTo(accessToken)));
   }
@@ -83,13 +88,14 @@ class ValidationControllerTest {
     HttpHeaders headers = new HttpHeaders();
     HttpEntity<String> request = new HttpEntity<>(testCaseJson, headers);
 
-    when(fhirServicesClient.validateBundle(anyString(), anyString()))
+    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
         .thenReturn(
             ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()));
 
     when(mapper.writeValueAsString(any())).thenThrow(new JsonProcessingException("BadJson") {});
 
-    ResponseEntity<String> output = validationController.validateBundle(request, accessToken);
+    ResponseEntity<String> output =
+        validationController.validateBundle(request, ModelType.QI_CORE.getValue(), accessToken);
 
     assertThat(output, is(notNullValue()));
     assertThat(output.getStatusCode(), is(HttpStatus.BAD_REQUEST));
@@ -101,7 +107,10 @@ class ValidationControllerTest {
                 "Unable to validate test case JSON due to errors,"
                     + " but outcome not able to be interpreted!")));
     verify(fhirServicesClient, times(1))
-        .validateBundle(testCaseJsonCaptor.capture(), accessTokenCaptor.capture());
+        .validateBundle(
+            testCaseJsonCaptor.capture(),
+            testCaseModelCaptor.capture(),
+            accessTokenCaptor.capture());
   }
 
   @Test

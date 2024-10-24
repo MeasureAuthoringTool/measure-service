@@ -261,7 +261,8 @@ public class TestCaseService {
           ? null
           : testCase.toBuilder().validResource(JsonUtil.isValidJson(testCase.getJson())).build();
     } else {
-      final HapiOperationOutcome hapiOperationOutcome = validateTestCaseJson(testCase, accessToken);
+      final HapiOperationOutcome hapiOperationOutcome =
+          validateTestCaseJson(testCase, modelType, accessToken);
       return testCase == null
           ? null
           : testCase.toBuilder()
@@ -336,8 +337,9 @@ public class TestCaseService {
 
   public TestCase getTestCase(
       String measureId, String testCaseId, boolean validate, String accessToken) {
+    Measure measure = findMeasureById(measureId);
     TestCase testCase =
-        Optional.ofNullable(findMeasureById(measureId).getTestCases())
+        Optional.ofNullable(measure.getTestCases())
             .orElseThrow(() -> new ResourceNotFoundException("Test Case", testCaseId))
             .stream()
             .filter(tc -> tc.getId().equals(testCaseId))
@@ -346,7 +348,8 @@ public class TestCaseService {
     if (testCase == null) {
       throw new ResourceNotFoundException("Test Case", testCaseId);
     } else if (validate) {
-      testCase.setHapiOperationOutcome(validateTestCaseJson(testCase, accessToken));
+      testCase.setHapiOperationOutcome(
+          validateTestCaseJson(testCase, ModelType.valueOfName(measure.getModel()), accessToken));
     }
     return testCase;
   }
@@ -760,13 +763,16 @@ public class TestCaseService {
         .collect(Collectors.toList());
   }
 
-  public HapiOperationOutcome validateTestCaseJson(TestCase testCase, String accessToken) {
+  public HapiOperationOutcome validateTestCaseJson(
+      TestCase testCase, ModelType modelType, String accessToken) {
     if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
       return null;
     }
 
     try {
-      return fhirServicesClient.validateBundle(testCase.getJson(), accessToken).getBody();
+      return fhirServicesClient
+          .validateBundle(testCase.getJson(), modelType, accessToken)
+          .getBody();
     } catch (HttpClientErrorException ex) {
       log.warn("HAPI FHIR returned response code [{}]", ex.getRawStatusCode(), ex);
       try {

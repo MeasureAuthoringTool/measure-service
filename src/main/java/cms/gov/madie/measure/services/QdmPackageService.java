@@ -64,8 +64,8 @@ public class QdmPackageService implements PackageService {
 
     } catch (RestClientException ex) {
       log.error(
-          "An error occurred while creating package for QDM measure: {}. " +
-                  "Please check QDM service logs for more information.",
+          "An error occurred while creating package for QDM measure: {}. "
+              + "Please check QDM service logs for more information.",
           measure.getId(),
           ex);
 

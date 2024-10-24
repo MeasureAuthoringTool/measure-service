@@ -17,6 +17,8 @@ import static org.mockito.Mockito.when;
 import java.net.URI;
 import java.util.List;
 
+import cms.gov.madie.measure.exceptions.UnsupportedTypeException;
+import gov.cms.madie.models.common.ModelType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,13 +66,12 @@ class FhirServicesClientTest {
     lenient()
         .when(fhirServicesConfig.getMadieFhirServiceValidateBundleUri())
         .thenReturn("/api/fhir/validations/bundles");
-
-    when(fhirServicesConfig.fhirServicesRestTemplate()).thenReturn(restTemplate);
   }
 
   @Test
   void testFhirServicesClientThrowsException() {
     Measure measure = Measure.builder().build();
+    when(fhirServicesConfig.fhirServicesRestTemplate()).thenReturn(restTemplate);
     when(fhirServicesConfig
             .fhirServicesRestTemplate()
             .exchange(any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
@@ -92,6 +93,7 @@ class FhirServicesClientTest {
   void testFhirServicesClientReturnsStringData() {
     Measure measure = Measure.builder().build();
     final String json = "{\"message\": \"GOOD JSON\"}";
+    when(fhirServicesConfig.fhirServicesRestTemplate()).thenReturn(restTemplate);
     when(fhirServicesConfig
             .fhirServicesRestTemplate()
             .exchange(any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
@@ -111,14 +113,14 @@ class FhirServicesClientTest {
   @Test
   void testValidateBundleThrowsException() {
     final String testCaseJson = "{ \"resourceType\": \"foo\" }";
-
+    when(fhirServicesConfig.fhirServicesRestTemplate()).thenReturn(restTemplate);
     when(fhirServicesConfig
             .fhirServicesRestTemplate()
             .exchange(any(URI.class), eq(HttpMethod.POST), any(HttpEntity.class), any(Class.class)))
         .thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
     assertThrows(
         HttpClientErrorException.class,
-        () -> fhirServicesClient.validateBundle(testCaseJson, accessToken));
+        () -> fhirServicesClient.validateBundle(testCaseJson, ModelType.QI_CORE, accessToken));
     verify(fhirServicesConfig.fhirServicesRestTemplate(), times(1))
         .exchange(
             any(URI.class), eq(HttpMethod.POST), httpEntityCaptor.capture(), any(Class.class));
@@ -136,12 +138,13 @@ class FhirServicesClientTest {
     final HapiOperationOutcome goodOutcome =
         HapiOperationOutcome.builder().code(200).successful(true).build();
 
+    when(fhirServicesConfig.fhirServicesRestTemplate()).thenReturn(restTemplate);
     when(fhirServicesConfig
             .fhirServicesRestTemplate()
             .exchange(any(URI.class), eq(HttpMethod.POST), any(HttpEntity.class), any(Class.class)))
         .thenReturn(ResponseEntity.ok(goodOutcome));
     ResponseEntity<HapiOperationOutcome> output =
-        fhirServicesClient.validateBundle(testCaseJson, accessToken);
+        fhirServicesClient.validateBundle(testCaseJson, ModelType.QI_CORE, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.getBody(), is(notNullValue()));
     assertThat(output.getBody(), is(equalTo(goodOutcome)));
@@ -165,6 +168,7 @@ class FhirServicesClientTest {
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001'")
             .build();
+    when(fhirServicesConfig.fhirServicesRestTemplate()).thenReturn(restTemplate);
     when(fhirServicesConfig
             .fhirServicesRestTemplate()
             .exchange(any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
@@ -186,6 +190,7 @@ class FhirServicesClientTest {
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001'")
             .build();
+    when(fhirServicesConfig.fhirServicesRestTemplate()).thenReturn(restTemplate);
     when(fhirServicesConfig
             .fhirServicesRestTemplate()
             .exchange(any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
@@ -196,5 +201,14 @@ class FhirServicesClientTest {
         fhirServicesClient.getTestCaseExports(
             measure, accessToken, asList("test-case-id-1", "test=case=id-2"), "COLLECTION");
     assertThat(output.getStatusCode(), is(HttpStatus.NOT_FOUND));
+  }
+
+  @Test
+  void testValidateBundleIfModelIsNullThrowsException() {
+    Exception ex =
+        assertThrows(
+            UnsupportedTypeException.class,
+            () -> fhirServicesClient.validateBundle("test case json", null, accessToken));
+    assertThat(ex.getMessage(), is(equalTo("Please provide model type.")));
   }
 }

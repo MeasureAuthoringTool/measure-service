@@ -116,7 +116,8 @@ class QdmPackageServiceTest {
     when(qdmServiceRestTemplate.exchange(
             any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
         .thenThrow(new RestClientException("something went wrong"));
-    String errorMessage = "An unexpected error occurred while creating a measure package.something went wrong";
+    String errorMessage =
+        "An unexpected error occurred while creating a measure package.something went wrong";
     Exception ex =
         assertThrows(
             InternalServerException.class,
