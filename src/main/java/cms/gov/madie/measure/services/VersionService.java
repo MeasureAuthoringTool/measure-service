@@ -15,9 +15,12 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
+import org.cqframework.cql.cql2elm.CqlCompilerException;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.util.*;
@@ -25,6 +28,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import java.util.zip.Deflater;
+import java.util.Arrays;
 
 @Slf4j
 @AllArgsConstructor
@@ -42,6 +47,7 @@ public class VersionService {
   private final ExportService exportService;
   private final TestCaseSequenceService sequenceService;
   private final ElmToJsonService elmToJsonService;
+  private final GridFsTemplate gridFsTemplate;
 
   public enum VersionValidationResult {
     VALID,
@@ -117,8 +123,12 @@ public class VersionService {
     Measure upversionedMeasure = version(versionType, username, measure);
     var measureBundle =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export");
-    saveMeasureBundle(upversionedMeasure, measureBundle, username);
+    var measureBundleWithoutWarnings =
+        fhirServicesClient.getMeasureBundle(
+            upversionedMeasure, accessToken, "export", CqlCompilerException.ErrorSeverity.Error);
 
+    saveMeasureBundle(
+        upversionedMeasure, measureBundle, measureBundleWithoutWarnings, username);
     return applyMeasureVersion(versionType, username, upversionedMeasure);
   }
 
@@ -367,7 +377,37 @@ public class VersionService {
     return "library " + cqlLibraryName + " version " + "'" + version + "'";
   }
 
-  private void saveMeasureBundle(Measure savedMeasure, String measureBundle, String username) {
+  public Export saveExport(
+      Measure savedMeasure,
+      String measureBundle,
+      String measureBundleWithoutWarnings,
+      String humanReadableWithCss) {
+    ObjectId measureBundleId =
+        gridFsTemplate.store(
+            new ByteArrayInputStream(measureBundle.getBytes()),
+            "measureBundle.json",
+            "application/json");
+    ObjectId measureBundleWithoutWarningsId =
+        gridFsTemplate.store(
+            new ByteArrayInputStream(measureBundleWithoutWarnings.getBytes()),
+            "measureBundleWithoutWarnings.json",
+            "application/json");
+    Export export =
+        Export.builder()
+            .measureId(savedMeasure.getId())
+            .measureBundleGridFsId(measureBundleId.toHexString())
+            .measureBundleWithoutWarningsGridFsId(measureBundleWithoutWarningsId.toHexString())
+                .humanReadable(humanReadableWithCss)
+            .build();
+
+    return exportRepository.save(export);
+  }
+
+  private void saveMeasureBundle(
+      Measure savedMeasure,
+      String measureBundle,
+      String measureBundleWithoutWarnings,
+      String username) {
     String humanReadableWithCss;
     try {
       PackagingUtility utility = PackagingUtilityFactory.getInstance(savedMeasure.getModel());
@@ -379,17 +419,12 @@ public class VersionService {
         | ClassNotFoundException e) {
       throw new BundleOperationException("Measure", savedMeasure.getId(), e);
     }
-    Export export =
-        Export.builder()
-            .measureId(savedMeasure.getId())
-            .measureBundleJson(measureBundle)
-            .humanReadable(humanReadableWithCss)
-            .build();
-    Export savedExport = exportRepository.save(export);
+
+    Export savedExport = saveExport(savedMeasure, measureBundle, measureBundleWithoutWarnings, humanReadableWithCss);
     log.info(
-        "User [{}] successfully saved versioned measure's export data with ID [{}]",
-        username,
-        savedExport.getId());
+            "User [{}] successfully saved versioned measure's export data with ID [{}]",
+            username,
+            savedExport.getId());
   }
 
   private void savePackageData(

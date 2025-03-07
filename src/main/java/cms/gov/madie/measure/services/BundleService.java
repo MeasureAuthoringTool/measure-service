@@ -1,8 +1,16 @@
 package cms.gov.madie.measure.services;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
+import java.nio.charset.StandardCharsets;
 
 import cms.gov.madie.measure.dto.PackageDto;
+import com.mongodb.client.gridfs.model.GridFSFile;
+import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.gridfs.GridFsResource;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 
@@ -24,7 +32,7 @@ public class BundleService {
   private final FhirServicesClient fhirServicesClient;
   private final ExportRepository exportRepository;
   private final ElmToJsonService elmToJsonService;
-
+  private final GridFsTemplate gridFsTemplate;
   /**
    * Get the bundle for measure. For draft measure- generate bundle because for draft measure,
    * bundles are not available in DB. For versioned measure- fetch the bundle from measure export
@@ -53,6 +61,21 @@ public class BundleService {
     return export.getMeasureBundleJson();
   }
 
+  private String fetchGridFsContent(String gridFsId) {
+    if (gridFsId == null || gridFsId.isEmpty()) {
+      return null;
+    }
+    GridFSFile gridFsFile = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(new ObjectId(gridFsId))));
+    if (gridFsFile == null) {
+      return null;
+    }
+    try {
+      GridFsResource resource = gridFsTemplate.getResource(gridFsFile);
+      return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to read GridFS content for ID: " + gridFsId, e);
+    }
+  }
   public PackageDto getMeasureExport(Measure measure, String accessToken) {
     if (measure == null) {
       return null;
@@ -71,8 +94,15 @@ public class BundleService {
           throw new BundleOperationException("Measure", measure.getId(), ex);
         }
       }
-      // for versioned measures
+
+      // for versioned measures (previous implementation where everything exists on export object
       Export export = exportRepository.findByMeasureId(measure.getId()).orElse(null);
+      // Fetch content from GridFS if IDs exist
+      String measureBundle = fetchGridFsContent(export.getMeasureBundleGridFsId());
+      String measureBundleWithoutWarnings = fetchGridFsContent(export.getMeasureBundleWithoutWarningsGridFsId());
+
+      export.setMeasureBundleJson(measureBundle);
+      export.setMeasureBundleJsonWithoutWarnings(measureBundleWithoutWarnings);
 
       if (export == null) {
         log.error("Export not available for versioned measure with id: {}", measure.getId());
