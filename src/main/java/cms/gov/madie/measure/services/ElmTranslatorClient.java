@@ -81,7 +81,7 @@ public class ElmTranslatorClient {
           UriComponentsBuilder.fromHttpUrl(
                   baseUrl + elmTranslatorClientConfig.getCqlElmServiceElmJsonUri())
               .queryParam("checkContext", true)
-              .queryParam("errorSeverity", errorSeverity) // Uses provided or default value
+              .queryParam("errorSeverity", errorSeverity)
               .build()
               .encode()
               .toUri();
