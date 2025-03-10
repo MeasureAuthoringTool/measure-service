@@ -51,7 +51,7 @@ class BundleServiceTest implements ResourceUtil {
   @Mock private ElmTranslatorClient elmTranslatorClient;
   @Mock private ExportRepository exportRepository;
   @Mock private ElmToJsonService elmToJsonService;
-
+  @Mock private GridFsService gridFsService;
   @InjectMocks private BundleService bundleService;
 
   private Measure measure;

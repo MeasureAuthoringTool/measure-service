@@ -141,7 +141,8 @@ class ElmTranslatorClientTest {
   @Test
   void testQiCoreGetElmJsonURI() {
     URI uri = elmTranslatorClient.getElmJsonURI(ModelType.QI_CORE.getValue());
-    assertEquals("http://test/cql/translator/cql?checkContext=true&ErrorSeverity=Info", uri.toString());
+    assertEquals(
+        "http://test/cql/translator/cql?checkContext=true&ErrorSeverity=Info", uri.toString());
   }
 
   @Test
