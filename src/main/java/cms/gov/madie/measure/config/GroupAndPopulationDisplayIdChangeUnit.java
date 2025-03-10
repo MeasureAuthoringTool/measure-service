@@ -16,7 +16,7 @@ import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-@ChangeUnit(id = "set_display_ids", order = "1", author = "madie_dev")
+@ChangeUnit(id = "set_display_ids_groups", order = "1", author = "madie_dev")
 public class GroupAndPopulationDisplayIdChangeUnit {
   @Setter private List<Measure> tempMeasures;
 
