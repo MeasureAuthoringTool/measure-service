@@ -64,10 +64,12 @@ public class ElmTranslatorClient {
           "There was an error calling CQL-ELM translation service", ex);
     }
   }
-  //overload method invocation so if we don't provide ErrorSeverity we assume that its info
+
+  // overload method invocation so if we don't provide ErrorSeverity we assume that its info
   protected URI getElmJsonURI(String measureModel) {
     return getElmJsonURI(measureModel, CqlCompilerException.ErrorSeverity.Info);
   }
+
   protected URI getElmJsonURI(
       String measureModel, CqlCompilerException.ErrorSeverity errorSeverity) {
     var isQdm = StringUtils.equals(measureModel, ModelType.QDM_5_6.getValue());

@@ -33,6 +33,7 @@ public class BundleService {
   private final ExportRepository exportRepository;
   private final ElmToJsonService elmToJsonService;
   private final GridFsTemplate gridFsTemplate;
+
   /**
    * Get the bundle for measure. For draft measure- generate bundle because for draft measure,
    * bundles are not available in DB. For versioned measure- fetch the bundle from measure export
@@ -65,7 +66,8 @@ public class BundleService {
     if (gridFsId == null || gridFsId.isEmpty()) {
       return null;
     }
-    GridFSFile gridFsFile = gridFsTemplate.findOne(new Query(Criteria.where("_id").is(new ObjectId(gridFsId))));
+    GridFSFile gridFsFile =
+        gridFsTemplate.findOne(new Query(Criteria.where("_id").is(new ObjectId(gridFsId))));
     if (gridFsFile == null) {
       return null;
     }
@@ -76,6 +78,7 @@ public class BundleService {
       throw new RuntimeException("Failed to read GridFS content for ID: " + gridFsId, e);
     }
   }
+
   public PackageDto getMeasureExport(Measure measure, String accessToken) {
     if (measure == null) {
       return null;
@@ -99,7 +102,8 @@ public class BundleService {
       Export export = exportRepository.findByMeasureId(measure.getId()).orElse(null);
       // Fetch content from GridFS if IDs exist
       String measureBundle = fetchGridFsContent(export.getMeasureBundleGridFsId());
-      String measureBundleWithoutWarnings = fetchGridFsContent(export.getMeasureBundleWithoutWarningsGridFsId());
+      String measureBundleWithoutWarnings =
+          fetchGridFsContent(export.getMeasureBundleWithoutWarningsGridFsId());
 
       export.setMeasureBundleJson(measureBundle);
       export.setMeasureBundleJsonWithoutWarnings(measureBundleWithoutWarnings);

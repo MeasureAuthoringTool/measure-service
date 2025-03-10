@@ -28,8 +28,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.zip.Deflater;
-import java.util.Arrays;
 
 @Slf4j
 @AllArgsConstructor
@@ -127,8 +125,7 @@ public class VersionService {
         fhirServicesClient.getMeasureBundle(
             upversionedMeasure, accessToken, "export", CqlCompilerException.ErrorSeverity.Error);
 
-    saveMeasureBundle(
-        upversionedMeasure, measureBundle, measureBundleWithoutWarnings, username);
+    saveMeasureBundle(upversionedMeasure, measureBundle, measureBundleWithoutWarnings, username);
     return applyMeasureVersion(versionType, username, upversionedMeasure);
   }
 
@@ -397,7 +394,7 @@ public class VersionService {
             .measureId(savedMeasure.getId())
             .measureBundleGridFsId(measureBundleId.toHexString())
             .measureBundleWithoutWarningsGridFsId(measureBundleWithoutWarningsId.toHexString())
-                .humanReadable(humanReadableWithCss)
+            .humanReadable(humanReadableWithCss)
             .build();
 
     return exportRepository.save(export);
@@ -420,11 +417,12 @@ public class VersionService {
       throw new BundleOperationException("Measure", savedMeasure.getId(), e);
     }
 
-    Export savedExport = saveExport(savedMeasure, measureBundle, measureBundleWithoutWarnings, humanReadableWithCss);
+    Export savedExport =
+        saveExport(savedMeasure, measureBundle, measureBundleWithoutWarnings, humanReadableWithCss);
     log.info(
-            "User [{}] successfully saved versioned measure's export data with ID [{}]",
-            username,
-            savedExport.getId());
+        "User [{}] successfully saved versioned measure's export data with ID [{}]",
+        username,
+        savedExport.getId());
   }
 
   private void savePackageData(

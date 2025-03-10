@@ -49,9 +49,7 @@ public class FhirServicesClient {
         UriComponentsBuilder.fromUri(
                 buildMadieFhirServiceUri(
                     bundleType, fhirServicesConfig.getMadieFhirServiceMeasuresBundleUri()))
-            .queryParam(
-                "errorSeverity",
-                errorSeverity.name());
+            .queryParam("errorSeverity", errorSeverity.name());
     URI uri = uriBuilder.build().toUri();
 
     HttpHeaders headers = new HttpHeaders();
