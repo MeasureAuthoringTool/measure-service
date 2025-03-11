@@ -49,7 +49,7 @@ class BundleServiceTest implements ResourceUtil {
   @Mock private ElmTranslatorClient elmTranslatorClient;
   @Mock private ExportRepository exportRepository;
   @Mock private ElmToJsonService elmToJsonService;
-  @Mock private GridFsService gridFsService;
+  @Mock private MongoGridFsService mongoGridFsService;
   @InjectMocks private BundleService bundleService;
 
   private Measure measure;
@@ -156,12 +156,13 @@ class BundleServiceTest implements ResourceUtil {
   @Test
   void testExportBundleMeasureForVersionedMeasure() throws IOException {
     final String json = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
+    measure.getMeasureMetaData().setDraft(false);
 
     Export export =
         Export.builder()
             .measureId(measure.getId())
             .measureBundleGridFsId("id1")
-            .measureBundleJson(json)
+            .measureBundleWithoutWarningsGridFsId("id2")
             .build();
     measure.setEcqmTitle("MEAS");
     measure.setMeasureMetaData(
@@ -173,7 +174,8 @@ class BundleServiceTest implements ResourceUtil {
             .build());
     measure.setModel("QI-Core v4.1.1");
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
-    when(gridFsService.fetchGridFsContent(anyString())).thenReturn(json);
+    when(mongoGridFsService.findById("id1")).thenReturn(json);
+    when(mongoGridFsService.findById("id2")).thenReturn(json);
     PackageDto output = bundleService.getMeasureExport(measure, "Bearer TOKEN");
     assertNotNull(output);
     ZipInputStream z = new ZipInputStream(new ByteArrayInputStream(output.getExportPackage()));
@@ -214,9 +216,6 @@ class BundleServiceTest implements ResourceUtil {
 
   @Test
   void testExportBundleMeasureForDraftMeasure() throws IOException {
-
-    // final String json = cms.gov.madie.measure.JsonBits.BUNDLE;
-    // Export export = Export.builder().measureId(measure.getId()).measureBundleJson(json).build();
     measure.setEcqmTitle("MEAS");
     measure.setMeasureMetaData(
         MeasureMetaData.builder()
@@ -227,15 +226,12 @@ class BundleServiceTest implements ResourceUtil {
             .build());
     measure.setModel("QI-Core v4.1.1");
 
-    // doThrow(new
-    // HttpClientErrorException(HttpStatus.FORBIDDEN)).when(fhirServicesClient).getMeasureBundleExport(any(Measure.class), eq("")))
     byte[] exportBytes = "TEST".getBytes();
     doReturn(exportBytes)
         .when(fhirServicesClient)
         .getMeasureBundleExport(any(Measure.class), eq("Bearer TOKEN"));
 
     PackageDto output = bundleService.getMeasureExport(measure, "Bearer TOKEN");
-    assertNotNull(output);
     assertNotNull(output);
     assertTrue(Arrays.equals("TEST".getBytes(), output.getExportPackage()));
   }

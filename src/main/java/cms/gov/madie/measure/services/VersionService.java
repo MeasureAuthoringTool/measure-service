@@ -15,8 +15,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
-import org.cqframework.cql.cql2elm.CqlCompilerException;
-import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -45,7 +44,7 @@ public class VersionService {
   private final ExportService exportService;
   private final TestCaseSequenceService sequenceService;
   private final ElmToJsonService elmToJsonService;
-  private final GridFsTemplate gridFsTemplate;
+  private final GridFsOperations mongoGridFsOperations;
 
   public enum VersionValidationResult {
     VALID,
@@ -122,8 +121,7 @@ public class VersionService {
     var measureBundle =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export");
     var measureBundleWithoutWarnings =
-        fhirServicesClient.getMeasureBundle(
-            upversionedMeasure, accessToken, "export", CqlCompilerException.ErrorSeverity.Error);
+        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Error");
 
     saveMeasureBundle(upversionedMeasure, measureBundle, measureBundleWithoutWarnings, username);
     return applyMeasureVersion(versionType, username, upversionedMeasure);
@@ -380,12 +378,12 @@ public class VersionService {
       String measureBundleWithoutWarnings,
       String humanReadableWithCss) {
     ObjectId measureBundleId =
-        gridFsTemplate.store(
+        mongoGridFsOperations.store(
             new ByteArrayInputStream(measureBundle.getBytes()),
             "measureBundle.json",
             "application/json");
     ObjectId measureBundleWithoutWarningsId =
-        gridFsTemplate.store(
+        mongoGridFsOperations.store(
             new ByteArrayInputStream(measureBundleWithoutWarnings.getBytes()),
             "measureBundleWithoutWarnings.json",
             "application/json");

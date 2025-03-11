@@ -14,7 +14,6 @@ import gov.cms.madie.models.measure.TestCase;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import org.cqframework.cql.cql2elm.CqlCompilerException;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -36,20 +35,16 @@ public class FhirServicesClient {
   private RestTemplate fhirServicesRestTemplate;
 
   public String getMeasureBundle(Measure measure, String accessToken, String bundleType) {
-    return getMeasureBundle(
-        measure, accessToken, bundleType, CqlCompilerException.ErrorSeverity.Info);
+    return getMeasureBundle(measure, accessToken, bundleType, "Info");
   }
 
   public String getMeasureBundle(
-      Measure measure,
-      String accessToken,
-      String bundleType,
-      CqlCompilerException.ErrorSeverity errorSeverity) {
+      Measure measure, String accessToken, String bundleType, String errorSeverity) {
     UriComponentsBuilder uriBuilder =
         UriComponentsBuilder.fromUri(
                 buildMadieFhirServiceUri(
                     bundleType, fhirServicesConfig.getMadieFhirServiceMeasuresBundleUri()))
-            .queryParam("errorSeverity", errorSeverity.name());
+            .queryParam("errorSeverity", errorSeverity);
     URI uri = uriBuilder.build().toUri();
 
     HttpHeaders headers = new HttpHeaders();

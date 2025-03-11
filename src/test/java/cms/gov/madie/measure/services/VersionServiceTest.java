@@ -23,7 +23,6 @@ import gov.cms.madie.packaging.utils.qicore411.PackagingUtilityImpl;
 import gov.cms.madie.models.measure.*;
 
 import org.bson.types.ObjectId;
-import org.cqframework.cql.cql2elm.CqlCompilerException;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -34,7 +33,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.mongodb.gridfs.GridFsTemplate;
+import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.http.ResponseEntity;
 
 import java.io.ByteArrayInputStream;
@@ -69,7 +68,7 @@ public class VersionServiceTest {
   @Mock AppConfigService appConfigService;
   @Mock ElmToJsonService elmToJsonService;
 
-  @Mock private GridFsTemplate gridFsTemplate;
+  @Mock private GridFsOperations gridFsOperations;
   @Mock ElmTranslatorClient elmTranslatorClient;
   @Mock FhirServicesClient fhirServicesClient;
 
@@ -569,21 +568,18 @@ public class VersionServiceTest {
     when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
         .thenReturn(measureBundleJson);
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class),
-            anyString(),
-            anyString(),
-            any(CqlCompilerException.ErrorSeverity.class)))
+            any(Measure.class), anyString(), anyString(), anyString()))
         .thenReturn(measureBundleJson);
-    // mock bundle andhex?
+    // mock bundle and hex
     ObjectId measureBundleId = mock(ObjectId.class);
     when(measureBundleId.toHexString()).thenReturn("hex1");
     ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
     when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
 
-    when(gridFsTemplate.store(
+    when(gridFsOperations.store(
             any(ByteArrayInputStream.class), eq("measureBundle.json"), eq("application/json")))
         .thenReturn(measureBundleId);
-    when(gridFsTemplate.store(
+    when(gridFsOperations.store(
             any(ByteArrayInputStream.class),
             eq("measureBundleWithoutWarnings.json"),
             eq("application/json")))
@@ -728,20 +724,17 @@ public class VersionServiceTest {
         .thenReturn(measureBundleJson);
 
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class),
-            anyString(),
-            anyString(),
-            any(CqlCompilerException.ErrorSeverity.class)))
+            any(Measure.class), anyString(), anyString(), anyString()))
         .thenReturn(measureBundleJson);
     ObjectId measureBundleId = mock(ObjectId.class);
     when(measureBundleId.toHexString()).thenReturn("hex1");
     ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
     when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
 
-    when(gridFsTemplate.store(
+    when(gridFsOperations.store(
             any(ByteArrayInputStream.class), eq("measureBundle.json"), eq("application/json")))
         .thenReturn(measureBundleId);
-    when(gridFsTemplate.store(
+    when(gridFsOperations.store(
             any(ByteArrayInputStream.class),
             eq("measureBundleWithoutWarnings.json"),
             eq("application/json")))

@@ -8,7 +8,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.SimpleMongoClientDatabaseFactory;
 import org.springframework.data.mongodb.core.convert.MongoCustomConversions;
 import org.springframework.data.mongodb.core.convert.DbRefResolver;
@@ -32,7 +31,7 @@ public class MeasureMongoConfig {
   @Autowired private MongoMappingContext mongoMappingContext;
 
   @Bean
-  public MongoConverter mongoConverter() throws Exception {
+  public MongoConverter mongoConverter() {
     DbRefResolver dbRefResolver = new DefaultDbRefResolver(mongoDatabaseFactory());
 
     MappingMongoConverter mongoConverter =
@@ -52,6 +51,6 @@ public class MeasureMongoConfig {
 
   @Bean
   public GridFsTemplate gridFsTemplate(MongoDatabaseFactory mongoDbFactory) {
-    return new GridFsTemplate(mongoDbFactory, new MongoTemplate(mongoDbFactory).getConverter());
+    return new GridFsTemplate(mongoDbFactory, mongoConverter());
   }
 }
