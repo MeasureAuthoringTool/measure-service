@@ -87,11 +87,13 @@ public class BundleService {
         log.error("Export not available for versioned measure with id: {}", measure.getId());
         throw new BundleOperationException("Measure", measure.getId(), null);
       }
-      String exportFileName = ExportFileNamesUtil.getExportFileName(measure);
 
+      String exportFileName = ExportFileNamesUtil.getExportFileName(measure);
+      if (exportFileName == null) {
+        throw new IllegalArgumentException("Export or export file name is null");
+      }
       // get a Utility for this model
       String model = measure.getModel();
-
       PackagingUtility utility = PackagingUtilityFactory.getInstance(model);
       return PackageDto.builder()
           .fromStorage(true)

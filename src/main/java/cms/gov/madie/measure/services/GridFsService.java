@@ -25,6 +25,9 @@ public class GridFsService {
     }
     GridFSFile gridFsFile =
         gridFsTemplate.findOne(new Query(Criteria.where("_id").is(new ObjectId(gridFsId))));
+    if (gridFsFile == null) {
+      throw new IllegalArgumentException("No file found for ID: " + gridFsId);
+    }
     try {
       GridFsResource resource = gridFsTemplate.getResource(gridFsFile);
       return new String(resource.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
