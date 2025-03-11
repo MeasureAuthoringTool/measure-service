@@ -158,7 +158,8 @@ public class GroupServiceTest implements ResourceUtil {
                         "fun",
                         "a description of fun",
                         "id-2",
-                        AggregateMethodType.MAXIMUM.getValue())))
+                        AggregateMethodType.MAXIMUM.getValue(),
+                        "test-display-id")))
             .stratifications(List.of(strata1))
             .groupDescription("Description")
             .scoringUnit("test-scoring-unit")
@@ -210,13 +211,15 @@ public class GroupServiceTest implements ResourceUtil {
                             "fun",
                             "a description of fun",
                             "id-2",
-                            AggregateMethodType.MAXIMUM.getValue()),
+                            AggregateMethodType.MAXIMUM.getValue(),
+                            "test-displayId-1"),
                         new MeasureObservation(
                             "mo-id-2",
                             "fun",
                             "a description of fun",
                             "id-4",
-                            AggregateMethodType.MAXIMUM.getValue()))))
+                            AggregateMethodType.MAXIMUM.getValue(),
+                            "test-displayId-2"))))
             .stratifications(List.of(strata1, strata2))
             .groupDescription("Description")
             .scoringUnit("test-scoring-unit")
@@ -1122,13 +1125,15 @@ public class GroupServiceTest implements ResourceUtil {
                             "Denominator MO",
                             "a description of Numerator MO",
                             "id-2",
-                            AggregateMethodType.MAXIMUM.getValue()),
+                            AggregateMethodType.MAXIMUM.getValue(),
+                            "test-displayId-1"),
                         new MeasureObservation(
                             "mo-id-2",
                             "Numerator MO",
                             "a description of Numerator MO",
                             "id-4",
-                            AggregateMethodType.MAXIMUM.getValue()))))
+                            AggregateMethodType.MAXIMUM.getValue(),
+                            "test-displayId-2"))))
             .stratifications(List.of(strata1))
             .groupDescription("Description")
             .scoringUnit("test-scoring-unit")
