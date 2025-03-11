@@ -14,8 +14,10 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureGroupTypes;
+import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.Population;
 import gov.cms.madie.models.measure.PopulationType;
+import gov.cms.madie.models.measure.Stratification;
 
 @ExtendWith(MockitoExtension.class)
 public class GroupPopulationUtilTest {
@@ -28,6 +30,11 @@ public class GroupPopulationUtilTest {
   private Group group2IPs;
   private Group group1IP;
   private Population population12;
+
+  private MeasureObservation observation1;
+  private MeasureObservation observation2;
+  private Stratification stratification1;
+  private Stratification stratification2;
 
   List<Group> groups;
 
@@ -64,6 +71,13 @@ public class GroupPopulationUtilTest {
             .definition(PopulationType.NUMERATOR.getDisplay())
             .displayId("Numerator_1")
             .build();
+
+    observation1 =
+        MeasureObservation.builder().id("obser1").definition("isFinishedEncounter").build();
+    observation2 =
+        MeasureObservation.builder().id("obser2").definition("isFinishedEncounter").build();
+    stratification1 = Stratification.builder().cqlDefinition("Stratification 1").build();
+    stratification2 = Stratification.builder().cqlDefinition("Stratification 2").build();
 
     group2IPs =
         Group.builder()
@@ -163,5 +177,78 @@ public class GroupPopulationUtilTest {
     assertEquals(
         "Denominator_1", measure.getGroups().get(0).getPopulations().get(1).getDisplayId());
     assertEquals("Numerator_1", measure.getGroups().get(0).getPopulations().get(2).getDisplayId());
+  }
+
+  @Test
+  public void testSetGroupPopulationsObservationsStratificationsDisplayIds() {
+    population2 =
+        Population.builder()
+            .id("id-2")
+            .name(PopulationType.MEASURE_POPULATION)
+            .definition(PopulationType.MEASURE_POPULATION.getDisplay())
+            .build();
+    group1IP.setScoring("Continuous Variable");
+    group1IP.setDisplayId(null);
+    group1IP.setPopulations(List.of(population11, population2));
+    group1IP.setMeasureObservations(List.of(observation1, observation2));
+    group1IP.setStratifications(List.of(stratification1, stratification2));
+    measure.setGroups(List.of(group1IP));
+
+    GroupPopulationUtil.setGroupAndPopulationsDisplayIds(measure, group1IP);
+
+    assertEquals("Group_1", measure.getGroups().get(0).getDisplayId());
+    assertEquals(
+        "InitialPopulation_1", measure.getGroups().get(0).getPopulations().get(0).getDisplayId());
+    assertEquals(
+        "MeasurePopulation_1", measure.getGroups().get(0).getPopulations().get(1).getDisplayId());
+
+    assertEquals(2, measure.getGroups().get(0).getMeasureObservations().size());
+    assertEquals(
+        "MeasureObservation_1_1",
+        measure.getGroups().get(0).getMeasureObservations().get(0).getDisplayId());
+    assertEquals(
+        "MeasureObservation_1_2",
+        measure.getGroups().get(0).getMeasureObservations().get(1).getDisplayId());
+
+    assertEquals(2, measure.getGroups().get(0).getStratifications().size());
+    assertEquals(
+        "Stratification_1_1",
+        measure.getGroups().get(0).getStratifications().get(0).getDisplayId());
+    assertEquals(
+        "Stratification_1_2",
+        measure.getGroups().get(0).getStratifications().get(1).getDisplayId());
+  }
+
+  @Test
+  public void testSetDisplayIdsForSingleObservationAndStratification() {
+    population2 =
+        Population.builder()
+            .id("id-2")
+            .name(PopulationType.MEASURE_POPULATION)
+            .definition(PopulationType.MEASURE_POPULATION.getDisplay())
+            .build();
+    group1IP.setScoring("Continuous Variable");
+    group1IP.setDisplayId(null);
+    group1IP.setPopulations(List.of(population11, population2));
+    group1IP.setMeasureObservations(List.of(observation1));
+    group1IP.setStratifications(List.of(stratification1));
+    measure.setGroups(List.of(group1IP));
+
+    GroupPopulationUtil.setGroupAndPopulationsDisplayIds(measure, group1IP);
+
+    assertEquals("Group_1", measure.getGroups().get(0).getDisplayId());
+    assertEquals(
+        "InitialPopulation_1", measure.getGroups().get(0).getPopulations().get(0).getDisplayId());
+    assertEquals(
+        "MeasurePopulation_1", measure.getGroups().get(0).getPopulations().get(1).getDisplayId());
+
+    assertEquals(1, measure.getGroups().get(0).getMeasureObservations().size());
+    assertEquals(
+        "MeasureObservation_1",
+        measure.getGroups().get(0).getMeasureObservations().get(0).getDisplayId());
+
+    assertEquals(1, measure.getGroups().get(0).getStratifications().size());
+    assertEquals(
+        "Stratification_1", measure.getGroups().get(0).getStratifications().get(0).getDisplayId());
   }
 }

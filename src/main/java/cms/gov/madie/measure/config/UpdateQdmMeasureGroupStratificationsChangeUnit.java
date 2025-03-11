@@ -56,7 +56,8 @@ public class UpdateQdmMeasureGroupStratificationsChangeUnit {
                                                           s.getDescription(),
                                                           s.getCqlDefinition(),
                                                           s.getAssociation(),
-                                                          s.getAssociations()))
+                                                          s.getAssociations(),
+                                                          s.getDisplayId()))
                                               .toList())
                                       .build();
                                 } else {
