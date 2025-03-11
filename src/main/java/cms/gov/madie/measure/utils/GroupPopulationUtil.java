@@ -75,15 +75,13 @@ public class GroupPopulationUtil {
       for (int index = 0; index < group.getMeasureObservations().size(); index++) {
         MeasureObservation observation = group.getMeasureObservations().get(index);
         String obsDisplayId =
-            getObservationDisplayId(
-                observation, groupNumber, group.getMeasureObservations().size() > 1, index);
+            getObservationDisplayId(groupNumber, group.getMeasureObservations().size() > 1, index);
         observation.setDisplayId(obsDisplayId);
       }
     }
   }
 
-  static String getObservationDisplayId(
-      MeasureObservation observation, String groupNumber, boolean multipleObs, int index) {
+  static String getObservationDisplayId(String groupNumber, boolean multipleObs, int index) {
     String newObsDisplayId = "MeasureObservation_" + groupNumber;
     if (multipleObs) {
       newObsDisplayId = newObsDisplayId + "_" + (index + 1);
@@ -96,15 +94,13 @@ public class GroupPopulationUtil {
       for (int index = 0; index < group.getStratifications().size(); index++) {
         Stratification stratification = group.getStratifications().get(index);
         String obsDisplayId =
-            getStratificationDisplayId(
-                stratification, groupNumber, group.getStratifications().size() > 1, index);
+            getStratificationDisplayId(groupNumber, group.getStratifications().size() > 1, index);
         stratification.setDisplayId(obsDisplayId);
       }
     }
   }
 
-  static String getStratificationDisplayId(
-      Stratification stratification, String groupNumber, boolean multipleStrats, int index) {
+  static String getStratificationDisplayId(String groupNumber, boolean multipleStrats, int index) {
     String newStratsDisplayId = "Stratification_" + groupNumber;
     if (multipleStrats) {
       newStratsDisplayId = newStratsDisplayId + "_" + (index + 1);
