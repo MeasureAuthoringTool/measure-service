@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import com.mongodb.MongoGridFSException;
 import com.mongodb.client.gridfs.model.GridFSFile;
 import lombok.AllArgsConstructor;
 import org.apache.commons.io.IOUtils;
@@ -32,7 +33,7 @@ public class MongoGridFsService {
       try (InputStream inputStream = resource.getInputStream()) {
         return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
       } catch (IOException e) {
-        throw new RuntimeException("Failed to read GridFS content for ID: " + gridFsId, e);
+        throw new MongoGridFSException("Failed to read GridFS content for ID: " + gridFsId, e);
       }
     }
     return null;
