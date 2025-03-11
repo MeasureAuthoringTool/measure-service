@@ -159,7 +159,7 @@ public class GroupServiceTest implements ResourceUtil {
                         "a description of fun",
                         "id-2",
                         AggregateMethodType.MAXIMUM.getValue(),
-                        "test-display-id")))
+                        "MeasureObservation_2")))
             .stratifications(List.of(strata1))
             .groupDescription("Description")
             .scoringUnit("test-scoring-unit")
@@ -212,14 +212,14 @@ public class GroupServiceTest implements ResourceUtil {
                             "a description of fun",
                             "id-2",
                             AggregateMethodType.MAXIMUM.getValue(),
-                            "test-displayId-1"),
+                            "MeasureObservation_1_1"),
                         new MeasureObservation(
                             "mo-id-2",
                             "fun",
                             "a description of fun",
                             "id-4",
                             AggregateMethodType.MAXIMUM.getValue(),
-                            "test-displayId-2"))))
+                            "MeasureObservation_1_2"))))
             .stratifications(List.of(strata1, strata2))
             .groupDescription("Description")
             .scoringUnit("test-scoring-unit")
@@ -486,6 +486,76 @@ public class GroupServiceTest implements ResourceUtil {
     Measure output = groupService.deleteMeasureGroup("measure-id", "testgroupid", "test.user");
 
     assertEquals(0, output.getGroups().size());
+  }
+
+  @Test
+  void testDeleteGroupResetDisplayId() {
+    Group group1 =
+        Group.builder()
+            .id("testgroupid1")
+            .displayId("Group_1")
+            .scoring("Cohort")
+            .populations(
+                List.of(
+                    new Population(
+                        "id-group1_1",
+                        PopulationType.INITIAL_POPULATION,
+                        "Initial Population",
+                        null,
+                        null,
+                        "InitialPopulation_1")))
+            .build();
+    Group group2 =
+        Group.builder()
+            .id("testgroupid2")
+            .displayId("Group_2")
+            .scoring("Proportion")
+            .populations(
+                List.of(
+                    new Population(
+                        "id-group2-1",
+                        PopulationType.INITIAL_POPULATION,
+                        "Initial Population",
+                        null,
+                        null,
+                        "InitialPopulation_1"),
+                    new Population(
+                        "id-group2-2",
+                        PopulationType.DENOMINATOR,
+                        "Denominator",
+                        null,
+                        null,
+                        "Denominator_1"),
+                    new Population(
+                        "id-group2-3",
+                        PopulationType.NUMERATOR,
+                        "Numerator",
+                        null,
+                        null,
+                        "Numerator_1")))
+            .build();
+
+    Measure existingMeasure =
+        Measure.builder()
+            .id("measure-id")
+            .createdBy("test.user")
+            .groups(List.of(group1, group2))
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .measureSet(MeasureSet.builder().owner("test.user").build())
+            .build();
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+
+    doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
+
+    Measure output = groupService.deleteMeasureGroup("measure-id", "testgroupid1", "test.user");
+
+    assertEquals(1, output.getGroups().size());
+    assertEquals("Group_1", output.getGroups().get(0).getDisplayId());
+    assertEquals(3, output.getGroups().get(0).getPopulations().size());
+    assertEquals(
+        "InitialPopulation_1", output.getGroups().get(0).getPopulations().get(0).getDisplayId());
+    assertEquals("Denominator_1", output.getGroups().get(0).getPopulations().get(1).getDisplayId());
+    assertEquals("Numerator_1", output.getGroups().get(0).getPopulations().get(2).getDisplayId());
   }
 
   @Test
@@ -1126,14 +1196,14 @@ public class GroupServiceTest implements ResourceUtil {
                             "a description of Numerator MO",
                             "id-2",
                             AggregateMethodType.MAXIMUM.getValue(),
-                            "test-displayId-1"),
+                            "MeasureObservation_1_1"),
                         new MeasureObservation(
                             "mo-id-2",
                             "Numerator MO",
                             "a description of Numerator MO",
                             "id-4",
                             AggregateMethodType.MAXIMUM.getValue(),
-                            "test-displayId-2"))))
+                            "MeasureObservation_1_2"))))
             .stratifications(List.of(strata1))
             .groupDescription("Description")
             .scoringUnit("test-scoring-unit")

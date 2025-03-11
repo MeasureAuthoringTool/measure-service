@@ -150,7 +150,7 @@ public class VersionServiceTest {
                       "a description of fun",
                       "id-2",
                       AggregateMethodType.MAXIMUM.getValue(),
-                      "displayId1")))
+                      "MeasureObservation_1")))
           .stratifications(List.of())
           .groupDescription("Description")
           .scoringUnit("test-scoring-unit")

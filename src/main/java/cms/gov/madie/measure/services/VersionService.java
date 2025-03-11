@@ -441,8 +441,7 @@ public class VersionService {
         .sorted(
             Comparator.comparing(
                 TestCase::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
-        .peek(
-            testCase -> testCase.setCaseNumber(sequenceService.generateSequence(measureId)))
+        .peek(testCase -> testCase.setCaseNumber(sequenceService.generateSequence(measureId)))
         .collect(Collectors.toList());
   }
 
