@@ -107,7 +107,7 @@ class BundleServiceTest implements ResourceUtil {
   @Test
   void testBundleMeasureThrowsOperationException() {
 
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString(), anyString()))
         .thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
     assertThrows(
         BundleOperationException.class,
@@ -117,7 +117,7 @@ class BundleServiceTest implements ResourceUtil {
   @Test
   void testBundleMeasureReturnsBundleStringForDraftMeasure() {
     final String json = "{\"message\": \"GOOD JSON\"}";
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString(), anyString()))
         .thenReturn(json);
 
     assertThat(measure.getMeasureMetaData().isDraft(), is(equalTo(true)));

@@ -98,7 +98,7 @@ public class QicorePackageServiceTest {
 
   @Test
   void testGetHumanReadableThrowsInstantiationException() {
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     factory
@@ -117,7 +117,7 @@ public class QicorePackageServiceTest {
 
   @Test
   void testGetHumanReadableThrowsIllegalAccessException() {
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     factory
@@ -136,7 +136,7 @@ public class QicorePackageServiceTest {
 
   @Test
   void testGetHumanReadableThrowsInvocationTargetException() {
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     factory
@@ -159,7 +159,7 @@ public class QicorePackageServiceTest {
     MeasureMetaData meta = MeasureMetaData.builder().draft(true).build();
     existingMeasure.setMeasureMetaData(meta);
 
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     PackagingUtilityImpl utility = mock(PackagingUtilityImpl.class);
@@ -227,7 +227,7 @@ public class QicorePackageServiceTest {
     Export export = Export.builder().id(TEST_MEASURE_ID).build();
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
 
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     PackagingUtilityImpl utility = mock(PackagingUtilityImpl.class);

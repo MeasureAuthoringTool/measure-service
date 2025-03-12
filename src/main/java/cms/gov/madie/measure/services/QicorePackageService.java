@@ -33,7 +33,7 @@ public class QicorePackageService implements PackageService {
 
   @Override
   public String getHumanReadable(Measure measure, String username, String accessToken) {
-    String measureBundle = fhirServicesClient.getMeasureBundle(measure, accessToken, "export");
+    String measureBundle = fhirServicesClient.getMeasureBundle(measure, accessToken, "export", "Info");
 
     String humanReadableWithCss = getHRWithCSS(measure, measureBundle);
 

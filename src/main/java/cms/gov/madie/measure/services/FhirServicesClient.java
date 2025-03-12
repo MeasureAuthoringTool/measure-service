@@ -34,10 +34,6 @@ public class FhirServicesClient {
   private FhirServicesConfig fhirServicesConfig;
   private RestTemplate fhirServicesRestTemplate;
 
-  public String getMeasureBundle(Measure measure, String accessToken, String bundleType) {
-    return getMeasureBundle(measure, accessToken, bundleType, "Info");
-  }
-
   public String getMeasureBundle(
       Measure measure, String accessToken, String bundleType, String errorSeverity) {
     UriComponentsBuilder uriBuilder =

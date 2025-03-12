@@ -494,7 +494,7 @@ public class VersionServiceTest {
                 "resource": {
                   "resourceType": "Measure","text":{"div":"humanReadable"}}}]}""";
 
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(measureBundleJson);
 
     factory
@@ -565,7 +565,7 @@ public class VersionServiceTest {
             .measureBundleWithoutWarningsGridFsId("id2")
             .build();
     when(exportRepository.save(any(Export.class))).thenReturn(measureExport);
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(measureBundleJson);
     when(fhirServicesClient.getMeasureBundle(
             any(Measure.class), anyString(), anyString(), anyString()))
@@ -720,7 +720,7 @@ public class VersionServiceTest {
             .measureBundleWithoutWarningsGridFsId("id2")
             .build();
     when(exportRepository.save(any(Export.class))).thenReturn(measureExport);
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString(), anyString()))
         .thenReturn(measureBundleJson);
 
     when(fhirServicesClient.getMeasureBundle(

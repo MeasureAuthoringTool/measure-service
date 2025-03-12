@@ -128,7 +128,7 @@ public class VersionService {
     elmToJsonService.retrieveElmJson(measure, accessToken);
     Measure upversionedMeasure = version(versionType, username, measure);
     var measureBundle =
-        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export");
+        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Info");
     var measureBundleWithoutWarnings =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Error");
 

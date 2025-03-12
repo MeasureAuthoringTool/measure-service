@@ -40,7 +40,7 @@ public class BundleService {
     if (measure.getMeasureMetaData().isDraft()) {
       try {
         elmToJsonService.retrieveElmJson(measure, accessToken);
-        return fhirServicesClient.getMeasureBundle(measure, accessToken, bundleType);
+        return fhirServicesClient.getMeasureBundle(measure, accessToken, bundleType, "Info");
       } catch (RestClientException | IllegalArgumentException ex) {
         log.error("An error occurred while bundling measure {}", measure.getId(), ex);
         throw new BundleOperationException("Measure", measure.getId(), ex);
