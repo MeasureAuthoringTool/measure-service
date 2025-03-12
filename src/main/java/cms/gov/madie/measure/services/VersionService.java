@@ -80,7 +80,7 @@ public class VersionService {
   }
 
   /**
-   * @param versionType - Major or Minor Version
+   * @param versionType - Major, Minor or Patch Version
    * @param username - Harp User Name
    * @param measure - Draft Measure
    * @param accessToken - accessToken
@@ -114,7 +114,7 @@ public class VersionService {
    * the measure, persist the measure bundle to the exports collection, and finally persist the
    * up-versioned measure to the database.
    *
-   * @param versionType - Major or Minor Version
+   * @param versionType - Major, Minor or Patch Version
    * @param username - Harp User Name
    * @param accessToken - accessToken
    * @param measure - Draft Measure
@@ -441,7 +441,11 @@ public class VersionService {
         .sorted(
             Comparator.comparing(
                 TestCase::getCreatedAt, Comparator.nullsFirst(Comparator.naturalOrder())))
-        .peek(testCase -> testCase.setCaseNumber(sequenceService.generateSequence(measureId)))
+        .map(
+            testCase -> {
+              testCase.setCaseNumber(sequenceService.generateSequence(measureId));
+              return testCase;
+            })
         .collect(Collectors.toList());
   }
 
