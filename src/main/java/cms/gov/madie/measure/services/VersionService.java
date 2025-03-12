@@ -45,7 +45,7 @@ public class VersionService {
   private final ExportService exportService;
   private final TestCaseSequenceService sequenceService;
   private final ElmToJsonService elmToJsonService;
-  private final GridFsOperations mongoGridFsOperations;
+  private final MongoGridFsService mongoGridFsService;
 
   public enum VersionValidationResult {
     VALID,
@@ -387,12 +387,12 @@ public class VersionService {
       String measureBundleWithoutWarnings,
       String humanReadableWithCss) {
     ObjectId measureBundleId =
-        mongoGridFsOperations.store(
+        mongoGridFsService.save(
             new ByteArrayInputStream(measureBundle.getBytes()),
             "measureBundle.json",
             "application/json");
     ObjectId measureBundleWithoutWarningsId =
-        mongoGridFsOperations.store(
+        mongoGridFsService.save(
             new ByteArrayInputStream(measureBundleWithoutWarnings.getBytes()),
             "measureBundleWithoutWarnings.json",
             "application/json");
