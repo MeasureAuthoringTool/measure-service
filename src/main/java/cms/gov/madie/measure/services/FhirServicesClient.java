@@ -35,9 +35,17 @@ public class FhirServicesClient {
   private RestTemplate fhirServicesRestTemplate;
 
   public String getMeasureBundle(Measure measure, String accessToken, String bundleType) {
-    URI uri =
-        buildMadieFhirServiceUri(
-            bundleType, fhirServicesConfig.getMadieFhirServiceMeasuresBundleUri());
+    return getMeasureBundle(measure, accessToken, bundleType, "Info");
+  }
+
+  public String getMeasureBundle(
+      Measure measure, String accessToken, String bundleType, String errorSeverity) {
+    UriComponentsBuilder uriBuilder =
+        UriComponentsBuilder.fromUri(
+                buildMadieFhirServiceUri(
+                    bundleType, fhirServicesConfig.getMadieFhirServiceMeasuresBundleUri()))
+            .queryParam("errorSeverity", errorSeverity);
+    URI uri = uriBuilder.build().toUri();
 
     HttpHeaders headers = new HttpHeaders();
     headers.set(HttpHeaders.AUTHORIZATION, accessToken);
