@@ -85,7 +85,7 @@ public class VersionService {
    * @param measure - Draft Measure
    * @param accessToken - accessToken
    * @return Versioned Measure Generates a measurePackage that includes ELM Warning Annotations ( if
-   *     available ) and also a PublishableMeasurePackage which does not include ELM Warnings and
+   *     available ) and also a publishableMeasurePackage which does not include ELM Warnings and
    *     saves both copies of exportPackage for future exports
    */
   private Measure versionQdmMeasure(
@@ -94,14 +94,14 @@ public class VersionService {
 
     PackageDto measurePackage =
         exportService.getMeasureExport(upversionedMeasure, accessToken, true);
-    PackageDto PublishableMeasurePackage =
+    PackageDto publishableMeasurePackage =
         exportService.getMeasureExport(upversionedMeasure, accessToken, false);
 
     String humanReadable =
         qdmPackageService.getHumanReadable(upversionedMeasure, username, accessToken);
     // save exports
     savePackageData(
-        upversionedMeasure, measurePackage, PublishableMeasurePackage, humanReadable, username);
+        upversionedMeasure, measurePackage, publishableMeasurePackage, humanReadable, username);
     // convert to CqmMeasure and save it
     CqmMeasure cqmMeasure = qdmPackageService.convertCqm(upversionedMeasure, accessToken);
     cqmMeasureRepository.save(cqmMeasure);
@@ -404,14 +404,14 @@ public class VersionService {
   private void savePackageData(
       Measure savedMeasure,
       PackageDto packageData,
-      PackageDto PublishableMeasurePackage,
+      PackageDto publishableMeasurePackage,
       String humanReadable,
       String username) {
     Export export =
         Export.builder()
             .measureId(savedMeasure.getId())
             .packageData(packageData.getExportPackage())
-            .PublishablePackageData(PublishableMeasurePackage.getExportPackage())
+            .PublishablePackageData(publishableMeasurePackage.getExportPackage())
             .humanReadable(humanReadable)
             .build();
     Export savedExport = exportRepository.save(export);
