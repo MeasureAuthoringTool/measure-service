@@ -41,6 +41,15 @@ public class ElmTranslatorClient {
     }
   }
 
+  public boolean hasOnlyWarnings(JsonNode errorExceptions) {
+    for (JsonNode node : errorExceptions) {
+      if ("Error".equalsIgnoreCase(node.get("errorSeverity").asText())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   public boolean hasErrors(ElmJson elmJson) {
     if (elmJson == null) {
       return true;
@@ -48,7 +57,13 @@ public class ElmTranslatorClient {
     try {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode jsonNode = mapper.readTree(elmJson.getJson());
-      return jsonNode.has("errorExceptions") && jsonNode.get("errorExceptions").size() > 0;
+
+      return (jsonNode.has("errorExceptions")
+          && jsonNode.get("errorExceptions").size() > 0
+          && !hasOnlyWarnings(jsonNode.get("errorExceptions")));
+      //          || (jsonNode.has("externalErrors")
+      //              && jsonNode.get("externalErrors").size() > 0
+      //              && !hasOnlyWarnings(jsonNode.get("externalErrors")));
     } catch (Exception ex) {
       log.error("An error occurred parsing the response from the CQL-ELM translation service", ex);
       throw new CqlElmTranslationServiceException(
