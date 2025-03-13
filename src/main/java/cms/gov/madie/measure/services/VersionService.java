@@ -442,7 +442,7 @@ public class VersionService {
         Export.builder()
             .measureId(savedMeasure.getId())
             .packageData(packageData.getExportPackage())
-            .PublishablePackageData(publishableMeasurePackage.getExportPackage())
+            .publishablePackageData(publishableMeasurePackage.getExportPackage())
             .humanReadable(humanReadable)
             .build();
     Export savedExport = exportRepository.save(export);
