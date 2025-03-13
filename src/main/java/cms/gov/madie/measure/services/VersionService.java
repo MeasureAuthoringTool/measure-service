@@ -389,12 +389,12 @@ public class VersionService {
     ObjectId measureBundleId =
         mongoGridFsService.save(
             new ByteArrayInputStream(measureBundle.getBytes()),
-            "measureBundle.json",
+            savedMeasure.getEcqmTitle() +"-v" + savedMeasure.getVersion().toString(),
             "application/json");
     ObjectId measureBundleWithoutWarningsId =
         mongoGridFsService.save(
             new ByteArrayInputStream(measureBundleWithoutWarnings.getBytes()),
-            "measureBundleWithoutWarnings.json",
+            savedMeasure.getEcqmTitle() +"-v" + savedMeasure.getVersion().toString()+"-publish",
             "application/json");
     Export export =
         Export.builder()
