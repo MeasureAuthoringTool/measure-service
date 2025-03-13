@@ -20,6 +20,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -259,5 +260,19 @@ public class MeasureSetService {
     Aggregation aggregation = newAggregation(lookupOperation, matchOperation);
 
     return mongoTemplate.aggregate(aggregation, "measure", MeasureListDTO.class).getMappedResults();
+  }
+
+  public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {
+    List<Measure> mostRecentMeasures = new ArrayList<Measure>();
+    for (String measureSetId : measureSetIds) {
+      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId);
+      System.out.println(measures);
+      if (measures != null && !measures.isEmpty()) {
+        MeasureListDTO measure = measures.get(measures.size() - 1);
+        Measure recentMeasure = measureRepository.findById(measure.getId()).orElse(null);
+        mostRecentMeasures.add(recentMeasure);
+      }
+    }
+    return mostRecentMeasures;
   }
 }
