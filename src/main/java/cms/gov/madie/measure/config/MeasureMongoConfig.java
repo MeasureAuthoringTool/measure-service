@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.convert.DefaultDbRefResolver;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.convert.MongoConverter;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
+import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 
 @Configuration
 public class MeasureMongoConfig {
@@ -30,7 +31,7 @@ public class MeasureMongoConfig {
   @Autowired private MongoMappingContext mongoMappingContext;
 
   @Bean
-  public MongoConverter mongoConverter() throws Exception {
+  public MongoConverter mongoConverter() {
     DbRefResolver dbRefResolver = new DefaultDbRefResolver(mongoDatabaseFactory());
 
     MappingMongoConverter mongoConverter =
@@ -46,5 +47,10 @@ public class MeasureMongoConfig {
             Arrays.asList(new VersionConverter(), new StringOrganizationConverter())));
 
     return mongoConverter;
+  }
+
+  @Bean
+  public GridFsTemplate gridFsTemplate(MongoDatabaseFactory mongoDbFactory) {
+    return new GridFsTemplate(mongoDbFactory, mongoConverter());
   }
 }
