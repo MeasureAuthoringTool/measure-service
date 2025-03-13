@@ -307,7 +307,7 @@ public class TestCaseController {
                 testCase ->
                     StringUtils.isBlank(testCase.getSeries())
                         ? testCase.getTitle()
-                        : testCase.getSeries() + " " + testCase.getTitle())
+                        : testCase.getSeries() + " - " + testCase.getTitle())
             .toList();
     return ResponseEntity.ok(failedTestCases);
   }
