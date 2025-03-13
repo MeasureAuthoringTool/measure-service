@@ -26,7 +26,8 @@ public class QicorePackageService implements PackageService {
   private final ExportRepository exportRepository;
 
   @Override
-  public PackageDto getMeasurePackage(Measure measure, String accessToken) {
+  public PackageDto getMeasurePackage(
+      Measure measure, String accessToken, boolean includeElmWarnings) {
     return bundleService.getMeasureExport(measure, accessToken);
   }
 

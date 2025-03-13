@@ -447,7 +447,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testGetNextVersionOtherException() throws Exception {
+  public void testGetNextVersionOtherException() {
     Measure existingMeasure =
         Measure.builder()
             .id("testMeasureId")
@@ -462,7 +462,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateVersionThrowsInstantiationExceptionWhenSavingToExport() throws Exception {
+  public void testCreateVersionThrowsInstantiationExceptionWhenSavingToExport() {
     FhirMeasure existingMeasure =
         FhirMeasure.builder()
             .id("testMeasureId")
@@ -515,7 +515,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateVersionMajorSuccess() throws Exception {
+  public void testCreateVersionMajorSuccess() {
     FhirMeasure existingMeasure =
         FhirMeasure.builder()
             .id("testMeasureId")
@@ -602,7 +602,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateQdmVersionMinorSuccess() throws Exception {
+  public void testCreateQdmVersionMinorSuccess() {
     QdmMeasure existingMeasure =
         QdmMeasure.builder()
             .id("testMeasureId")
@@ -638,7 +638,7 @@ public class VersionServiceTest {
     when(measureRepository.save(any(Measure.class))).thenReturn(updatedMeasure);
 
     byte[] exportPackage = "Look, I'm a measure package".getBytes();
-    when(exportService.getMeasureExport(any(Measure.class), anyString()))
+    when(exportService.getMeasureExport(any(Measure.class), anyString(), anyBoolean()))
         .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(exportPackage).build());
     when(qdmPackageService.getHumanReadable(any(Measure.class), anyString(), anyString()))
         .thenReturn("test human readable");
@@ -668,7 +668,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateFhirVersionPatchSuccess() throws Exception {
+  public void testCreateFhirVersionPatchSuccess() {
     FhirMeasure existingMeasure =
         FhirMeasure.builder()
             .id("testMeasureId")
@@ -1112,7 +1112,6 @@ public class VersionServiceTest {
     assertFalse(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
     assertEquals(
         "invalid json", draft.getTestCases().get(0).getHapiOperationOutcome().getMessage());
-    ;
   }
 
   @Test
