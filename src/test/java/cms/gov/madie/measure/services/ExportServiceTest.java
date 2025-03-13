@@ -25,14 +25,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-
-import static org.hamcrest.CoreMatchers.*;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 
@@ -52,7 +48,6 @@ class ExportServiceTest {
   private final String packageContent = "raw package";
   private final String token = "token";
   private Measure measure;
-  private MeasureMetaData measureMetaData;
 
   @BeforeEach
   void setup() {
@@ -60,7 +55,7 @@ class ExportServiceTest {
         Group.builder()
             .scoring("Cohort")
             .populationBasis("Encounter")
-            .measureGroupTypes(Arrays.asList(MeasureGroupTypes.OUTCOME))
+            .measureGroupTypes(List.of(MeasureGroupTypes.OUTCOME))
             .populations(
                 List.of(
                     new Population(
@@ -81,7 +76,7 @@ class ExportServiceTest {
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .measureSet(MeasureSet.builder().owner("test.user").build())
             .build();
-    measureMetaData =
+    MeasureMetaData measureMetaData =
         MeasureMetaData.builder()
             .draft(false)
             .steward(Organization.builder().name("SemanticBits").build())
@@ -100,15 +95,15 @@ class ExportServiceTest {
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
     when(packageServiceFactory.getPackageService(any())).thenReturn(qdmPackageService);
-    when(qdmPackageService.getMeasurePackage(any(Measure.class), anyString()))
+    when(qdmPackageService.getMeasurePackage(any(Measure.class), anyString(), anyBoolean()))
         .thenReturn(
             PackageDto.builder()
                 .fromStorage(false)
                 .exportPackage(packageContent.getBytes())
                 .build());
-    PackageDto output = exportService.getMeasureExport(measure, token);
+    PackageDto output = exportService.getMeasureExport(measure, token, true);
     byte[] measurePackage = output.getExportPackage();
-    assertThat(new String(measurePackage), is(equalTo(packageContent)));
+    assertEquals(new String(measurePackage), packageContent);
   }
 
   @Test
@@ -118,15 +113,15 @@ class ExportServiceTest {
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
     when(packageServiceFactory.getPackageService(any())).thenReturn(qicorePackageService);
-    when(qicorePackageService.getMeasurePackage(any(Measure.class), anyString()))
+    when(qicorePackageService.getMeasurePackage(any(Measure.class), anyString(), anyBoolean()))
         .thenReturn(
             PackageDto.builder()
                 .fromStorage(false)
                 .exportPackage(packageContent.getBytes())
                 .build());
-    PackageDto output = exportService.getMeasureExport(measure, token);
+    PackageDto output = exportService.getMeasureExport(measure, token, true);
     byte[] measurePackage = output.getExportPackage();
-    assertThat(new String(measurePackage), is(equalTo(packageContent)));
+    assertEquals(new String(measurePackage), packageContent);
   }
 
   @Test
@@ -139,11 +134,11 @@ class ExportServiceTest {
     when(packageServiceFactory.getPackageService(any())).thenReturn(qdmPackageService);
     PackageDto packageDto =
         PackageDto.builder().fromStorage(false).exportPackage(packageContent.getBytes()).build();
-    when(qdmPackageService.getMeasurePackage(any(Measure.class), anyString()))
+    when(qdmPackageService.getMeasurePackage(any(Measure.class), anyString(), anyBoolean()))
         .thenReturn(packageDto);
-    PackageDto output = exportService.getMeasureExport(measure, token);
+    PackageDto output = exportService.getMeasureExport(measure, token, true);
     byte[] measurePackage = output.getExportPackage();
-    assertThat(new String(measurePackage), is(equalTo(packageContent)));
+    assertEquals(new String(measurePackage), packageContent);
   }
 
   @Test
@@ -153,7 +148,7 @@ class ExportServiceTest {
         .thenReturn(packageContent.getBytes());
     byte[] measurePackage =
         exportService.getQRDA(QrdaRequestDTO.builder().measure(measure).build(), token);
-    assertThat(new String(measurePackage), is(equalTo(packageContent)));
+    assertEquals(new String(measurePackage), packageContent);
   }
 
   @Test
@@ -163,10 +158,8 @@ class ExportServiceTest {
         Assertions.assertThrows(
             InvalidResourceStateException.class,
             () -> exportService.getQRDA(QrdaRequestDTO.builder().measure(measure).build(), token));
-    assertThat(
+    assertEquals(
         ex.getMessage(),
-        is(
-            equalTo(
-                "Response could not be completed for Measure with ID measure-id, since there are no test cases in the measure.")));
+        "Response could not be completed for Measure with ID measure-id, since there are no test cases in the measure.");
   }
 }

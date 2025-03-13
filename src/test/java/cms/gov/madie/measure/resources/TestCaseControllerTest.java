@@ -604,7 +604,7 @@ public class TestCaseControllerTest {
     assertThat(response.getStatusCode(), equalTo(HttpStatusCode.valueOf(200)));
     assertTrue(CollectionUtils.isNotEmpty(response.getBody()));
     assertThat(response.getBody().size(), equalTo(1));
-    assertThat(response.getBody().get(0), equalTo("testCase bad"));
+    assertThat(response.getBody().get(0), equalTo("testCase - bad"));
   }
 
   @Test

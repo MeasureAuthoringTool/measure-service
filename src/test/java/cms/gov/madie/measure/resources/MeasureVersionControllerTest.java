@@ -49,7 +49,7 @@ public class MeasureVersionControllerTest {
   }
 
   @Test
-  public void testCreateVersionReturnsResourceNotFoundException() throws Exception {
+  public void testCreateVersionReturnsResourceNotFoundException() {
     when(principal.getName()).thenReturn("testUser");
     when(versionService.createVersion(anyString(), anyString(), anyString(), anyString()))
         .thenThrow(new ResourceNotFoundException("Measure", measure.getId()));
@@ -61,7 +61,7 @@ public class MeasureVersionControllerTest {
   }
 
   @Test
-  public void testCreateVersionReturnsBadVersionRequestException() throws Exception {
+  public void testCreateVersionReturnsBadVersionRequestException() {
     when(principal.getName()).thenReturn("testUser");
 
     doThrow(
@@ -77,7 +77,7 @@ public class MeasureVersionControllerTest {
   }
 
   @Test
-  public void testCreateVersionReturnsUnauthorizedException() throws Exception {
+  public void testCreateVersionReturnsUnauthorizedException() {
     when(principal.getName()).thenReturn("testUser");
 
     doThrow(new UnauthorizedException("Measure", measure.getId(), principal.getName()))
@@ -91,7 +91,7 @@ public class MeasureVersionControllerTest {
   }
 
   @Test
-  public void testCreateVersionSuccess() throws Exception {
+  public void testCreateVersionSuccess() {
     when(principal.getName()).thenReturn("testUser");
     Measure updatedMeasure = Measure.builder().id("testMeasureId").createdBy("testUser").build();
     Version updatedVersion = Version.builder().major(3).minor(0).revisionNumber(0).build();

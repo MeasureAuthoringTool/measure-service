@@ -184,6 +184,13 @@ public class GroupService {
     }
 
     measure.setGroups(remainingGroups);
+    if (!CollectionUtils.isEmpty(remainingGroups)) {
+      remainingGroups.stream()
+          .forEach(
+              group -> {
+                GroupPopulationUtil.setGroupAndPopulationsDisplayIds(measure, group);
+              });
+    }
     log.info(
         "User [{}] has successfully deleted a group with Id [{}] from measure [{}]",
         username,

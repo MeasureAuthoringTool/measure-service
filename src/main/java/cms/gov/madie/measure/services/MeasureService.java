@@ -174,6 +174,13 @@ public class MeasureService {
                     .getQdm56CqlTemplate()
                     .replace("CYBTestQDMMeasure3", measureCopy.getCqlLibraryName())
                 : "");
+      } else if (ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
+        measureCopy.setCql(
+            cqlTemplateConfigService.getQiCore600CqlTemplate() != null
+                ? cqlTemplateConfigService
+                    .getQiCore600CqlTemplate()
+                    .replace("libraryName", measureCopy.getCqlLibraryName())
+                : "");
       }
     }
 

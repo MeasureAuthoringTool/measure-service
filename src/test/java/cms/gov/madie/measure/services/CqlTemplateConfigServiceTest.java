@@ -19,6 +19,8 @@ public class CqlTemplateConfigServiceTest {
   private final String QDM_5_6_TEMPLATE = "/QDM56_CQLTemplate.txt";
   private final String QICORE_USING = "using QICore version '4.1.1'";
   private final String QDM_USING = "using QDM version '5.6'";
+  private final String QICORE_6_0_0_TEMPLATE = "/QICore600_CQLTemplate.txt";
+  private final String QICORE_6_0_0_USING = "using QICore version '6.0.0'";
 
   @Mock CqlTemplateConfig cqlTemplateConfig;
 
@@ -73,5 +75,16 @@ public class CqlTemplateConfigServiceTest {
     String qdmTemplate = cqlTemplateConfigService.getQdm56CqlTemplate();
 
     assertTrue(qdmTemplate.contains(QDM_USING));
+  }
+
+  @Test
+  public void testGetQiCore600CqlTemplate() throws Exception {
+    String templateFile =
+        IOUtils.toString(this.getClass().getResourceAsStream(QICORE_6_0_0_TEMPLATE), "UTF-8");
+    ReflectionTestUtils.setField(cqlTemplateConfigService, "qicore600CqlTemplate", templateFile);
+
+    String qicore600Template = cqlTemplateConfigService.getQiCore600CqlTemplate();
+
+    assertTrue(qicore600Template.contains(QICORE_6_0_0_USING));
   }
 }

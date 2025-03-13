@@ -1,0 +1,26 @@
+library libraryName version '0.0.000'
+
+using QICore version '6.0.0'
+
+include CQMCommon version '3.0.000' called CQMCommon
+include FHIRHelpers version '4.4.000' called FHIRHelpers
+include QICoreCommon version '3.0.000' called QICoreCommon
+include SupplementalDataElements version '4.0.000' called SDE
+include CumulativeMedicationDuration version '5.0.000' called CumulativeMedicationDuration
+
+
+parameter "Measurement Period" Interval<DateTime>
+
+context Patient
+
+define "SDE Ethnicity":
+  SDE."SDE Ethnicity"
+
+define "SDE Payer":
+  SDE."SDE Payer"
+
+define "SDE Race":
+  SDE."SDE Race"
+
+define "SDE Sex":
+  SDE."SDE Sex"

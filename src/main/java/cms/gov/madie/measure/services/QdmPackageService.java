@@ -32,7 +32,8 @@ public class QdmPackageService implements PackageService {
   private final ExportRepository repository;
 
   @Override
-  public PackageDto getMeasurePackage(Measure measure, String accessToken) {
+  public PackageDto getMeasurePackage(
+      Measure measure, String accessToken, boolean includeElmWarnings) {
     if (!measure.getMeasureMetaData().isDraft()) {
       Optional<Export> savedExport = repository.findByMeasureId(measure.getId());
       if (savedExport.isPresent()) {
@@ -43,7 +44,12 @@ public class QdmPackageService implements PackageService {
             .build();
       }
     }
-    URI uri = URI.create(qdmServiceConfig.getBaseUrl() + qdmServiceConfig.getCreatePackageUrn());
+    URI uri =
+        URI.create(
+            qdmServiceConfig.getBaseUrl()
+                + qdmServiceConfig.getCreatePackageUrn()
+                + "?includeElmWarnings="
+                + includeElmWarnings);
     HttpHeaders headers = new HttpHeaders();
     headers.set(HttpHeaders.AUTHORIZATION, accessToken);
     headers.set(HttpHeaders.ACCEPT, MediaType.ALL_VALUE);

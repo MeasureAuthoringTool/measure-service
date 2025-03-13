@@ -559,6 +559,79 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testCreateMeasureSuccessfullyWithDefaultCqlQICore600() throws Exception {
+    String cqlTemplate =
+        IOUtils.toString(
+            this.getClass().getResourceAsStream("/QICore600_CQLTemplate.txt"), "UTF-8");
+    String usr = "john rao";
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .cql(cqlTemplate)
+            .createdBy(usr)
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .build();
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
+
+    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+    when(cqlTemplateConfigService.getQiCore600CqlTemplate()).thenReturn(cqlTemplate);
+
+    Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
+    assertThat(savedMeasure.getMeasureName(), is(equalTo(measureToSave.getMeasureName())));
+    assertThat(savedMeasure.getCqlLibraryName(), is(equalTo(measureToSave.getCqlLibraryName())));
+    assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
+    assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
+    assertThat(savedMeasure.getErrors(), is(emptySet()));
+    assertThat(savedMeasure.getCql(), is(equalTo(cqlTemplate)));
+  }
+
+  @Test
+  public void testCreateMeasureSuccessfullyWithNoCqlQICore600() throws Exception {
+    String usr = "john rao";
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .createdBy(usr)
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .build();
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+
+    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+    when(cqlTemplateConfigService.getQiCore600CqlTemplate()).thenReturn(null);
+
+    Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
+    assertThat(savedMeasure.getMeasureName(), is(equalTo(measureToSave.getMeasureName())));
+    assertThat(savedMeasure.getCqlLibraryName(), is(equalTo(measureToSave.getCqlLibraryName())));
+    assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
+    assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
+    assertThat(savedMeasure.getErrors(), is(emptySet()));
+    assertThat(savedMeasure.getCql(), is(equalTo("")));
+  }
+
+  @Test
   public void testCreateMeasureSuccessfullyWithValidCql() {
     Measure measureToSave =
         measure1.toBuilder()

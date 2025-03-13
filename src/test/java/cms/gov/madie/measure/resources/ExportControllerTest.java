@@ -30,6 +30,7 @@ import java.util.Optional;
 import static java.util.Arrays.asList;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyList;
@@ -69,7 +70,7 @@ class ExportControllerTest {
 
     byte[] response = new byte[0];
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(exportService.getMeasureExport(eq(measure), anyString()))
+    when(exportService.getMeasureExport(eq(measure), anyString(), anyBoolean()))
         .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(response).build());
     ResponseEntity<byte[]> output = exportController.getZip(principal, "test_id", "Bearer TOKEN");
     assertEquals(HttpStatus.CREATED, output.getStatusCode());
@@ -89,7 +90,7 @@ class ExportControllerTest {
 
     byte[] response = new byte[0];
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(exportService.getMeasureExport(eq(measure), anyString()))
+    when(exportService.getMeasureExport(eq(measure), anyString(), anyBoolean()))
         .thenReturn(PackageDto.builder().fromStorage(true).exportPackage(response).build());
     ResponseEntity<byte[]> output = exportController.getZip(principal, "test_id", "Bearer TOKEN");
     assertEquals(HttpStatus.OK, output.getStatusCode());

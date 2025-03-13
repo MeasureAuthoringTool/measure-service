@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
@@ -15,9 +16,11 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
+import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
 import java.util.*;
@@ -42,6 +45,7 @@ public class VersionService {
   private final ExportService exportService;
   private final TestCaseSequenceService sequenceService;
   private final ElmToJsonService elmToJsonService;
+  private final GridFsOperations mongoGridFsOperations;
 
   public enum VersionValidationResult {
     VALID,
@@ -68,8 +72,7 @@ public class VersionService {
     return VersionValidationResult.VALID;
   }
 
-  public Measure createVersion(String id, String versionType, String username, String accessToken)
-      throws Exception {
+  public Measure createVersion(String id, String versionType, String username, String accessToken) {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
     if (measure instanceof FhirMeasure) {
@@ -79,21 +82,31 @@ public class VersionService {
     return versionQdmMeasure(versionType, username, measure, accessToken);
   }
 
+  /**
+   * @param versionType - Major, Minor or Patch Version
+   * @param username - Harp User Name
+   * @param measure - Draft Measure
+   * @param accessToken - accessToken
+   * @return Versioned Measure Generates a measurePackage that includes ELM Warning Annotations ( if
+   *     available ) and also a publishableMeasurePackage which does not include ELM Warnings and
+   *     saves both copies of exportPackage for future exports
+   */
   private Measure versionQdmMeasure(
-      String versionType, String username, Measure measure, String accessToken) throws Exception {
+      String versionType, String username, Measure measure, String accessToken) {
     Measure upversionedMeasure = version(versionType, username, measure);
 
-    var measurePackage = exportService.getMeasureExport(upversionedMeasure, accessToken);
-
-    // convert to CqmMeasure
-    CqmMeasure cqmMeasure =
-        qdmPackageService.convertCqm((QdmMeasure) upversionedMeasure, accessToken);
+    PackageDto measurePackage =
+        exportService.getMeasureExport(upversionedMeasure, accessToken, true);
+    PackageDto publishableMeasurePackage =
+        exportService.getMeasureExport(upversionedMeasure, accessToken, false);
 
     String humanReadable =
         qdmPackageService.getHumanReadable(upversionedMeasure, username, accessToken);
     // save exports
-    savePackageData(upversionedMeasure, measurePackage.getExportPackage(), humanReadable, username);
-    //	save CqmMeasure
+    savePackageData(
+        upversionedMeasure, measurePackage, publishableMeasurePackage, humanReadable, username);
+    // convert to CqmMeasure and save it
+    CqmMeasure cqmMeasure = qdmPackageService.convertCqm(upversionedMeasure, accessToken);
     cqmMeasureRepository.save(cqmMeasure);
 
     return applyMeasureVersion(versionType, username, upversionedMeasure);
@@ -102,27 +115,28 @@ public class VersionService {
   /**
    * This method will first apply the version operation to the measure, fetch the FHIR bundle for
    * the measure, persist the measure bundle to the exports collection, and finally persist the
-   * upversioned measure to the database.
+   * up-versioned measure to the database.
    *
-   * @param versionType
-   * @param username
-   * @param accessToken
-   * @param measure
-   * @return
-   * @throws Exception
+   * @param versionType - Major, Minor or Patch Version
+   * @param username - Harp User Name
+   * @param accessToken - accessToken
+   * @param measure - Draft Measure
+   * @return Versioned Measure
    */
   private Measure versionFhirMeasure(
-      String versionType, String username, String accessToken, Measure measure) throws Exception {
+      String versionType, String username, String accessToken, Measure measure) {
     elmToJsonService.retrieveElmJson(measure, accessToken);
     Measure upversionedMeasure = version(versionType, username, measure);
     var measureBundle =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export");
-    saveMeasureBundle(upversionedMeasure, measureBundle, username);
+    var measureBundleWithoutWarnings =
+        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Error");
 
+    saveMeasureBundle(upversionedMeasure, measureBundle, measureBundleWithoutWarnings, username);
     return applyMeasureVersion(versionType, username, upversionedMeasure);
   }
 
-  private Measure version(String versionType, String username, Measure measure) throws Exception {
+  private Measure version(String versionType, String username, Measure measure) {
     Measure upversionedMeasure = measure.toBuilder().build();
     upversionedMeasure.getMeasureMetaData().setDraft(false);
     upversionedMeasure.setLastModifiedAt(Instant.now());
@@ -367,7 +381,37 @@ public class VersionService {
     return "library " + cqlLibraryName + " version " + "'" + version + "'";
   }
 
-  private void saveMeasureBundle(Measure savedMeasure, String measureBundle, String username) {
+  public Export saveExport(
+      Measure savedMeasure,
+      String measureBundle,
+      String measureBundleWithoutWarnings,
+      String humanReadableWithCss) {
+    ObjectId measureBundleId =
+        mongoGridFsOperations.store(
+            new ByteArrayInputStream(measureBundle.getBytes()),
+            "measureBundle.json",
+            "application/json");
+    ObjectId measureBundleWithoutWarningsId =
+        mongoGridFsOperations.store(
+            new ByteArrayInputStream(measureBundleWithoutWarnings.getBytes()),
+            "measureBundleWithoutWarnings.json",
+            "application/json");
+    Export export =
+        Export.builder()
+            .measureId(savedMeasure.getId())
+            .measureBundleGridFsId(measureBundleId.toHexString())
+            .measureBundleWithoutWarningsGridFsId(measureBundleWithoutWarningsId.toHexString())
+            .humanReadable(humanReadableWithCss)
+            .build();
+
+    return exportRepository.save(export);
+  }
+
+  private void saveMeasureBundle(
+      Measure savedMeasure,
+      String measureBundle,
+      String measureBundleWithoutWarnings,
+      String username) {
     String humanReadableWithCss;
     try {
       PackagingUtility utility = PackagingUtilityFactory.getInstance(savedMeasure.getModel());
@@ -379,13 +423,9 @@ public class VersionService {
         | ClassNotFoundException e) {
       throw new BundleOperationException("Measure", savedMeasure.getId(), e);
     }
-    Export export =
-        Export.builder()
-            .measureId(savedMeasure.getId())
-            .measureBundleJson(measureBundle)
-            .humanReadable(humanReadableWithCss)
-            .build();
-    Export savedExport = exportRepository.save(export);
+
+    Export savedExport =
+        saveExport(savedMeasure, measureBundle, measureBundleWithoutWarnings, humanReadableWithCss);
     log.info(
         "User [{}] successfully saved versioned measure's export data with ID [{}]",
         username,
@@ -393,11 +433,16 @@ public class VersionService {
   }
 
   private void savePackageData(
-      Measure savedMeasure, byte[] packageData, String humanReadable, String username) {
+      Measure savedMeasure,
+      PackageDto packageData,
+      PackageDto publishableMeasurePackage,
+      String humanReadable,
+      String username) {
     Export export =
         Export.builder()
             .measureId(savedMeasure.getId())
-            .packageData(packageData)
+            .packageData(packageData.getExportPackage())
+            .publishablePackageData(publishableMeasurePackage.getExportPackage())
             .humanReadable(humanReadable)
             .build();
     Export savedExport = exportRepository.save(export);
@@ -441,7 +486,7 @@ public class VersionService {
         .sorted(
             Comparator.comparing(
                 TestCase::getCaseNumber, Comparator.nullsFirst(Comparator.reverseOrder())))
-        .collect(Collectors.toList())
+        .toList()
         .get(0)
         .getCaseNumber();
   }

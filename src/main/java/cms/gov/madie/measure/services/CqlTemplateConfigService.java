@@ -22,6 +22,7 @@ public class CqlTemplateConfigService {
   private final CqlTemplateConfig cqlTemplateConfig;
   private String qicore411CqlTemplate;
   private String qdm56CqlTemplate;
+  private String qicore600CqlTemplate;
 
   @Autowired
   public CqlTemplateConfigService(CqlTemplateConfig cqlTemplateConfig) {
@@ -33,6 +34,7 @@ public class CqlTemplateConfigService {
   public void refreshCqlTemplateConfig() {
     qicore411CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQicore411CqlTemplateUrl());
     qdm56CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQdm56CqlTemplateUrl());
+    qicore600CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQicore600CqlTemplateUrl());
   }
 
   String readCqlFileContent(String url) {
@@ -55,5 +57,9 @@ public class CqlTemplateConfigService {
 
   public String getQdm56CqlTemplate() {
     return this.qdm56CqlTemplate;
+  }
+
+  public String getQiCore600CqlTemplate() {
+    return this.qicore600CqlTemplate;
   }
 }
