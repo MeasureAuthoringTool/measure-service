@@ -68,11 +68,11 @@ public class ElmTranslatorClient {
       JsonNode jsonNode = mapper.readTree(elmJson.getJson());
 
       return (jsonNode.has("errorExceptions")
-          && jsonNode.get("errorExceptions").size() > 0
-          && !hasOnlyWarnings(jsonNode.get("errorExceptions")));
-      //          || (jsonNode.has("externalErrors")
-      //              && jsonNode.get("externalErrors").size() > 0
-      //              && !hasOnlyWarnings(jsonNode.get("externalErrors")));
+              && jsonNode.get("errorExceptions").size() > 0
+              && !hasOnlyWarnings(jsonNode.get("errorExceptions")))
+          || (jsonNode.has("externalErrors")
+              && jsonNode.get("externalErrors").size() > 0
+              && !hasOnlyWarnings(jsonNode.get("externalErrors")));
     } catch (Exception ex) {
       log.error("An error occurred parsing the response from the CQL-ELM translation service", ex);
       throw new CqlElmTranslationServiceException(
