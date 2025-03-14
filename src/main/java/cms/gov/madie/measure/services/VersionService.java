@@ -16,7 +16,6 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -389,12 +388,15 @@ public class VersionService {
     ObjectId measureBundleId =
         mongoGridFsService.save(
             new ByteArrayInputStream(measureBundle.getBytes()),
-            savedMeasure.getEcqmTitle() +"-v" + savedMeasure.getVersion().toString(),
+            savedMeasure.getEcqmTitle() + "-v" + savedMeasure.getVersion().toString(),
             "application/json");
     ObjectId measureBundleWithoutWarningsId =
         mongoGridFsService.save(
             new ByteArrayInputStream(measureBundleWithoutWarnings.getBytes()),
-            savedMeasure.getEcqmTitle() +"-v" + savedMeasure.getVersion().toString()+"-publish",
+            savedMeasure.getEcqmTitle()
+                + "-v"
+                + savedMeasure.getVersion().toString()
+                + "-withoutWarnings",
             "application/json");
     Export export =
         Export.builder()
