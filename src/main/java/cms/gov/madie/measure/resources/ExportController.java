@@ -42,6 +42,8 @@ public class ExportController {
   public ResponseEntity<byte[]> getZip(
       Principal principal,
       @PathVariable("id") String id,
+      @RequestParam(value = "includeElmWarnings", required = false, defaultValue = "true")
+          boolean includeElmWarnings,
       @RequestHeader("Authorization") String accessToken) {
 
     final String username = principal.getName();
@@ -52,7 +54,7 @@ public class ExportController {
     if (measure == null) {
       throw new ResourceNotFoundException("Measure", id);
     }
-    var packageDto = exportService.getMeasureExport(measure, accessToken, true);
+    var packageDto = exportService.getMeasureExport(measure, accessToken, includeElmWarnings);
 
     return ResponseEntity.status(
             packageDto.isFromStorage() ? HttpStatus.OK.value() : HttpStatus.CREATED.value())

@@ -64,14 +64,15 @@ public class BundleService {
     throw new BundleOperationException("Measure", measure.getId(), null);
   }
 
-  public PackageDto getMeasureExport(Measure measure, String accessToken) {
+  public PackageDto getMeasureExport(
+      Measure measure, boolean includeElmWarnings, String accessToken) {
     if (measure == null) {
       return null;
     }
     if (measure.getMeasureMetaData().isDraft()) {
       return getMeasureExportForDraft(measure, accessToken);
     }
-    return getMeasureExportForVersion(measure);
+    return getMeasureExportForVersion(measure, includeElmWarnings);
   }
 
   PackageDto getMeasureExportForDraft(Measure measure, String accessToken) {
@@ -87,33 +88,36 @@ public class BundleService {
     }
   }
 
-  PackageDto getMeasureExportForVersion(Measure measure) {
+  PackageDto getMeasureExportForVersion(Measure measure, boolean includeElmWarnings) {
     try {
       // get the Packaging Utility for measure model
       PackagingUtility utility = PackagingUtilityFactory.getInstance(measure.getModel());
       String exportFileName = ExportFileNamesUtil.getExportFileName(measure);
-      // for versioned measures
+
       Export export = exportRepository.findByMeasureId(measure.getId()).orElse(null);
       if (export == null) {
         log.error("Export not available for versioned measure with id: {}", measure.getId());
         throw new BundleOperationException("Measure", measure.getId(), null);
       }
-      // previous implementation where everything exists on export object
-      if (export.getMeasureBundleJson() != null) {
+
+      // Original implementation where everything exists on export object
+      if (StringUtils.isNotEmpty(export.getMeasureBundleJson())) {
         return PackageDto.builder()
             .fromStorage(true)
             .exportPackage(utility.getZipBundle(export, exportFileName))
             .build();
       }
       // Fetch content from GridFS if IDs exist
-      if (export.getMeasureBundleGridFsId() != null
-          && export.getMeasureBundleWithoutWarningsGridFsId() != null) {
-        String measureBundle = mongoGridFsService.findById(export.getMeasureBundleGridFsId());
-        String measureBundleWithoutWarnings =
+      String measureBundle = null;
+      if (includeElmWarnings) {
+        if (export.getMeasureBundleGridFsId() != null) {
+          measureBundle = mongoGridFsService.findById(export.getMeasureBundleGridFsId());
+        }
+      } else if (export.getMeasureBundleGridFsId() != null) {
+        measureBundle =
             mongoGridFsService.findById(export.getMeasureBundleWithoutWarningsGridFsId());
-        export.setMeasureBundleJson(measureBundle);
-        export.setMeasureBundleJsonWithoutWarnings(measureBundleWithoutWarnings);
       }
+      export.setMeasureBundleJson(measureBundle);
       return PackageDto.builder()
           .fromStorage(true)
           .exportPackage(utility.getZipBundle(export, exportFileName))

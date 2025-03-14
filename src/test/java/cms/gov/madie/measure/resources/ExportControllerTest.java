@@ -53,7 +53,7 @@ class ExportControllerTest {
     when(measureService.findMeasureById(anyString())).thenReturn(null);
     assertThrows(
         ResourceNotFoundException.class,
-        () -> exportController.getZip(principal, "test_id", "Bearer TOKEN"));
+        () -> exportController.getZip(principal, "test_id", true, "Bearer TOKEN"));
   }
 
   @Test
@@ -72,7 +72,8 @@ class ExportControllerTest {
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
     when(exportService.getMeasureExport(eq(measure), anyString(), anyBoolean()))
         .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(response).build());
-    ResponseEntity<byte[]> output = exportController.getZip(principal, "test_id", "Bearer TOKEN");
+    ResponseEntity<byte[]> output =
+        exportController.getZip(principal, "test_id", true, "Bearer TOKEN");
     assertEquals(HttpStatus.CREATED, output.getStatusCode());
   }
 
@@ -92,7 +93,8 @@ class ExportControllerTest {
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
     when(exportService.getMeasureExport(eq(measure), anyString(), anyBoolean()))
         .thenReturn(PackageDto.builder().fromStorage(true).exportPackage(response).build());
-    ResponseEntity<byte[]> output = exportController.getZip(principal, "test_id", "Bearer TOKEN");
+    ResponseEntity<byte[]> output =
+        exportController.getZip(principal, "test_id", true, "Bearer TOKEN");
     assertEquals(HttpStatus.OK, output.getStatusCode());
   }
 

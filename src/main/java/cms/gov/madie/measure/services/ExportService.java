@@ -29,7 +29,7 @@ public class ExportService {
     modelValidator.validateCqlErrors(measure);
     PackageService packageService =
         packageServiceFactory.getPackageService(ModelType.valueOfName(measure.getModel()));
-    return packageService.getMeasurePackage(measure, accessToken, includeElmWarnings);
+    return packageService.getMeasurePackage(measure, includeElmWarnings, accessToken);
   }
 
   public byte[] getQRDA(QrdaRequestDTO qrdaRequestDTO, String accessToken) {

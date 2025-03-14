@@ -98,7 +98,8 @@ class FhirServicesClientTest {
             .fhirServicesRestTemplate()
             .exchange(any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
         .thenReturn(ResponseEntity.ok(json));
-    String output = fhirServicesClient.getMeasureBundle(measure, accessToken, "calculation", "Info");
+    String output =
+        fhirServicesClient.getMeasureBundle(measure, accessToken, "calculation", "Info");
     assertThat(output, is(equalTo(json)));
     verify(fhirServicesConfig.fhirServicesRestTemplate(), times(1))
         .exchange(any(URI.class), eq(HttpMethod.PUT), httpEntityCaptor.capture(), any(Class.class));

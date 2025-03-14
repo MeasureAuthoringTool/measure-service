@@ -33,7 +33,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.http.ResponseEntity;
 
 import java.io.ByteArrayInputStream;
@@ -68,7 +67,7 @@ public class VersionServiceTest {
   @Mock AppConfigService appConfigService;
   @Mock ElmToJsonService elmToJsonService;
 
-  @Mock private GridFsOperations gridFsOperations;
+  @Mock private MongoGridFsService mongoGridFsService;
   @Mock ElmTranslatorClient elmTranslatorClient;
   @Mock FhirServicesClient fhirServicesClient;
 
@@ -576,12 +575,18 @@ public class VersionServiceTest {
     ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
     when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
 
-    when(gridFsOperations.store(
-            any(ByteArrayInputStream.class), eq("measureBundle.json"), eq("application/json")))
-        .thenReturn(measureBundleId);
-    when(gridFsOperations.store(
+    when(mongoGridFsService.save(
             any(ByteArrayInputStream.class),
-            eq("measureBundleWithoutWarnings.json"),
+            eq(existingMeasure.getEcqmTitle() + "-v" + updatedMeasure.getVersion().toString()),
+            eq("application/json")))
+        .thenReturn(measureBundleId);
+    when(mongoGridFsService.save(
+            any(ByteArrayInputStream.class),
+            eq(
+                existingMeasure.getEcqmTitle()
+                    + "-v"
+                    + updatedMeasure.getVersion().toString()
+                    + "-withoutWarnings"),
             eq("application/json")))
         .thenReturn(measureBundleWithoutWarningsId);
 
@@ -676,6 +681,8 @@ public class VersionServiceTest {
             .model(ModelType.QI_CORE_6_0_0.getValue())
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001'")
+            .ecqmTitle("testMsr")
+            .version(Version.builder().major(2).minor(3).revisionNumber(1).build())
             .measureSet(measureSet)
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
@@ -711,32 +718,30 @@ public class VersionServiceTest {
             {"resourceType": "Bundle","entry": [ {
                 "resource": {
                   "resourceType": "Measure","text":{"div":"humanReadable"}}}]}""";
-    Export measureExport =
-        Export.builder()
-            .id("testId")
-            .measureId("testMeasureId")
-            .measureBundleJson(measureBundleJson)
-            .measureBundleGridFsId("id1")
-            .measureBundleWithoutWarningsGridFsId("id2")
-            .build();
+    Export measureExport = Export.builder().id("testId").measureId("testMeasureId").build();
     when(exportRepository.save(any(Export.class))).thenReturn(measureExport);
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), anyString(), eq("Info")))
         .thenReturn(measureBundleJson);
 
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), anyString(), anyString()))
+            any(Measure.class), anyString(), anyString(), eq("Error")))
         .thenReturn(measureBundleJson);
-    ObjectId measureBundleId = mock(ObjectId.class);
-    when(measureBundleId.toHexString()).thenReturn("hex1");
-    ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
-    when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
 
-    when(gridFsOperations.store(
-            any(ByteArrayInputStream.class), eq("measureBundle.json"), eq("application/json")))
-        .thenReturn(measureBundleId);
-    when(gridFsOperations.store(
+    ObjectId measureBundleWithWarningsId = mock(ObjectId.class);
+    ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
+    when(mongoGridFsService.save(
             any(ByteArrayInputStream.class),
-            eq("measureBundleWithoutWarnings.json"),
+            eq(existingMeasure.getEcqmTitle() + "-v" + updatedMeasure.getVersion().toString()),
+            eq("application/json")))
+        .thenReturn(measureBundleWithWarningsId);
+    when(mongoGridFsService.save(
+            any(ByteArrayInputStream.class),
+            eq(
+                existingMeasure.getEcqmTitle()
+                    + "-v"
+                    + updatedMeasure.getVersion().toString()
+                    + "-withoutWarnings"),
             eq("application/json")))
         .thenReturn(measureBundleWithoutWarningsId);
 
@@ -753,8 +758,11 @@ public class VersionServiceTest {
     Export savedExport = exportArgumentCaptor.getValue();
     assertEquals(savedValue.getId(), savedExport.getMeasureId());
     // no longer save to measureBundle,  we want to make sure there's a hex appended
-    assertEquals("hex1", savedExport.getMeasureBundleGridFsId());
-    assertEquals("hex2", savedExport.getMeasureBundleWithoutWarningsGridFsId());
+    assertNull(measureExport.getMeasureBundleJson());
+    assertEquals(measureBundleWithWarningsId.toHexString(), savedExport.getMeasureBundleGridFsId());
+    assertEquals(
+        measureBundleWithoutWarningsId.toHexString(),
+        savedExport.getMeasureBundleWithoutWarningsGridFsId());
   }
 
   @Test
