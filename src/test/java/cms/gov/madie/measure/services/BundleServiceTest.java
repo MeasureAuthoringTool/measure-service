@@ -137,9 +137,21 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   @Test
+  void testBundleMeasureReturnsBundleStringForVersionedMeasureWithGridFS() {
+    final String json = "{\"message\": \"GOOD JSON\"}";
+    Export export = Export.builder().measureId(measure.getId()).measureBundleGridFsId("gridFsId").build();
+    measure.getMeasureMetaData().setDraft(false);
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
+    when(mongoGridFsService.findById(anyString())).thenReturn(json);
+
+    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", null);
+    assertThat(output, is(equalTo(json)));
+  }
+
+  @Test
   void testBundleMeasureReturnsBundleStringForVersionedMeasureIfExportUnavailable() {
     measure.getMeasureMetaData().setDraft(false);
-    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.ofNullable(null));
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.empty());
 
     Exception ex =
         assertThrows(

@@ -3,6 +3,7 @@ package cms.gov.madie.measure.services;
 import java.lang.reflect.InvocationTargetException;
 
 import cms.gov.madie.measure.dto.PackageDto;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
 
@@ -51,7 +52,16 @@ public class BundleService {
       log.error("Export not available for versioned measure with id: {}", measure.getId());
       throw new BundleOperationException("Measure", measure.getId(), null);
     }
-    return export.getMeasureBundleJson();
+
+    if (StringUtils.isNotBlank(export.getMeasureBundleJson())) {
+      return export.getMeasureBundleJson();
+    }
+    if (StringUtils.isNotBlank(export.getMeasureBundleGridFsId())) {
+      return mongoGridFsService.findById(export.getMeasureBundleGridFsId());
+    }
+    log.error(
+        "Bundle with warnings is not available for versioned measure with id: {}", measure.getId());
+    throw new BundleOperationException("Measure", measure.getId(), null);
   }
 
   public PackageDto getMeasureExport(Measure measure, String accessToken) {
