@@ -40,7 +40,10 @@ public class QdmPackageService implements PackageService {
         log.info("returning persisted export for measure [{}]", measure.getId());
         return PackageDto.builder()
             .fromStorage(true)
-            .exportPackage(savedExport.get().getPackageData())
+            .exportPackage(
+                includeElmWarnings
+                    ? savedExport.get().getPackageData()
+                    : savedExport.get().getPublishablePackageData())
             .build();
       }
     }
