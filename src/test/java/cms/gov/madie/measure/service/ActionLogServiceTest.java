@@ -138,21 +138,21 @@ public class ActionLogServiceTest {
     Clock fixedClock = Clock.fixed(fixedInstant, utc);
 
     Optional<MeasureSetActionLog> measureSetActionLog =
-        Optional.of(MeasureSetActionLog.builder()
-            .actions(
-                List.of(
-                    AccessControlAction.builder()
-                        .sharedWith("sharedWith")
-                        .actionType(ActionType.SHARED)
-                        .performedAt(fixedClock.instant())
-                        .performedBy("performedByUserId")
-                        .build()))
-            .build());
+        Optional.of(
+            MeasureSetActionLog.builder()
+                .actions(
+                    List.of(
+                        AccessControlAction.builder()
+                            .sharedWith("sharedWith")
+                            .actionType(ActionType.SHARED)
+                            .performedAt(fixedClock.instant())
+                            .performedBy("performedByUserId")
+                            .build()))
+                .build());
 
     when(measureSetActionLogRepository.findByTargetId(anyString())).thenReturn(measureSetActionLog);
 
-    MeasureSetActionLog result =
-        actionLogService.findMeasureSetActionLogByTargetId("TARGET_ID");
+    MeasureSetActionLog result = actionLogService.findMeasureSetActionLogByTargetId("TARGET_ID");
 
     verify(measureSetActionLogRepository, times(1))
         .findByTargetId(targetIdArgumentCaptor.capture());
@@ -170,8 +170,7 @@ public class ActionLogServiceTest {
 
     when(measureSetActionLogRepository.findByTargetId(anyString())).thenReturn(measureSetActionLog);
 
-    MeasureSetActionLog result =
-        actionLogService.findMeasureSetActionLogByTargetId("TARGET_ID");
+    MeasureSetActionLog result = actionLogService.findMeasureSetActionLogByTargetId("TARGET_ID");
 
     verify(measureSetActionLogRepository, times(1))
         .findByTargetId(targetIdArgumentCaptor.capture());

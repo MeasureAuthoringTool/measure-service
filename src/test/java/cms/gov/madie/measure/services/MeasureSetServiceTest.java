@@ -104,7 +104,8 @@ public class MeasureSetServiceTest {
     assertThat(measureSet.getAcls().size(), is(equalTo(1)));
 
     verify(actionLogService, times(1))
-        .logShareAccessControlAction("1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
   }
 
   @Test
@@ -125,7 +126,8 @@ public class MeasureSetServiceTest {
     assertThat(measureSet.getAcls().size(), is(equalTo(1)));
 
     verify(actionLogService, times(1))
-        .logShareAccessControlAction("1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
   }
 
   @Test
@@ -152,7 +154,8 @@ public class MeasureSetServiceTest {
     assertThat(measureSet.getAcls().size(), is(equalTo(2)));
 
     verify(actionLogService, times(1))
-        .logShareAccessControlAction("1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec2.getUserId());
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec2.getUserId());
   }
 
   @Test
@@ -167,7 +170,12 @@ public class MeasureSetServiceTest {
         MeasureSet.builder()
             .measureSetId("1")
             .owner("john")
-            .acls(List.of(AclSpecification.builder().userId("john").roles(Set.of(RoleEnum.SHARED_WITH)).build()))
+            .acls(
+                List.of(
+                    AclSpecification.builder()
+                        .userId("john")
+                        .roles(Set.of(RoleEnum.SHARED_WITH))
+                        .build()))
             .build();
 
     AclSpecification aclSpec = new AclSpecification();
@@ -184,7 +192,8 @@ public class MeasureSetServiceTest {
     assertThat(measureSet.getAcls().size(), is(equalTo(1)));
 
     verify(actionLogService, times(1))
-        .logShareAccessControlAction("1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
   }
 
   @Test
@@ -214,7 +223,8 @@ public class MeasureSetServiceTest {
     assertThat(measureSet.getAcls().get(0).getUserId(), is(equalTo(aclSpec2.getUserId())));
 
     verify(actionLogService, times(0))
-        .logShareAccessControlAction("1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec2.getUserId());
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec2.getUserId());
   }
 
   @Test
