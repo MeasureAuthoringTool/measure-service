@@ -112,22 +112,27 @@ public class VersionService {
   }
 
   /**
-   * This method will first apply the version operation to the measure, fetch the FHIR bundle for
-   * the measure, persist the measure bundle to the exports collection, and finally persist the
-   * up-versioned measure to the database.
+   * Measure Versioning: 1. Apply the version operation to the measure 2. Generate FHIR bundles with
+   * updated measure version info 3. Persist the measure bundles to the exports/gridFs collections
+   * 4. Persist the up-versioned measure to the measure collection
    *
    * @param versionType - Major, Minor or Patch Version
    * @param username - Harp User Name
    * @param accessToken - accessToken
-   * @param measure - Draft Measure
+   * @param measure - Draft Measure to be versioned
    * @return Versioned Measure
    */
   private Measure versionFhirMeasure(
       String versionType, String username, String accessToken, Measure measure) {
-    elmToJsonService.retrieveElmJson(measure, accessToken);
     Measure upversionedMeasure = version(versionType, username, measure);
+
+    // Generate Bundle for versioned Measure with ELM at error severity Info
+    elmToJsonService.retrieveElmJson(measure, "Info", accessToken);
     var measureBundle =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Info");
+
+    // Generate Bundle for versioned Measure with ELM at error severity Error
+    elmToJsonService.retrieveElmJson(measure, "Error", accessToken);
     var measureBundleWithoutWarnings =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Error");
 

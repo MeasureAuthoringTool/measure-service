@@ -78,7 +78,7 @@ public class QicorePackageServiceTest {
     String measurePackageStr = "measure package";
     PackageDto packageDto =
         PackageDto.builder().fromStorage(false).exportPackage(measurePackageStr.getBytes()).build();
-    when(bundleService.getMeasureExport(any(Measure.class), anyBoolean(), anyString()))
+    when(bundleService.getMeasureExport(any(Measure.class), anyString(), anyString()))
         .thenReturn(packageDto);
     PackageDto measurePackage =
         qicorePackageService.getMeasurePackage(new Measure(), true, "token");

@@ -29,16 +29,14 @@ public class ElmTranslatorClient {
   private RestTemplate elmTranslatorRestTemplate;
 
   public ElmJson getElmJson(final String cql, String measureModel, String accessToken) {
-    return getElmJson(cql, measureModel, accessToken, CqlCompilerException.ErrorSeverity.Info);
+    return getElmJson(cql, measureModel, "Info", accessToken);
   }
 
   public ElmJson getElmJson(
-      final String cql,
-      String measureModel,
-      String accessToken,
-      CqlCompilerException.ErrorSeverity errorSeverity) {
+      final String cql, String measureModel, String elmErrorSeverity, String accessToken) {
     try {
-      URI uri = getElmJsonURI(measureModel, errorSeverity);
+      URI uri =
+          getElmJsonURI(measureModel, CqlCompilerException.ErrorSeverity.valueOf(elmErrorSeverity));
       HttpEntity<String> cqlEntity = getCqlHttpEntity(cql, accessToken, null, null);
       return elmTranslatorRestTemplate
           .exchange(uri, HttpMethod.PUT, cqlEntity, ElmJson.class)

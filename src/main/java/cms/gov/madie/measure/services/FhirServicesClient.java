@@ -51,11 +51,14 @@ public class FhirServicesClient {
         .getBody();
   }
 
-  public byte[] getMeasureBundleExport(Measure measure, String accessToken) {
-    URI uri =
-        URI.create(
-            fhirServicesConfig.getMadieFhirServiceBaseUrl()
-                + fhirServicesConfig.getMadieFhirServiceMeasureseExportUri());
+  public byte[] getMeasureBundleExport(Measure measure, String errorSeverity, String accessToken) {
+    UriComponentsBuilder uriBuilder =
+        UriComponentsBuilder.fromUri(
+                URI.create(
+                    fhirServicesConfig.getMadieFhirServiceBaseUrl()
+                        + fhirServicesConfig.getMadieFhirServiceMeasureseExportUri()))
+            .queryParam("errorSeverity", errorSeverity);
+    URI uri = uriBuilder.build().toUri();
     HttpHeaders headers = new HttpHeaders();
     headers.set(HttpHeaders.AUTHORIZATION, accessToken);
     headers.set(HttpHeaders.ACCEPT, MediaType.ALL_VALUE);
