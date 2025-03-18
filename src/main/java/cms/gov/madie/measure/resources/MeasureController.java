@@ -70,6 +70,13 @@ public class MeasureController {
     return ResponseEntity.status(HttpStatus.OK).body(results);
   }
 
+  @GetMapping("/measures/recentsByMeasureSetId")
+  public ResponseEntity<List<Measure>> getRecentMeasuresByMeasureSetId(
+      @RequestParam(name = "measureSetIds") List<String> measureSetIds) {
+    List<Measure> results = measureSetService.getRecentMeasuresByMeasureSetId(measureSetIds);
+    return ResponseEntity.status(HttpStatus.OK).body(results);
+  }
+
   @GetMapping("/measures")
   public ResponseEntity<Page<MeasureListDTO>> getMeasures(
       Principal principal,

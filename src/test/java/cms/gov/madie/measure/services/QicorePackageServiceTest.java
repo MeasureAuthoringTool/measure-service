@@ -79,7 +79,8 @@ public class QicorePackageServiceTest {
     PackageDto packageDto =
         PackageDto.builder().fromStorage(false).exportPackage(measurePackageStr.getBytes()).build();
     when(bundleService.getMeasureExport(any(Measure.class), anyString())).thenReturn(packageDto);
-    PackageDto measurePackage = qicorePackageService.getMeasurePackage(new Measure(), "token");
+    PackageDto measurePackage =
+        qicorePackageService.getMeasurePackage(new Measure(), "token", true);
     byte[] rawPackage = measurePackage.getExportPackage();
     assertThat(new String(rawPackage), is(equalTo(measurePackageStr)));
   }

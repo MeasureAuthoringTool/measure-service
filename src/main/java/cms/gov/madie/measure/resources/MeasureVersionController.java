@@ -29,8 +29,7 @@ public class MeasureVersionController {
       @PathVariable("id") String id,
       @RequestParam String versionType,
       Principal principal,
-      @RequestHeader("Authorization") String accessToken)
-      throws Exception {
+      @RequestHeader("Authorization") String accessToken) {
     return ResponseEntity.ok(
         versionService.createVersion(id, versionType, principal.getName(), accessToken));
   }

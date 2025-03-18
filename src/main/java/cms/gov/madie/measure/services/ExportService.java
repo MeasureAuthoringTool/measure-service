@@ -19,7 +19,8 @@ public class ExportService {
   private final ModelValidatorFactory modelValidatorFactory;
   private final MeasureUtil measureUtil;
 
-  public PackageDto getMeasureExport(Measure measure, String accessToken) {
+  public PackageDto getMeasureExport(
+      Measure measure, String accessToken, boolean includeElmWarnings) {
     ModelValidator modelValidator =
         modelValidatorFactory.getModelValidator(ModelType.valueOfName(measure.getModel()));
     measure = measureUtil.validateAllMeasureDependencies(measure);
@@ -28,7 +29,7 @@ public class ExportService {
     modelValidator.validateCqlErrors(measure);
     PackageService packageService =
         packageServiceFactory.getPackageService(ModelType.valueOfName(measure.getModel()));
-    return packageService.getMeasurePackage(measure, accessToken);
+    return packageService.getMeasurePackage(measure, accessToken, includeElmWarnings);
   }
 
   public byte[] getQRDA(QrdaRequestDTO qrdaRequestDTO, String accessToken) {

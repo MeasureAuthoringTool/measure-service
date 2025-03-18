@@ -2084,4 +2084,38 @@ public class MeasureControllerMvcTest {
         result.getResponse().getContentAsString(),
         "{\"measureId1\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]}],\"measureId2\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]},{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");
   }
+
+  @Test
+  public void testGetRecentMeasuresByMeasureSetId() throws Exception {
+    // Create sample measures
+    Measure measure1 = new Measure();
+    measure1.setId("m1");
+    measure1.setMeasureName("Measure 1");
+
+    Measure measure2 = new Measure();
+    measure2.setId("m2");
+    measure2.setMeasureName("Measure 2");
+
+    List<Measure> recentMeasures = List.of(measure1, measure2);
+
+    // Stub the measureSetService call
+    when(measureSetService.getRecentMeasuresByMeasureSetId(eq(List.of("set1", "set2"))))
+        .thenReturn(recentMeasures);
+
+    mockMvc
+        .perform(
+            get("/measures/recentsByMeasureSetId")
+                .with(user(TEST_USER_ID))
+                .queryParam("measureSetIds", "set1", "set2")
+                .accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("$[0].id").value("m1"))
+        .andExpect(jsonPath("$[0].measureName").value("Measure 1"))
+        .andExpect(jsonPath("$[1].id").value("m2"))
+        .andExpect(jsonPath("$[1].measureName").value("Measure 2"));
+
+    verify(measureSetService, times(1))
+        .getRecentMeasuresByMeasureSetId(eq(List.of("set1", "set2")));
+  }
 }

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.cqframework.cql.cql2elm.CqlCompilerException;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -28,8 +29,16 @@ public class ElmTranslatorClient {
   private RestTemplate elmTranslatorRestTemplate;
 
   public ElmJson getElmJson(final String cql, String measureModel, String accessToken) {
+    return getElmJson(cql, measureModel, accessToken, CqlCompilerException.ErrorSeverity.Info);
+  }
+
+  public ElmJson getElmJson(
+      final String cql,
+      String measureModel,
+      String accessToken,
+      CqlCompilerException.ErrorSeverity errorSeverity) {
     try {
-      URI uri = getElmJsonURI(measureModel);
+      URI uri = getElmJsonURI(measureModel, errorSeverity);
       HttpEntity<String> cqlEntity = getCqlHttpEntity(cql, accessToken, null, null);
       return elmTranslatorRestTemplate
           .exchange(uri, HttpMethod.PUT, cqlEntity, ElmJson.class)
@@ -41,6 +50,15 @@ public class ElmTranslatorClient {
     }
   }
 
+  public boolean hasOnlyWarnings(JsonNode errorExceptions) {
+    for (JsonNode node : errorExceptions) {
+      if ("Error".equalsIgnoreCase(node.get("errorSeverity").asText())) {
+        return false;
+      }
+    }
+    return true;
+  }
+
   public boolean hasErrors(ElmJson elmJson) {
     if (elmJson == null) {
       return true;
@@ -48,7 +66,13 @@ public class ElmTranslatorClient {
     try {
       ObjectMapper mapper = new ObjectMapper();
       JsonNode jsonNode = mapper.readTree(elmJson.getJson());
-      return jsonNode.has("errorExceptions") && jsonNode.get("errorExceptions").size() > 0;
+
+      return (jsonNode.has("errorExceptions")
+              && jsonNode.get("errorExceptions").size() > 0
+              && !hasOnlyWarnings(jsonNode.get("errorExceptions")))
+          || (jsonNode.has("externalErrors")
+              && jsonNode.get("externalErrors").size() > 0
+              && !hasOnlyWarnings(jsonNode.get("externalErrors")));
     } catch (Exception ex) {
       log.error("An error occurred parsing the response from the CQL-ELM translation service", ex);
       throw new CqlElmTranslationServiceException(
@@ -56,7 +80,13 @@ public class ElmTranslatorClient {
     }
   }
 
+  // overload method invocation so if we don't provide ErrorSeverity we assume that its info
   protected URI getElmJsonURI(String measureModel) {
+    return getElmJsonURI(measureModel, CqlCompilerException.ErrorSeverity.Info);
+  }
+
+  protected URI getElmJsonURI(
+      String measureModel, CqlCompilerException.ErrorSeverity errorSeverity) {
     var isQdm = StringUtils.equals(measureModel, ModelType.QDM_5_6.getValue());
     String baseUrl =
         isQdm
@@ -68,6 +98,7 @@ public class ElmTranslatorClient {
           UriComponentsBuilder.fromHttpUrl(
                   baseUrl + elmTranslatorClientConfig.getCqlElmServiceElmJsonUri())
               .queryParam("checkContext", true)
+              .queryParam("errorSeverity", errorSeverity)
               .build()
               .encode()
               .toUri();

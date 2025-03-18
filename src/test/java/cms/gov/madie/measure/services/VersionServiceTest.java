@@ -33,8 +33,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.http.ResponseEntity;
 
+import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -66,6 +68,7 @@ public class VersionServiceTest {
   @Mock AppConfigService appConfigService;
   @Mock ElmToJsonService elmToJsonService;
 
+  @Mock private GridFsOperations gridFsOperations;
   @Mock ElmTranslatorClient elmTranslatorClient;
   @Mock FhirServicesClient fhirServicesClient;
 
@@ -444,7 +447,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testGetNextVersionOtherException() throws Exception {
+  public void testGetNextVersionOtherException() {
     Measure existingMeasure =
         Measure.builder()
             .id("testMeasureId")
@@ -459,7 +462,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateVersionThrowsInstantiationExceptionWhenSavingToExport() throws Exception {
+  public void testCreateVersionThrowsInstantiationExceptionWhenSavingToExport() {
     FhirMeasure existingMeasure =
         FhirMeasure.builder()
             .id("testMeasureId")
@@ -512,7 +515,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateVersionMajorSuccess() throws Exception {
+  public void testCreateVersionMajorSuccess() {
     FhirMeasure existingMeasure =
         FhirMeasure.builder()
             .id("testMeasureId")
@@ -558,10 +561,30 @@ public class VersionServiceTest {
             .id("testId")
             .measureId("testMeasureId")
             .measureBundleJson(measureBundleJson)
+            .measureBundleGridFsId("id1")
+            .measureBundleWithoutWarningsGridFsId("id2")
             .build();
     when(exportRepository.save(any(Export.class))).thenReturn(measureExport);
     when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
         .thenReturn(measureBundleJson);
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), anyString(), anyString()))
+        .thenReturn(measureBundleJson);
+    // mock bundle and hex
+    ObjectId measureBundleId = mock(ObjectId.class);
+    when(measureBundleId.toHexString()).thenReturn("hex1");
+    ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
+    when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
+
+    when(gridFsOperations.store(
+            any(ByteArrayInputStream.class), eq("measureBundle.json"), eq("application/json")))
+        .thenReturn(measureBundleId);
+    when(gridFsOperations.store(
+            any(ByteArrayInputStream.class),
+            eq("measureBundleWithoutWarnings.json"),
+            eq("application/json")))
+        .thenReturn(measureBundleWithoutWarningsId);
+
     versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken");
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -574,11 +597,12 @@ public class VersionServiceTest {
     verify(exportRepository, times(1)).save(exportArgumentCaptor.capture());
     Export capturedExport = exportArgumentCaptor.getValue();
     assertEquals(savedValue.getId(), capturedExport.getMeasureId());
-    assertEquals(measureExport.getMeasureBundleJson(), capturedExport.getMeasureBundleJson());
+    assertEquals("hex1", capturedExport.getMeasureBundleGridFsId());
+    assertEquals("hex2", capturedExport.getMeasureBundleWithoutWarningsGridFsId());
   }
 
   @Test
-  public void testCreateQdmVersionMinorSuccess() throws Exception {
+  public void testCreateQdmVersionMinorSuccess() {
     QdmMeasure existingMeasure =
         QdmMeasure.builder()
             .id("testMeasureId")
@@ -614,7 +638,7 @@ public class VersionServiceTest {
     when(measureRepository.save(any(Measure.class))).thenReturn(updatedMeasure);
 
     byte[] exportPackage = "Look, I'm a measure package".getBytes();
-    when(exportService.getMeasureExport(any(Measure.class), anyString()))
+    when(exportService.getMeasureExport(any(Measure.class), anyString(), anyBoolean()))
         .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(exportPackage).build());
     when(qdmPackageService.getHumanReadable(any(Measure.class), anyString(), anyString()))
         .thenReturn("test human readable");
@@ -644,7 +668,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateFhirVersionPatchSuccess() throws Exception {
+  public void testCreateFhirVersionPatchSuccess() {
     FhirMeasure existingMeasure =
         FhirMeasure.builder()
             .id("testMeasureId")
@@ -692,10 +716,29 @@ public class VersionServiceTest {
             .id("testId")
             .measureId("testMeasureId")
             .measureBundleJson(measureBundleJson)
+            .measureBundleGridFsId("id1")
+            .measureBundleWithoutWarningsGridFsId("id2")
             .build();
     when(exportRepository.save(any(Export.class))).thenReturn(measureExport);
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString()))
         .thenReturn(measureBundleJson);
+
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), anyString(), anyString()))
+        .thenReturn(measureBundleJson);
+    ObjectId measureBundleId = mock(ObjectId.class);
+    when(measureBundleId.toHexString()).thenReturn("hex1");
+    ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
+    when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
+
+    when(gridFsOperations.store(
+            any(ByteArrayInputStream.class), eq("measureBundle.json"), eq("application/json")))
+        .thenReturn(measureBundleId);
+    when(gridFsOperations.store(
+            any(ByteArrayInputStream.class),
+            eq("measureBundleWithoutWarnings.json"),
+            eq("application/json")))
+        .thenReturn(measureBundleWithoutWarningsId);
 
     versionService.createVersion("testMeasureId", "PATCH", "testUser", "accesstoken");
 
@@ -709,7 +752,9 @@ public class VersionServiceTest {
     verify(exportRepository, times(1)).save(exportArgumentCaptor.capture());
     Export savedExport = exportArgumentCaptor.getValue();
     assertEquals(savedValue.getId(), savedExport.getMeasureId());
-    assertEquals(measureExport.getMeasureBundleJson(), savedExport.getMeasureBundleJson());
+    // no longer save to measureBundle,  we want to make sure there's a hex appended
+    assertEquals("hex1", savedExport.getMeasureBundleGridFsId());
+    assertEquals("hex2", savedExport.getMeasureBundleWithoutWarningsGridFsId());
   }
 
   @Test
@@ -1067,7 +1112,6 @@ public class VersionServiceTest {
     assertFalse(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
     assertEquals(
         "invalid json", draft.getTestCases().get(0).getHapiOperationOutcome().getMessage());
-    ;
   }
 
   @Test
