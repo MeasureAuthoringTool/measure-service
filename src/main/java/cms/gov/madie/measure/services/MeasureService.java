@@ -2,6 +2,7 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
@@ -10,7 +11,9 @@ import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.MeasureSetActionLog;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
@@ -404,7 +407,7 @@ public class MeasureService {
   }
 
   public List<AclSpecification> updateAccessControlList(
-      String measureId, AclOperation aclOperation) {
+      String measureId, AclOperation aclOperation, String userName) {
     Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
     if (persistedMeasure.isEmpty()) {
       throw new ResourceNotFoundException("Measure does not exist: " + measureId);
@@ -412,14 +415,14 @@ public class MeasureService {
 
     Measure measure = persistedMeasure.get();
     MeasureSet measureSet =
-        measureSetService.updateMeasureSetAcls(measure.getMeasureSetId(), aclOperation);
+        measureSetService.updateMeasureSetAcls(measure.getMeasureSetId(), aclOperation, userName);
     actionLogService.logAction(
-        measureId, Measure.class, ActionType.UPDATED, "admin", "ACL updated successfully");
+        measureId, Measure.class, ActionType.UPDATED, userName, "ACL updated successfully");
     return measureSet.getAcls();
   }
 
-  public Map<String, List<String>> getSharedWithUserIds(List<String> measureIds) {
-    Map<String, List<String>> userIdsByMeasureId = new HashMap<>();
+  public Map<String, List<SharedUser>> getSharedMeasures(List<String> measureIds) {
+    Map<String, List<SharedUser>> sharedMeasures = new HashMap<>();
 
     for (String measureId : measureIds) {
       Measure measure = findMeasureById(measureId);
@@ -434,20 +437,96 @@ public class MeasureService {
       }
 
       if (measure.getMeasureSet().getAcls() == null) {
-        userIdsByMeasureId.put(measureId, Collections.emptyList());
+        sharedMeasures.put(measureId, Collections.emptyList());
       } else {
-        userIdsByMeasureId.put(
-            measureId,
+        List<String> userIds =
             measure.getMeasureSet().getAcls().stream()
                 .filter(
                     aclSpecification -> aclSpecification.getRoles().contains(RoleEnum.SHARED_WITH))
                 .map(AclSpecification::getUserId)
-                .sorted()
-                .toList());
+                .toList();
+
+        MeasureSetActionLog measureSetActionLog =
+            actionLogService.findMeasureSetActionLogByTargetId(measure.getMeasureSetId());
+
+        if (measureSetActionLog != null) {
+          Collections.reverse(measureSetActionLog.getActions());
+          List<AccessControlAction> shareActions =
+              measureSetActionLog.getActions().stream()
+                  .filter(action -> action.getActionType().equals(ActionType.SHARED))
+                  .toList();
+
+          List<SharedUser> sharedUsers =
+              userIds.stream()
+                  .map(
+                      userId -> {
+                        SharedUser sharedUser = SharedUser.builder().userId(userId).build();
+
+                        Optional<AccessControlAction> latestShareActionByUserId =
+                            shareActions.stream()
+                                .filter(action -> action.getSharedWith().equals(userId))
+                                .findFirst();
+                        latestShareActionByUserId.ifPresent(
+                            action -> sharedUser.setPerformedAt(action.getPerformedAt()));
+
+                        return sharedUser;
+                      })
+                  .toList();
+
+          sharedMeasures.put(measureId, sharedUsers);
+        } else {
+          sharedMeasures.put(
+              measureId,
+              userIds.stream().map(userId -> SharedUser.builder().userId(userId).build()).toList());
+        }
       }
     }
 
-    return userIdsByMeasureId;
+    return sharedMeasures;
+  }
+
+  public Map<String, List<AclSpecification>> updateSharedMeasures(
+      Map<String, List<String>> measures, String username) {
+    Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
+
+    measures
+        .keySet()
+        .forEach(
+            measureId -> {
+              Measure measure = findMeasureById(measureId);
+
+              if (measure == null) {
+                throw new ResourceNotFoundException("Measure does not exist: " + measureId);
+              }
+              verifyAuthorization(username, measure, null);
+            });
+
+    measures.forEach(
+        (measureId, userIds) -> {
+          AclOperation aclOperation = buildShareAclOperation(userIds);
+          measureIdToAclSpecification.put(
+              measureId, updateAccessControlList(measureId, aclOperation, username));
+        });
+
+    return measureIdToAclSpecification;
+  }
+
+  private AclOperation buildShareAclOperation(List<String> userIds) {
+    return AclOperation.builder()
+        .acls(buildShareAclSpecifications(userIds))
+        .action(AclOperation.AclAction.GRANT)
+        .build();
+  }
+
+  private List<AclSpecification> buildShareAclSpecifications(List<String> userIds) {
+    return userIds.stream()
+        .map(
+            userId ->
+                AclSpecification.builder()
+                    .userId(userId)
+                    .roles(Set.of(RoleEnum.SHARED_WITH))
+                    .build())
+        .toList();
   }
 
   public boolean changeOwnership(String measureId, String userid) {

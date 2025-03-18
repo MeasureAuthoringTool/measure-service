@@ -7,6 +7,7 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
+import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
@@ -64,9 +65,11 @@ public class MeasureSetService {
    *
    * @param measureSetId -> set id of a measure set
    * @param aclOperation -> AclOperation to be updated
+   * @param userName -> userName performing action
    * @return an instance of MeasureSet
    */
-  public MeasureSet updateMeasureSetAcls(String measureSetId, AclOperation aclOperation) {
+  public MeasureSet updateMeasureSetAcls(
+      String measureSetId, AclOperation aclOperation, String userName) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (optionalMeasureSet.isPresent()) {
       MeasureSet measureSet = optionalMeasureSet.get().toBuilder().build();
@@ -74,20 +77,71 @@ public class MeasureSetService {
         if (CollectionUtils.isEmpty(measureSet.getAcls())) {
           // if no acl present, add it
           measureSet.setAcls(aclOperation.getAcls());
+
+          aclOperation
+              .getAcls()
+              .forEach(
+                  aclSpecification -> {
+                    String userId = aclSpecification.getUserId();
+
+                    aclSpecification
+                        .getRoles()
+                        .forEach(
+                            roleEnum -> {
+                              if (roleEnum == RoleEnum.SHARED_WITH) {
+                                actionLogService.logShareAccessControlAction(
+                                    measureSetId,
+                                    MeasureSet.class,
+                                    ActionType.SHARED,
+                                    userName,
+                                    userId);
+                              }
+                            });
+                  });
         } else {
           // update acl
           aclOperation
               .getAcls()
               .forEach(
                   acl -> {
-                    // check if acl already present for the user
+                    String userId = acl.getUserId();
+
+                    // check if acl is already present for the user
                     AclSpecification aclSpecification =
-                        findAclSpecificationByUserId(measureSet, acl.getUserId());
-                    // if acl does not present, add it
+                        findAclSpecificationByUserId(measureSet, userId);
+                    // if acl is not present, add it
                     if (aclSpecification == null) {
                       measureSet.getAcls().add(acl);
+
+                      acl.getRoles()
+                          .forEach(
+                              roleEnum -> {
+                                if (roleEnum == RoleEnum.SHARED_WITH) {
+                                  actionLogService.logShareAccessControlAction(
+                                      measureSetId,
+                                      MeasureSet.class,
+                                      ActionType.SHARED,
+                                      userName,
+                                      userId);
+                                }
+                              });
                     } else {
-                      aclSpecification.getRoles().addAll(acl.getRoles());
+                      acl.getRoles()
+                          .forEach(
+                              roleEnum -> {
+                                if (!aclSpecification.getRoles().contains(roleEnum)) {
+                                  aclSpecification.getRoles().add(roleEnum);
+
+                                  if (roleEnum == RoleEnum.SHARED_WITH) {
+                                    actionLogService.logShareAccessControlAction(
+                                        measureSetId,
+                                        MeasureSet.class,
+                                        ActionType.SHARED,
+                                        userName,
+                                        userId);
+                                  }
+                                }
+                              });
                     }
                   });
         }
