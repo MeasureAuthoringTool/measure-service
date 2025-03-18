@@ -101,7 +101,7 @@ class ExportServiceTest {
                 .fromStorage(false)
                 .exportPackage(packageContent.getBytes())
                 .build());
-    PackageDto output = exportService.getMeasureExport(measure, token, true);
+    PackageDto output = exportService.getMeasureExport(measure, token, "Info");
     byte[] measurePackage = output.getExportPackage();
     assertEquals(new String(measurePackage), packageContent);
   }
@@ -119,7 +119,7 @@ class ExportServiceTest {
                 .fromStorage(false)
                 .exportPackage(packageContent.getBytes())
                 .build());
-    PackageDto output = exportService.getMeasureExport(measure, token, true);
+    PackageDto output = exportService.getMeasureExport(measure, token, "Info");
     byte[] measurePackage = output.getExportPackage();
     assertEquals(new String(measurePackage), packageContent);
   }
@@ -136,7 +136,7 @@ class ExportServiceTest {
         PackageDto.builder().fromStorage(false).exportPackage(packageContent.getBytes()).build();
     when(qdmPackageService.getMeasurePackage(any(Measure.class), anyBoolean(), anyString()))
         .thenReturn(packageDto);
-    PackageDto output = exportService.getMeasureExport(measure, token, true);
+    PackageDto output = exportService.getMeasureExport(measure, token, "Info");
     byte[] measurePackage = output.getExportPackage();
     assertEquals(new String(measurePackage), packageContent);
   }
