@@ -203,12 +203,10 @@ public class MeasureController {
   }
 
   @PutMapping("/measures/shared")
-  public ResponseEntity<Map<String, List<AclSpecification>>> updateSharedMeasures(
-      HttpServletRequest request,
-      @RequestBody Map<String, List<String>> measures,
-      Principal principal) {
+  public ResponseEntity<Map<String, List<AclSpecification>>> shareMeasures(
+      @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
 
-    return ResponseEntity.ok(measureService.updateSharedMeasures(measures, principal.getName()));
+    return ResponseEntity.ok(measureService.shareMeasures(measureUserIdMap, principal.getName()));
   }
 
   @PutMapping("/measures/{id}/ownership")

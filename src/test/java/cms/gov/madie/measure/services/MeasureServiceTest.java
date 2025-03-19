@@ -1922,8 +1922,7 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(null);
 
     assertThrows(
-        ResourceNotFoundException.class,
-        () -> measureService.updateSharedMeasures(measures, "userName"));
+        ResourceNotFoundException.class, () -> measureService.shareMeasures(measures, "userName"));
   }
 
   @Test
@@ -1986,7 +1985,7 @@ public class MeasureServiceTest implements ResourceUtil {
         .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
 
     Map<String, List<AclSpecification>> updatedShareMeasures =
-        measureService.updateSharedMeasures(measures, "userName");
+        measureService.shareMeasures(measures, "userName");
     assertThat(updatedShareMeasures.size(), is(equalTo(2)));
 
     assertTrue(updatedShareMeasures.containsKey(measureId1));

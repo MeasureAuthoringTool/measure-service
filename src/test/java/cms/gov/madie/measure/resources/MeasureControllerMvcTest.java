@@ -2066,7 +2066,7 @@ public class MeasureControllerMvcTest {
     updatedSharedMeasures.put("measureId1", List.of(aclSpecification1));
     updatedSharedMeasures.put("measureId2", List.of(aclSpecification1, aclSpecification2));
 
-    doReturn(updatedSharedMeasures).when(measureService).updateSharedMeasures(any(), anyString());
+    doReturn(updatedSharedMeasures).when(measureService).shareMeasures(any(), anyString());
 
     MvcResult result =
         mockMvc
@@ -2079,7 +2079,7 @@ public class MeasureControllerMvcTest {
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();
-    verify(measureService, times(1)).updateSharedMeasures(any(), anyString());
+    verify(measureService, times(1)).shareMeasures(any(), anyString());
     assertEquals(
         result.getResponse().getContentAsString(),
         "{\"measureId1\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]}],\"measureId2\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]},{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");

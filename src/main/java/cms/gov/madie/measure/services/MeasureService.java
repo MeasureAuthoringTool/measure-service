@@ -485,11 +485,11 @@ public class MeasureService {
     return sharedMeasures;
   }
 
-  public Map<String, List<AclSpecification>> updateSharedMeasures(
-      Map<String, List<String>> measures, String username) {
+  public Map<String, List<AclSpecification>> shareMeasures(
+      Map<String, List<String>> measureUserIdMap, String username) {
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
-    measures
+    measureUserIdMap
         .keySet()
         .forEach(
             measureId -> {
@@ -501,7 +501,7 @@ public class MeasureService {
               verifyAuthorization(username, measure, null);
             });
 
-    measures.forEach(
+    measureUserIdMap.forEach(
         (measureId, userIds) -> {
           AclOperation aclOperation = buildShareAclOperation(userIds);
           measureIdToAclSpecification.put(
