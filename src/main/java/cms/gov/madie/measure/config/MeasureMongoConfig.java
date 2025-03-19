@@ -15,6 +15,7 @@ import org.springframework.data.mongodb.core.convert.DefaultDbRefResolver;
 import org.springframework.data.mongodb.core.convert.MappingMongoConverter;
 import org.springframework.data.mongodb.core.convert.MongoConverter;
 import org.springframework.data.mongodb.core.mapping.MongoMappingContext;
+import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 
 @Configuration
@@ -50,7 +51,7 @@ public class MeasureMongoConfig {
   }
 
   @Bean
-  public GridFsTemplate gridFsTemplate(MongoDatabaseFactory mongoDbFactory) {
+  public GridFsOperations gridFsTemplate(MongoDatabaseFactory mongoDbFactory) {
     return new GridFsTemplate(mongoDbFactory, mongoConverter());
   }
 }

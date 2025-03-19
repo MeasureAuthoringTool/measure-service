@@ -75,7 +75,7 @@ class QdmPackageServiceTest {
     when(qdmServiceRestTemplate.exchange(
             any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
         .thenReturn(ResponseEntity.ok(packageContent.getBytes()));
-    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, token, true);
+    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, true, token);
     assertThat(measurePackage.isFromStorage(), is(false));
     byte[] packageContents = measurePackage.getExportPackage();
     assertThat(packageContents, is(notNullValue()));
@@ -93,7 +93,7 @@ class QdmPackageServiceTest {
                     .measureId(measure.getId())
                     .packageData(packageContent.getBytes())
                     .build()));
-    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, token, true);
+    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, true, token);
     assertThat(measurePackage.isFromStorage(), is(true));
     byte[] packageContents = measurePackage.getExportPackage();
     assertThat(packageContents, is(notNullValue()));
@@ -109,7 +109,7 @@ class QdmPackageServiceTest {
             any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
         .thenReturn(ResponseEntity.ok(packageContent.getBytes()));
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.empty());
-    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, token, true);
+    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, true, token);
     assertThat(measurePackage.isFromStorage(), is(false));
     byte[] packageContents = measurePackage.getExportPackage();
     assertThat(packageContents, is(notNullValue()));
@@ -127,7 +127,7 @@ class QdmPackageServiceTest {
     Exception ex =
         assertThrows(
             InternalServerException.class,
-            () -> qdmPackageService.getMeasurePackage(measure, token, true),
+            () -> qdmPackageService.getMeasurePackage(measure, true, token),
             errorMessage);
     assertThat(ex.getMessage(), is(equalTo(errorMessage)));
   }
@@ -144,7 +144,7 @@ class QdmPackageServiceTest {
     Exception ex =
         assertThrows(
             InternalServerException.class,
-            () -> qdmPackageService.getMeasurePackage(measure, token, true),
+            () -> qdmPackageService.getMeasurePackage(measure, true, token),
             errorMessage);
     assertThat(ex.getMessage(), is(equalTo("QDM service error: ")));
   }
@@ -159,7 +159,7 @@ class QdmPackageServiceTest {
     Exception ex =
         assertThrows(
             HQMFServiceException.class,
-            () -> qdmPackageService.getMeasurePackage(measure, token, true),
+            () -> qdmPackageService.getMeasurePackage(measure, true, token),
             errorMessage);
 
     assertThat(

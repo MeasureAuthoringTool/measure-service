@@ -42,6 +42,8 @@ public class ExportController {
   public ResponseEntity<byte[]> getZip(
       Principal principal,
       @PathVariable("id") String id,
+      @RequestParam(value = "elmErrorSeverity", required = false, defaultValue = "Info")
+          String elmErrorSeverity,
       @RequestHeader("Authorization") String accessToken) {
 
     final String username = principal.getName();
@@ -52,7 +54,7 @@ public class ExportController {
     if (measure == null) {
       throw new ResourceNotFoundException("Measure", id);
     }
-    var packageDto = exportService.getMeasureExport(measure, accessToken, true);
+    var packageDto = exportService.getMeasureExport(measure, accessToken, elmErrorSeverity);
 
     return ResponseEntity.status(
             packageDto.isFromStorage() ? HttpStatus.OK.value() : HttpStatus.CREATED.value())

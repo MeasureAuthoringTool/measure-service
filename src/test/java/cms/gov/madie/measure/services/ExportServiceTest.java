@@ -95,13 +95,13 @@ class ExportServiceTest {
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
     when(packageServiceFactory.getPackageService(any())).thenReturn(qdmPackageService);
-    when(qdmPackageService.getMeasurePackage(any(Measure.class), anyString(), anyBoolean()))
+    when(qdmPackageService.getMeasurePackage(any(Measure.class), anyBoolean(), anyString()))
         .thenReturn(
             PackageDto.builder()
                 .fromStorage(false)
                 .exportPackage(packageContent.getBytes())
                 .build());
-    PackageDto output = exportService.getMeasureExport(measure, token, true);
+    PackageDto output = exportService.getMeasureExport(measure, token, "Info");
     byte[] measurePackage = output.getExportPackage();
     assertEquals(new String(measurePackage), packageContent);
   }
@@ -113,13 +113,13 @@ class ExportServiceTest {
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
     when(packageServiceFactory.getPackageService(any())).thenReturn(qicorePackageService);
-    when(qicorePackageService.getMeasurePackage(any(Measure.class), anyString(), anyBoolean()))
+    when(qicorePackageService.getMeasurePackage(any(Measure.class), anyBoolean(), anyString()))
         .thenReturn(
             PackageDto.builder()
                 .fromStorage(false)
                 .exportPackage(packageContent.getBytes())
                 .build());
-    PackageDto output = exportService.getMeasureExport(measure, token, true);
+    PackageDto output = exportService.getMeasureExport(measure, token, "Info");
     byte[] measurePackage = output.getExportPackage();
     assertEquals(new String(measurePackage), packageContent);
   }
@@ -134,9 +134,9 @@ class ExportServiceTest {
     when(packageServiceFactory.getPackageService(any())).thenReturn(qdmPackageService);
     PackageDto packageDto =
         PackageDto.builder().fromStorage(false).exportPackage(packageContent.getBytes()).build();
-    when(qdmPackageService.getMeasurePackage(any(Measure.class), anyString(), anyBoolean()))
+    when(qdmPackageService.getMeasurePackage(any(Measure.class), anyBoolean(), anyString()))
         .thenReturn(packageDto);
-    PackageDto output = exportService.getMeasureExport(measure, token, true);
+    PackageDto output = exportService.getMeasureExport(measure, token, "Info");
     byte[] measurePackage = output.getExportPackage();
     assertEquals(new String(measurePackage), packageContent);
   }
