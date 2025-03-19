@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -37,5 +38,9 @@ public class MongoGridFsService {
       }
     }
     return null;
+  }
+
+  public ObjectId save(ByteArrayInputStream inputStream, String filename, String contentType) {
+    return operations.store(inputStream, filename, contentType);
   }
 }

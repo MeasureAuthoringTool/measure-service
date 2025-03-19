@@ -78,7 +78,7 @@ class FhirServicesClientTest {
         .thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
     assertThrows(
         HttpClientErrorException.class,
-        () -> fhirServicesClient.getMeasureBundle(measure, accessToken, "calculation"));
+        () -> fhirServicesClient.getMeasureBundle(measure, accessToken, "calculation", "Info"));
     verify(fhirServicesConfig.fhirServicesRestTemplate(), times(1))
         .exchange(any(URI.class), eq(HttpMethod.PUT), httpEntityCaptor.capture(), any(Class.class));
     HttpEntity httpEntity = httpEntityCaptor.getValue();
@@ -98,7 +98,8 @@ class FhirServicesClientTest {
             .fhirServicesRestTemplate()
             .exchange(any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
         .thenReturn(ResponseEntity.ok(json));
-    String output = fhirServicesClient.getMeasureBundle(measure, accessToken, "calculation");
+    String output =
+        fhirServicesClient.getMeasureBundle(measure, accessToken, "calculation", "Info");
     assertThat(output, is(equalTo(json)));
     verify(fhirServicesConfig.fhirServicesRestTemplate(), times(1))
         .exchange(any(URI.class), eq(HttpMethod.PUT), httpEntityCaptor.capture(), any(Class.class));

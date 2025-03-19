@@ -27,13 +27,15 @@ public class QicorePackageService implements PackageService {
 
   @Override
   public PackageDto getMeasurePackage(
-      Measure measure, String accessToken, boolean includeElmWarnings) {
-    return bundleService.getMeasureExport(measure, accessToken);
+      Measure measure, boolean includeElmWarnings, String accessToken) {
+    return bundleService.getMeasureExport(
+        measure, includeElmWarnings ? "Info" : "Error", accessToken);
   }
 
   @Override
   public String getHumanReadable(Measure measure, String username, String accessToken) {
-    String measureBundle = fhirServicesClient.getMeasureBundle(measure, accessToken, "export");
+    String measureBundle =
+        fhirServicesClient.getMeasureBundle(measure, accessToken, "export", "Info");
 
     String humanReadableWithCss = getHRWithCSS(measure, measureBundle);
 
