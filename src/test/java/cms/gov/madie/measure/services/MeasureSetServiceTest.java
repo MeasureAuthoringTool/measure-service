@@ -84,6 +84,31 @@ public class MeasureSetServiceTest {
   }
 
   @Test
+  public void testGrantOperationWithNoAclInMeasureSet() {
+    AclSpecification aclSpec = new AclSpecification();
+    aclSpec.setUserId("john_1");
+    aclSpec.setRoles(Set.of(RoleEnum.SHARED_WITH));
+    AclOperation aclOperation =
+        AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.GRANT).build();
+    MeasureSet updatedMeasureSet =
+        MeasureSet.builder().measureSetId("1").owner("john_1").acls(List.of(aclSpec)).build();
+
+    measureSet.setAcls(null);
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
+    assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
+    assertThat(measureSet.getAcls().size(), is(equalTo(1)));
+
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+  }
+
+  @Test
   public void testGrantOperationAsFirstNewAcl() {
     AclSpecification aclSpec = new AclSpecification();
     aclSpec.setUserId("john_1");
@@ -95,10 +120,14 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation);
-    assertThat(measureSet.getId(), is(equalTo(updatedMeasureSet.getId())));
+    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
     assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(measureSet.getAcls().size(), is(equalTo(1)));
+
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
   }
 
   @Test
@@ -119,14 +148,56 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation);
-    assertThat(measureSet.getId(), is(equalTo(updatedMeasureSet.getId())));
+    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
     assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(measureSet.getAcls().size(), is(equalTo(2)));
+
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec2.getUserId());
   }
 
   @Test
-  public void testGrantOperationUpdateAcl() {
+  public void testGrantOperationWithExistingAclSpecificationWithoutShareWithRole() {
+    AclSpecification aclSpec1 = new AclSpecification();
+    aclSpec1.setUserId("john");
+    aclSpec1.setRoles(Set.of(RoleEnum.SHARED_WITH));
+    AclOperation aclOperation =
+        AclOperation.builder().acls(List.of(aclSpec1)).action(AclOperation.AclAction.GRANT).build();
+
+    MeasureSet updatedMeasureSet =
+        MeasureSet.builder()
+            .measureSetId("1")
+            .owner("john")
+            .acls(
+                List.of(
+                    AclSpecification.builder()
+                        .userId("john")
+                        .roles(Set.of(RoleEnum.SHARED_WITH))
+                        .build()))
+            .build();
+
+    AclSpecification aclSpec = new AclSpecification();
+    aclSpec.setUserId("john");
+    aclSpec.setRoles(new HashSet<>());
+    measureSet.setAcls(List.of(aclSpec));
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
+    assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
+    assertThat(measureSet.getAcls().size(), is(equalTo(1)));
+
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+  }
+
+  @Test
+  public void testGrantOperationWithExistingAclSpecificationWithShareWithRole() {
     AclSpecification aclSpec1 = new AclSpecification();
     aclSpec1.setUserId("john");
     aclSpec1.setRoles(
@@ -145,11 +216,15 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation);
-    assertThat(measureSet.getId(), is(equalTo(updatedMeasureSet.getId())));
+    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
     assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(measureSet.getAcls().size(), is(equalTo(1)));
     assertThat(measureSet.getAcls().get(0).getUserId(), is(equalTo(aclSpec2.getUserId())));
+
+    verify(actionLogService, times(0))
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec2.getUserId());
   }
 
   @Test
@@ -167,8 +242,9 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(measureSet);
 
-    MeasureSet updatedMeasureSet = measureSetService.updateMeasureSetAcls("1", aclOperation);
-    assertThat(updatedMeasureSet.getId(), is(equalTo(measureSet.getId())));
+    MeasureSet updatedMeasureSet =
+        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    assertThat(updatedMeasureSet.getMeasureSetId(), is(equalTo(measureSet.getMeasureSetId())));
     assertThat(updatedMeasureSet.getOwner(), is(equalTo(measureSet.getOwner())));
     assertThat(updatedMeasureSet.getAcls().size(), is(equalTo(0)));
   }
@@ -180,7 +256,7 @@ public class MeasureSetServiceTest {
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.updateMeasureSetAcls("1", new AclOperation()));
+            () -> measureSetService.updateMeasureSetAcls("1", new AclOperation(), "userName"));
     assertTrue(ex.getMessage().contains("measure set may not exists."));
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
@@ -437,6 +513,7 @@ public class MeasureSetServiceTest {
     String measureId = "measureId";
 
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure1));
+
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureRepository.findAllByMeasureSetIdAndActive(anyString(), anyBoolean()))
         .thenReturn(measures);
