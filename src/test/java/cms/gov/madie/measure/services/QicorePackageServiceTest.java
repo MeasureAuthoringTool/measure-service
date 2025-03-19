@@ -78,9 +78,10 @@ public class QicorePackageServiceTest {
     String measurePackageStr = "measure package";
     PackageDto packageDto =
         PackageDto.builder().fromStorage(false).exportPackage(measurePackageStr.getBytes()).build();
-    when(bundleService.getMeasureExport(any(Measure.class), anyString())).thenReturn(packageDto);
+    when(bundleService.getMeasureExport(any(Measure.class), anyString(), anyString()))
+        .thenReturn(packageDto);
     PackageDto measurePackage =
-        qicorePackageService.getMeasurePackage(new Measure(), "token", true);
+        qicorePackageService.getMeasurePackage(new Measure(), true, "token");
     byte[] rawPackage = measurePackage.getExportPackage();
     assertThat(new String(rawPackage), is(equalTo(measurePackageStr)));
   }
@@ -98,7 +99,7 @@ public class QicorePackageServiceTest {
 
   @Test
   void testGetHumanReadableThrowsInstantiationException() {
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     factory
@@ -117,7 +118,7 @@ public class QicorePackageServiceTest {
 
   @Test
   void testGetHumanReadableThrowsIllegalAccessException() {
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     factory
@@ -136,7 +137,7 @@ public class QicorePackageServiceTest {
 
   @Test
   void testGetHumanReadableThrowsInvocationTargetException() {
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     factory
@@ -159,7 +160,7 @@ public class QicorePackageServiceTest {
     MeasureMetaData meta = MeasureMetaData.builder().draft(true).build();
     existingMeasure.setMeasureMetaData(meta);
 
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     PackagingUtilityImpl utility = mock(PackagingUtilityImpl.class);
@@ -227,7 +228,7 @@ public class QicorePackageServiceTest {
     Export export = Export.builder().id(TEST_MEASURE_ID).build();
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
 
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(MEASURE_BUNDLE_JSON);
 
     PackagingUtilityImpl utility = mock(PackagingUtilityImpl.class);
