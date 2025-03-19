@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.match;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.newAggregation;
@@ -73,6 +75,7 @@ public class MeasureSetService {
       String measureSetId, AclOperation aclOperation, String userName) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (optionalMeasureSet.isPresent()) {
+      Map<String, ActionType> actionLogDetails = new HashMap<>();
       MeasureSet measureSet = optionalMeasureSet.get().toBuilder().build();
       if (AclOperation.AclAction.GRANT == aclOperation.getAction()) {
         if (CollectionUtils.isEmpty(measureSet.getAcls())) {
@@ -90,12 +93,7 @@ public class MeasureSetService {
                         .forEach(
                             roleEnum -> {
                               if (roleEnum == RoleEnum.SHARED_WITH) {
-                                actionLogService.logShareAccessControlAction(
-                                    measureSetId,
-                                    MeasureSet.class,
-                                    ActionType.SHARED,
-                                    userName,
-                                    userId);
+                                actionLogDetails.put(userId, ActionType.SHARED);
                               }
                             });
                   });
@@ -118,12 +116,7 @@ public class MeasureSetService {
                           .forEach(
                               roleEnum -> {
                                 if (roleEnum == RoleEnum.SHARED_WITH) {
-                                  actionLogService.logShareAccessControlAction(
-                                      measureSetId,
-                                      MeasureSet.class,
-                                      ActionType.SHARED,
-                                      userName,
-                                      userId);
+                                  actionLogDetails.put(userId, ActionType.SHARED);
                                 }
                               });
                     } else {
@@ -134,12 +127,7 @@ public class MeasureSetService {
                                   aclSpecification.getRoles().add(roleEnum);
 
                                   if (roleEnum == RoleEnum.SHARED_WITH) {
-                                    actionLogService.logShareAccessControlAction(
-                                        measureSetId,
-                                        MeasureSet.class,
-                                        ActionType.SHARED,
-                                        userName,
-                                        userId);
+                                    actionLogDetails.put(userId, ActionType.SHARED);
                                   }
                                 }
                               });
@@ -164,8 +152,16 @@ public class MeasureSetService {
                   }
                 });
       }
+
       MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
       log.info("ACL updated for Measure set [{}]", updatedMeasureSet.getId());
+
+      actionLogDetails.forEach(
+          (userId, actionType) -> {
+            actionLogService.logShareAccessControlAction(
+                measureSetId, MeasureSet.class, actionType, userName, userId);
+          });
+
       return updatedMeasureSet;
     } else {
       String error =
