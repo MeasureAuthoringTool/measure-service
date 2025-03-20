@@ -7,16 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doNothing;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -27,6 +19,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -35,6 +30,7 @@ import java.util.HashMap;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.services.MeasureSetService;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
@@ -129,7 +125,7 @@ public class MeasureControllerMvcTest {
 
     doReturn(List.of(aclSpecification))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class));
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
 
     MvcResult result =
         mockMvc
@@ -143,7 +139,8 @@ public class MeasureControllerMvcTest {
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();
-    verify(measureService, times(1)).updateAccessControlList(anyString(), any(AclOperation.class));
+    verify(measureService, times(1))
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
     assertEquals(
         result.getResponse().getContentAsString(),
         "[{\"userId\":\"test\",\"roles\":[\"SHARED_WITH\"]}]");
@@ -152,9 +149,6 @@ public class MeasureControllerMvcTest {
   @Test
   public void testUpdateAccessControlIfAclAndOperationMissing() throws Exception {
     String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-    AclSpecification aclSpecification = new AclSpecification();
-    aclSpecification.setUserId("test");
-    aclSpecification.setRoles(Set.of(RoleEnum.SHARED_WITH));
 
     MvcResult result =
         mockMvc
@@ -167,7 +161,8 @@ public class MeasureControllerMvcTest {
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isBadRequest())
             .andReturn();
-    verify(measureService, times(0)).updateAccessControlList(anyString(), any(AclOperation.class));
+    verify(measureService, times(0))
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
     assertThat(
         result
             .getResponse()
@@ -2022,18 +2017,25 @@ public class MeasureControllerMvcTest {
   }
 
   @Test
-  public void testGetSharedWithUserIds() throws Exception {
+  public void testGetSharedMeasures() throws Exception {
     String measureId1 = "measureId1";
     String measureId2 = "measureId2";
 
+    Instant fixedInstant = Instant.parse("2025-03-17T10:00:00Z");
+    ZoneId utc = ZoneId.of("UTC");
+    Clock fixedClock = Clock.fixed(fixedInstant, utc);
+
     List<String> measureIds = List.of(measureId1, measureId2);
-    List<String> userIds = List.of("userId1", "userId2");
+    SharedUser sharedUser1 =
+        SharedUser.builder().userId("userId1").performedAt(fixedClock.instant()).build();
+    SharedUser sharedUser2 =
+        SharedUser.builder().userId("userId2").performedAt(fixedClock.instant()).build();
 
-    Map<String, List<String>> userIdsByMeasureId = new HashMap<>();
-    userIdsByMeasureId.put(measureId1, userIds);
-    userIdsByMeasureId.put(measureId2, userIds);
+    Map<String, List<SharedUser>> sharedMeasures = new HashMap<>();
+    sharedMeasures.put(measureId1, List.of(sharedUser1));
+    sharedMeasures.put(measureId2, List.of(sharedUser1, sharedUser2));
 
-    doReturn(userIdsByMeasureId).when(measureService).getSharedWithUserIds(eq(measureIds));
+    doReturn(sharedMeasures).when(measureService).getSharedMeasures(eq(measureIds));
 
     mockMvc
         .perform(
@@ -2045,9 +2047,42 @@ public class MeasureControllerMvcTest {
         .andExpect(
             content()
                 .string(
-                    "{\"measureId1\":[\"userId1\",\"userId2\"],\"measureId2\":[\"userId1\",\"userId2\"]}"));
+                    "{\"measureId1\":[{\"userId\":\"userId1\",\"performedAt\":\"2025-03-17T10:00:00Z\"}],\"measureId2\":[{\"userId\":\"userId1\",\"performedAt\":\"2025-03-17T10:00:00Z\"},{\"userId\":\"userId2\",\"performedAt\":\"2025-03-17T10:00:00Z\"}]}"));
 
-    verify(measureService, times(1)).getSharedWithUserIds(eq(measureIds));
+    verify(measureService, times(1)).getSharedMeasures(eq(measureIds));
+  }
+
+  @Test
+  public void testUpdateSharedMeasures() throws Exception {
+    AclSpecification aclSpecification1 = new AclSpecification();
+    aclSpecification1.setUserId("userId1");
+    aclSpecification1.setRoles(Set.of(RoleEnum.SHARED_WITH));
+
+    AclSpecification aclSpecification2 = new AclSpecification();
+    aclSpecification2.setUserId("userId2");
+    aclSpecification2.setRoles(Set.of(RoleEnum.SHARED_WITH));
+
+    Map<String, List<AclSpecification>> updatedSharedMeasures = new HashMap<>();
+    updatedSharedMeasures.put("measureId1", List.of(aclSpecification1));
+    updatedSharedMeasures.put("measureId2", List.of(aclSpecification1, aclSpecification2));
+
+    doReturn(updatedSharedMeasures).when(measureService).shareMeasures(any(), anyString());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/measures/shared")
+                    .with(user(TEST_USER_ID))
+                    .with(csrf())
+                    .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\"]}")
+                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isOk())
+            .andReturn();
+    verify(measureService, times(1)).shareMeasures(any(), anyString());
+    assertEquals(
+        result.getResponse().getContentAsString(),
+        "{\"measureId1\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]}],\"measureId2\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]},{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");
   }
 
   @Test
