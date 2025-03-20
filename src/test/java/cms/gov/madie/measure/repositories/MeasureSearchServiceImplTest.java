@@ -1,8 +1,10 @@
 package cms.gov.madie.measure.repositories;
 
 import cms.gov.madie.measure.dto.FacetDTO;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.dto.LibraryUsage;
 import org.bson.Document;
 
@@ -32,7 +34,7 @@ import static org.mockito.Mockito.when;
 public class MeasureSearchServiceImplTest {
 
   @Mock MongoTemplate mongoTemplate;
-
+  @Mock AppConfigService appConfigService;
   @InjectMocks MeasureSearchServiceImpl measureAclRepository;
 
   private MeasureListDTO measure1;
@@ -54,6 +56,7 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindMyActiveMeasures() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     // page size 3 from 0-2
     PageRequest pageRequest = PageRequest.of(0, 3);
     List<MeasureListDTO> allMeasures = List.of(measure1, measure2, measure3, measure4, measure5);
@@ -82,6 +85,7 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindMyActiveMeasuresWithSearchTerm() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
 
     FacetDTO facetDTO =
@@ -106,6 +110,7 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindMyActiveMeasuresWithSearchTermAndOneOptional() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -130,6 +135,7 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindMyActiveMeasuresWithVersionparts1() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -154,6 +160,7 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindMyActiveMeasuresWithVersionparts2() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -178,6 +185,7 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindMyActiveMeasuresWithVersionparts3() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -202,6 +210,7 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindMyActiveMeasuresWithSearchTermAndMultipleOptional() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -226,6 +235,7 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindMyActiveMeasuresWithSearchTermAndOnlyCmsId() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();

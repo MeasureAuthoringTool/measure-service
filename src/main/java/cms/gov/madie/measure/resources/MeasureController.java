@@ -64,8 +64,9 @@ public class MeasureController {
 
   @GetMapping("/measures/byMeasureSetId")
   public ResponseEntity<List<MeasureListDTO>> getMeasuresByMeasureSetId(
-      @RequestParam(name = "measureSetId") String measureSetId) {
-    List<MeasureListDTO> results = measureSetService.getMeasuresByMeasureSetId(measureSetId);
+      @RequestParam(name = "measureSetId") String measureSetId, boolean sortByLatestVersion) {
+    List<MeasureListDTO> results =
+        measureSetService.getMeasuresByMeasureSetId(measureSetId, sortByLatestVersion);
     return ResponseEntity.status(HttpStatus.OK).body(results);
   }
 
@@ -85,6 +86,17 @@ public class MeasureController {
           MeasureSet measureSet =
               measureSetRepository.findByMeasureSetId(measure.getMeasureSetId()).orElse(null);
           measure.setMeasureSet(measureSet);
+          List<Measure> filteredMeasures =
+              repository.findAllByMeasureSetIdAndActive(measure.getMeasureSetId(), true);
+          if (filteredMeasures.size() > 0) {
+            // to check for a given measureSetId, if it has more than 1 measure associated with it
+            // excluding the main one
+            measure.setHasAssociatedMeasures(
+                filteredMeasures.stream()
+                        .filter(filteredMeasure -> filteredMeasure.getId() != measure.getId())
+                        .count()
+                    > 1);
+          }
           return measure;
         });
     return ResponseEntity.ok(measures);

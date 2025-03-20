@@ -1,8 +1,10 @@
 package cms.gov.madie.measure.repositories;
 
 import cms.gov.madie.measure.dto.FacetDTO;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
@@ -14,6 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -21,6 +24,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
@@ -28,9 +32,11 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
   private final MongoTemplate mongoTemplate;
+  private AppConfigService appConfigService;
 
-  public MeasureSearchServiceImpl(MongoTemplate mongoTemplate) {
+  public MeasureSearchServiceImpl(MongoTemplate mongoTemplate, AppConfigService appConfigService) {
     this.mongoTemplate = mongoTemplate;
+    this.appConfigService = appConfigService;
   }
 
   private LookupOperation getLookupOperation() {
@@ -179,10 +185,75 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                 project(MeasureListDTO.class))
             .as("queryResults");
 
-    Aggregation pipeline = newAggregation(lookupOperation, matchOperation, facets);
+    Aggregation pipeline = null;
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)) {
+      SortOperation sortOperation =
+          sort(
+              Sort.by(
+                  Sort.Direction.DESC, "version.major", "version.minor", "version.revisionNumber"));
+
+      GroupOperation groupOperation = group("measureSetId").push("$$ROOT").as("docs");
+
+      ProjectionOperation projectionOperation =
+          project()
+              .and(
+                  ConditionalOperators.when(
+                          ComparisonOperators.Gt.valueOf(
+                                  ArrayOperators.Size.lengthOfArray(
+                                      ArrayOperators.Filter.filter("docs")
+                                          .as("item")
+                                          .by(
+                                              ComparisonOperators.Eq.valueOf(
+                                                      "item.measureMetaData.draft")
+                                                  .equalToValue(true))))
+                              .greaterThanValue(0))
+                      .thenValueOf(
+                          ArrayOperators.ArrayElemAt.arrayOf(
+                                  ArrayOperators.Filter.filter("docs")
+                                      .as("item")
+                                      .by(
+                                          ComparisonOperators.Eq.valueOf(
+                                                  "item.measureMetaData.draft")
+                                              .equalToValue(true)))
+                              .elementAt(0))
+                      .otherwiseValueOf(ArrayOperators.ArrayElemAt.arrayOf("docs").elementAt(0)))
+              .as("selectedDoc");
+
+      ReplaceRootOperation replaceRootOperation = replaceRoot("selectedDoc");
+
+      pipeline =
+          newAggregation(
+              lookupOperation,
+              sortOperation,
+              groupOperation,
+              projectionOperation,
+              replaceRootOperation,
+              matchOperation,
+              facets);
+
+    } else {
+      pipeline = newAggregation(lookupOperation, matchOperation, facets);
+    }
 
     List<FacetDTO> results =
         mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
+
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)) {
+      long totalSize = 0;
+      if (results != null && !results.isEmpty()) {
+        List<?> countList = results.get(0).getCount();
+        if (countList != null && !countList.isEmpty()) {
+          Object totalCount = countList.get(0);
+          if (totalCount instanceof Map<?, ?>) {
+            Object count = ((Map<?, ?>) totalCount).get("count");
+            if (count instanceof Number) {
+              totalSize = ((Number) count).longValue();
+            }
+          }
+        }
+      }
+      return new PageImpl<>(results.get(0).getQueryResults(), pageable, totalSize);
+    }
 
     return new PageImpl<>(
         results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());

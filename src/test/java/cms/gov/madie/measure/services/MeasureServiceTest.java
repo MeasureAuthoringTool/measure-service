@@ -723,13 +723,14 @@ public class MeasureServiceTest implements ResourceUtil {
     String measureSetId = "validMeasureSetId";
     List<MeasureListDTO> expectedMeasures = List.of(new MeasureListDTO());
 
-    when(measureSetService.getMeasuresByMeasureSetId(measureSetId)).thenReturn(expectedMeasures);
+    when(measureSetService.getMeasuresByMeasureSetId(measureSetId, false))
+        .thenReturn(expectedMeasures);
 
-    List<MeasureListDTO> result = measureSetService.getMeasuresByMeasureSetId(measureSetId);
+    List<MeasureListDTO> result = measureSetService.getMeasuresByMeasureSetId(measureSetId, false);
 
     assertNotNull(result);
     assertEquals(expectedMeasures.size(), result.size());
-    verify(measureSetService, times(1)).getMeasuresByMeasureSetId(measureSetId);
+    verify(measureSetService, times(1)).getMeasuresByMeasureSetId(measureSetId, false);
   }
 
   @Test
