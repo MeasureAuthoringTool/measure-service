@@ -34,17 +34,13 @@ public class FhirServicesClient {
   private FhirServicesConfig fhirServicesConfig;
   private RestTemplate fhirServicesRestTemplate;
 
-  public String getMeasureBundle(Measure measure, String accessToken, String bundleType) {
-    return getMeasureBundle(measure, accessToken, bundleType, "Info");
-  }
-
   public String getMeasureBundle(
-      Measure measure, String accessToken, String bundleType, String errorSeverity) {
+      Measure measure, String accessToken, String bundleType, String elmErrorSeverity) {
     UriComponentsBuilder uriBuilder =
         UriComponentsBuilder.fromUri(
                 buildMadieFhirServiceUri(
                     bundleType, fhirServicesConfig.getMadieFhirServiceMeasuresBundleUri()))
-            .queryParam("errorSeverity", errorSeverity);
+            .queryParam("elmErrorSeverity", elmErrorSeverity);
     URI uri = uriBuilder.build().toUri();
 
     HttpHeaders headers = new HttpHeaders();
@@ -55,11 +51,15 @@ public class FhirServicesClient {
         .getBody();
   }
 
-  public byte[] getMeasureBundleExport(Measure measure, String accessToken) {
-    URI uri =
-        URI.create(
-            fhirServicesConfig.getMadieFhirServiceBaseUrl()
-                + fhirServicesConfig.getMadieFhirServiceMeasureseExportUri());
+  public byte[] getMeasureBundleExport(
+      Measure measure, String elmErrorSeverity, String accessToken) {
+    UriComponentsBuilder uriBuilder =
+        UriComponentsBuilder.fromUri(
+                URI.create(
+                    fhirServicesConfig.getMadieFhirServiceBaseUrl()
+                        + fhirServicesConfig.getMadieFhirServiceMeasureseExportUri()))
+            .queryParam("elmErrorSeverity", elmErrorSeverity);
+    URI uri = uriBuilder.build().toUri();
     HttpHeaders headers = new HttpHeaders();
     headers.set(HttpHeaders.AUTHORIZATION, accessToken);
     headers.set(HttpHeaders.ACCEPT, MediaType.ALL_VALUE);

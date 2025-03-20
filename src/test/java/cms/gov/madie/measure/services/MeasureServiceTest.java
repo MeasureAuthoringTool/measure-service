@@ -22,6 +22,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.ZoneId;
@@ -31,8 +32,13 @@ import java.util.*;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import gov.cms.madie.models.access.AclOperation;
+import gov.cms.madie.models.common.AccessControlAction;
+import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.MeasureSetActionLog;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import org.apache.commons.io.IOUtils;
@@ -1699,18 +1705,18 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testGetSharedWithUserIdsWithNoMeasureFound() {
+  public void testGetSharedMeasuresWithNoMeasureFound() {
     String measureId1 = "measureId1";
     List<String> measureIds = List.of(measureId1);
 
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(null);
 
     assertThrows(
-        ResourceNotFoundException.class, () -> measureService.getSharedWithUserIds(measureIds));
+        ResourceNotFoundException.class, () -> measureService.getSharedMeasures(measureIds));
   }
 
   @Test
-  public void testGetSharedWithUserIdsWithNoMeasureSetFound() {
+  public void testGetSharedMeasuresWithNoMeasureSetFound() {
     AclSpecification acl1 = new AclSpecification();
     acl1.setUserId("userId2");
     acl1.setRoles(Set.of(RoleEnum.SHARED_WITH));
@@ -1739,11 +1745,11 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
 
     assertThrows(
-        InvalidMeasureStateException.class, () -> measureService.getSharedWithUserIds(measureIds));
+        InvalidMeasureStateException.class, () -> measureService.getSharedMeasures(measureIds));
   }
 
   @Test
-  public void testGetSharedWithUserIdsWithNoMeasureSetAclsFoundForOneMeasure() {
+  public void testGetSharedMeasuresWithNoMeasureSetAclsFoundForOneMeasure() {
     AclSpecification acl1 = new AclSpecification();
     acl1.setUserId("userId1");
     acl1.setRoles(Set.of(RoleEnum.SHARED_WITH));
@@ -1774,27 +1780,48 @@ public class MeasureServiceTest implements ResourceUtil {
             .measureSet(measureSet2)
             .build();
 
+    Instant fixedInstant = Instant.parse("2025-03-17T10:00:00Z");
+    ZoneId utc = ZoneId.of("UTC");
+    Clock fixedClock = Clock.fixed(fixedInstant, utc);
+
+    MeasureSetActionLog measureSetActionLog =
+        MeasureSetActionLog.builder()
+            .actions(
+                List.of(
+                    AccessControlAction.builder()
+                        .sharedWith(acl1.getUserId())
+                        .actionType(ActionType.SHARED)
+                        .performedAt(fixedClock.instant())
+                        .performedBy("performedByUserId")
+                        .build()))
+            .build();
+
     List<String> measureIds = List.of(measureId1, measureId2);
 
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(measure1);
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
+    when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
+        .thenReturn(measureSetActionLog);
 
-    Map<String, List<String>> userIdsByMeasureId = measureService.getSharedWithUserIds(measureIds);
+    Map<String, List<SharedUser>> sharedMeasures = measureService.getSharedMeasures(measureIds);
 
-    assertThat(userIdsByMeasureId.size(), is(equalTo(2)));
+    assertThat(sharedMeasures.size(), is(equalTo(2)));
 
-    assertTrue(userIdsByMeasureId.containsKey(measureId1));
-    assertThat(userIdsByMeasureId.get(measureId1).size(), is(equalTo(1)));
+    assertTrue(sharedMeasures.containsKey(measureId1));
+    assertThat(sharedMeasures.get(measureId1).size(), is(equalTo(1)));
     assertThat(
-        userIdsByMeasureId.get(measureId1).get(0),
+        sharedMeasures.get(measureId1).get(0).getUserId(),
         is(equalTo(measure1.getMeasureSet().getAcls().get(0).getUserId())));
+    assertThat(
+        sharedMeasures.get(measureId1).get(0).getPerformedAt(),
+        is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
 
-    assertTrue(userIdsByMeasureId.containsKey(measureId2));
-    assertThat(userIdsByMeasureId.get(measureId2).size(), is(equalTo(0)));
+    assertTrue(sharedMeasures.containsKey(measureId2));
+    assertThat(sharedMeasures.get(measureId2).size(), is(equalTo(0)));
   }
 
   @Test
-  public void testGetSharedWithUserIds() {
+  public void testGetSharedMeasures() {
     AclSpecification acl1 = new AclSpecification();
     acl1.setUserId("userId1");
     acl1.setRoles(Set.of(RoleEnum.SHARED_WITH));
@@ -1833,28 +1860,144 @@ public class MeasureServiceTest implements ResourceUtil {
             .measureSet(measureSet2)
             .build();
 
+    Instant fixedInstant = Instant.parse("2025-03-17T10:00:00Z");
+    ZoneId utc = ZoneId.of("UTC");
+    Clock fixedClock = Clock.fixed(fixedInstant, utc);
+
+    MeasureSetActionLog measureSetActionLog =
+        MeasureSetActionLog.builder()
+            .actions(
+                List.of(
+                    AccessControlAction.builder()
+                        .sharedWith(acl1.getUserId())
+                        .actionType(ActionType.SHARED)
+                        .performedAt(fixedClock.instant())
+                        .performedBy("performedByUserId")
+                        .build()))
+            .build();
+
     List<String> measureIds = List.of(measureId1, measureId2);
 
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(measure1);
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
+    when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
+        .thenReturn(measureSetActionLog);
 
-    Map<String, List<String>> userIdsByMeasureId = measureService.getSharedWithUserIds(measureIds);
+    Map<String, List<SharedUser>> sharedMeasures = measureService.getSharedMeasures(measureIds);
 
-    assertThat(userIdsByMeasureId.size(), is(equalTo(2)));
+    assertThat(sharedMeasures.size(), is(equalTo(2)));
 
-    assertTrue(userIdsByMeasureId.containsKey(measureId1));
-    assertThat(userIdsByMeasureId.get(measureId1).size(), is(equalTo(2)));
+    assertTrue(sharedMeasures.containsKey(measureId1));
+    assertThat(sharedMeasures.get(measureId1).size(), is(equalTo(2)));
     assertThat(
-        userIdsByMeasureId.get(measureId1).get(0),
-        is(equalTo(measure1.getMeasureSet().getAcls().get(1).getUserId())));
-    assertThat(
-        userIdsByMeasureId.get(measureId1).get(1),
+        sharedMeasures.get(measureId1).get(0).getUserId(),
         is(equalTo(measure1.getMeasureSet().getAcls().get(0).getUserId())));
-
-    assertTrue(userIdsByMeasureId.containsKey(measureId2));
-    assertThat(userIdsByMeasureId.get(measureId2).size(), is(equalTo(1)));
+    assertThat(sharedMeasures.get(measureId1).get(0).getPerformedAt(), is(equalTo(null)));
     assertThat(
-        userIdsByMeasureId.get(measureId2).get(0),
+        sharedMeasures.get(measureId1).get(1).getUserId(),
         is(equalTo(measure2.getMeasureSet().getAcls().get(0).getUserId())));
+    assertThat(
+        sharedMeasures.get(measureId1).get(1).getPerformedAt(),
+        is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+
+    assertTrue(sharedMeasures.containsKey(measureId2));
+    assertThat(sharedMeasures.get(measureId1).size(), is(equalTo(2)));
+    assertThat(
+        sharedMeasures.get(measureId2).get(0).getUserId(),
+        is(equalTo(measure2.getMeasureSet().getAcls().get(0).getUserId())));
+    assertThat(
+        sharedMeasures.get(measureId2).get(0).getPerformedAt(),
+        is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+  }
+
+  @Test
+  public void testUpdateSharedMeasuresWithNoMeasureFound() {
+    Map<String, List<String>> measures = new HashMap<>();
+
+    String measureId1 = "measureId1";
+    String measureId2 = "measureId2";
+
+    measures.put(measureId1, List.of("userId1", "userId2"));
+    measures.put(measureId2, List.of("userId2"));
+
+    when(measureService.findMeasureById(eq(measureId1))).thenReturn(null);
+
+    assertThrows(
+        ResourceNotFoundException.class, () -> measureService.shareMeasures(measures, "userName"));
+  }
+
+  @Test
+  public void testUpdateSharedMeasures() {
+    Map<String, List<String>> measures = new HashMap<>();
+
+    AclSpecification acl1 = new AclSpecification();
+    acl1.setUserId("userId1");
+    acl1.setRoles(Set.of(RoleEnum.SHARED_WITH));
+
+    AclSpecification acl2 = new AclSpecification();
+    acl2.setUserId("userId2");
+    acl2.setRoles(Set.of(RoleEnum.SHARED_WITH));
+
+    MeasureSet measureSet1 =
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl1, acl2))
+            .build();
+
+    String measureId1 = "measureId1";
+    Measure measure1 =
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet1)
+            .build();
+
+    MeasureSet measureSet2 =
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl1, acl2))
+            .build();
+
+    String measureId2 = "measureId2";
+    Measure measure2 =
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet2)
+            .build();
+
+    measures.put(measureId1, List.of("userId1", "userId2"));
+    measures.put(measureId2, List.of("userId2"));
+
+    when(measureService.findMeasureById(eq(measureId1))).thenReturn(measure1);
+    when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
+
+    doNothing().when(measureService).verifyAuthorization(anyString(), any(), any());
+
+    AclSpecification aclSpecification1 =
+        AclSpecification.builder().userId("userId1").roles(Set.of(RoleEnum.SHARED_WITH)).build();
+    AclSpecification aclSpecification2 =
+        AclSpecification.builder().userId("userId2").roles(Set.of(RoleEnum.SHARED_WITH)).build();
+
+    doReturn(List.of(aclSpecification1, aclSpecification2))
+        .when(measureService)
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+
+    Map<String, List<AclSpecification>> updatedShareMeasures =
+        measureService.shareMeasures(measures, "userName");
+    assertThat(updatedShareMeasures.size(), is(equalTo(2)));
+
+    assertTrue(updatedShareMeasures.containsKey(measureId1));
+    assertTrue(updatedShareMeasures.containsKey(measureId2));
+
+    assertThat(
+        updatedShareMeasures.get(measureId1),
+        is(equalTo(List.of(aclSpecification1, aclSpecification2))));
+
+    assertThat(
+        updatedShareMeasures.get(measureId2),
+        is(equalTo(List.of(aclSpecification1, aclSpecification2))));
   }
 }

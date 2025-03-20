@@ -33,14 +33,17 @@ public class QdmPackageService implements PackageService {
 
   @Override
   public PackageDto getMeasurePackage(
-      Measure measure, String accessToken, boolean includeElmWarnings) {
+      Measure measure, boolean includeElmWarnings, String accessToken) {
     if (!measure.getMeasureMetaData().isDraft()) {
       Optional<Export> savedExport = repository.findByMeasureId(measure.getId());
       if (savedExport.isPresent()) {
         log.info("returning persisted export for measure [{}]", measure.getId());
         return PackageDto.builder()
             .fromStorage(true)
-            .exportPackage(savedExport.get().getPackageData())
+            .exportPackage(
+                includeElmWarnings
+                    ? savedExport.get().getPackageData()
+                    : savedExport.get().getPublishablePackageData())
             .build();
       }
     }

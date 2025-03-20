@@ -7,6 +7,7 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
+import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
@@ -22,9 +23,12 @@ import org.springframework.data.mongodb.core.aggregation.SortOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
@@ -65,30 +69,69 @@ public class MeasureSetService {
    *
    * @param measureSetId -> set id of a measure set
    * @param aclOperation -> AclOperation to be updated
+   * @param userName -> userName performing action
    * @return an instance of MeasureSet
    */
-  public MeasureSet updateMeasureSetAcls(String measureSetId, AclOperation aclOperation) {
+  public MeasureSet updateMeasureSetAcls(
+      String measureSetId, AclOperation aclOperation, String userName) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (optionalMeasureSet.isPresent()) {
+      Map<String, ActionType> actionLogDetails = new HashMap<>();
       MeasureSet measureSet = optionalMeasureSet.get().toBuilder().build();
       if (AclOperation.AclAction.GRANT == aclOperation.getAction()) {
         if (CollectionUtils.isEmpty(measureSet.getAcls())) {
           // if no acl present, add it
           measureSet.setAcls(aclOperation.getAcls());
+
+          aclOperation
+              .getAcls()
+              .forEach(
+                  aclSpecification -> {
+                    String userId = aclSpecification.getUserId();
+
+                    aclSpecification
+                        .getRoles()
+                        .forEach(
+                            roleEnum -> {
+                              if (roleEnum == RoleEnum.SHARED_WITH) {
+                                actionLogDetails.put(userId, ActionType.SHARED);
+                              }
+                            });
+                  });
         } else {
           // update acl
           aclOperation
               .getAcls()
               .forEach(
                   acl -> {
-                    // check if acl already present for the user
+                    String userId = acl.getUserId();
+
+                    // check if acl is already present for the user
                     AclSpecification aclSpecification =
-                        findAclSpecificationByUserId(measureSet, acl.getUserId());
-                    // if acl does not present, add it
+                        findAclSpecificationByUserId(measureSet, userId);
+                    // if acl is not present, add it
                     if (aclSpecification == null) {
                       measureSet.getAcls().add(acl);
+
+                      acl.getRoles()
+                          .forEach(
+                              roleEnum -> {
+                                if (roleEnum == RoleEnum.SHARED_WITH) {
+                                  actionLogDetails.put(userId, ActionType.SHARED);
+                                }
+                              });
                     } else {
-                      aclSpecification.getRoles().addAll(acl.getRoles());
+                      acl.getRoles()
+                          .forEach(
+                              roleEnum -> {
+                                if (!aclSpecification.getRoles().contains(roleEnum)) {
+                                  aclSpecification.getRoles().add(roleEnum);
+
+                                  if (roleEnum == RoleEnum.SHARED_WITH) {
+                                    actionLogDetails.put(userId, ActionType.SHARED);
+                                  }
+                                }
+                              });
                     }
                   });
         }
@@ -110,8 +153,16 @@ public class MeasureSetService {
                   }
                 });
       }
+
       MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
       log.info("ACL updated for Measure set [{}]", updatedMeasureSet.getId());
+
+      actionLogDetails.forEach(
+          (userId, actionType) -> {
+            actionLogService.logShareAccessControlAction(
+                measureSetId, MeasureSet.class, actionType, userName, userId);
+          });
+
       return updatedMeasureSet;
     } else {
       String error =
@@ -268,5 +319,18 @@ public class MeasureSetService {
       aggregation = newAggregation(lookupOperation, matchOperation);
     }
     return mongoTemplate.aggregate(aggregation, "measure", MeasureListDTO.class).getMappedResults();
+  }
+
+  public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {
+    List<Measure> mostRecentMeasures = new ArrayList<Measure>();
+    for (String measureSetId : measureSetIds) {
+      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId);
+      if (measures != null && !measures.isEmpty()) {
+        MeasureListDTO measure = measures.get(measures.size() - 1);
+        Measure recentMeasure = measureRepository.findById(measure.getId()).orElse(null);
+        mostRecentMeasures.add(recentMeasure);
+      }
+    }
+    return mostRecentMeasures;
   }
 }

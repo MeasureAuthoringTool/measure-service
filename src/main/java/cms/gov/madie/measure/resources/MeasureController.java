@@ -2,6 +2,7 @@ package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
@@ -67,6 +68,13 @@ public class MeasureController {
       @RequestParam(name = "measureSetId") String measureSetId, boolean sortByLatestVersion) {
     List<MeasureListDTO> results =
         measureSetService.getMeasuresByMeasureSetId(measureSetId, sortByLatestVersion);
+    return ResponseEntity.status(HttpStatus.OK).body(results);
+  }
+
+  @GetMapping("/measures/recentsByMeasureSetId")
+  public ResponseEntity<List<Measure>> getRecentMeasuresByMeasureSetId(
+      @RequestParam(name = "measureSetIds") List<String> measureSetIds) {
+    List<Measure> results = measureSetService.getRecentMeasuresByMeasureSetId(measureSetIds);
     return ResponseEntity.status(HttpStatus.OK).body(results);
   }
 
@@ -196,14 +204,21 @@ public class MeasureController {
       @RequestBody @Validated AclOperation aclOperation,
       @Value("${admin-api-key}") String apiKey) {
     List<AclSpecification> aclSpecifications =
-        measureService.updateAccessControlList(id, aclOperation);
+        measureService.updateAccessControlList(id, aclOperation, "admin");
     return ResponseEntity.ok().body(aclSpecifications);
   }
 
   @GetMapping("/measures/shared")
-  public ResponseEntity<Map<String, List<String>>> getSharedWithUserIds(
+  public ResponseEntity<Map<String, List<SharedUser>>> getSharedMeasures(
       HttpServletRequest request, @RequestParam(name = "measureIds") List<String> measureIds) {
-    return ResponseEntity.ok().body(measureService.getSharedWithUserIds(measureIds));
+    return ResponseEntity.ok().body(measureService.getSharedMeasures(measureIds));
+  }
+
+  @PutMapping("/measures/shared")
+  public ResponseEntity<Map<String, List<AclSpecification>>> shareMeasures(
+      @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
+
+    return ResponseEntity.ok(measureService.shareMeasures(measureUserIdMap, principal.getName()));
   }
 
   @PutMapping("/measures/{id}/ownership")
