@@ -324,7 +324,7 @@ public class MeasureSetService {
   public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {
     List<Measure> mostRecentMeasures = new ArrayList<Measure>();
     for (String measureSetId : measureSetIds) {
-      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId);
+      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId, false);
       if (measures != null && !measures.isEmpty()) {
         MeasureListDTO measure = measures.get(measures.size() - 1);
         Measure recentMeasure = measureRepository.findById(measure.getId()).orElse(null);
