@@ -139,12 +139,25 @@ public class MeasureSetService {
             .getAcls()
             .forEach(
                 acl -> {
+                  String userId = acl.getUserId();
+
                   // check if acl already present for the user
                   AclSpecification aclSpecification =
                       findAclSpecificationByUserId(measureSet, acl.getUserId());
                   if (aclSpecification != null) {
                     // remove roles from ACL
-                    aclSpecification.getRoles().removeAll(acl.getRoles());
+                    acl.getRoles()
+                        .forEach(
+                            roleEnum -> {
+                              if (aclSpecification.getRoles().contains(roleEnum)) {
+                                aclSpecification.getRoles().remove(roleEnum);
+
+                                if (roleEnum == RoleEnum.SHARED_WITH) {
+                                  actionLogDetails.put(userId, ActionType.UNSHARED);
+                                }
+                              }
+                            });
+
                     // after removing the roles if there is no role left, remove acl
                     if (aclSpecification.getRoles().isEmpty()) {
                       measureSet.getAcls().remove(aclSpecification);

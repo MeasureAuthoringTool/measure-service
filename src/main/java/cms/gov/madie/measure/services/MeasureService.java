@@ -489,17 +489,7 @@ public class MeasureService {
       Map<String, List<String>> measureUserIdMap, String username) {
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
-    measureUserIdMap
-        .keySet()
-        .forEach(
-            measureId -> {
-              Measure measure = findMeasureById(measureId);
-
-              if (measure == null) {
-                throw new ResourceNotFoundException("Measure does not exist: " + measureId);
-              }
-              verifyAuthorization(username, measure, null);
-            });
+    verifyShareAuthorization(measureUserIdMap, username);
 
     measureUserIdMap.forEach(
         (measureId, userIds) -> {
@@ -511,10 +501,48 @@ public class MeasureService {
     return measureIdToAclSpecification;
   }
 
+  public Map<String, List<AclSpecification>> unshareMeasures(
+      Map<String, List<String>> measureUserIdMap, String username) {
+    Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
+
+    verifyShareAuthorization(measureUserIdMap, username);
+
+    measureUserIdMap.forEach(
+        (measureId, userIds) -> {
+          AclOperation aclOperation = buildUnshareAclOperation(userIds);
+          measureIdToAclSpecification.put(
+              measureId, updateAccessControlList(measureId, aclOperation, username));
+        });
+
+    return measureIdToAclSpecification;
+  }
+
+  private void verifyShareAuthorization(
+      Map<String, List<String>> measureUserIdMap, String username) {
+    measureUserIdMap
+        .keySet()
+        .forEach(
+            measureId -> {
+              Measure measure = findMeasureById(measureId);
+
+              if (measure == null) {
+                throw new ResourceNotFoundException("Measure does not exist: " + measureId);
+              }
+              verifyAuthorization(username, measure, null);
+            });
+  }
+
   private AclOperation buildShareAclOperation(List<String> userIds) {
     return AclOperation.builder()
         .acls(buildShareAclSpecifications(userIds))
         .action(AclOperation.AclAction.GRANT)
+        .build();
+  }
+
+  private AclOperation buildUnshareAclOperation(List<String> userIds) {
+    return AclOperation.builder()
+        .acls(buildShareAclSpecifications(userIds))
+        .action(AclOperation.AclAction.REVOKE)
         .build();
   }
 
