@@ -2070,8 +2070,6 @@ public class MeasureServiceTest implements ResourceUtil {
 
     AclSpecification aclSpecification1 =
         AclSpecification.builder().userId("userId1").roles(Set.of(RoleEnum.SHARED_WITH)).build();
-    AclSpecification aclSpecification2 =
-        AclSpecification.builder().userId("userId2").roles(Set.of(RoleEnum.SHARED_WITH)).build();
 
     doReturn(List.of(aclSpecification1))
         .when(measureService)
