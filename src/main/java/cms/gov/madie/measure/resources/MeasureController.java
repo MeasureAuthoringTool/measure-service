@@ -68,7 +68,19 @@ public class MeasureController {
       @RequestParam(name = "measureSetId") String measureSetId, boolean sortByLatestVersion) {
     List<MeasureListDTO> results =
         measureSetService.getMeasuresByMeasureSetId(measureSetId, sortByLatestVersion);
-    return ResponseEntity.status(HttpStatus.OK).body(results);
+    List<MeasureListDTO> updatedResults =
+        results.stream()
+            .map(
+                result -> {
+                  MeasureSet measureSet =
+                      measureSetRepository
+                          .findByMeasureSetId(result.getMeasureSetId())
+                          .orElse(null);
+                  result.setMeasureSet(measureSet);
+                  return result;
+                })
+            .toList();
+    return ResponseEntity.status(HttpStatus.OK).body(updatedResults);
   }
 
   @GetMapping("/measures/recentsByMeasureSetId")
