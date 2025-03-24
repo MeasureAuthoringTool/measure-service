@@ -52,4 +52,5 @@ public class MeasureListDTO {
   private String ecqmTitle;
 
   private MeasureMetaData measureMetaData;
+  private boolean hasAssociatedMeasures;
 }
