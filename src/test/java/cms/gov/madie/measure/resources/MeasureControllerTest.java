@@ -110,6 +110,8 @@ class MeasureControllerTest {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
 
     Principal principal = mock(Principal.class);
+    when(repository.findAllByMeasureSetIdAndActive(anyString(), anyBoolean()))
+        .thenReturn(List.of(measure1));
     when(principal.getName()).thenReturn("test.user");
     when(measureService.getMeasuresByCriteria(
             eq(null), eq(false), any(Pageable.class), eq("test.user")))
@@ -127,6 +129,8 @@ class MeasureControllerTest {
   @Test
   void getMeasuresWithCurrentUserFilter() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
+    when(repository.findAllByMeasureSetIdAndActive(anyString(), anyBoolean()))
+        .thenReturn(List.of(measure1));
     when(measureService.getMeasuresByCriteria(
             eq(null), eq(true), any(Pageable.class), eq("test.user")))
         .thenReturn(measures);
@@ -164,9 +168,11 @@ class MeasureControllerTest {
   void getMeasuresByMeasureSetId() {
     measure1.setId("testId");
     List<MeasureListDTO> measures = Arrays.asList(measureList);
-    when(measureSetService.getMeasuresByMeasureSetId(anyString())).thenReturn(measures);
-    ResponseEntity<List<MeasureListDTO>> response = controller.getMeasuresByMeasureSetId("test");
-    verify(measureSetService, times(1)).getMeasuresByMeasureSetId(anyString());
+    when(measureSetService.getMeasuresByMeasureSetId(anyString(), anyBoolean()))
+        .thenReturn(measures);
+    ResponseEntity<List<MeasureListDTO>> response =
+        controller.getMeasuresByMeasureSetId("test", false);
+    verify(measureSetService, times(1)).getMeasuresByMeasureSetId(anyString(), anyBoolean());
     assertNotNull(response.getBody());
   }
 
