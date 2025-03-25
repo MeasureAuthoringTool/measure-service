@@ -5,6 +5,7 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.utils.JsonUtil;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
@@ -18,6 +19,9 @@ import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
@@ -221,6 +225,9 @@ public class VersionService {
     measureDraft.setCreatedAt(now);
     measureDraft.setLastModifiedAt(now);
     measureDraft.setCreatedBy(username);
+    if (!CollectionUtils.isEmpty(measure.getTestCases())) {
+      measureDraft.setTestCases(convertDateTimeToUTC(measure.getTestCases()));
+    }
     Measure savedDraft = measureRepository.save(measureDraft);
     log.info(
         "User [{}] created a draft for measure with id [{}]. Draft id is [{}]",
@@ -496,5 +503,25 @@ public class VersionService {
         .toList()
         .get(0)
         .getCaseNumber();
+  }
+
+  List<TestCase> convertDateTimeToUTC(List<TestCase> testCases) {
+    return testCases.stream()
+        .map(
+            testCase -> {
+              if (StringUtils.isNotBlank(testCase.getJson())) {
+                try {
+                  ObjectMapper mapper = new ObjectMapper();
+                  JsonNode rootNode = mapper.readTree(testCase.getJson());
+                  JsonUtil.replaceNestedDateTimeStringValue(rootNode);
+                  String modifiedJsonString = mapper.writeValueAsString(rootNode);
+                  testCase.setJson(modifiedJsonString);
+                } catch (IOException e) {
+                  log.error("Invalid test case json");
+                }
+              }
+              return testCase;
+            })
+        .collect(Collectors.toList());
   }
 }

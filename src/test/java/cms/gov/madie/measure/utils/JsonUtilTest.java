@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -707,5 +708,31 @@ public class JsonUtilTest implements ResourceUtil {
 
     JsonUtil.setNumeratorValues(ippNode, populationValues, qdmMeasure);
     assertTrue(CollectionUtils.isEmpty(populationValues));
+  }
+
+  @Test
+  void testReplaceNestedDateTimeStringValue() throws IOException {
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode rootNode = mapper.readTree(json);
+    assertTrue(json.contains("2022-09-06T20:47:21-05:00"));
+    assertTrue(json.contains("2021-10-13T03:34:10.160+02:00"));
+    JsonUtil.replaceNestedDateTimeStringValue(rootNode);
+    String modifiedJsonString = mapper.writeValueAsString(rootNode);
+
+    // 2022-09-06T20:47:21-05:00 -> 2022-09-07T01:47:21.000+00:00
+    assertTrue(modifiedJsonString.contains("2022-09-07T01:47:21.000+00:00"));
+    // 2021-10-13T03:34:10.160+02:00 -> 2021-10-13T01:34:10.160+00:00
+    assertTrue(modifiedJsonString.contains("2021-10-13T01:34:10.160+00:00"));
+    // 2023-08-10T03:34:10.054Z -> 2023-08-10T03:34:10.054+00:00
+    assertTrue(modifiedJsonString.contains("2023-08-10T03:34:10.054+00:00"));
+    // 2023-08-15T03:34:10.054Z -> 2023-08-15T03:34:10.054+00:00
+    assertTrue(modifiedJsonString.contains("2023-08-15T03:34:10.054+00:00"));
+    // 2021-10-13T03:34:10.160+03:00 -> 2021-10-13T00:34:10.160+00:00
+    assertTrue(modifiedJsonString.contains("2021-10-13T00:34:10.160+00:00"));
+    // 2023-09-12T03:34:10.054Z -> 2023-09-12T03:34:10.054+00:00
+    assertTrue(modifiedJsonString.contains("2023-09-12T03:34:10.054+00:00"));
+    // 2023-09-13T09:34:10.054Z -> 2023-09-13T09:34:10.054+00:00
+    assertTrue(modifiedJsonString.contains("2023-09-13T09:34:10.054+00:00"));
   }
 }
