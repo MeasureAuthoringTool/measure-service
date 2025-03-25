@@ -43,6 +43,8 @@ public final class JsonUtil {
   private static final String LOCAL_DATE_TIME_PATTERN_2 = "yyyy-MM-dd'T'HH:mm:ssXXX";
   private static final DateTimeFormatter FORMATTER_2 =
       DateTimeFormatter.ofPattern(LOCAL_DATE_TIME_PATTERN_2);
+  private static final Pattern PATTERN =
+      Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}");
 
   private JsonUtil() {}
 
@@ -671,20 +673,22 @@ public final class JsonUtil {
   // otherwise, returns the original value
   static String getNewValue(String value) {
     String newValue = value;
-    ZonedDateTime dateTime = null;
-    ZonedDateTime adjustedDateTime = null;
-    try {
-      dateTime = ZonedDateTime.parse(value, FORMATTER);
-      adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
-      newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
-    } catch (DateTimeParseException e) {
+    if (value.length() > 19 && (PATTERN.matcher(value.substring(0, 19)).matches())) {
+      ZonedDateTime dateTime = null;
+      ZonedDateTime adjustedDateTime = null;
       try {
-        // for old data without milliseconds
-        dateTime = ZonedDateTime.parse(value, FORMATTER_2);
+        dateTime = ZonedDateTime.parse(value, FORMATTER);
         adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
-        newValue = adjustedDateTime.format(FORMATTER_2).replace("Z", ".000+00:00");
-      } catch (DateTimeParseException ex) {
-        // log.info("Error parsing date/time string: " + e.getMessage());
+        newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
+      } catch (DateTimeParseException e) {
+        try {
+          // for older data without milliseconds
+          dateTime = ZonedDateTime.parse(value, FORMATTER_2);
+          adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
+          newValue = adjustedDateTime.format(FORMATTER_2).replace("Z", ".000+00:00");
+        } catch (DateTimeParseException ex) {
+          log.info("Error parsing date/time string: " + e.getMessage());
+        }
       }
     }
     return newValue;
