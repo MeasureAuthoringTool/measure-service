@@ -118,8 +118,8 @@ public class MeasureUtil {
       result = false;
     } else {
       result =
-          !defDescPairs.stream()
-              .anyMatch(def -> cqlDefinitionReturnTypeService.isDefineInElm(def, elmJson));
+          defDescPairs.stream()
+              .anyMatch(def -> !cqlDefinitionReturnTypeService.isDefineInElm(def, elmJson));
     }
     return result;
   }
