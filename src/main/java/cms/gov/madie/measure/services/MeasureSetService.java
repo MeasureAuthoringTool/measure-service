@@ -14,10 +14,12 @@ import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.LookupOperation;
 import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.SortOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
@@ -28,8 +30,7 @@ import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
 
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.match;
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.newAggregation;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Slf4j
 @Service
@@ -299,23 +300,31 @@ public class MeasureSetService {
         .as("measureSet");
   }
 
-  public List<MeasureListDTO> getMeasuresByMeasureSetId(String measureSetId) {
+  public List<MeasureListDTO> getMeasuresByMeasureSetId(
+      String measureSetId, boolean sortByLatestVersion) {
     LookupOperation lookupOperation = getLookupOperation();
 
     Criteria measureCriteria =
         Criteria.where("active").is(true).and("measureSetId").is(measureSetId);
 
     MatchOperation matchOperation = match(measureCriteria);
-
-    Aggregation aggregation = newAggregation(lookupOperation, matchOperation);
-
+    Aggregation aggregation;
+    if (sortByLatestVersion) {
+      SortOperation sortOperation =
+          sort(
+              Sort.by(
+                  Sort.Direction.DESC, "version.major", "version.minor", "version.revisionNumber"));
+      aggregation = newAggregation(lookupOperation, matchOperation, sortOperation);
+    } else {
+      aggregation = newAggregation(lookupOperation, matchOperation);
+    }
     return mongoTemplate.aggregate(aggregation, "measure", MeasureListDTO.class).getMappedResults();
   }
 
   public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {
     List<Measure> mostRecentMeasures = new ArrayList<Measure>();
     for (String measureSetId : measureSetIds) {
-      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId);
+      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId, false);
       if (measures != null && !measures.isEmpty()) {
         MeasureListDTO measure = measures.get(measures.size() - 1);
         Measure recentMeasure = measureRepository.findById(measure.getId()).orElse(null);
