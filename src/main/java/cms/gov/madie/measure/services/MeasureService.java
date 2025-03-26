@@ -86,7 +86,8 @@ public class MeasureService {
             : measure.getMeasureSet();
     if (measureSet == null) {
       log.error(
-          "User [{}] called verifyAuthorization but failed because no measure set exists for measure with measure ID [{}]",
+          "User [{}] called verifyAuthorization but failed because no measure set exists for "
+              + "measure with measure ID [{}]",
           username,
           measure.getId());
       throw new InvalidMeasureStateException(
@@ -421,7 +422,8 @@ public class MeasureService {
     Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
     if (persistedMeasure.isEmpty()) {
       log.error(
-          "User [{}] called updateAccessControlList but failed because the measure with measure ID [{}] does not exist.",
+          "User [{}] called updateAccessControlList but failed because the measure with measure "
+              + "ID [{}] does not exist.",
           userName,
           measureId);
       throw new ResourceNotFoundException("Measure does not exist: " + measureId);
@@ -433,7 +435,8 @@ public class MeasureService {
     actionLogService.logAction(
         measureId, Measure.class, ActionType.UPDATED, userName, "ACL updated successfully");
     log.info(
-        "User [{}] successfully called updateAccessControlList with measure ID [{}] and AclOperation [{}]. The AclSpecification is now [{}]",
+        "User [{}] successfully called updateAccessControlList with measure ID [{}] and "
+            + "AclOperation [{}]. The AclSpecification is now [{}]",
         userName,
         measureId,
         aclOperation,
@@ -449,7 +452,8 @@ public class MeasureService {
 
       if (measure == null) {
         log.error(
-            "User [{}] called getSharedMeasures but failed because the measure with measure ID [{}] does not exist.",
+            "User [{}] called getSharedMeasures but failed because the measure with measure ID "
+                + "[{}] does not exist.",
             username,
             measureId);
         throw new ResourceNotFoundException("Measure does not exist: " + measureId);
@@ -457,7 +461,8 @@ public class MeasureService {
 
       if (measure.getMeasureSet() == null) {
         log.error(
-            "User [{}] called getSharedMeasures but failed because no measure set exists for measure with measure ID [{}]",
+            "User [{}] called getSharedMeasures but failed because no measure set exists for "
+                + "measure with measure ID [{}]",
             username,
             measureId);
         throw new InvalidMeasureStateException(
@@ -532,7 +537,8 @@ public class MeasureService {
         });
 
     log.info(
-        "User [{}] successfully called shareMeasures with measureUserIdMap [{}]. The AclSpecification is now [{}]",
+        "User [{}] successfully called shareMeasures with measureUserIdMap [{}]. The "
+            + "AclSpecification is now [{}]",
         username,
         measureUserIdMap,
         measureIdToAclSpecification);
@@ -559,7 +565,8 @@ public class MeasureService {
         });
 
     log.info(
-        "User [{}] successfully called unshareMeasures with measureUserIdMap [{}]. The AclSpecification is now [{}]",
+        "User [{}] successfully called unshareMeasures with measureUserIdMap [{}]. The "
+            + "AclSpecification is now [{}]",
         username,
         measureUserIdMap,
         measureIdToAclSpecification);
@@ -570,7 +577,8 @@ public class MeasureService {
   private void verifyShareAuthorization(
       Map<String, List<String>> measureUserIdMap, String username) {
     log.info(
-        "User [{}] has called verifyShareAuthorization to determine whether operation with [{}] is allowed to be performed",
+        "User [{}] has called verifyShareAuthorization to determine whether operation with [{}]"
+            + " is allowed to be performed",
         username,
         measureUserIdMap);
 
@@ -582,7 +590,8 @@ public class MeasureService {
 
               if (measure == null) {
                 log.error(
-                    "User [{}] called verifyShareAuthorization with measureUserIdMap [{}] but failed because the measure with measure ID [{}] does not exist.",
+                    "User [{}] called verifyShareAuthorization with measureUserIdMap [{}] but "
+                        + "failed because the measure with measure ID [{}] does not exist.",
                     username,
                     measureUserIdMap,
                     measureId);
@@ -592,7 +601,8 @@ public class MeasureService {
             });
 
     log.info(
-        "User [{}] successfully called verifyShareAuthorization and determined that operation with [{}] is allowed to be performed",
+        "User [{}] successfully called verifyShareAuthorization and determined that operation "
+            + "with [{}] is allowed to be performed",
         username,
         measureUserIdMap);
   }

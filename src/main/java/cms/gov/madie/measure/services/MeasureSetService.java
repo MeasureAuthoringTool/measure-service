@@ -180,7 +180,8 @@ public class MeasureSetService {
     } else {
       String error =
           String.format(
-              "User %s called updateMeasureSetAcls with AclOperation %s but failed because no measure set exists with measure set ID %s",
+              "User %s called updateMeasureSetAcls with AclOperation %s but failed because no "
+                  + "measure set exists with measure set ID %s",
               userName, aclOperation.toString(), measureSetId);
       log.error(error);
       throw new ResourceNotFoundException(error);
