@@ -222,8 +222,11 @@ public class MeasureController {
 
   @GetMapping("/measures/shared")
   public ResponseEntity<Map<String, List<SharedUser>>> getSharedMeasures(
-      HttpServletRequest request, @RequestParam(name = "measureIds") List<String> measureIds) {
-    return ResponseEntity.ok().body(measureService.getSharedMeasures(measureIds));
+      HttpServletRequest request,
+      @RequestParam(name = "measureIds") List<String> measureIds,
+      Principal principal) {
+    return ResponseEntity.ok()
+        .body(measureService.getSharedMeasures(measureIds, principal.getName()));
   }
 
   @PutMapping("/measures/shared")

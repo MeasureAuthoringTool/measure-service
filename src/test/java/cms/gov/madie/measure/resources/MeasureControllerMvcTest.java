@@ -2035,7 +2035,7 @@ public class MeasureControllerMvcTest {
     sharedMeasures.put(measureId1, List.of(sharedUser1));
     sharedMeasures.put(measureId2, List.of(sharedUser1, sharedUser2));
 
-    doReturn(sharedMeasures).when(measureService).getSharedMeasures(eq(measureIds));
+    doReturn(sharedMeasures).when(measureService).getSharedMeasures(eq(measureIds), anyString());
 
     mockMvc
         .perform(
@@ -2049,7 +2049,7 @@ public class MeasureControllerMvcTest {
                 .string(
                     "{\"measureId1\":[{\"userId\":\"userId1\",\"performedAt\":\"2025-03-17T10:00:00Z\"}],\"measureId2\":[{\"userId\":\"userId1\",\"performedAt\":\"2025-03-17T10:00:00Z\"},{\"userId\":\"userId2\",\"performedAt\":\"2025-03-17T10:00:00Z\"}]}"));
 
-    verify(measureService, times(1)).getSharedMeasures(eq(measureIds));
+    verify(measureService, times(1)).getSharedMeasures(eq(measureIds), anyString());
   }
 
   @Test

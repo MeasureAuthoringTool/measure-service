@@ -281,13 +281,21 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testUpdateMeasureSetAclsWhenMeasureSetNotFound() {
+    AclSpecification aclSpec = new AclSpecification();
+    aclSpec.setUserId("john_1");
+    aclSpec.setRoles(Set.of(RoleEnum.SHARED_WITH));
+    AclOperation aclOperation =
+        AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.GRANT).build();
+
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.empty());
 
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.updateMeasureSetAcls("1", new AclOperation(), "userName"));
-    assertTrue(ex.getMessage().contains("measure set may not exists."));
+            () -> measureSetService.updateMeasureSetAcls("1", aclOperation, "userName"));
+    assertEquals(
+        "User userName called updateMeasureSetAcls with AclOperation AclOperation(acls=[AclSpecification(userId=john_1, roles=[SHARED_WITH])], action=GRANT) but failed because no measure set exists with measure set ID 1",
+        ex.getMessage());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
   }

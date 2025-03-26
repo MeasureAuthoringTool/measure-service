@@ -85,6 +85,10 @@ public class MeasureService {
             ? measureSetService.findByMeasureSetId(measure.getMeasureSetId())
             : measure.getMeasureSet();
     if (measureSet == null) {
+      log.error(
+          "User [{}] called verifyAuthorization but failed because no measure set exists for measure with measure ID [{}]",
+          username,
+          measure.getId());
       throw new InvalidMeasureStateException(
           "No measure set exists for measure with ID " + measure.getId());
     }
@@ -105,6 +109,7 @@ public class MeasureService {
                     acl ->
                         acl.getUserId().equalsIgnoreCase(username)
                             && acl.getRoles().stream().anyMatch(allowedRoles::contains)))) {
+      log.error("User {} is not authorized for {} with target ID {}", username, target, targetId);
       throw new UnauthorizedException(target, targetId, username);
     }
   }
@@ -408,8 +413,17 @@ public class MeasureService {
 
   public List<AclSpecification> updateAccessControlList(
       String measureId, AclOperation aclOperation, String userName) {
+    log.info(
+        "User [{}] has called updateAccessControlList with measure ID [{}] and AclOperation [{}]",
+        userName,
+        measureId,
+        aclOperation.toString());
     Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
     if (persistedMeasure.isEmpty()) {
+      log.error(
+          "User [{}] called updateAccessControlList but failed because the measure with measure ID [{}] does not exist.",
+          userName,
+          measureId);
       throw new ResourceNotFoundException("Measure does not exist: " + measureId);
     }
 
@@ -418,20 +432,34 @@ public class MeasureService {
         measureSetService.updateMeasureSetAcls(measure.getMeasureSetId(), aclOperation, userName);
     actionLogService.logAction(
         measureId, Measure.class, ActionType.UPDATED, userName, "ACL updated successfully");
+    log.info(
+        "User [{}] successfully called updateAccessControlList with measure ID [{}] and AclOperation [{}]. The AclSpecification is now [{}]",
+        userName,
+        measureId,
+        aclOperation,
+        measureSet.getAcls());
     return measureSet.getAcls();
   }
 
-  public Map<String, List<SharedUser>> getSharedMeasures(List<String> measureIds) {
+  public Map<String, List<SharedUser>> getSharedMeasures(List<String> measureIds, String username) {
     Map<String, List<SharedUser>> sharedMeasures = new HashMap<>();
 
     for (String measureId : measureIds) {
       Measure measure = findMeasureById(measureId);
 
       if (measure == null) {
+        log.error(
+            "User [{}] called getSharedMeasures but failed because the measure with measure ID [{}] does not exist.",
+            username,
+            measureId);
         throw new ResourceNotFoundException("Measure does not exist: " + measureId);
       }
 
       if (measure.getMeasureSet() == null) {
+        log.error(
+            "User [{}] called getSharedMeasures but failed because no measure set exists for measure with measure ID [{}]",
+            username,
+            measureId);
         throw new InvalidMeasureStateException(
             "No measure set exists for measure with ID: " + measure.getId());
       }
@@ -487,6 +515,11 @@ public class MeasureService {
 
   public Map<String, List<AclSpecification>> shareMeasures(
       Map<String, List<String>> measureUserIdMap, String username) {
+    log.info(
+        "User [{}] has called shareMeasures with measureUserIdMap [{}]",
+        username,
+        measureUserIdMap);
+
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
     verifyShareAuthorization(measureUserIdMap, username);
@@ -498,11 +531,22 @@ public class MeasureService {
               measureId, updateAccessControlList(measureId, aclOperation, username));
         });
 
+    log.info(
+        "User [{}] successfully called shareMeasures with measureUserIdMap [{}]. The AclSpecification is now [{}]",
+        username,
+        measureUserIdMap,
+        measureIdToAclSpecification);
+
     return measureIdToAclSpecification;
   }
 
   public Map<String, List<AclSpecification>> unshareMeasures(
       Map<String, List<String>> measureUserIdMap, String username) {
+    log.info(
+        "User [{}] has called unshareMeasures with measureUserIdMap [{}]",
+        username,
+        measureUserIdMap);
+
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
     verifyShareAuthorization(measureUserIdMap, username);
@@ -514,11 +558,22 @@ public class MeasureService {
               measureId, updateAccessControlList(measureId, aclOperation, username));
         });
 
+    log.info(
+        "User [{}] successfully called unshareMeasures with measureUserIdMap [{}]. The AclSpecification is now [{}]",
+        username,
+        measureUserIdMap,
+        measureIdToAclSpecification);
+
     return measureIdToAclSpecification;
   }
 
   private void verifyShareAuthorization(
       Map<String, List<String>> measureUserIdMap, String username) {
+    log.info(
+        "User [{}] has called verifyShareAuthorization to determine whether operation with [{}] is allowed to be performed",
+        username,
+        measureUserIdMap);
+
     measureUserIdMap
         .keySet()
         .forEach(
@@ -526,10 +581,20 @@ public class MeasureService {
               Measure measure = findMeasureById(measureId);
 
               if (measure == null) {
+                log.error(
+                    "User [{}] called verifyShareAuthorization with measureUserIdMap [{}] but failed because the measure with measure ID [{}] does not exist.",
+                    username,
+                    measureUserIdMap,
+                    measureId);
                 throw new ResourceNotFoundException("Measure does not exist: " + measureId);
               }
               verifyAuthorization(username, measure, null);
             });
+
+    log.info(
+        "User [{}] successfully called verifyShareAuthorization and determined that operation with [{}] is allowed to be performed",
+        username,
+        measureUserIdMap);
   }
 
   private AclOperation buildShareAclOperation(List<String> userIds) {

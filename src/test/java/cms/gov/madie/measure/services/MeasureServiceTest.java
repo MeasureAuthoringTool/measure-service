@@ -1712,7 +1712,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(null);
 
     assertThrows(
-        ResourceNotFoundException.class, () -> measureService.getSharedMeasures(measureIds));
+        ResourceNotFoundException.class,
+        () -> measureService.getSharedMeasures(measureIds, "username"));
   }
 
   @Test
@@ -1745,7 +1746,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
 
     assertThrows(
-        InvalidMeasureStateException.class, () -> measureService.getSharedMeasures(measureIds));
+        InvalidMeasureStateException.class,
+        () -> measureService.getSharedMeasures(measureIds, "username"));
   }
 
   @Test
@@ -1803,7 +1805,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
         .thenReturn(measureSetActionLog);
 
-    Map<String, List<SharedUser>> sharedMeasures = measureService.getSharedMeasures(measureIds);
+    Map<String, List<SharedUser>> sharedMeasures =
+        measureService.getSharedMeasures(measureIds, "username");
 
     assertThat(sharedMeasures.size(), is(equalTo(2)));
 
@@ -1883,7 +1886,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
         .thenReturn(measureSetActionLog);
 
-    Map<String, List<SharedUser>> sharedMeasures = measureService.getSharedMeasures(measureIds);
+    Map<String, List<SharedUser>> sharedMeasures =
+        measureService.getSharedMeasures(measureIds, "username");
 
     assertThat(sharedMeasures.size(), is(equalTo(2)));
 

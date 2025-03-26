@@ -180,8 +180,8 @@ public class MeasureSetService {
     } else {
       String error =
           String.format(
-              "Measure with set id `%s` can not be shared, measure set may not exists.",
-              measureSetId);
+              "User %s called updateMeasureSetAcls with AclOperation %s but failed because no measure set exists with measure set ID %s",
+              userName, aclOperation.toString(), measureSetId);
       log.error(error);
       throw new ResourceNotFoundException(error);
     }
