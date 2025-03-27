@@ -2035,7 +2035,7 @@ public class MeasureControllerMvcTest {
     sharedMeasures.put(measureId1, List.of(sharedUser1));
     sharedMeasures.put(measureId2, List.of(sharedUser1, sharedUser2));
 
-    doReturn(sharedMeasures).when(measureService).getSharedMeasures(eq(measureIds));
+    doReturn(sharedMeasures).when(measureService).getSharedMeasures(eq(measureIds), anyString());
 
     mockMvc
         .perform(
@@ -2049,11 +2049,11 @@ public class MeasureControllerMvcTest {
                 .string(
                     "{\"measureId1\":[{\"userId\":\"userId1\",\"performedAt\":\"2025-03-17T10:00:00Z\"}],\"measureId2\":[{\"userId\":\"userId1\",\"performedAt\":\"2025-03-17T10:00:00Z\"},{\"userId\":\"userId2\",\"performedAt\":\"2025-03-17T10:00:00Z\"}]}"));
 
-    verify(measureService, times(1)).getSharedMeasures(eq(measureIds));
+    verify(measureService, times(1)).getSharedMeasures(eq(measureIds), anyString());
   }
 
   @Test
-  public void testUpdateSharedMeasures() throws Exception {
+  public void testShareMeasures() throws Exception {
     AclSpecification aclSpecification1 = new AclSpecification();
     aclSpecification1.setUserId("userId1");
     aclSpecification1.setRoles(Set.of(RoleEnum.SHARED_WITH));
@@ -2062,11 +2062,11 @@ public class MeasureControllerMvcTest {
     aclSpecification2.setUserId("userId2");
     aclSpecification2.setRoles(Set.of(RoleEnum.SHARED_WITH));
 
-    Map<String, List<AclSpecification>> updatedSharedMeasures = new HashMap<>();
-    updatedSharedMeasures.put("measureId1", List.of(aclSpecification1));
-    updatedSharedMeasures.put("measureId2", List.of(aclSpecification1, aclSpecification2));
+    Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
+    measureIdToAclSpecification.put("measureId1", List.of(aclSpecification1));
+    measureIdToAclSpecification.put("measureId2", List.of(aclSpecification1, aclSpecification2));
 
-    doReturn(updatedSharedMeasures).when(measureService).shareMeasures(any(), anyString());
+    doReturn(measureIdToAclSpecification).when(measureService).shareMeasures(any(), anyString());
 
     MvcResult result =
         mockMvc
@@ -2083,6 +2083,34 @@ public class MeasureControllerMvcTest {
     assertEquals(
         result.getResponse().getContentAsString(),
         "{\"measureId1\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]}],\"measureId2\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]},{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");
+  }
+
+  @Test
+  public void testUnshareMeasures() throws Exception {
+    AclSpecification aclSpecification2 = new AclSpecification();
+    aclSpecification2.setUserId("userId2");
+    aclSpecification2.setRoles(Set.of(RoleEnum.SHARED_WITH));
+
+    Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
+    measureIdToAclSpecification.put("measureId2", List.of(aclSpecification2));
+
+    doReturn(measureIdToAclSpecification).when(measureService).unshareMeasures(any(), anyString());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/measures/unshared")
+                    .with(user(TEST_USER_ID))
+                    .with(csrf())
+                    .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\"]}")
+                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isOk())
+            .andReturn();
+    verify(measureService, times(1)).unshareMeasures(any(), anyString());
+    assertEquals(
+        result.getResponse().getContentAsString(),
+        "{\"measureId2\":[{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");
   }
 
   @Test
