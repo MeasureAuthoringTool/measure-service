@@ -222,15 +222,23 @@ public class MeasureController {
 
   @GetMapping("/measures/shared")
   public ResponseEntity<Map<String, List<SharedUser>>> getSharedMeasures(
-      HttpServletRequest request, @RequestParam(name = "measureIds") List<String> measureIds) {
-    return ResponseEntity.ok().body(measureService.getSharedMeasures(measureIds));
+      HttpServletRequest request,
+      @RequestParam(name = "measureIds") List<String> measureIds,
+      Principal principal) {
+    return ResponseEntity.ok()
+        .body(measureService.getSharedMeasures(measureIds, principal.getName()));
   }
 
   @PutMapping("/measures/shared")
   public ResponseEntity<Map<String, List<AclSpecification>>> shareMeasures(
       @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
-
     return ResponseEntity.ok(measureService.shareMeasures(measureUserIdMap, principal.getName()));
+  }
+
+  @PutMapping("/measures/unshared")
+  public ResponseEntity<Map<String, List<AclSpecification>>> unshareMeasures(
+      @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
+    return ResponseEntity.ok(measureService.unshareMeasures(measureUserIdMap, principal.getName()));
   }
 
   @PutMapping("/measures/{id}/ownership")
