@@ -140,12 +140,25 @@ public class MeasureSetService {
             .getAcls()
             .forEach(
                 acl -> {
+                  String userId = acl.getUserId();
+
                   // check if acl already present for the user
                   AclSpecification aclSpecification =
                       findAclSpecificationByUserId(measureSet, acl.getUserId());
                   if (aclSpecification != null) {
                     // remove roles from ACL
-                    aclSpecification.getRoles().removeAll(acl.getRoles());
+                    acl.getRoles()
+                        .forEach(
+                            roleEnum -> {
+                              if (aclSpecification.getRoles().contains(roleEnum)) {
+                                aclSpecification.getRoles().remove(roleEnum);
+
+                                if (roleEnum == RoleEnum.SHARED_WITH) {
+                                  actionLogDetails.put(userId, ActionType.UNSHARED);
+                                }
+                              }
+                            });
+
                     // after removing the roles if there is no role left, remove acl
                     if (aclSpecification.getRoles().isEmpty()) {
                       measureSet.getAcls().remove(aclSpecification);
@@ -167,8 +180,9 @@ public class MeasureSetService {
     } else {
       String error =
           String.format(
-              "Measure with set id `%s` can not be shared, measure set may not exists.",
-              measureSetId);
+              "User %s called updateMeasureSetAcls with AclOperation %s but failed because no "
+                  + "measure set exists with measure set ID %s",
+              userName, aclOperation.toString(), measureSetId);
       log.error(error);
       throw new ResourceNotFoundException(error);
     }

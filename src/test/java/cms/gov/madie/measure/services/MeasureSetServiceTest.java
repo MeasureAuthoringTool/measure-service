@@ -247,17 +247,55 @@ public class MeasureSetServiceTest {
     assertThat(updatedMeasureSet.getMeasureSetId(), is(equalTo(measureSet.getMeasureSetId())));
     assertThat(updatedMeasureSet.getOwner(), is(equalTo(measureSet.getOwner())));
     assertThat(updatedMeasureSet.getAcls().size(), is(equalTo(0)));
+
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.UNSHARED, "userName", aclSpec.getUserId());
+  }
+
+  @Test
+  public void testRevokeOperationWithNoAclSpecificationInMeasureSet() {
+    AclSpecification aclSpec = new AclSpecification();
+    aclSpec.setUserId("jane");
+    aclSpec.setRoles(
+        new HashSet<>() {
+          {
+            add(RoleEnum.SHARED_WITH);
+          }
+        });
+    AclOperation aclOperation =
+        AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.REVOKE).build();
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(measureSet);
+
+    MeasureSet updatedMeasureSet =
+        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    assertThat(updatedMeasureSet.getMeasureSetId(), is(equalTo(measureSet.getMeasureSetId())));
+    assertThat(updatedMeasureSet.getOwner(), is(equalTo(measureSet.getOwner())));
+    assertThat(updatedMeasureSet.getAcls().size(), is(equalTo(1)));
+
+    verify(actionLogService, times(0))
+        .logShareAccessControlAction(
+            "1", MeasureSet.class, ActionType.UNSHARED, "userName", aclSpec.getUserId());
   }
 
   @Test
   public void testUpdateMeasureSetAclsWhenMeasureSetNotFound() {
+    AclSpecification aclSpec = new AclSpecification();
+    aclSpec.setUserId("john_1");
+    aclSpec.setRoles(Set.of(RoleEnum.SHARED_WITH));
+    AclOperation aclOperation =
+        AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.GRANT).build();
+
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.empty());
 
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.updateMeasureSetAcls("1", new AclOperation(), "userName"));
-    assertTrue(ex.getMessage().contains("measure set may not exists."));
+            () -> measureSetService.updateMeasureSetAcls("1", aclOperation, "userName"));
+    assertEquals(
+        "User userName called updateMeasureSetAcls with AclOperation AclOperation(acls=[AclSpecification(userId=john_1, roles=[SHARED_WITH])], action=GRANT) but failed because no measure set exists with measure set ID 1",
+        ex.getMessage());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
   }
