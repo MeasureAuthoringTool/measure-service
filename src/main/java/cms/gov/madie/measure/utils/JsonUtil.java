@@ -646,7 +646,7 @@ public final class JsonUtil {
   }
 
   // going through JsonNode, converts any datetime string into UTC datetime
-  public static JsonNode replaceNestedDateTimeStringValue(JsonNode node) {
+  public static void replaceNestedDateTimeStringValue(JsonNode node) {
     if (node.isObject()) {
       ObjectNode objectNode = (ObjectNode) node;
       objectNode
@@ -666,7 +666,6 @@ public final class JsonUtil {
     } else if (node.isArray()) {
       node.forEach(childNode -> replaceNestedDateTimeStringValue(childNode));
     }
-    return node;
   }
 
   // converts a value into UTC datetime, if the the passed in value is a datetime
@@ -687,7 +686,7 @@ public final class JsonUtil {
           adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
           newValue = adjustedDateTime.format(FORMATTER_2).replace("Z", ".000+00:00");
         } catch (DateTimeParseException ex) {
-          log.info("Error parsing date/time string: " + e.getMessage());
+          log.error("Error parsing date/time string: " + e.getMessage());
         }
       }
     }
