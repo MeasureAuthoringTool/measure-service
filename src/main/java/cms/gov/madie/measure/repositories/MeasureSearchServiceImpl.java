@@ -224,11 +224,11 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       pipeline =
           newAggregation(
               lookupOperation,
+              matchOperation,
               sortOperation,
               groupOperation,
               projectionOperation,
               replaceRootOperation,
-              matchOperation,
               facets);
 
     } else {
