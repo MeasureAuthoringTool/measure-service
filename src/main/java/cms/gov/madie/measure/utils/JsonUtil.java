@@ -684,7 +684,7 @@ public final class JsonUtil {
         adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
         newValue = adjustedDateTime.format(FORMATTER_2).replace("Z", ".000+00:00");
       } catch (DateTimeParseException ex) {
-        log.info("Error parsing date/time string: " + e.getMessage());
+        log.warn("Error parsing date/time string: " + e.getMessage());
       }
     }
     return newValue;
