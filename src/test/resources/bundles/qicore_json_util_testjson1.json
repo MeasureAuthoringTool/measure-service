@@ -3,7 +3,7 @@
   "id" : "2106",
   "meta" : {
     "versionId" : "1",
-    "lastUpdated" : "2022-09-06T20:47:21.183+00:00"
+    "lastUpdated" : "2022-09-06T20:47:21-05:00"
   },
   "type" : "collection",
   "entry" : [ {
@@ -13,7 +13,7 @@
       "resourceType" : "Encounter",
       "meta" : {
         "versionId" : "1",
-        "lastUpdated" : "2021-10-13T03:34:10.160+00:00",
+        "lastUpdated" : "2021-10-13T03:34:10.160+02:00",
         "source" : "#nEcAkGd8PRwPP5fA"
       },
       "text" : {
@@ -50,7 +50,7 @@
       "resourceType" : "Encounter",
       "meta" : {
         "versionId" : "1",
-        "lastUpdated" : "2021-10-13T03:34:10.160+00:00",
+        "lastUpdated" : "2021-10-13T03:34:10.160+03:00",
         "source" : "#nEcAkGd8PRwPP5fA"
       },
       "text" : {

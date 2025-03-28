@@ -20,6 +20,10 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayOutputStream;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -33,6 +37,12 @@ import java.util.stream.StreamSupport;
 public final class JsonUtil {
   private static final String CQFM_TEST_DESCRIPTION_URL =
       "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-testCaseDescription";
+  private static final String LOCAL_DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+  private static final DateTimeFormatter FORMATTER =
+      DateTimeFormatter.ofPattern(LOCAL_DATE_TIME_PATTERN);
+  private static final String LOCAL_DATE_TIME_PATTERN_2 = "yyyy-MM-dd'T'HH:mm:ssXXX";
+  private static final DateTimeFormatter FORMATTER_2 =
+      DateTimeFormatter.ofPattern(LOCAL_DATE_TIME_PATTERN_2);
 
   private JsonUtil() {}
 
@@ -631,5 +641,52 @@ public final class JsonUtil {
       return patientNode.toPrettyString();
     }
     return null;
+  }
+
+  // going through JsonNode, converts any datetime string into UTC datetime
+  public static void replaceNestedDateTimeStringValue(JsonNode node) {
+    if (node.isObject()) {
+      ObjectNode objectNode = (ObjectNode) node;
+      objectNode
+          .fields()
+          .forEachRemaining(
+              entry -> {
+                String fieldName = entry.getKey();
+                JsonNode childNode = entry.getValue();
+                String currentValue = childNode.asText();
+                String newValue = getNewValue(currentValue);
+                if (childNode.isTextual()) {
+                  objectNode.put(fieldName, newValue);
+                } else {
+                  replaceNestedDateTimeStringValue(childNode);
+                }
+              });
+    } else if (node.isArray()) {
+      node.forEach(childNode -> replaceNestedDateTimeStringValue(childNode));
+    }
+  }
+
+  // converts a value into UTC datetime, if the the passed in value is a datetime
+  // otherwise, returns the original value
+  static String getNewValue(String value) {
+    String newValue = value;
+
+    ZonedDateTime dateTime = null;
+    ZonedDateTime adjustedDateTime = null;
+    try {
+      dateTime = ZonedDateTime.parse(value, FORMATTER);
+      adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
+      newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
+    } catch (DateTimeParseException e) {
+      try {
+        // for older data without milliseconds
+        dateTime = ZonedDateTime.parse(value, FORMATTER_2);
+        adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
+        newValue = adjustedDateTime.format(FORMATTER_2).replace("Z", ".000+00:00");
+      } catch (DateTimeParseException ex) {
+        log.warn("Error parsing date/time string: " + e.getMessage());
+      }
+    }
+    return newValue;
   }
 }
