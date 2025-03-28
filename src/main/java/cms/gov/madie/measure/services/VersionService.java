@@ -296,7 +296,7 @@ public class VersionService {
                     .groupPopulations(updatedTestCaseGroupPopulations)
                     .build();
               } else {
-                convertDateTimeToUTC(testCase);
+                testCase.setJson(convertDateTimeToUTC(testCase.getJson()));
               }
               HapiOperationOutcome hapiOperationOutcome =
                   fhirServicesClient
@@ -504,17 +504,18 @@ public class VersionService {
         .getCaseNumber();
   }
 
-  void convertDateTimeToUTC(TestCase testCase) {
-    if (StringUtils.isNotBlank(testCase.getJson())) {
+  private String convertDateTimeToUTC(String json) {
+    String convertedJson = json;
+    if (StringUtils.isNotBlank(json)) {
       try {
         ObjectMapper mapper = new ObjectMapper();
-        JsonNode rootNode = mapper.readTree(testCase.getJson());
+        JsonNode rootNode = mapper.readTree(json);
         JsonUtil.replaceNestedDateTimeStringValue(rootNode);
-        String modifiedJsonString = mapper.writeValueAsString(rootNode);
-        testCase.setJson(modifiedJsonString);
+        convertedJson = mapper.writeValueAsString(rootNode);
       } catch (IOException e) {
         log.error("Invalid test case json");
       }
     }
+    return convertedJson;
   }
 }
