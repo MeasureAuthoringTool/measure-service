@@ -77,6 +77,22 @@ public class VersionServiceTest {
 
   @InjectMocks VersionService versionService;
 
+  private final String json =
+      """
+  		{
+  			"entry":[
+  				{
+  			      "resource":{
+  			         "period":{
+  			            "start":"2024-10-10T20:30:10.123-05:00",
+  			            "end":"2024-10-10T07:31:20.456+06:00"
+  			         }
+  					}
+  				}
+  			]
+  		}
+  		""";
+
   private final String ELMJON_ERROR =
       "{\n" + "\"errorExceptions\" : \n" + "[ {\"error\":\"error translating cql\" } ]\n" + "}";
   private final String ELMJON_NO_ERROR = "{\n" + "\"errorExceptions\" : \n" + "[]\n" + "}";
@@ -106,7 +122,7 @@ public class VersionServiceTest {
           .createdAt(today)
           .createdBy("TestUser")
           .lastModifiedBy("TestUser2")
-          .json("{\"resourceType\":\"Patient\"}")
+          .json(json)
           .title("Test1")
           .groupPopulations(List.of(testCaseGroupPopulation))
           .build();
@@ -766,7 +782,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateDraftSuccessfullyForQiCore() {
+  public void testCreateDraftSuccessfullyForQiCoreJsonInvalid() {
     TestCaseGroupPopulation clonedTestCaseGroupPopulation =
         TestCaseGroupPopulation.builder()
             .groupId("clonedGroupId1")
@@ -774,6 +790,8 @@ public class VersionServiceTest {
             .populationBasis("boolean")
             .build();
     Measure versionedMeasure = buildBasicMeasure();
+    testCase.setJson(json.replace("}", ""));
+    versionedMeasure.setTestCases(List.of(testCase));
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setDraft(true);
     Measure versionedCopy =
@@ -820,6 +838,74 @@ public class VersionServiceTest {
         draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(),
         is(equalTo("clonedGroupId1")));
     assertTrue(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
+    assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-11T01:30:10.123+00:00"));
+    assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-10T01:31:20.456+00:00"));
+  }
+
+  @Test
+  public void testCreateDraftSuccessfullyForQiCore() {
+    TestCaseGroupPopulation clonedTestCaseGroupPopulation =
+        TestCaseGroupPopulation.builder()
+            .groupId("clonedGroupId1")
+            .scoring("Cohort")
+            .populationBasis("boolean")
+            .build();
+    Measure versionedMeasure = buildBasicMeasure();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure versionedCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(metaData)
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .id(ObjectId.get().toString())
+                        .groupPopulations(List.of(clonedTestCaseGroupPopulation))
+                        .hapiOperationOutcome(validTestCaseHapiOperationOutcome)
+                        .json(
+                            json.replace(
+                                    "2024-10-10T20:30:10.123-05:00",
+                                    "2024-10-11T01:30:10.123+00:00")
+                                .replace(
+                                    "2024-10-10T07:31:20.456+06:00",
+                                    "2024-10-10T01:31:20.456+00:00"))
+                        .build()))
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+        .thenReturn(ResponseEntity.ok(validTestCaseHapiOperationOutcome));
+
+    Measure draft =
+        versionService.createDraft(
+            versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
+
+    assertThat(draft.getMeasureName(), is(equalTo("Test")));
+    // draft flag to true
+    assertThat(draft.getMeasureMetaData().isDraft(), is(equalTo(true)));
+    // version remains same
+    assertThat(draft.getVersion().getMajor(), is(equalTo(2)));
+    assertThat(draft.getVersion().getMinor(), is(equalTo(3)));
+    assertThat(draft.getVersion().getRevisionNumber(), is(equalTo(1)));
+    assertThat(draft.getGroups().size(), is(equalTo(1)));
+    assertFalse(draft.getGroups().stream().anyMatch(item -> "xyz-p12r-12ert".equals(item.getId())));
+    assertThat(draft.getTestCases().size(), is(equalTo(1)));
+    assertFalse(draft.getGroups().stream().anyMatch(item -> "testId1".equals(item.getId())));
+    assertThat(
+        draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(),
+        is(equalTo("clonedGroupId1")));
+    assertTrue(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
+    assertTrue(draft.getTestCases().get(0).getJson().contains("2024-10-11T01:30:10.123+00:00"));
+    assertTrue(draft.getTestCases().get(0).getJson().contains("2024-10-10T01:31:20.456+00:00"));
   }
 
   @Test
@@ -831,6 +917,8 @@ public class VersionServiceTest {
             .populationBasis("boolean")
             .build();
     Measure versionedMeasure = buildBasicMeasure();
+    testCase.setJson(null);
+    versionedMeasure.setTestCases(List.of(testCase));
     versionedMeasure.setModel(ModelType.QDM_5_6.getValue());
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setDraft(true);
