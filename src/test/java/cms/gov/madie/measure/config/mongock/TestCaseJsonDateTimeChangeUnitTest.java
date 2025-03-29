@@ -204,7 +204,7 @@ public class TestCaseJsonDateTimeChangeUnitTest {
 
     changeUnit.rollbackExecution(measureRepository);
 
-    verify(measureRepository, new Times(1)).save(measure);
+    verify(measureRepository, new Times(1)).saveAll(List.of(measure));
 
     TestCase testCase = measure.getTestCases().get(0);
     assertNotNull(testCase);

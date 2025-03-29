@@ -69,7 +69,7 @@ public class TestCaseJsonDateTimeChangeUnit {
     log.debug("Entering rollbackExecution()");
 
     if (CollectionUtils.isNotEmpty(tempMeasures)) {
-measureRepository.saveAll(tempMeasures);
+      measureRepository.saveAll(tempMeasures);
     }
   }
 }
