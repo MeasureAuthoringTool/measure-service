@@ -735,4 +735,11 @@ public class JsonUtilTest implements ResourceUtil {
     // 2023-09-13T09:34:10.054Z -> 2023-09-13T09:34:10.054+00:00
     assertTrue(modifiedJsonString.contains("2023-09-13T09:34:10.054+00:00"));
   }
+
+  @Test
+  void testGetConvertedDateTimeWrongFormat() {
+    String oldValue = "2025-03-29T29:54:74";
+    String newValue = JsonUtil.getNewValue("2025-03-29T29:54:74");
+    assertEquals(oldValue, newValue);
+  }
 }

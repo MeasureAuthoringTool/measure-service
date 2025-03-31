@@ -43,6 +43,8 @@ public final class JsonUtil {
   private static final String LOCAL_DATE_TIME_PATTERN_2 = "yyyy-MM-dd'T'HH:mm:ssXXX";
   private static final DateTimeFormatter FORMATTER_2 =
       DateTimeFormatter.ofPattern(LOCAL_DATE_TIME_PATTERN_2);
+  private static final Pattern PATTERN =
+      Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}");
 
   private JsonUtil() {}
 
@@ -684,7 +686,10 @@ public final class JsonUtil {
         adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
         newValue = adjustedDateTime.format(FORMATTER_2).replace("Z", ".000+00:00");
       } catch (DateTimeParseException ex) {
-        log.warn("Error parsing date/time string: " + e.getMessage());
+        // only log datetime related errors
+        if (value.length() >= 19 && (PATTERN.matcher(value.substring(0, 19)).matches())) {
+          log.warn("Error parsing date/time string: " + e.getMessage());
+        }
       }
     }
     return newValue;
