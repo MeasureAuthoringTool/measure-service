@@ -501,22 +501,6 @@ public class TestCaseService {
         .build();
   }
 
-  //  private TestCase convertDateTimeToUTC(TestCase testCase) {
-  //
-  //    if (StringUtils.isNotBlank(testCase.getJson())) {
-  //      try {
-  //        ObjectMapper mapper = new ObjectMapper();
-  //        JsonNode rootNode = mapper.readTree(testCase.getJson());
-  //        JsonUtil.replaceNestedDateTimeStringValue(rootNode);
-  //        String modifiedJsonString = mapper.writeValueAsString(rootNode);
-  //        testCase.setJson(modifiedJsonString);
-  //      } catch (IOException e) {
-  //        log.error("Invalid test case json");
-  //      }
-  //    }
-  //    return testCase;
-  //  }
-
   private void clearExpectedValues(TestCase testCase) {
     if (isNotEmpty(testCase.getGroupPopulations())) {
       for (TestCaseGroupPopulation tcGroupPopulation : testCase.getGroupPopulations()) {
