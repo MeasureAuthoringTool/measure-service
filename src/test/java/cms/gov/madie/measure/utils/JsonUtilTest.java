@@ -742,6 +742,13 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
+  void testGetConvertedDateTimeWrongFormat() {
+    String oldValue = "2025-03-29T29:54:74";
+    String newValue = JsonUtil.getNewValue("2025-03-29T29:54:74");
+    assertEquals(oldValue, newValue);
+  }
+
+  @Test
   void testgetTestCaseGroupPopulationsFromMeasureReportWithMeasureObservation()
       throws JsonProcessingException {
     MeasureObservation observation1 =
