@@ -32,6 +32,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 
@@ -457,6 +458,9 @@ public class TestCaseService {
     for (TestCase sourceTestCase : sourceTestCases) {
       TestCase dupTestCase = sourceTestCase.deepCopy();
 
+      // Check and update any fields with proper timestamp
+      dupTestCase.setJson(convertDateTimeToUTC(dupTestCase.getJson()));
+
       // Empty Test Case Group Populations match any Measure Pop Criteria.
       boolean doesPopCriteriaMatch =
           isEmpty(dupTestCase.getGroupPopulations())
@@ -496,6 +500,22 @@ public class TestCaseService {
         .didClearExpectedValues(clearedExpectedValues)
         .build();
   }
+
+  //  private TestCase convertDateTimeToUTC(TestCase testCase) {
+  //
+  //    if (StringUtils.isNotBlank(testCase.getJson())) {
+  //      try {
+  //        ObjectMapper mapper = new ObjectMapper();
+  //        JsonNode rootNode = mapper.readTree(testCase.getJson());
+  //        JsonUtil.replaceNestedDateTimeStringValue(rootNode);
+  //        String modifiedJsonString = mapper.writeValueAsString(rootNode);
+  //        testCase.setJson(modifiedJsonString);
+  //      } catch (IOException e) {
+  //        log.error("Invalid test case json");
+  //      }
+  //    }
+  //    return testCase;
+  //  }
 
   private void clearExpectedValues(TestCase testCase) {
     if (isNotEmpty(testCase.getGroupPopulations())) {
