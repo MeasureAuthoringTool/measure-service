@@ -119,6 +119,18 @@
       <groupId>com.okta.spring</groupId>
       <artifactId>okta-spring-boot-starter</artifactId>
       <version>3.0.7</version>
+      <exclusions>
+        <exclusion>
+          <groupId>org.springframework.security</groupId>
+          <artifactId>spring-security-web</artifactId>
+        </exclusion>
+      </exclusions>
+    </dependency>
+    <!-- Explicit use of spring-security-web version to resolve critical security vulnerabilities-->
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-web</artifactId>
+      <version>6.4.4</version>
     </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
