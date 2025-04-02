@@ -459,7 +459,10 @@ public class TestCaseService {
       TestCase dupTestCase = sourceTestCase.deepCopy();
 
       // Check and update any fields with proper timestamp
-      dupTestCase.setJson(convertDateTimeToUTC(dupTestCase.getJson()));
+      // Only applies to QiCore
+      if (!targetMeasure.getModel().equals(ModelType.QDM_5_6.getValue())) {
+        dupTestCase.setJson(convertDateTimeToUTC(dupTestCase.getJson()));
+      }
 
       // Empty Test Case Group Populations match any Measure Pop Criteria.
       boolean doesPopCriteriaMatch =
