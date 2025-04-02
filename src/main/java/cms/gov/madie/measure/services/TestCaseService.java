@@ -698,7 +698,8 @@ public class TestCaseService {
           JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(
               json,
               "boolean"
-                  .equals(StringUtils.lowerCase(measure.getGroups().get(0).getPopulationBasis())));
+                  .equals(StringUtils.lowerCase(measure.getGroups().get(0).getPopulationBasis())),
+              measure);
     } else if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
       testCaseGroupPopulations = JsonUtil.getTestCaseGroupPopulationsQdm(json, measure);
     }
