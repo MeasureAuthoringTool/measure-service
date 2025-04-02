@@ -59,6 +59,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
@@ -2973,6 +2974,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     // Set-up
     TestCase source =
         testCase.deepCopy().toBuilder()
+            .json(testCaseImportWithMeasureReport)
             .groupPopulations(
                 List.of(
                     TestCaseGroupPopulation.builder()
@@ -3053,6 +3055,9 @@ public class TestCaseServiceTest implements ResourceUtil {
         is(
             (Boolean)
                 source.getGroupPopulations().get(0).getPopulationValues().get(0).getExpected()));
+    assertThat(
+        result.getCopiedTestCases().get(0).getJson(),
+        containsString("2012-01-16T08:00:00.000+00:00"));
 
     // Verify target measure now has a single Test Case
     assertThat(targetMeasure.getTestCases().size(), is(1));
@@ -3345,5 +3350,25 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     // Verify target measure now has a single Test Case
     assertThat(targetMeasure.getTestCases().size(), is(1));
+  }
+
+  @Test
+  void testCopyToAnotherMeasureQDMNoUtcUpdate() {
+    // Set-up
+    TestCase source = testCase.deepCopy().toBuilder().json(testCaseImportQdm).build();
+
+    Measure targetMeasure = measure.toBuilder().model(ModelType.QDM_5_6.getValue()).build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(targetMeasure));
+    when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
+    doReturn(targetMeasure).when(measureRepository).save(any());
+
+    // Copy single Test Case to target measure
+    CopyTestCaseResult result =
+        testCaseService.copyTestCasesToMeasure(
+            targetMeasure.getId(), List.of(source), "user.name", "accessToken");
+
+    assertThat(
+        result.getCopiedTestCases().get(0).getJson(),
+        containsString("2024-12-30T09:00:00.000+04:00"));
   }
 }

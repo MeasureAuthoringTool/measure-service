@@ -22,6 +22,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
@@ -673,6 +674,21 @@ public final class JsonUtil {
       return patientNode.toPrettyString();
     }
     return null;
+  }
+
+  public static String convertDateTimeToUTC(String json) {
+    String convertedJson = json;
+    if (StringUtils.isNotBlank(json)) {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode rootNode = mapper.readTree(json);
+        JsonUtil.replaceNestedDateTimeStringValue(rootNode);
+        convertedJson = mapper.writeValueAsString(rootNode);
+      } catch (IOException e) {
+        log.error("Invalid test case json");
+      }
+    }
+    return convertedJson;
   }
 
   // going through JsonNode, converts any datetime string into UTC datetime

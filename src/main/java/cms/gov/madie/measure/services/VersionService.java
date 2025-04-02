@@ -5,7 +5,6 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.utils.JsonUtil;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
@@ -20,9 +19,6 @@ import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.time.Instant;
@@ -31,6 +27,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
 
 @Slf4j
 @AllArgsConstructor
@@ -502,20 +500,5 @@ public class VersionService {
         .toList()
         .get(0)
         .getCaseNumber();
-  }
-
-  private String convertDateTimeToUTC(String json) {
-    String convertedJson = json;
-    if (StringUtils.isNotBlank(json)) {
-      try {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode rootNode = mapper.readTree(json);
-        JsonUtil.replaceNestedDateTimeStringValue(rootNode);
-        convertedJson = mapper.writeValueAsString(rootNode);
-      } catch (IOException e) {
-        log.error("Invalid test case json");
-      }
-    }
-    return convertedJson;
   }
 }

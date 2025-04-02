@@ -742,6 +742,27 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
+  void testConvertDateTimeToUTCForTestCase() {
+    testCase.setJson(json);
+    String result = JsonUtil.convertDateTimeToUTC(testCase.getJson());
+    assertNotEquals(json, result);
+    // 2022-09-06T20:47:21-05:00 -> 2022-09-07T01:47:21.000+00:00
+    assertTrue(result.contains("2022-09-07T01:47:21.000+00:00"));
+    // 2021-10-13T03:34:10.160+02:00 -> 2021-10-13T01:34:10.160+00:00
+    assertTrue(result.contains("2021-10-13T01:34:10.160+00:00"));
+    // 2023-08-10T03:34:10.054Z -> 2023-08-10T03:34:10.054+00:00
+    assertTrue(result.contains("2023-08-10T03:34:10.054+00:00"));
+    // 2023-08-15T03:34:10.054Z -> 2023-08-15T03:34:10.054+00:00
+    assertTrue(result.contains("2023-08-15T03:34:10.054+00:00"));
+    // 2021-10-13T03:34:10.160+03:00 -> 2021-10-13T00:34:10.160+00:00
+    assertTrue(result.contains("2021-10-13T00:34:10.160+00:00"));
+    // 2023-09-12T03:34:10.054Z -> 2023-09-12T03:34:10.054+00:00
+    assertTrue(result.contains("2023-09-12T03:34:10.054+00:00"));
+    // 2023-09-13T09:34:10.054Z -> 2023-09-13T09:34:10.054+00:00
+    assertTrue(result.contains("2023-09-13T09:34:10.054+00:00"));
+  }
+
+  @Test
   void testGetConvertedDateTimeWrongFormat() {
     String oldValue = "2025-03-29T29:54:74";
     String newValue = JsonUtil.getNewValue("2025-03-29T29:54:74");
