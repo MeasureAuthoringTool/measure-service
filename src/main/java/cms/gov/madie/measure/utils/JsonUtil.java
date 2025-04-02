@@ -6,7 +6,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
 import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.QdmMeasure;
@@ -27,6 +29,7 @@ import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
@@ -211,8 +214,7 @@ public final class JsonUtil {
    * @throws JsonProcessingException
    */
   public static List<TestCaseGroupPopulation> getTestCaseGroupPopulationsFromMeasureReport(
-      String json, boolean measurePopulationBasis) throws JsonProcessingException {
-
+      String json, boolean measurePopulationBasis, Measure measure) throws JsonProcessingException {
     List<TestCaseGroupPopulation> groupPopulations = new ArrayList<>();
     JsonNode resourceNode = getResourceNode(json, "MeasureReport");
     if (resourceNode != null) {
@@ -220,10 +222,24 @@ public final class JsonUtil {
       if (groups != null) {
         TestCaseGroupPopulation groupPopulation = null;
         for (JsonNode group : groups) {
+          // e.g. Group_1
+          String groupNumber =
+              group.get("id") != null
+                  ? group.get("id").asText().substring(group.get("id").asText().length() - 1)
+                  : "0";
+          int groupIndex = Integer.parseInt(groupNumber);
+          Group measureGroup = measure.getGroups().get(groupIndex > 0 ? groupIndex - 1 : 0);
           JsonNode populations = group.get("population");
           List<TestCasePopulationValue> populationValues = new ArrayList<>();
           if (populations != null) {
             for (JsonNode population : populations) {
+              String id = population.get("id") != null ? population.get("id").asText() : "";
+              MeasureObservation obs = null;
+              if (id.contains("MeasureObservation")) {
+                // e.g. MeasureObservation_1_1
+                obs = findMeasureObservation(measureGroup, id);
+              }
+
               JsonNode codeNode = population.get("code");
               String count =
                   population.get("count") != null ? population.get("count").asText() : "";
@@ -232,7 +248,7 @@ public final class JsonUtil {
                 if (codings != null) {
                   for (JsonNode coding : codings) {
                     String code = coding.get("code").asText();
-                    appendPopulationValues(populationValues, count, code);
+                    appendPopulationValues(populationValues, count, code, obs);
                   }
                 }
                 groupPopulation =
@@ -294,7 +310,7 @@ public final class JsonUtil {
               measurePopulationBasis
                   ? (Integer.parseInt(expVal.get("count").asText()) == 1)
                   : Integer.parseInt(expVal.get("count").asText());
-          appendPopulationValues(expectedStratValues, count, code);
+          appendPopulationValues(expectedStratValues, count, code, null);
         });
     TestCaseStratificationValue stratValue =
         TestCaseStratificationValue.builder().id(stratId).name(stratName).build();
@@ -303,10 +319,24 @@ public final class JsonUtil {
   }
 
   private static void appendPopulationValues(
-      List<TestCasePopulationValue> populationValues, Object count, String code) {
+      List<TestCasePopulationValue> populationValues,
+      Object count,
+      String code,
+      MeasureObservation observation) {
     TestCasePopulationValue populationValue =
         TestCasePopulationValue.builder()
-            .name(PopulationType.fromCode(code))
+            .id(observation != null ? observation.getId() : null)
+            .criteriaReference(observation != null ? observation.getCriteriaReference() : null)
+            .name(
+                observation != null && observation.getDefinition() != null
+                    ? PopulationType.fromCode(
+                        observation
+                            .getDefinition() // e.g. Denominator Observations ->
+                            // denominator_observation
+                            .substring(0, observation.getDefinition().length() - 1)
+                            .toLowerCase()
+                            .replace(" ", "-"))
+                    : PopulationType.fromCode(code))
             .expected(count)
             .build();
     populationValues.add(populationValue);
@@ -693,5 +723,18 @@ public final class JsonUtil {
       }
     }
     return newValue;
+  }
+
+  static MeasureObservation findMeasureObservation(Group group, String id) {
+    List<MeasureObservation> measureObservations = group.getMeasureObservations();
+    MeasureObservation obs = null;
+    if (CollectionUtils.isNotEmpty(measureObservations)) {
+      Optional<MeasureObservation> obsOpt =
+          measureObservations.stream()
+              .filter(observation -> id.equalsIgnoreCase(observation.getDisplayId()))
+              .findFirst();
+      obs = obsOpt.isPresent() ? obsOpt.get() : null;
+    }
+    return obs;
   }
 }
