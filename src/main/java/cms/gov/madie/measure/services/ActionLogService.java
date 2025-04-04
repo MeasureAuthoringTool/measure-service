@@ -65,4 +65,23 @@ public class ActionLogService {
   public MeasureSetActionLog findMeasureSetActionLogByTargetId(final String targetId) {
     return measureSetActionLogRepository.findByTargetId(targetId).orElse(null);
   }
+
+  public boolean logMeasureSetAction(
+      final String targetId,
+      Class targetClass,
+      final ActionType actionType,
+      final String userId,
+      final String... additionalActionMessage) {
+    final String collection = ActionLogCollectionType.getCollectionNameForClazz(targetClass);
+
+    return measureSetActionLogRepository.pushEvent(
+        targetId,
+        Action.builder()
+            .actionType(actionType)
+            .performedBy(userId)
+            .performedAt(Instant.now())
+            .additionalActionMessage(Arrays.toString(additionalActionMessage))
+            .build(),
+        collection);
+  }
 }
