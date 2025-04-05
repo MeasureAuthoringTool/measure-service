@@ -237,8 +237,15 @@ public final class JsonUtil {
               String id = population.get("id") != null ? population.get("id").asText() : "";
               MeasureObservation obs = null;
               if (id.contains("MeasureObservation")) {
-                // e.g. MeasureObservation_1_1
-                obs = findMeasureObservation(measureGroup, id);
+                // id for patient based: MeasureObservation_1_1
+                // id for episode based: MeasureObservation_1_1_1
+                boolean patientBased =
+                    StringUtils.equalsIgnoreCase("boolean", measureGroup.getPopulationBasis());
+                String displayId = id;
+                if (!patientBased) {
+                  displayId = id.substring(0, 22);
+                }
+                obs = findMeasureObservation(measureGroup, displayId);
               }
 
               JsonNode codeNode = population.get("code");
@@ -332,9 +339,14 @@ public final class JsonUtil {
                 observation != null && observation.getDefinition() != null
                     ? PopulationType.fromCode(
                         observation
-                            .getDefinition() // e.g. Denominator Observations ->
+                            .getDefinition() // e.g. Denominator Observations or: Denominator
+                            // Observation ->
                             // denominator_observation
-                            .substring(0, observation.getDefinition().length() - 1)
+                            .substring(
+                                0,
+                                observation.getDefinition().length() == 24
+                                    ? observation.getDefinition().length() - 1
+                                    : observation.getDefinition().length())
                             .toLowerCase()
                             .replace(" ", "-"))
                     : PopulationType.fromCode(code))

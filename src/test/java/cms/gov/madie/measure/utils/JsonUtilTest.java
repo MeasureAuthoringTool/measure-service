@@ -786,6 +786,7 @@ public class JsonUtilTest implements ResourceUtil {
             .criteriaReference("ref")
             .displayId("MeasureObservation_1_2")
             .build();
+    group.setPopulationBasis("boolean");
     group.setMeasureObservations(List.of(observation1, observation2));
     measure.setGroups(List.of(group));
 
@@ -811,5 +812,34 @@ public class JsonUtilTest implements ResourceUtil {
     MeasureObservation result = JsonUtil.findMeasureObservation(group, "MeasureObservation_1_1");
 
     assertNull(result);
+  }
+
+  @Test
+  void testgetTestCaseGroupPopulationsFromMeasureReportWithMeasureObservationEpisodeBased()
+      throws JsonProcessingException {
+    MeasureObservation observation1 =
+        MeasureObservation.builder()
+            .id("obsId1")
+            .definition("Denominator Observation")
+            .criteriaReference("ref")
+            .displayId("MeasureObservation_1_1")
+            .build();
+    MeasureObservation observation2 =
+        MeasureObservation.builder()
+            .id("obsId2")
+            .definition("Numberator Observation")
+            .criteriaReference("ref")
+            .displayId("MeasureObservation_1_2")
+            .build();
+    group.setPopulationBasis("Encounter");
+    group.setMeasureObservations(List.of(observation1, observation2));
+    measure.setGroups(List.of(group));
+
+    String jsonWithObserv = getData("/test_case_export_w_measure-observation_multiple.json");
+
+    List<TestCaseGroupPopulation> testCaseGroupPopulations =
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWithObserv, true, measure);
+
+    assertTrue(testCaseGroupPopulations.get(0).getPopulationValues().size() == 8);
   }
 }
