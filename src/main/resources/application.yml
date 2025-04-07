@@ -55,9 +55,10 @@ madie:
     retrieve-cqmmeasure-urn: /qdm/measures/cqm
   service-config:
     json-url: ${SERVICE_CONFIG_JSON_URL:http://localhost:9000/env-config/serviceConfig.json}
-    cql-template-qicore411-url: file:/Users/43093/Documents/git/madie-ms/measure-service/src/test/resources/QICore411_CQLTemplate.txt
-    cql-template-qdm56-url: file:/Users/43093/Documents/git/madie-ms/measure-service/src/test/resources/QDM56_CQLTemplate.txt
-    cql-template-qicore600-url: file:/Users/43093/Documents/git/madie-ms/measure-service/src/test/resources/QICore600_CQLTemplate.txt
+    cql-template-qicore411-url: ${CQL_TEMPLATE_QICORE411_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore411_CQLTemplate.txt}
+    cql-template-qdm56-url: ${CQL_TEMPLATE_QDM56_URL:https://madie-dev-static.s3.amazonaws.com/templates/QDM56_CQLTemplate.txt}
+    cql-template-qicore600-url: ${CQL_TEMPLATE_QICORE600_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore600_CQLTemplate.txt}
+
 
 management:
   endpoints:
