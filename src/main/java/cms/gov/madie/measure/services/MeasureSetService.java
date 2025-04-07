@@ -59,8 +59,8 @@ public class MeasureSetService {
           "Measure set [{}] is successfully created for the measure [{}]",
           savedMeasureSet.getId(),
           measureId);
-      actionLogService.logAction(
-          savedMeasureSet.getId(), Measure.class, ActionType.CREATED, harpId);
+      actionLogService.logMeasureSetAction(
+          savedMeasureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, harpId);
     }
   }
 
@@ -221,8 +221,8 @@ public class MeasureSetService {
     measureSet.get().setCmsId(generatedSequenceNumber);
     MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet.get());
     log.info("cms id for the Measure set [{}] is successfully created", updatedMeasureSet.getId());
-    actionLogService.logAction(
-        updatedMeasureSet.getId(), Measure.class, ActionType.CREATED, username);
+    actionLogService.logMeasureSetAction(
+        updatedMeasureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, username);
     return updatedMeasureSet;
   }
 

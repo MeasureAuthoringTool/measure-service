@@ -842,9 +842,9 @@ public class MeasureService {
     String copyMetaDataStatusMessage =
         copyMetaData ? " Metadata was copied over" : " Metadata was NOT copied over";
 
-    actionLogService.logAction(
-        measureSet.getId(),
-        Measure.class,
+    actionLogService.logMeasureSetAction(
+        measureSet.getMeasureSetId(),
+        MeasureSet.class,
         ActionType.ASSOCIATED,
         username,
         String.format(
