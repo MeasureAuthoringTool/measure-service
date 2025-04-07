@@ -72,7 +72,8 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).existsByMeasureSetId("msid-2");
     verify(measureSetRepository, times(1)).save(any(MeasureSet.class));
     verify(actionLogService, times(1))
-        .logAction(measureSet.getId(), Measure.class, ActionType.CREATED, "user-1");
+        .logMeasureSetAction(
+            measureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, "user-1");
   }
 
   @Test
@@ -339,7 +340,8 @@ public class MeasureSetServiceTest {
     assertThat(result.getCmsId(), is(equalTo(2)));
     assertThat(result.getId(), is(equalTo(measureSet1.getId())));
     verify(actionLogService, times(1))
-        .logAction(measureSet.getId(), Measure.class, ActionType.CREATED, "testUser");
+        .logMeasureSetAction(
+            measureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, "testUser");
   }
 
   @Test

@@ -23,7 +23,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -44,9 +46,6 @@ public final class JsonUtil {
   private static final String LOCAL_DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
   private static final DateTimeFormatter FORMATTER =
       DateTimeFormatter.ofPattern(LOCAL_DATE_TIME_PATTERN);
-  private static final String LOCAL_DATE_TIME_PATTERN_2 = "yyyy-MM-dd'T'HH:mm:ssXXX";
-  private static final DateTimeFormatter FORMATTER_2 =
-      DateTimeFormatter.ofPattern(LOCAL_DATE_TIME_PATTERN_2);
   private static final Pattern PATTERN =
       Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}");
 
@@ -726,26 +725,26 @@ public final class JsonUtil {
     }
   }
 
-  // converts a value into UTC datetime, if the the passed in value is a datetime
+  // converts a value into UTC datetime, if the passed in value is a datetime
   // otherwise, returns the original value
   static String getNewValue(String value) {
     String newValue = value;
 
-    ZonedDateTime dateTime = null;
-    ZonedDateTime adjustedDateTime = null;
-    try {
-      dateTime = ZonedDateTime.parse(value, FORMATTER);
-      adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
-      newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
-    } catch (DateTimeParseException e) {
+    if (value.length() >= 19 && (PATTERN.matcher(value.substring(0, 19)).matches())) {
       try {
-        // for older data without milliseconds
-        dateTime = ZonedDateTime.parse(value, FORMATTER_2);
-        adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
-        newValue = adjustedDateTime.format(FORMATTER_2).replace("Z", ".000+00:00");
-      } catch (DateTimeParseException ex) {
-        // only log datetime related errors
-        if (value.length() >= 19 && (PATTERN.matcher(value.substring(0, 19)).matches())) {
+        ZonedDateTime dateTime = ZonedDateTime.parse(value);
+        ZonedDateTime adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
+        newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
+      } catch (DateTimeParseException e) {
+        try {
+          ZonedDateTime dateTime =
+              ZonedDateTime.ofLocal(
+                  LocalDateTime.parse(value.split("\\+")[0]), ZoneId.of("UTC"), ZoneOffset.UTC);
+          ZonedDateTime adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
+          newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
+
+        } catch (DateTimeParseException ex) {
+          // only log datetime related errors
           log.warn("Error parsing date/time string: " + e.getMessage());
         }
       }
