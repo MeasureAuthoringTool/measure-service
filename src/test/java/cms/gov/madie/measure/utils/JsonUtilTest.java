@@ -733,8 +733,8 @@ public class JsonUtilTest implements ResourceUtil {
     assertTrue(modifiedJsonString.contains("2023-08-10T03:34:10.054+00:00"));
     // 2023-08-15T03:34:10.054Z -> 2023-08-15T03:34:10.054+00:00
     assertTrue(modifiedJsonString.contains("2023-08-15T03:34:10.054+00:00"));
-    // 2021-10-13T03:34:10.160+03:00 -> 2021-10-13T00:34:10.160+00:00
-    assertTrue(modifiedJsonString.contains("2021-10-13T00:34:10.160+00:00"));
+    // 2021-10-13T03:34:10.160+03:00 -> 2021-10-13T03:34:10.160+00:00 <- invalid timezone test
+    assertTrue(modifiedJsonString.contains("2021-10-13T03:34:10.160+00:00"));
     // 2023-09-12T03:34:10.054Z -> 2023-09-12T03:34:10.054+00:00
     assertTrue(modifiedJsonString.contains("2023-09-12T03:34:10.054+00:00"));
     // 2023-09-13T09:34:10.054Z -> 2023-09-13T09:34:10.054+00:00
@@ -754,8 +754,8 @@ public class JsonUtilTest implements ResourceUtil {
     assertTrue(result.contains("2023-08-10T03:34:10.054+00:00"));
     // 2023-08-15T03:34:10.054Z -> 2023-08-15T03:34:10.054+00:00
     assertTrue(result.contains("2023-08-15T03:34:10.054+00:00"));
-    // 2021-10-13T03:34:10.160+03:00 -> 2021-10-13T00:34:10.160+00:00
-    assertTrue(result.contains("2021-10-13T00:34:10.160+00:00"));
+    // 2021-10-13T03:34:10.160+99:00 -> 2021-10-13T03:34:10.160+00:00 <- invalid timezone test
+    assertTrue(result.contains("2021-10-13T03:34:10.160+00:00"));
     // 2023-09-12T03:34:10.054Z -> 2023-09-12T03:34:10.054+00:00
     assertTrue(result.contains("2023-09-12T03:34:10.054+00:00"));
     // 2023-09-13T09:34:10.054Z -> 2023-09-13T09:34:10.054+00:00
