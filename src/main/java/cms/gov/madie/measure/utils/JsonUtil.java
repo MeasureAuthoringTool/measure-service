@@ -10,6 +10,7 @@ import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
+import gov.cms.madie.models.measure.Population;
 import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.QdmMeasure;
 import gov.cms.madie.models.measure.TestCase;
@@ -23,7 +24,9 @@ import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -44,9 +47,6 @@ public final class JsonUtil {
   private static final String LOCAL_DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
   private static final DateTimeFormatter FORMATTER =
       DateTimeFormatter.ofPattern(LOCAL_DATE_TIME_PATTERN);
-  private static final String LOCAL_DATE_TIME_PATTERN_2 = "yyyy-MM-dd'T'HH:mm:ssXXX";
-  private static final DateTimeFormatter FORMATTER_2 =
-      DateTimeFormatter.ofPattern(LOCAL_DATE_TIME_PATTERN_2);
   private static final Pattern PATTERN =
       Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}");
 
@@ -237,8 +237,15 @@ public final class JsonUtil {
               String id = population.get("id") != null ? population.get("id").asText() : "";
               MeasureObservation obs = null;
               if (id.contains("MeasureObservation")) {
-                // e.g. MeasureObservation_1_1
-                obs = findMeasureObservation(measureGroup, id);
+                // id for patient based: MeasureObservation_1_1
+                // id for episode based: MeasureObservation_1_1_1
+                boolean patientBased =
+                    StringUtils.equalsIgnoreCase("boolean", measureGroup.getPopulationBasis());
+                String displayId = id;
+                if (!patientBased) {
+                  displayId = id.substring(0, 22);
+                }
+                obs = findMeasureObservation(measureGroup, displayId);
               }
 
               JsonNode codeNode = population.get("code");
@@ -249,7 +256,7 @@ public final class JsonUtil {
                 if (codings != null) {
                   for (JsonNode coding : codings) {
                     String code = coding.get("code").asText();
-                    appendPopulationValues(populationValues, count, code, obs);
+                    appendPopulationValues(populationValues, count, code, obs, measureGroup);
                   }
                 }
                 groupPopulation =
@@ -311,7 +318,7 @@ public final class JsonUtil {
               measurePopulationBasis
                   ? (Integer.parseInt(expVal.get("count").asText()) == 1)
                   : Integer.parseInt(expVal.get("count").asText());
-          appendPopulationValues(expectedStratValues, count, code, null);
+          appendPopulationValues(expectedStratValues, count, code, null, null);
         });
     TestCaseStratificationValue stratValue =
         TestCaseStratificationValue.builder().id(stratId).name(stratName).build();
@@ -323,24 +330,32 @@ public final class JsonUtil {
       List<TestCasePopulationValue> populationValues,
       Object count,
       String code,
-      MeasureObservation observation) {
+      MeasureObservation observation,
+      Group group) {
     TestCasePopulationValue populationValue =
         TestCasePopulationValue.builder()
             .id(observation != null ? observation.getId() : null)
             .criteriaReference(observation != null ? observation.getCriteriaReference() : null)
             .name(
-                observation != null && observation.getDefinition() != null
+                observation != null && group != null
                     ? PopulationType.fromCode(
-                        observation
-                            .getDefinition() // e.g. Denominator Observations ->
-                            // denominator_observation
-                            .substring(0, observation.getDefinition().length() - 1)
-                            .toLowerCase()
-                            .replace(" ", "-"))
+                        getMeasureObservationPopulationType(
+                            observation.getCriteriaReference(), group))
                     : PopulationType.fromCode(code))
             .expected(count)
             .build();
     populationValues.add(populationValue);
+  }
+
+  private static String getMeasureObservationPopulationType(String criteriaReference, Group group) {
+    Optional<Population> populationOpt =
+        group.getPopulations().stream()
+            .filter(population -> criteriaReference.equalsIgnoreCase(population.getId()))
+            .findFirst();
+    if (populationOpt.isPresent()) {
+      return populationOpt.get().getDefinition().toLowerCase() + "-observation";
+    }
+    return "";
   }
 
   public static String removeMeasureReportFromJson(String testCaseJson)
@@ -714,26 +729,26 @@ public final class JsonUtil {
     }
   }
 
-  // converts a value into UTC datetime, if the the passed in value is a datetime
+  // converts a value into UTC datetime, if the passed in value is a datetime
   // otherwise, returns the original value
   static String getNewValue(String value) {
     String newValue = value;
 
-    ZonedDateTime dateTime = null;
-    ZonedDateTime adjustedDateTime = null;
-    try {
-      dateTime = ZonedDateTime.parse(value, FORMATTER);
-      adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
-      newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
-    } catch (DateTimeParseException e) {
+    if (value.length() >= 19 && (PATTERN.matcher(value.substring(0, 19)).matches())) {
       try {
-        // for older data without milliseconds
-        dateTime = ZonedDateTime.parse(value, FORMATTER_2);
-        adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
-        newValue = adjustedDateTime.format(FORMATTER_2).replace("Z", ".000+00:00");
-      } catch (DateTimeParseException ex) {
-        // only log datetime related errors
-        if (value.length() >= 19 && (PATTERN.matcher(value.substring(0, 19)).matches())) {
+        ZonedDateTime dateTime = ZonedDateTime.parse(value);
+        ZonedDateTime adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
+        newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
+      } catch (DateTimeParseException e) {
+        try {
+          ZonedDateTime dateTime =
+              ZonedDateTime.ofLocal(
+                  LocalDateTime.parse(value.split("\\+")[0]), ZoneId.of("UTC"), ZoneOffset.UTC);
+          ZonedDateTime adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
+          newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
+
+        } catch (DateTimeParseException ex) {
+          // only log datetime related errors
           log.warn("Error parsing date/time string: " + e.getMessage());
         }
       }

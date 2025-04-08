@@ -8,6 +8,8 @@ import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
+import gov.cms.madie.models.measure.Population;
+import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.QdmMeasure;
 import gov.cms.madie.models.measure.TestCase;
 import gov.cms.madie.models.measure.TestCaseGroupPopulation;
@@ -147,7 +149,20 @@ public class JsonUtilTest implements ResourceUtil {
   final String testCasePopulationValueJsonNode =
       "{\n" + "\"population_index\":0,\n" + "\"IPP\":1\n" + "}";
 
-  Group group = Group.builder().build();
+  Population population1 = Population.builder().name(PopulationType.INITIAL_POPULATION).build();
+  Population population2 =
+      Population.builder()
+          .name(PopulationType.DENOMINATOR)
+          .id("ref1")
+          .definition("Denominator")
+          .build();
+  Population population3 =
+      Population.builder()
+          .name(PopulationType.NUMERATOR)
+          .id("ref2")
+          .definition("Numerator")
+          .build();
+  Group group = Group.builder().populations(List.of(population1, population2, population3)).build();
   final Measure measure = Measure.builder().groups(List.of(group)).build();
 
   @Test
@@ -733,8 +748,8 @@ public class JsonUtilTest implements ResourceUtil {
     assertTrue(modifiedJsonString.contains("2023-08-10T03:34:10.054+00:00"));
     // 2023-08-15T03:34:10.054Z -> 2023-08-15T03:34:10.054+00:00
     assertTrue(modifiedJsonString.contains("2023-08-15T03:34:10.054+00:00"));
-    // 2021-10-13T03:34:10.160+03:00 -> 2021-10-13T00:34:10.160+00:00
-    assertTrue(modifiedJsonString.contains("2021-10-13T00:34:10.160+00:00"));
+    // 2021-10-13T03:34:10.160+03:00 -> 2021-10-13T03:34:10.160+00:00 <- invalid timezone test
+    assertTrue(modifiedJsonString.contains("2021-10-13T03:34:10.160+00:00"));
     // 2023-09-12T03:34:10.054Z -> 2023-09-12T03:34:10.054+00:00
     assertTrue(modifiedJsonString.contains("2023-09-12T03:34:10.054+00:00"));
     // 2023-09-13T09:34:10.054Z -> 2023-09-13T09:34:10.054+00:00
@@ -754,8 +769,8 @@ public class JsonUtilTest implements ResourceUtil {
     assertTrue(result.contains("2023-08-10T03:34:10.054+00:00"));
     // 2023-08-15T03:34:10.054Z -> 2023-08-15T03:34:10.054+00:00
     assertTrue(result.contains("2023-08-15T03:34:10.054+00:00"));
-    // 2021-10-13T03:34:10.160+03:00 -> 2021-10-13T00:34:10.160+00:00
-    assertTrue(result.contains("2021-10-13T00:34:10.160+00:00"));
+    // 2021-10-13T03:34:10.160+99:00 -> 2021-10-13T03:34:10.160+00:00 <- invalid timezone test
+    assertTrue(result.contains("2021-10-13T03:34:10.160+00:00"));
     // 2023-09-12T03:34:10.054Z -> 2023-09-12T03:34:10.054+00:00
     assertTrue(result.contains("2023-09-12T03:34:10.054+00:00"));
     // 2023-09-13T09:34:10.054Z -> 2023-09-13T09:34:10.054+00:00
@@ -776,16 +791,17 @@ public class JsonUtilTest implements ResourceUtil {
         MeasureObservation.builder()
             .id("obsId1")
             .definition("Denominator Observations")
-            .criteriaReference("ref")
+            .criteriaReference("ref1")
             .displayId("MeasureObservation_1_1")
             .build();
     MeasureObservation observation2 =
         MeasureObservation.builder()
             .id("obsId2")
             .definition("Numberator Observations")
-            .criteriaReference("ref")
+            .criteriaReference("ref2")
             .displayId("MeasureObservation_1_2")
             .build();
+    group.setPopulationBasis("boolean");
     group.setMeasureObservations(List.of(observation1, observation2));
     measure.setGroups(List.of(group));
 
@@ -811,5 +827,34 @@ public class JsonUtilTest implements ResourceUtil {
     MeasureObservation result = JsonUtil.findMeasureObservation(group, "MeasureObservation_1_1");
 
     assertNull(result);
+  }
+
+  @Test
+  void testgetTestCaseGroupPopulationsFromMeasureReportWithMeasureObservationEpisodeBased()
+      throws JsonProcessingException {
+    MeasureObservation observation1 =
+        MeasureObservation.builder()
+            .id("obsId1")
+            .definition("Denominator Observation")
+            .criteriaReference("ref")
+            .displayId("MeasureObservation_1_1")
+            .build();
+    MeasureObservation observation2 =
+        MeasureObservation.builder()
+            .id("obsId2")
+            .definition("Numberator Observation")
+            .criteriaReference("ref")
+            .displayId("MeasureObservation_1_2")
+            .build();
+    group.setPopulationBasis("Encounter");
+    group.setMeasureObservations(List.of(observation1, observation2));
+    measure.setGroups(List.of(group));
+
+    String jsonWithObserv = getData("/test_case_export_w_measure-observation_multiple.json");
+
+    List<TestCaseGroupPopulation> testCaseGroupPopulations =
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWithObserv, true, measure);
+
+    assertTrue(testCaseGroupPopulations.get(0).getPopulationValues().size() == 8);
   }
 }
