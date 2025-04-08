@@ -10,6 +10,7 @@ import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
+import gov.cms.madie.models.measure.Population;
 import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.QdmMeasure;
 import gov.cms.madie.models.measure.TestCase;
@@ -236,8 +237,15 @@ public final class JsonUtil {
               String id = population.get("id") != null ? population.get("id").asText() : "";
               MeasureObservation obs = null;
               if (id.contains("MeasureObservation")) {
-                // e.g. MeasureObservation_1_1
-                obs = findMeasureObservation(measureGroup, id);
+                // id for patient based: MeasureObservation_1_1
+                // id for episode based: MeasureObservation_1_1_1
+                boolean patientBased =
+                    StringUtils.equalsIgnoreCase("boolean", measureGroup.getPopulationBasis());
+                String displayId = id;
+                if (!patientBased) {
+                  displayId = id.substring(0, 22);
+                }
+                obs = findMeasureObservation(measureGroup, displayId);
               }
 
               JsonNode codeNode = population.get("code");
@@ -248,7 +256,7 @@ public final class JsonUtil {
                 if (codings != null) {
                   for (JsonNode coding : codings) {
                     String code = coding.get("code").asText();
-                    appendPopulationValues(populationValues, count, code, obs);
+                    appendPopulationValues(populationValues, count, code, obs, measureGroup);
                   }
                 }
                 groupPopulation =
@@ -310,7 +318,7 @@ public final class JsonUtil {
               measurePopulationBasis
                   ? (Integer.parseInt(expVal.get("count").asText()) == 1)
                   : Integer.parseInt(expVal.get("count").asText());
-          appendPopulationValues(expectedStratValues, count, code, null);
+          appendPopulationValues(expectedStratValues, count, code, null, null);
         });
     TestCaseStratificationValue stratValue =
         TestCaseStratificationValue.builder().id(stratId).name(stratName).build();
@@ -322,24 +330,32 @@ public final class JsonUtil {
       List<TestCasePopulationValue> populationValues,
       Object count,
       String code,
-      MeasureObservation observation) {
+      MeasureObservation observation,
+      Group group) {
     TestCasePopulationValue populationValue =
         TestCasePopulationValue.builder()
             .id(observation != null ? observation.getId() : null)
             .criteriaReference(observation != null ? observation.getCriteriaReference() : null)
             .name(
-                observation != null && observation.getDefinition() != null
+                observation != null && group != null
                     ? PopulationType.fromCode(
-                        observation
-                            .getDefinition() // e.g. Denominator Observations ->
-                            // denominator_observation
-                            .substring(0, observation.getDefinition().length() - 1)
-                            .toLowerCase()
-                            .replace(" ", "-"))
+                        getMeasureObservationPopulationType(
+                            observation.getCriteriaReference(), group))
                     : PopulationType.fromCode(code))
             .expected(count)
             .build();
     populationValues.add(populationValue);
+  }
+
+  private static String getMeasureObservationPopulationType(String criteriaReference, Group group) {
+    Optional<Population> populationOpt =
+        group.getPopulations().stream()
+            .filter(population -> criteriaReference.equalsIgnoreCase(population.getId()))
+            .findFirst();
+    if (populationOpt.isPresent()) {
+      return populationOpt.get().getDefinition().toLowerCase() + "-observation";
+    }
+    return "";
   }
 
   public static String removeMeasureReportFromJson(String testCaseJson)
