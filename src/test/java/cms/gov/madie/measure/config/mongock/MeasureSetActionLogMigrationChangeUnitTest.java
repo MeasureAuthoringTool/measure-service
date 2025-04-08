@@ -46,7 +46,7 @@ public class MeasureSetActionLogMigrationChangeUnitTest {
   void setUp() {
     actionLog = new ActionLog();
     actionLog.setId("action1");
-    actionLog.setTargetId("measureSet1");
+    actionLog.setTargetId("measureSetId");
     Action action1 =
         Action.builder()
             .actionType(ActionType.CREATED)
@@ -63,7 +63,7 @@ public class MeasureSetActionLogMigrationChangeUnitTest {
             .build();
     actionLog.setActions(List.of(action1, action2));
 
-    measureSet = MeasureSet.builder().measureSetId("measureSet1").build();
+    measureSet = MeasureSet.builder().id("measureSetId").measureSetId("measureSet1").build();
 
     List<AccessControlAction> accessControlActions =
         actionLog.getActions().stream()
@@ -106,7 +106,7 @@ public class MeasureSetActionLogMigrationChangeUnitTest {
         measureSetRepository, measureActionLogRepository, measureSetActionLogRepository);
 
     verify(measureActionLogRepository, new Times(1)).findAll();
-    verify(measureSetRepository, new Times(1)).findById("measureSet1");
+    verify(measureSetRepository, new Times(1)).findById("measureSetId");
     verifyNoInteractions(measureSetActionLogRepository);
   }
 
@@ -119,13 +119,13 @@ public class MeasureSetActionLogMigrationChangeUnitTest {
         measureSetRepository, measureActionLogRepository, measureSetActionLogRepository);
 
     verify(measureActionLogRepository, new Times(1)).findAll();
-    verify(measureSetRepository, new Times(1)).findById("measureSet1");
+    verify(measureSetRepository, new Times(1)).findById("measureSetId");
     verify(measureSetActionLogRepository, new Times(1)).saveAll(List.of(measureSetActionLog));
     verify(measureActionLogRepository, new Times(1)).deleteAllById(List.of("action1"));
   }
 
   @Test
-  public void testRollbackExecution() throws Exception {
+  public void testRollbackExecution() {
 
     ReflectionTestUtils.setField(changeUnit, "actionLogsToBeMigrated", List.of(actionLog));
     ReflectionTestUtils.setField(changeUnit, "measureSetActionLogIds", List.of("action1"));
@@ -137,7 +137,7 @@ public class MeasureSetActionLogMigrationChangeUnitTest {
   }
 
   @Test
-  public void testRollbackExecutionNoActionLogs() throws Exception {
+  public void testRollbackExecutionNoActionLogs() {
 
     ReflectionTestUtils.setField(changeUnit, "actionLogsToBeMigrated", Collections.emptyList());
     ReflectionTestUtils.setField(changeUnit, "measureSetActionLogIds", Collections.emptyList());

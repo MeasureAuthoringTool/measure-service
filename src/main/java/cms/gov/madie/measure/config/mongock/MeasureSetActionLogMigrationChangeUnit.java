@@ -44,11 +44,11 @@ public class MeasureSetActionLogMigrationChangeUnit {
                 String targetId = actionLog.getTargetId();
                 Optional<MeasureSet> measureSetOpt = measureSetRepository.findById(targetId);
                 if (measureSetOpt.isPresent()) {
-                  // if the ActionLog should be in MeasureSetActionLog instead:
+                  // record the migrated records for delete and rollback:
                   actionLogsToBeMigrated.add(actionLog);
                   actionLogIdsToBeMigrated.add(actionLog.getId());
 
-                  // get the migrated data ready:
+                  // get the MeasureSetActionLog data ready:
                   List<AccessControlAction> accessControlActions =
                       actionLog.getActions().stream()
                           .map(
@@ -65,7 +65,7 @@ public class MeasureSetActionLogMigrationChangeUnit {
                   MeasureSetActionLog measureSetActionLog =
                       MeasureSetActionLog.builder()
                           .id(actionLog.getId())
-                          .targetId(targetId)
+                          .targetId(measureSetOpt.get().getMeasureSetId())
                           .actions(accessControlActions)
                           .build();
 
@@ -88,8 +88,7 @@ public class MeasureSetActionLogMigrationChangeUnit {
   @RollbackExecution
   public void rollbackExecution(
       MeasureActionLogRepository measureActionLogRepository,
-      MeasureSetActionLogRepository measureSetActionLogRepository)
-      throws Exception {
+      MeasureSetActionLogRepository measureSetActionLogRepository) {
     log.debug("Entering rollbackExecution()");
 
     if (CollectionUtils.isNotEmpty(actionLogsToBeMigrated)) {
