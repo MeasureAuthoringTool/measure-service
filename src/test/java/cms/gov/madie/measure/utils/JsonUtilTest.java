@@ -8,6 +8,8 @@ import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
+import gov.cms.madie.models.measure.Population;
+import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.QdmMeasure;
 import gov.cms.madie.models.measure.TestCase;
 import gov.cms.madie.models.measure.TestCaseGroupPopulation;
@@ -147,7 +149,20 @@ public class JsonUtilTest implements ResourceUtil {
   final String testCasePopulationValueJsonNode =
       "{\n" + "\"population_index\":0,\n" + "\"IPP\":1\n" + "}";
 
-  Group group = Group.builder().build();
+  Population population1 = Population.builder().name(PopulationType.INITIAL_POPULATION).build();
+  Population population2 =
+      Population.builder()
+          .name(PopulationType.DENOMINATOR)
+          .id("ref1")
+          .definition("Denominator")
+          .build();
+  Population population3 =
+      Population.builder()
+          .name(PopulationType.NUMERATOR)
+          .id("ref2")
+          .definition("Numerator")
+          .build();
+  Group group = Group.builder().populations(List.of(population1, population2, population3)).build();
   final Measure measure = Measure.builder().groups(List.of(group)).build();
 
   @Test
@@ -776,14 +791,14 @@ public class JsonUtilTest implements ResourceUtil {
         MeasureObservation.builder()
             .id("obsId1")
             .definition("Denominator Observations")
-            .criteriaReference("ref")
+            .criteriaReference("ref1")
             .displayId("MeasureObservation_1_1")
             .build();
     MeasureObservation observation2 =
         MeasureObservation.builder()
             .id("obsId2")
             .definition("Numberator Observations")
-            .criteriaReference("ref")
+            .criteriaReference("ref2")
             .displayId("MeasureObservation_1_2")
             .build();
     group.setPopulationBasis("boolean");
