@@ -2,6 +2,7 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
+import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.utils.ResourceUtil;
 import gov.cms.madie.models.common.ModelType;
@@ -27,10 +28,10 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static cms.gov.madie.measure.utils.ServiceConstants.LEGACY_MEASURE_EXPORT_WARNING;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,7 +47,6 @@ import java.util.zip.ZipInputStream;
 class BundleServiceTest implements ResourceUtil {
 
   @Mock private FhirServicesClient fhirServicesClient;
-  @Mock private ElmTranslatorClient elmTranslatorClient;
   @Mock private ExportRepository exportRepository;
   @Mock private ElmToJsonService elmToJsonService;
   @Mock private MongoGridFsService mongoGridFsService;
@@ -87,6 +87,7 @@ class BundleServiceTest implements ResourceUtil {
             .cqlErrors(false)
             .elmJson(elmJson)
             .measureSetId("IDIDID")
+            .ecqmTitle("MEAS")
             .measureName("MSR01")
             .version(new Version(0, 0, 1))
             .groups(groups)
@@ -100,28 +101,30 @@ class BundleServiceTest implements ResourceUtil {
 
   @Test
   void testBundleMeasureReturnsNullForNullMeasure() {
-    String output = bundleService.bundleMeasure(null, "Bearer TOKEN", "calculation");
+    String output = bundleService.bundleMeasure(null, "Bearer TOKEN", "calculation", "Info");
     assertThat(output, is(nullValue()));
   }
 
   @Test
   void testBundleMeasureThrowsOperationException() {
 
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), anyString(), anyString()))
         .thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
     assertThrows(
         BundleOperationException.class,
-        () -> bundleService.bundleMeasure(measure, "Bearer TOKEN", "calculation"));
+        () -> bundleService.bundleMeasure(measure, "Bearer TOKEN", "calculation", "Info"));
   }
 
   @Test
   void testBundleMeasureReturnsBundleStringForDraftMeasure() {
     final String json = "{\"message\": \"GOOD JSON\"}";
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), anyString(), anyString()))
         .thenReturn(json);
 
     assertThat(measure.getMeasureMetaData().isDraft(), is(equalTo(true)));
-    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", "calculation");
+    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", "calculation", "Info");
     assertThat(output, is(equalTo(json)));
   }
 
@@ -132,7 +135,7 @@ class BundleServiceTest implements ResourceUtil {
     measure.getMeasureMetaData().setDraft(false);
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
 
-    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", null);
+    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", null, "Info");
     assertThat(output, is(equalTo(json)));
   }
 
@@ -145,7 +148,7 @@ class BundleServiceTest implements ResourceUtil {
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
     when(mongoGridFsService.findById(anyString())).thenReturn(json);
 
-    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", null);
+    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", null, "Info");
     assertThat(output, is(equalTo(json)));
   }
 
@@ -157,7 +160,7 @@ class BundleServiceTest implements ResourceUtil {
     Exception ex =
         assertThrows(
             BundleOperationException.class,
-            () -> bundleService.bundleMeasure(measure, "Bearer TOKEN", null));
+            () -> bundleService.bundleMeasure(measure, "Bearer TOKEN", null, "Info"));
     assertThat(
         ex.getMessage(),
         is(
@@ -167,7 +170,79 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testExportBundleMeasureForVersionedMeasure() throws IOException {
+  void testExportWithElmWarningsBundleMeasureForVersionedMeasure() throws IOException {
+    final String json = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
+    measure.getMeasureMetaData().setDraft(false);
+
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("id1")
+            .measureBundleWithoutWarningsGridFsId("id2")
+            .build();
+    measure.setMeasureMetaData(
+        MeasureMetaData.builder()
+            .draft(false)
+            .steward(Organization.builder().name("SemanticBits").build())
+            .description("This is a description")
+            .developers(List.of(Organization.builder().name("ICF").build()))
+            .build());
+    measure.setModel("QI-Core v4.1.1");
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
+    when(mongoGridFsService.findById("id1")).thenReturn(json);
+    PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
+    assertNotNull(output);
+    ZipInputStream z = new ZipInputStream(new ByteArrayInputStream(output.getExportPackage()));
+    ZipEntry entry = z.getNextEntry();
+    String fileName = entry.getName();
+    assertEquals("resources/measure-TestCreateNewLibrary-1.0.000.json", fileName);
+    verify(mongoGridFsService, times(1)).findById("id1");
+  }
+
+  @Test
+  void testExportWithElmWarningsWhenBundleIsNotAvailableInGridFsButIsStoredAsBundleJson() {
+    final String json = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("grid-fs-id-1")
+            .measureBundleWithoutWarningsGridFsId("id2")
+            .measureBundleJson(json)
+            .build();
+    measure.getMeasureMetaData().setDraft(false);
+    measure.setModel("QI-Core v4.1.1");
+    when(mongoGridFsService.findById("grid-fs-id-1")).thenReturn(null);
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
+    PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
+    assertNotNull(output.getExportPackage());
+    verify(mongoGridFsService, times(1)).findById("grid-fs-id-1");
+  }
+
+  @Test
+  void
+      testExportWithElmWarningsThrowsExceptionWhenBundleIsNotAvailableInGridFsAndBundleJsonIsAlsoEmpty() {
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("grid-fs-id-1")
+            .measureBundleWithoutWarningsGridFsId("id2")
+            .measureBundleJson("") // no saved export
+            .build();
+    measure.getMeasureMetaData().setDraft(false);
+    measure.setModel("QI-Core v4.1.1");
+    when(mongoGridFsService.findById("grid-fs-id-1")).thenReturn(null);
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
+    Exception ex =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN"));
+    assertThat(
+        ex.getMessage(),
+        is(equalTo("Could not find saved export for Measure with id: xyz-p13r-13ert")));
+  }
+
+  @Test
+  void testExportWithoutElmWarningsBundleMeasureForVersionedMeasure() throws IOException {
     final String json = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
     measure.getMeasureMetaData().setDraft(false);
 
@@ -187,23 +262,43 @@ class BundleServiceTest implements ResourceUtil {
             .build());
     measure.setModel("QI-Core v4.1.1");
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
-    when(mongoGridFsService.findById("id1")).thenReturn(json);
     when(mongoGridFsService.findById("id2")).thenReturn(json);
-    PackageDto output = bundleService.getMeasureExport(measure, "Bearer TOKEN");
+    PackageDto output = bundleService.getMeasureExport(measure, "Error", "Bearer TOKEN");
     assertNotNull(output);
     ZipInputStream z = new ZipInputStream(new ByteArrayInputStream(output.getExportPackage()));
     ZipEntry entry = z.getNextEntry();
     String fileName = entry.getName();
     assertEquals("resources/measure-TestCreateNewLibrary-1.0.000.json", fileName);
+    verify(mongoGridFsService, times(1)).findById("id2");
   }
 
   @Test
-  void testExportBundleMeasureForVersionedMeasureDoesntExistInMongo() throws IOException {
+  void testExportWithoutElmWarningsThrowsExceptionWhenGridFsDoesNotContainSavedExport() {
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("grid-fs-id-1")
+            .measureBundleWithoutWarningsGridFsId("grid-fs-id-2")
+            .measureBundleJson("") // no saved export
+            .build();
+    measure.getMeasureMetaData().setDraft(false);
+    measure.setModel("QI-Core v4.1.1");
+    when(mongoGridFsService.findById("grid-fs-id-2")).thenReturn("");
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
+    Exception ex =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> bundleService.getMeasureExport(measure, "Error", "Bearer TOKEN"));
+    assertThat(ex.getMessage(), is(equalTo(LEGACY_MEASURE_EXPORT_WARNING)));
+  }
+
+  @Test
+  void testExportBundleMeasureForVersionedMeasureDoesntExistInMongo() {
     doThrow(
             new BundleOperationException(
                 "Measure", "xyz-p13r-13ert", new RuntimeException("Failed to retrieve ELM JSON")))
         .when(elmToJsonService)
-        .retrieveElmJson(any(), anyString());
+        .retrieveElmJson(any(), anyString(), anyString());
 
     measure.setEcqmTitle("MEAS");
     measure.setMeasureMetaData(
@@ -218,7 +313,7 @@ class BundleServiceTest implements ResourceUtil {
     Exception ex =
         assertThrows(
             BundleOperationException.class,
-            () -> bundleService.getMeasureExport(measure, "Bearer TOKEN"));
+            () -> bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN"));
     assertThat(
         ex.getMessage(),
         is(
@@ -228,7 +323,7 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testExportBundleMeasureForDraftMeasure() throws IOException {
+  void testExportBundleMeasureForDraftMeasure() {
     measure.setEcqmTitle("MEAS");
     measure.setMeasureMetaData(
         MeasureMetaData.builder()
@@ -242,15 +337,15 @@ class BundleServiceTest implements ResourceUtil {
     byte[] exportBytes = "TEST".getBytes();
     doReturn(exportBytes)
         .when(fhirServicesClient)
-        .getMeasureBundleExport(any(Measure.class), eq("Bearer TOKEN"));
+        .getMeasureBundleExport(any(Measure.class), eq("Info"), eq("Bearer TOKEN"));
 
-    PackageDto output = bundleService.getMeasureExport(measure, "Bearer TOKEN");
+    PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
     assertNotNull(output);
-    assertTrue(Arrays.equals("TEST".getBytes(), output.getExportPackage()));
+    assertArrayEquals("TEST".getBytes(), output.getExportPackage());
   }
 
   @Test
-  void testExportBundleMeasureForDraftMeasureThrowsException() throws IOException {
+  void testExportBundleMeasureForDraftMeasureThrowsException() {
 
     measure.setEcqmTitle("MEAS");
     measure.setMeasureMetaData(
@@ -264,12 +359,12 @@ class BundleServiceTest implements ResourceUtil {
 
     doThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN))
         .when(fhirServicesClient)
-        .getMeasureBundleExport(any(Measure.class), eq("Bearer TOKEN"));
+        .getMeasureBundleExport(any(Measure.class), eq("Info"), eq("Bearer TOKEN"));
 
     Exception ex =
         assertThrows(
             BundleOperationException.class,
-            () -> bundleService.getMeasureExport(measure, "Bearer TOKEN"));
+            () -> bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN"));
     assertThat(
         ex.getMessage(),
         is(
@@ -279,8 +374,8 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testExportBundleMeasureForNullMeasureReturnsNull() throws IOException {
-    PackageDto output = bundleService.getMeasureExport(null, "Bearer TOKEN");
+  void testExportBundleMeasureForNullMeasureReturnsNull() {
+    PackageDto output = bundleService.getMeasureExport(null, "Info", "Bearer TOKEN");
     assertNull(output);
   }
 }

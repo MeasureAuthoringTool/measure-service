@@ -33,7 +33,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.http.ResponseEntity;
 
 import java.io.ByteArrayInputStream;
@@ -68,7 +67,7 @@ public class VersionServiceTest {
   @Mock AppConfigService appConfigService;
   @Mock ElmToJsonService elmToJsonService;
 
-  @Mock private GridFsOperations gridFsOperations;
+  @Mock private MongoGridFsService mongoGridFsService;
   @Mock ElmTranslatorClient elmTranslatorClient;
   @Mock FhirServicesClient fhirServicesClient;
 
@@ -77,6 +76,22 @@ public class VersionServiceTest {
   @Captor private ArgumentCaptor<Export> exportArgumentCaptor;
 
   @InjectMocks VersionService versionService;
+
+  private final String json =
+      """
+  		{
+  			"entry":[
+  				{
+  			      "resource":{
+  			         "period":{
+  			            "start":"2024-10-10T20:30:10.123-05:00",
+  			            "end":"2024-10-10T07:31:20.456+06:00"
+  			         }
+  					}
+  				}
+  			]
+  		}
+  		""";
 
   private final String ELMJON_ERROR =
       "{\n" + "\"errorExceptions\" : \n" + "[ {\"error\":\"error translating cql\" } ]\n" + "}";
@@ -107,7 +122,7 @@ public class VersionServiceTest {
           .createdAt(today)
           .createdBy("TestUser")
           .lastModifiedBy("TestUser2")
-          .json("{\"resourceType\":\"Patient\"}")
+          .json(json)
           .title("Test1")
           .groupPopulations(List.of(testCaseGroupPopulation))
           .build();
@@ -494,7 +509,7 @@ public class VersionServiceTest {
                 "resource": {
                   "resourceType": "Measure","text":{"div":"humanReadable"}}}]}""";
 
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(measureBundleJson);
 
     factory
@@ -565,7 +580,7 @@ public class VersionServiceTest {
             .measureBundleWithoutWarningsGridFsId("id2")
             .build();
     when(exportRepository.save(any(Export.class))).thenReturn(measureExport);
-    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
         .thenReturn(measureBundleJson);
     when(fhirServicesClient.getMeasureBundle(
             any(Measure.class), anyString(), anyString(), anyString()))
@@ -576,12 +591,18 @@ public class VersionServiceTest {
     ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
     when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
 
-    when(gridFsOperations.store(
-            any(ByteArrayInputStream.class), eq("measureBundle.json"), eq("application/json")))
-        .thenReturn(measureBundleId);
-    when(gridFsOperations.store(
+    when(mongoGridFsService.save(
             any(ByteArrayInputStream.class),
-            eq("measureBundleWithoutWarnings.json"),
+            eq(existingMeasure.getEcqmTitle() + "-v" + updatedMeasure.getVersion().toString()),
+            eq("application/json")))
+        .thenReturn(measureBundleId);
+    when(mongoGridFsService.save(
+            any(ByteArrayInputStream.class),
+            eq(
+                existingMeasure.getEcqmTitle()
+                    + "-v"
+                    + updatedMeasure.getVersion().toString()
+                    + "-withoutWarnings"),
             eq("application/json")))
         .thenReturn(measureBundleWithoutWarningsId);
 
@@ -638,7 +659,7 @@ public class VersionServiceTest {
     when(measureRepository.save(any(Measure.class))).thenReturn(updatedMeasure);
 
     byte[] exportPackage = "Look, I'm a measure package".getBytes();
-    when(exportService.getMeasureExport(any(Measure.class), anyString(), anyBoolean()))
+    when(exportService.getMeasureExport(any(Measure.class), anyString(), anyString()))
         .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(exportPackage).build());
     when(qdmPackageService.getHumanReadable(any(Measure.class), anyString(), anyString()))
         .thenReturn("test human readable");
@@ -676,6 +697,8 @@ public class VersionServiceTest {
             .model(ModelType.QI_CORE_6_0_0.getValue())
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001'")
+            .ecqmTitle("testMsr")
+            .version(Version.builder().major(2).minor(3).revisionNumber(1).build())
             .measureSet(measureSet)
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
@@ -711,32 +734,30 @@ public class VersionServiceTest {
             {"resourceType": "Bundle","entry": [ {
                 "resource": {
                   "resourceType": "Measure","text":{"div":"humanReadable"}}}]}""";
-    Export measureExport =
-        Export.builder()
-            .id("testId")
-            .measureId("testMeasureId")
-            .measureBundleJson(measureBundleJson)
-            .measureBundleGridFsId("id1")
-            .measureBundleWithoutWarningsGridFsId("id2")
-            .build();
+    Export measureExport = Export.builder().id("testId").measureId("testMeasureId").build();
     when(exportRepository.save(any(Export.class))).thenReturn(measureExport);
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), anyString()))
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), anyString(), eq("Info")))
         .thenReturn(measureBundleJson);
 
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), anyString(), anyString()))
+            any(Measure.class), anyString(), anyString(), eq("Error")))
         .thenReturn(measureBundleJson);
-    ObjectId measureBundleId = mock(ObjectId.class);
-    when(measureBundleId.toHexString()).thenReturn("hex1");
-    ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
-    when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
 
-    when(gridFsOperations.store(
-            any(ByteArrayInputStream.class), eq("measureBundle.json"), eq("application/json")))
-        .thenReturn(measureBundleId);
-    when(gridFsOperations.store(
+    ObjectId measureBundleWithWarningsId = mock(ObjectId.class);
+    ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
+    when(mongoGridFsService.save(
             any(ByteArrayInputStream.class),
-            eq("measureBundleWithoutWarnings.json"),
+            eq(existingMeasure.getEcqmTitle() + "-v" + updatedMeasure.getVersion().toString()),
+            eq("application/json")))
+        .thenReturn(measureBundleWithWarningsId);
+    when(mongoGridFsService.save(
+            any(ByteArrayInputStream.class),
+            eq(
+                existingMeasure.getEcqmTitle()
+                    + "-v"
+                    + updatedMeasure.getVersion().toString()
+                    + "-withoutWarnings"),
             eq("application/json")))
         .thenReturn(measureBundleWithoutWarningsId);
 
@@ -753,12 +774,15 @@ public class VersionServiceTest {
     Export savedExport = exportArgumentCaptor.getValue();
     assertEquals(savedValue.getId(), savedExport.getMeasureId());
     // no longer save to measureBundle,  we want to make sure there's a hex appended
-    assertEquals("hex1", savedExport.getMeasureBundleGridFsId());
-    assertEquals("hex2", savedExport.getMeasureBundleWithoutWarningsGridFsId());
+    assertNull(measureExport.getMeasureBundleJson());
+    assertEquals(measureBundleWithWarningsId.toHexString(), savedExport.getMeasureBundleGridFsId());
+    assertEquals(
+        measureBundleWithoutWarningsId.toHexString(),
+        savedExport.getMeasureBundleWithoutWarningsGridFsId());
   }
 
   @Test
-  public void testCreateDraftSuccessfullyForQiCore() {
+  public void testCreateDraftSuccessfullyForQiCoreJsonInvalid() {
     TestCaseGroupPopulation clonedTestCaseGroupPopulation =
         TestCaseGroupPopulation.builder()
             .groupId("clonedGroupId1")
@@ -766,6 +790,8 @@ public class VersionServiceTest {
             .populationBasis("boolean")
             .build();
     Measure versionedMeasure = buildBasicMeasure();
+    testCase.setJson(json.replace("}", ""));
+    versionedMeasure.setTestCases(List.of(testCase));
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setDraft(true);
     Measure versionedCopy =
@@ -812,6 +838,74 @@ public class VersionServiceTest {
         draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(),
         is(equalTo("clonedGroupId1")));
     assertTrue(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
+    assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-11T01:30:10.123+00:00"));
+    assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-10T01:31:20.456+00:00"));
+  }
+
+  @Test
+  public void testCreateDraftSuccessfullyForQiCore() {
+    TestCaseGroupPopulation clonedTestCaseGroupPopulation =
+        TestCaseGroupPopulation.builder()
+            .groupId("clonedGroupId1")
+            .scoring("Cohort")
+            .populationBasis("boolean")
+            .build();
+    Measure versionedMeasure = buildBasicMeasure();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure versionedCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(metaData)
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .id(ObjectId.get().toString())
+                        .groupPopulations(List.of(clonedTestCaseGroupPopulation))
+                        .hapiOperationOutcome(validTestCaseHapiOperationOutcome)
+                        .json(
+                            json.replace(
+                                    "2024-10-10T20:30:10.123-05:00",
+                                    "2024-10-11T01:30:10.123+00:00")
+                                .replace(
+                                    "2024-10-10T07:31:20.456+06:00",
+                                    "2024-10-10T01:31:20.456+00:00"))
+                        .build()))
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+        .thenReturn(ResponseEntity.ok(validTestCaseHapiOperationOutcome));
+
+    Measure draft =
+        versionService.createDraft(
+            versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
+
+    assertThat(draft.getMeasureName(), is(equalTo("Test")));
+    // draft flag to true
+    assertThat(draft.getMeasureMetaData().isDraft(), is(equalTo(true)));
+    // version remains same
+    assertThat(draft.getVersion().getMajor(), is(equalTo(2)));
+    assertThat(draft.getVersion().getMinor(), is(equalTo(3)));
+    assertThat(draft.getVersion().getRevisionNumber(), is(equalTo(1)));
+    assertThat(draft.getGroups().size(), is(equalTo(1)));
+    assertFalse(draft.getGroups().stream().anyMatch(item -> "xyz-p12r-12ert".equals(item.getId())));
+    assertThat(draft.getTestCases().size(), is(equalTo(1)));
+    assertFalse(draft.getGroups().stream().anyMatch(item -> "testId1".equals(item.getId())));
+    assertThat(
+        draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(),
+        is(equalTo("clonedGroupId1")));
+    assertTrue(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
+    assertTrue(draft.getTestCases().get(0).getJson().contains("2024-10-11T01:30:10.123+00:00"));
+    assertTrue(draft.getTestCases().get(0).getJson().contains("2024-10-10T01:31:20.456+00:00"));
   }
 
   @Test
@@ -823,6 +917,8 @@ public class VersionServiceTest {
             .populationBasis("boolean")
             .build();
     Measure versionedMeasure = buildBasicMeasure();
+    testCase.setJson(null);
+    versionedMeasure.setTestCases(List.of(testCase));
     versionedMeasure.setModel(ModelType.QDM_5_6.getValue());
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setDraft(true);

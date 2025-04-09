@@ -32,6 +32,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 
@@ -457,6 +458,12 @@ public class TestCaseService {
     for (TestCase sourceTestCase : sourceTestCases) {
       TestCase dupTestCase = sourceTestCase.deepCopy();
 
+      // Check and update any fields with proper timestamp
+      // Only applies to QiCore
+      if (!targetMeasure.getModel().equals(ModelType.QDM_5_6.getValue())) {
+        dupTestCase.setJson(convertDateTimeToUTC(dupTestCase.getJson()));
+      }
+
       // Empty Test Case Group Populations match any Measure Pop Criteria.
       boolean doesPopCriteriaMatch =
           isEmpty(dupTestCase.getGroupPopulations())
@@ -698,7 +705,8 @@ public class TestCaseService {
           JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(
               json,
               "boolean"
-                  .equals(StringUtils.lowerCase(measure.getGroups().get(0).getPopulationBasis())));
+                  .equals(StringUtils.lowerCase(measure.getGroups().get(0).getPopulationBasis())),
+              measure);
     } else if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
       testCaseGroupPopulations = JsonUtil.getTestCaseGroupPopulationsQdm(json, measure);
     }

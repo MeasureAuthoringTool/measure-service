@@ -11,10 +11,10 @@ import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.data.mongodb.gridfs.GridFsResource;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
 @Service
 @AllArgsConstructor
@@ -25,17 +25,20 @@ public class MongoGridFsService {
     if (gridFsId == null || gridFsId.isEmpty()) {
       return null;
     }
-    Optional<GridFSFile> file =
-        Optional.ofNullable(
-            operations.findOne(Query.query(Criteria.where("_id").is(new ObjectId(gridFsId)))));
-    if (file.isPresent()) {
-      GridFsResource resource = operations.getResource(file.get());
-      try (InputStream inputStream = resource.getInputStream()) {
-        return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
-      } catch (IOException e) {
-        throw new MongoGridFSException("Failed to read GridFS content for ID: " + gridFsId, e);
-      }
+    GridFSFile file =
+        operations.findOne(Query.query(Criteria.where("_id").is(new ObjectId(gridFsId))));
+    if (file == null) {
+      return null;
     }
-    return null;
+    GridFsResource resource = operations.getResource(file);
+    try (InputStream inputStream = resource.getInputStream()) {
+      return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new MongoGridFSException("Failed to read GridFS content for ID: " + gridFsId, e);
+    }
+  }
+
+  public ObjectId save(ByteArrayInputStream inputStream, String filename, String contentType) {
+    return operations.store(inputStream, filename, contentType);
   }
 }

@@ -32,7 +32,9 @@ public class BundleController {
       Principal principal,
       @RequestHeader("Authorization") String accessToken,
       @RequestParam(required = false, defaultValue = "calculation", name = "bundleType")
-          String bundleType) {
+          String bundleType,
+      @RequestParam(value = "elmErrorSeverity", required = false, defaultValue = "Info")
+          String elmErrorSeverity) {
     Optional<Measure> measureOptional = measureRepository.findById(measureId);
     log.info(
         "User [{}] is attempting to create a new measure bundle for [{}]",
@@ -43,6 +45,7 @@ public class BundleController {
     }
     Measure measure = measureOptional.get();
 
-    return ResponseEntity.ok(bundleService.bundleMeasure(measure, accessToken, bundleType));
+    return ResponseEntity.ok(
+        bundleService.bundleMeasure(measure, accessToken, bundleType, elmErrorSeverity));
   }
 }

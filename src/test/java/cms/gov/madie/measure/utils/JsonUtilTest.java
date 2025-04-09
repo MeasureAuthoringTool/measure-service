@@ -5,7 +5,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gov.cms.madie.models.measure.Group;
+import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
+import gov.cms.madie.models.measure.Population;
+import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.QdmMeasure;
 import gov.cms.madie.models.measure.TestCase;
 import gov.cms.madie.models.measure.TestCaseGroupPopulation;
@@ -27,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
 import java.util.List;
 import java.util.UUID;
 
@@ -143,6 +148,22 @@ public class JsonUtilTest implements ResourceUtil {
   final String qdmImportedJson = getData("/test_case_exported_qdm_json.json");
   final String testCasePopulationValueJsonNode =
       "{\n" + "\"population_index\":0,\n" + "\"IPP\":1\n" + "}";
+
+  Population population1 = Population.builder().name(PopulationType.INITIAL_POPULATION).build();
+  Population population2 =
+      Population.builder()
+          .name(PopulationType.DENOMINATOR)
+          .id("ref1")
+          .definition("Denominator")
+          .build();
+  Population population3 =
+      Population.builder()
+          .name(PopulationType.NUMERATOR)
+          .id("ref2")
+          .definition("Numerator")
+          .build();
+  Group group = Group.builder().populations(List.of(population1, population2, population3)).build();
+  final Measure measure = Measure.builder().groups(List.of(group)).build();
 
   @Test
   public void testIsValidJsonSuccess() {
@@ -335,7 +356,7 @@ public class JsonUtilTest implements ResourceUtil {
   public void testGetTestCaseGroupPopulationsFromMeasureReport() throws JsonProcessingException {
 
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(measureReportJson, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(measureReportJson, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(2)));
     log.debug("testCaseGroupPopulations size  = " + testCaseGroupPopulations.size());
 
@@ -364,7 +385,7 @@ public class JsonUtilTest implements ResourceUtil {
   public void testGetTestCaseGroupPopulationsFromMeasureReportNoEntries()
       throws JsonProcessingException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noEntries, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noEntries, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
@@ -372,7 +393,7 @@ public class JsonUtilTest implements ResourceUtil {
   public void testGetTestCaseGroupPopulationsFromMeasureReportNoResource()
       throws JsonProcessingException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noResource, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noResource, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
@@ -380,7 +401,7 @@ public class JsonUtilTest implements ResourceUtil {
   public void testGetTestCaseGroupPopulationsFromMeasureReportNoResourceType()
       throws JsonProcessingException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noResourceType, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noResourceType, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
@@ -388,7 +409,7 @@ public class JsonUtilTest implements ResourceUtil {
   public void testGetTestCaseGroupPopulationsFromMeasureReportNoGroup()
       throws JsonProcessingException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noGroup, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noGroup, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
@@ -396,7 +417,7 @@ public class JsonUtilTest implements ResourceUtil {
   public void testGetTestCaseGroupPopulationsFromMeasureReportNoPopulation()
       throws JsonProcessingException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noPopulation, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noPopulation, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
@@ -404,7 +425,7 @@ public class JsonUtilTest implements ResourceUtil {
   public void testGetTestCaseGroupPopulationsFromMeasureReportNoCode()
       throws JsonProcessingException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noCode, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noCode, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
@@ -412,7 +433,7 @@ public class JsonUtilTest implements ResourceUtil {
   public void testGetTestCaseGroupPopulationsFromMeasureReportNoCount()
       throws JsonProcessingException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noCount, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noCount, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
@@ -422,7 +443,7 @@ public class JsonUtilTest implements ResourceUtil {
 
     String jsonWithStrat = getData("/test_case_export_w_stratification.json");
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWithStrat, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWithStrat, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(1)));
     assertThat(testCaseGroupPopulations.get(0).getStratificationValues().size(), is(equalTo(2)));
     assertThat(
@@ -439,7 +460,7 @@ public class JsonUtilTest implements ResourceUtil {
 
     String jsonWithStrat = getData("/test_case_export_w_stratification.json");
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
-        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWithStrat, true);
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWithStrat, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(1)));
     assertThat(testCaseGroupPopulations.get(0).getStratificationValues().size(), is(equalTo(2)));
     assertThat(
@@ -707,5 +728,133 @@ public class JsonUtilTest implements ResourceUtil {
 
     JsonUtil.setNumeratorValues(ippNode, populationValues, qdmMeasure);
     assertTrue(CollectionUtils.isEmpty(populationValues));
+  }
+
+  @Test
+  void testReplaceNestedDateTimeStringValue() throws IOException {
+
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode rootNode = mapper.readTree(json);
+    assertTrue(json.contains("2022-09-06T20:47:21-05:00"));
+    assertTrue(json.contains("2021-10-13T03:34:10.160+02:00"));
+    JsonUtil.replaceNestedDateTimeStringValue(rootNode);
+    String modifiedJsonString = mapper.writeValueAsString(rootNode);
+
+    // 2022-09-06T20:47:21-05:00 -> 2022-09-07T01:47:21.000+00:00
+    assertTrue(modifiedJsonString.contains("2022-09-07T01:47:21.000+00:00"));
+    // 2021-10-13T03:34:10.160+02:00 -> 2021-10-13T01:34:10.160+00:00
+    assertTrue(modifiedJsonString.contains("2021-10-13T01:34:10.160+00:00"));
+    // 2023-08-10T03:34:10.054Z -> 2023-08-10T03:34:10.054+00:00
+    assertTrue(modifiedJsonString.contains("2023-08-10T03:34:10.054+00:00"));
+    // 2023-08-15T03:34:10.054Z -> 2023-08-15T03:34:10.054+00:00
+    assertTrue(modifiedJsonString.contains("2023-08-15T03:34:10.054+00:00"));
+    // 2021-10-13T03:34:10.160+03:00 -> 2021-10-13T03:34:10.160+00:00 <- invalid timezone test
+    assertTrue(modifiedJsonString.contains("2021-10-13T03:34:10.160+00:00"));
+    // 2023-09-12T03:34:10.054Z -> 2023-09-12T03:34:10.054+00:00
+    assertTrue(modifiedJsonString.contains("2023-09-12T03:34:10.054+00:00"));
+    // 2023-09-13T09:34:10.054Z -> 2023-09-13T09:34:10.054+00:00
+    assertTrue(modifiedJsonString.contains("2023-09-13T09:34:10.054+00:00"));
+  }
+
+  @Test
+  void testConvertDateTimeToUTCForTestCase() {
+    testCase.setJson(json);
+    String result = JsonUtil.convertDateTimeToUTC(testCase.getJson());
+    assertNotEquals(json, result);
+    // 2022-09-06T20:47:21-05:00 -> 2022-09-07T01:47:21.000+00:00
+    assertTrue(result.contains("2022-09-07T01:47:21.000+00:00"));
+    // 2021-10-13T03:34:10.160+02:00 -> 2021-10-13T01:34:10.160+00:00
+    assertTrue(result.contains("2021-10-13T01:34:10.160+00:00"));
+    // 2023-08-10T03:34:10.054Z -> 2023-08-10T03:34:10.054+00:00
+    assertTrue(result.contains("2023-08-10T03:34:10.054+00:00"));
+    // 2023-08-15T03:34:10.054Z -> 2023-08-15T03:34:10.054+00:00
+    assertTrue(result.contains("2023-08-15T03:34:10.054+00:00"));
+    // 2021-10-13T03:34:10.160+99:00 -> 2021-10-13T03:34:10.160+00:00 <- invalid timezone test
+    assertTrue(result.contains("2021-10-13T03:34:10.160+00:00"));
+    // 2023-09-12T03:34:10.054Z -> 2023-09-12T03:34:10.054+00:00
+    assertTrue(result.contains("2023-09-12T03:34:10.054+00:00"));
+    // 2023-09-13T09:34:10.054Z -> 2023-09-13T09:34:10.054+00:00
+    assertTrue(result.contains("2023-09-13T09:34:10.054+00:00"));
+  }
+
+  @Test
+  void testGetConvertedDateTimeWrongFormat() {
+    String oldValue = "2025-03-29T29:54:74";
+    String newValue = JsonUtil.getNewValue("2025-03-29T29:54:74");
+    assertEquals(oldValue, newValue);
+  }
+
+  @Test
+  void testgetTestCaseGroupPopulationsFromMeasureReportWithMeasureObservation()
+      throws JsonProcessingException {
+    MeasureObservation observation1 =
+        MeasureObservation.builder()
+            .id("obsId1")
+            .definition("Denominator Observations")
+            .criteriaReference("ref1")
+            .displayId("MeasureObservation_1_1")
+            .build();
+    MeasureObservation observation2 =
+        MeasureObservation.builder()
+            .id("obsId2")
+            .definition("Numberator Observations")
+            .criteriaReference("ref2")
+            .displayId("MeasureObservation_1_2")
+            .build();
+    group.setPopulationBasis("boolean");
+    group.setMeasureObservations(List.of(observation1, observation2));
+    measure.setGroups(List.of(group));
+
+    String jsonWithObserv = getData("/test_case_export_w_measure-observation.json");
+
+    List<TestCaseGroupPopulation> testCaseGroupPopulations =
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWithObserv, true, measure);
+
+    assertTrue(testCaseGroupPopulations.get(0).getPopulationValues().size() == 5);
+  }
+
+  @Test
+  void testFindMeasureObservationNoObservation() {
+    MeasureObservation result = JsonUtil.findMeasureObservation(group, "MeasureObservation_1_1");
+
+    assertNull(result);
+  }
+
+  @Test
+  void testFindMeasureObservationNotFound() {
+    MeasureObservation obs = MeasureObservation.builder().displayId("MeasureObservation_1").build();
+    group.setMeasureObservations(List.of(obs));
+    MeasureObservation result = JsonUtil.findMeasureObservation(group, "MeasureObservation_1_1");
+
+    assertNull(result);
+  }
+
+  @Test
+  void testgetTestCaseGroupPopulationsFromMeasureReportWithMeasureObservationEpisodeBased()
+      throws JsonProcessingException {
+    MeasureObservation observation1 =
+        MeasureObservation.builder()
+            .id("obsId1")
+            .definition("Denominator Observation")
+            .criteriaReference("ref")
+            .displayId("MeasureObservation_1_1")
+            .build();
+    MeasureObservation observation2 =
+        MeasureObservation.builder()
+            .id("obsId2")
+            .definition("Numberator Observation")
+            .criteriaReference("ref")
+            .displayId("MeasureObservation_1_2")
+            .build();
+    group.setPopulationBasis("Encounter");
+    group.setMeasureObservations(List.of(observation1, observation2));
+    measure.setGroups(List.of(group));
+
+    String jsonWithObserv = getData("/test_case_export_w_measure-observation_multiple.json");
+
+    List<TestCaseGroupPopulation> testCaseGroupPopulations =
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWithObserv, true, measure);
+
+    assertTrue(testCaseGroupPopulations.get(0).getPopulationValues().size() == 8);
   }
 }

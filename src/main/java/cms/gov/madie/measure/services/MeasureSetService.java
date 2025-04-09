@@ -7,16 +7,19 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
+import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.LookupOperation;
 import org.springframework.data.mongodb.core.aggregation.MatchOperation;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.SortOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
@@ -24,9 +27,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Map;
+import java.util.HashMap;
 
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.match;
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.newAggregation;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Slf4j
 @Service
@@ -55,8 +59,8 @@ public class MeasureSetService {
           "Measure set [{}] is successfully created for the measure [{}]",
           savedMeasureSet.getId(),
           measureId);
-      actionLogService.logAction(
-          savedMeasureSet.getId(), Measure.class, ActionType.CREATED, harpId);
+      actionLogService.logMeasureSetAction(
+          savedMeasureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, harpId);
     }
   }
 
@@ -65,30 +69,69 @@ public class MeasureSetService {
    *
    * @param measureSetId -> set id of a measure set
    * @param aclOperation -> AclOperation to be updated
+   * @param userName -> userName performing action
    * @return an instance of MeasureSet
    */
-  public MeasureSet updateMeasureSetAcls(String measureSetId, AclOperation aclOperation) {
+  public MeasureSet updateMeasureSetAcls(
+      String measureSetId, AclOperation aclOperation, String userName) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (optionalMeasureSet.isPresent()) {
+      Map<String, ActionType> actionLogDetails = new HashMap<>();
       MeasureSet measureSet = optionalMeasureSet.get().toBuilder().build();
       if (AclOperation.AclAction.GRANT == aclOperation.getAction()) {
         if (CollectionUtils.isEmpty(measureSet.getAcls())) {
           // if no acl present, add it
           measureSet.setAcls(aclOperation.getAcls());
+
+          aclOperation
+              .getAcls()
+              .forEach(
+                  aclSpecification -> {
+                    String userId = aclSpecification.getUserId();
+
+                    aclSpecification
+                        .getRoles()
+                        .forEach(
+                            roleEnum -> {
+                              if (roleEnum == RoleEnum.SHARED_WITH) {
+                                actionLogDetails.put(userId, ActionType.SHARED);
+                              }
+                            });
+                  });
         } else {
           // update acl
           aclOperation
               .getAcls()
               .forEach(
                   acl -> {
-                    // check if acl already present for the user
+                    String userId = acl.getUserId();
+
+                    // check if acl is already present for the user
                     AclSpecification aclSpecification =
-                        findAclSpecificationByUserId(measureSet, acl.getUserId());
-                    // if acl does not present, add it
+                        findAclSpecificationByUserId(measureSet, userId);
+                    // if acl is not present, add it
                     if (aclSpecification == null) {
                       measureSet.getAcls().add(acl);
+
+                      acl.getRoles()
+                          .forEach(
+                              roleEnum -> {
+                                if (roleEnum == RoleEnum.SHARED_WITH) {
+                                  actionLogDetails.put(userId, ActionType.SHARED);
+                                }
+                              });
                     } else {
-                      aclSpecification.getRoles().addAll(acl.getRoles());
+                      acl.getRoles()
+                          .forEach(
+                              roleEnum -> {
+                                if (!aclSpecification.getRoles().contains(roleEnum)) {
+                                  aclSpecification.getRoles().add(roleEnum);
+
+                                  if (roleEnum == RoleEnum.SHARED_WITH) {
+                                    actionLogDetails.put(userId, ActionType.SHARED);
+                                  }
+                                }
+                              });
                     }
                   });
         }
@@ -97,12 +140,25 @@ public class MeasureSetService {
             .getAcls()
             .forEach(
                 acl -> {
+                  String userId = acl.getUserId();
+
                   // check if acl already present for the user
                   AclSpecification aclSpecification =
                       findAclSpecificationByUserId(measureSet, acl.getUserId());
                   if (aclSpecification != null) {
                     // remove roles from ACL
-                    aclSpecification.getRoles().removeAll(acl.getRoles());
+                    acl.getRoles()
+                        .forEach(
+                            roleEnum -> {
+                              if (aclSpecification.getRoles().contains(roleEnum)) {
+                                aclSpecification.getRoles().remove(roleEnum);
+
+                                if (roleEnum == RoleEnum.SHARED_WITH) {
+                                  actionLogDetails.put(userId, ActionType.UNSHARED);
+                                }
+                              }
+                            });
+
                     // after removing the roles if there is no role left, remove acl
                     if (aclSpecification.getRoles().isEmpty()) {
                       measureSet.getAcls().remove(aclSpecification);
@@ -110,14 +166,23 @@ public class MeasureSetService {
                   }
                 });
       }
+
       MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
       log.info("ACL updated for Measure set [{}]", updatedMeasureSet.getId());
+
+      actionLogDetails.forEach(
+          (userId, actionType) -> {
+            actionLogService.logShareAccessControlAction(
+                measureSetId, MeasureSet.class, actionType, userName, userId);
+          });
+
       return updatedMeasureSet;
     } else {
       String error =
           String.format(
-              "Measure with set id `%s` can not be shared, measure set may not exists.",
-              measureSetId);
+              "User %s called updateMeasureSetAcls with AclOperation %s but failed because no "
+                  + "measure set exists with measure set ID %s",
+              userName, aclOperation.toString(), measureSetId);
       log.error(error);
       throw new ResourceNotFoundException(error);
     }
@@ -156,8 +221,8 @@ public class MeasureSetService {
     measureSet.get().setCmsId(generatedSequenceNumber);
     MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet.get());
     log.info("cms id for the Measure set [{}] is successfully created", updatedMeasureSet.getId());
-    actionLogService.logAction(
-        updatedMeasureSet.getId(), Measure.class, ActionType.CREATED, username);
+    actionLogService.logMeasureSetAction(
+        updatedMeasureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, username);
     return updatedMeasureSet;
   }
 
@@ -249,23 +314,31 @@ public class MeasureSetService {
         .as("measureSet");
   }
 
-  public List<MeasureListDTO> getMeasuresByMeasureSetId(String measureSetId) {
+  public List<MeasureListDTO> getMeasuresByMeasureSetId(
+      String measureSetId, boolean sortByLatestVersion) {
     LookupOperation lookupOperation = getLookupOperation();
 
     Criteria measureCriteria =
         Criteria.where("active").is(true).and("measureSetId").is(measureSetId);
 
     MatchOperation matchOperation = match(measureCriteria);
-
-    Aggregation aggregation = newAggregation(lookupOperation, matchOperation);
-
+    Aggregation aggregation;
+    if (sortByLatestVersion) {
+      SortOperation sortOperation =
+          sort(
+              Sort.by(
+                  Sort.Direction.DESC, "version.major", "version.minor", "version.revisionNumber"));
+      aggregation = newAggregation(lookupOperation, matchOperation, sortOperation);
+    } else {
+      aggregation = newAggregation(lookupOperation, matchOperation);
+    }
     return mongoTemplate.aggregate(aggregation, "measure", MeasureListDTO.class).getMappedResults();
   }
 
   public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {
     List<Measure> mostRecentMeasures = new ArrayList<Measure>();
     for (String measureSetId : measureSetIds) {
-      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId);
+      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId, false);
       if (measures != null && !measures.isEmpty()) {
         MeasureListDTO measure = measures.get(measures.size() - 1);
         Measure recentMeasure = measureRepository.findById(measure.getId()).orElse(null);

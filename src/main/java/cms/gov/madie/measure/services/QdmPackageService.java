@@ -3,9 +3,7 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.config.QdmServiceConfig;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
-import cms.gov.madie.measure.exceptions.HQMFServiceException;
-import cms.gov.madie.measure.exceptions.InternalServerException;
-import cms.gov.madie.measure.exceptions.InvalidRequestException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import gov.cms.madie.models.cqm.CqmMeasure;
 import gov.cms.madie.models.measure.Export;
@@ -23,6 +21,8 @@ import org.springframework.web.client.RestTemplate;
 import java.net.URI;
 import java.util.Optional;
 
+import static cms.gov.madie.measure.utils.ServiceConstants.LEGACY_MEASURE_EXPORT_WARNING;
+
 @Slf4j
 @Service
 @AllArgsConstructor
@@ -33,14 +33,28 @@ public class QdmPackageService implements PackageService {
 
   @Override
   public PackageDto getMeasurePackage(
-      Measure measure, String accessToken, boolean includeElmWarnings) {
+      Measure measure, boolean includeElmWarnings, String accessToken) {
     if (!measure.getMeasureMetaData().isDraft()) {
       Optional<Export> savedExport = repository.findByMeasureId(measure.getId());
-      if (savedExport.isPresent()) {
-        log.info("returning persisted export for measure [{}]", measure.getId());
+      if (savedExport.isEmpty()) {
+        log.error("Export not available for versioned measure with id: {}", measure.getId());
+        throw new ResourceNotFoundException("saved export for Measure", measure.getId());
+      }
+      if (includeElmWarnings) {
         return PackageDto.builder()
             .fromStorage(true)
             .exportPackage(savedExport.get().getPackageData())
+            .build();
+      } else {
+        if (savedExport.get().getPublishablePackageData() == null) {
+          log.error(
+              "Publishable export not available for versioned measure with id: {}",
+              measure.getId());
+          throw new ResourceNotFoundException(LEGACY_MEASURE_EXPORT_WARNING);
+        }
+        return PackageDto.builder()
+            .fromStorage(true)
+            .exportPackage(savedExport.get().getPublishablePackageData())
             .build();
       }
     }

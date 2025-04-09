@@ -16,7 +16,6 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
-import org.springframework.data.mongodb.gridfs.GridFsOperations;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
@@ -28,6 +27,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+
+import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
 
 @Slf4j
 @AllArgsConstructor
@@ -45,7 +46,7 @@ public class VersionService {
   private final ExportService exportService;
   private final TestCaseSequenceService sequenceService;
   private final ElmToJsonService elmToJsonService;
-  private final GridFsOperations mongoGridFsOperations;
+  private final MongoGridFsService mongoGridFsService;
 
   public enum VersionValidationResult {
     VALID,
@@ -96,9 +97,9 @@ public class VersionService {
     Measure upversionedMeasure = version(versionType, username, measure);
 
     PackageDto measurePackage =
-        exportService.getMeasureExport(upversionedMeasure, accessToken, true);
+        exportService.getMeasureExport(upversionedMeasure, accessToken, "Info");
     PackageDto publishableMeasurePackage =
-        exportService.getMeasureExport(upversionedMeasure, accessToken, false);
+        exportService.getMeasureExport(upversionedMeasure, accessToken, "Error");
 
     String humanReadable =
         qdmPackageService.getHumanReadable(upversionedMeasure, username, accessToken);
@@ -113,22 +114,27 @@ public class VersionService {
   }
 
   /**
-   * This method will first apply the version operation to the measure, fetch the FHIR bundle for
-   * the measure, persist the measure bundle to the exports collection, and finally persist the
-   * up-versioned measure to the database.
+   * Measure Versioning: 1. Apply the version operation to the measure 2. Generate FHIR bundles with
+   * updated measure version info 3. Persist the measure bundles to the exports/gridFs collections
+   * 4. Persist the up-versioned measure to the measure collection
    *
    * @param versionType - Major, Minor or Patch Version
    * @param username - Harp User Name
    * @param accessToken - accessToken
-   * @param measure - Draft Measure
+   * @param measure - Draft Measure to be versioned
    * @return Versioned Measure
    */
   private Measure versionFhirMeasure(
       String versionType, String username, String accessToken, Measure measure) {
-    elmToJsonService.retrieveElmJson(measure, accessToken);
     Measure upversionedMeasure = version(versionType, username, measure);
+
+    // Generate Bundle for versioned Measure with ELM at error severity Info
+    elmToJsonService.retrieveElmJson(measure, "Info", accessToken);
     var measureBundle =
-        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export");
+        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Info");
+
+    // Generate Bundle for versioned Measure with ELM at error severity Error
+    elmToJsonService.retrieveElmJson(measure, "Error", accessToken);
     var measureBundleWithoutWarnings =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Error");
 
@@ -287,6 +293,8 @@ public class VersionService {
                     .id(ObjectId.get().toString())
                     .groupPopulations(updatedTestCaseGroupPopulations)
                     .build();
+              } else {
+                testCase.setJson(convertDateTimeToUTC(testCase.getJson()));
               }
               HapiOperationOutcome hapiOperationOutcome =
                   fhirServicesClient
@@ -387,14 +395,17 @@ public class VersionService {
       String measureBundleWithoutWarnings,
       String humanReadableWithCss) {
     ObjectId measureBundleId =
-        mongoGridFsOperations.store(
+        mongoGridFsService.save(
             new ByteArrayInputStream(measureBundle.getBytes()),
-            "measureBundle.json",
+            savedMeasure.getEcqmTitle() + "-v" + savedMeasure.getVersion().toString(),
             "application/json");
     ObjectId measureBundleWithoutWarningsId =
-        mongoGridFsOperations.store(
+        mongoGridFsService.save(
             new ByteArrayInputStream(measureBundleWithoutWarnings.getBytes()),
-            "measureBundleWithoutWarnings.json",
+            savedMeasure.getEcqmTitle()
+                + "-v"
+                + savedMeasure.getVersion().toString()
+                + "-withoutWarnings",
             "application/json");
     Export export =
         Export.builder()

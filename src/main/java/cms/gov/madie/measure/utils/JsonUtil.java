@@ -6,8 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
+import gov.cms.madie.models.measure.Population;
 import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.QdmMeasure;
 import gov.cms.madie.models.measure.TestCase;
@@ -20,9 +23,17 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
@@ -33,6 +44,11 @@ import java.util.stream.StreamSupport;
 public final class JsonUtil {
   private static final String CQFM_TEST_DESCRIPTION_URL =
       "http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-testCaseDescription";
+  private static final String LOCAL_DATE_TIME_PATTERN = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX";
+  private static final DateTimeFormatter FORMATTER =
+      DateTimeFormatter.ofPattern(LOCAL_DATE_TIME_PATTERN);
+  private static final Pattern PATTERN =
+      Pattern.compile("\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}");
 
   private JsonUtil() {}
 
@@ -199,8 +215,7 @@ public final class JsonUtil {
    * @throws JsonProcessingException
    */
   public static List<TestCaseGroupPopulation> getTestCaseGroupPopulationsFromMeasureReport(
-      String json, boolean measurePopulationBasis) throws JsonProcessingException {
-
+      String json, boolean measurePopulationBasis, Measure measure) throws JsonProcessingException {
     List<TestCaseGroupPopulation> groupPopulations = new ArrayList<>();
     JsonNode resourceNode = getResourceNode(json, "MeasureReport");
     if (resourceNode != null) {
@@ -208,10 +223,31 @@ public final class JsonUtil {
       if (groups != null) {
         TestCaseGroupPopulation groupPopulation = null;
         for (JsonNode group : groups) {
+          // e.g. Group_1
+          String groupNumber =
+              group.get("id") != null
+                  ? group.get("id").asText().substring(group.get("id").asText().length() - 1)
+                  : "0";
+          int groupIndex = Integer.parseInt(groupNumber);
+          Group measureGroup = measure.getGroups().get(groupIndex > 0 ? groupIndex - 1 : 0);
           JsonNode populations = group.get("population");
           List<TestCasePopulationValue> populationValues = new ArrayList<>();
           if (populations != null) {
             for (JsonNode population : populations) {
+              String id = population.get("id") != null ? population.get("id").asText() : "";
+              MeasureObservation obs = null;
+              if (id.contains("MeasureObservation")) {
+                // id for patient based: MeasureObservation_1_1
+                // id for episode based: MeasureObservation_1_1_1
+                boolean patientBased =
+                    StringUtils.equalsIgnoreCase("boolean", measureGroup.getPopulationBasis());
+                String displayId = id;
+                if (!patientBased) {
+                  displayId = id.substring(0, 22);
+                }
+                obs = findMeasureObservation(measureGroup, displayId);
+              }
+
               JsonNode codeNode = population.get("code");
               String count =
                   population.get("count") != null ? population.get("count").asText() : "";
@@ -220,7 +256,7 @@ public final class JsonUtil {
                 if (codings != null) {
                   for (JsonNode coding : codings) {
                     String code = coding.get("code").asText();
-                    appendPopulationValues(populationValues, count, code);
+                    appendPopulationValues(populationValues, count, code, obs, measureGroup);
                   }
                 }
                 groupPopulation =
@@ -282,7 +318,7 @@ public final class JsonUtil {
               measurePopulationBasis
                   ? (Integer.parseInt(expVal.get("count").asText()) == 1)
                   : Integer.parseInt(expVal.get("count").asText());
-          appendPopulationValues(expectedStratValues, count, code);
+          appendPopulationValues(expectedStratValues, count, code, null, null);
         });
     TestCaseStratificationValue stratValue =
         TestCaseStratificationValue.builder().id(stratId).name(stratName).build();
@@ -291,13 +327,35 @@ public final class JsonUtil {
   }
 
   private static void appendPopulationValues(
-      List<TestCasePopulationValue> populationValues, Object count, String code) {
+      List<TestCasePopulationValue> populationValues,
+      Object count,
+      String code,
+      MeasureObservation observation,
+      Group group) {
     TestCasePopulationValue populationValue =
         TestCasePopulationValue.builder()
-            .name(PopulationType.fromCode(code))
+            .id(observation != null ? observation.getId() : null)
+            .criteriaReference(observation != null ? observation.getCriteriaReference() : null)
+            .name(
+                observation != null && group != null
+                    ? PopulationType.fromCode(
+                        getMeasureObservationPopulationType(
+                            observation.getCriteriaReference(), group))
+                    : PopulationType.fromCode(code))
             .expected(count)
             .build();
     populationValues.add(populationValue);
+  }
+
+  private static String getMeasureObservationPopulationType(String criteriaReference, Group group) {
+    Optional<Population> populationOpt =
+        group.getPopulations().stream()
+            .filter(population -> criteriaReference.equalsIgnoreCase(population.getId()))
+            .findFirst();
+    if (populationOpt.isPresent()) {
+      return populationOpt.get().getDefinition().toLowerCase() + "-observation";
+    }
+    return "";
   }
 
   public static String removeMeasureReportFromJson(String testCaseJson)
@@ -631,5 +689,83 @@ public final class JsonUtil {
       return patientNode.toPrettyString();
     }
     return null;
+  }
+
+  public static String convertDateTimeToUTC(String json) {
+    String convertedJson = json;
+    if (StringUtils.isNotBlank(json)) {
+      try {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode rootNode = mapper.readTree(json);
+        JsonUtil.replaceNestedDateTimeStringValue(rootNode);
+        convertedJson = mapper.writeValueAsString(rootNode);
+      } catch (IOException e) {
+        log.error("Invalid test case json");
+      }
+    }
+    return convertedJson;
+  }
+
+  // going through JsonNode, converts any datetime string into UTC datetime
+  public static void replaceNestedDateTimeStringValue(JsonNode node) {
+    if (node.isObject()) {
+      ObjectNode objectNode = (ObjectNode) node;
+      objectNode
+          .fields()
+          .forEachRemaining(
+              entry -> {
+                String fieldName = entry.getKey();
+                JsonNode childNode = entry.getValue();
+                String currentValue = childNode.asText();
+                String newValue = getNewValue(currentValue);
+                if (childNode.isTextual()) {
+                  objectNode.put(fieldName, newValue);
+                } else {
+                  replaceNestedDateTimeStringValue(childNode);
+                }
+              });
+    } else if (node.isArray()) {
+      node.forEach(childNode -> replaceNestedDateTimeStringValue(childNode));
+    }
+  }
+
+  // converts a value into UTC datetime, if the passed in value is a datetime
+  // otherwise, returns the original value
+  static String getNewValue(String value) {
+    String newValue = value;
+
+    if (value.length() >= 19 && (PATTERN.matcher(value.substring(0, 19)).matches())) {
+      try {
+        ZonedDateTime dateTime = ZonedDateTime.parse(value);
+        ZonedDateTime adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
+        newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
+      } catch (DateTimeParseException e) {
+        try {
+          ZonedDateTime dateTime =
+              ZonedDateTime.ofLocal(
+                  LocalDateTime.parse(value.split("\\+")[0]), ZoneId.of("UTC"), ZoneOffset.UTC);
+          ZonedDateTime adjustedDateTime = dateTime.withZoneSameInstant(ZoneId.of("UTC"));
+          newValue = adjustedDateTime.format(FORMATTER).replace("Z", "+00:00");
+
+        } catch (DateTimeParseException ex) {
+          // only log datetime related errors
+          log.warn("Error parsing date/time string: " + e.getMessage());
+        }
+      }
+    }
+    return newValue;
+  }
+
+  static MeasureObservation findMeasureObservation(Group group, String id) {
+    List<MeasureObservation> measureObservations = group.getMeasureObservations();
+    MeasureObservation obs = null;
+    if (CollectionUtils.isNotEmpty(measureObservations)) {
+      Optional<MeasureObservation> obsOpt =
+          measureObservations.stream()
+              .filter(observation -> id.equalsIgnoreCase(observation.getDisplayId()))
+              .findFirst();
+      obs = obsOpt.isPresent() ? obsOpt.get() : null;
+    }
+    return obs;
   }
 }

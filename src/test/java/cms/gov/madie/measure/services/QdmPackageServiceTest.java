@@ -3,9 +3,7 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.config.QdmServiceConfig;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
-import cms.gov.madie.measure.exceptions.HQMFServiceException;
-import cms.gov.madie.measure.exceptions.InternalServerException;
-import cms.gov.madie.measure.exceptions.InvalidRequestException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.cqm.CqmMeasure;
@@ -75,7 +73,7 @@ class QdmPackageServiceTest {
     when(qdmServiceRestTemplate.exchange(
             any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
         .thenReturn(ResponseEntity.ok(packageContent.getBytes()));
-    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, token, true);
+    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, true, token);
     assertThat(measurePackage.isFromStorage(), is(false));
     byte[] packageContents = measurePackage.getExportPackage();
     assertThat(packageContents, is(notNullValue()));
@@ -93,7 +91,7 @@ class QdmPackageServiceTest {
                     .measureId(measure.getId())
                     .packageData(packageContent.getBytes())
                     .build()));
-    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, token, true);
+    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, true, token);
     assertThat(measurePackage.isFromStorage(), is(true));
     byte[] packageContents = measurePackage.getExportPackage();
     assertThat(packageContents, is(notNullValue()));
@@ -103,17 +101,14 @@ class QdmPackageServiceTest {
   @Test
   void getCreateMeasurePackageForVersionedWithMissingPersistedExport() {
     measure.getMeasureMetaData().setDraft(false);
-    when(qdmServiceConfig.getCreatePackageUrn()).thenReturn("/elm/uri");
-    String packageContent = "Measure Package Contents";
-    when(qdmServiceRestTemplate.exchange(
-            any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
-        .thenReturn(ResponseEntity.ok(packageContent.getBytes()));
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.empty());
-    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, token, true);
-    assertThat(measurePackage.isFromStorage(), is(false));
-    byte[] packageContents = measurePackage.getExportPackage();
-    assertThat(packageContents, is(notNullValue()));
-    assertThat(new String(packageContents), is(equalTo(packageContent)));
+    String errorMessage = "Could not find saved export for Measure with id: 1";
+    Exception ex =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> qdmPackageService.getMeasurePackage(measure, true, token),
+            errorMessage);
+    assertThat(ex.getMessage(), is(equalTo(errorMessage)));
   }
 
   @Test
@@ -127,7 +122,7 @@ class QdmPackageServiceTest {
     Exception ex =
         assertThrows(
             InternalServerException.class,
-            () -> qdmPackageService.getMeasurePackage(measure, token, true),
+            () -> qdmPackageService.getMeasurePackage(measure, true, token),
             errorMessage);
     assertThat(ex.getMessage(), is(equalTo(errorMessage)));
   }
@@ -144,7 +139,7 @@ class QdmPackageServiceTest {
     Exception ex =
         assertThrows(
             InternalServerException.class,
-            () -> qdmPackageService.getMeasurePackage(measure, token, true),
+            () -> qdmPackageService.getMeasurePackage(measure, true, token),
             errorMessage);
     assertThat(ex.getMessage(), is(equalTo("QDM service error: ")));
   }
@@ -159,7 +154,7 @@ class QdmPackageServiceTest {
     Exception ex =
         assertThrows(
             HQMFServiceException.class,
-            () -> qdmPackageService.getMeasurePackage(measure, token, true),
+            () -> qdmPackageService.getMeasurePackage(measure, true, token),
             errorMessage);
 
     assertThat(

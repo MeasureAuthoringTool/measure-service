@@ -2,6 +2,7 @@ package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
@@ -64,9 +65,22 @@ public class MeasureController {
 
   @GetMapping("/measures/byMeasureSetId")
   public ResponseEntity<List<MeasureListDTO>> getMeasuresByMeasureSetId(
-      @RequestParam(name = "measureSetId") String measureSetId) {
-    List<MeasureListDTO> results = measureSetService.getMeasuresByMeasureSetId(measureSetId);
-    return ResponseEntity.status(HttpStatus.OK).body(results);
+      @RequestParam(name = "measureSetId") String measureSetId, boolean sortByLatestVersion) {
+    List<MeasureListDTO> results =
+        measureSetService.getMeasuresByMeasureSetId(measureSetId, sortByLatestVersion);
+    List<MeasureListDTO> updatedResults =
+        results.stream()
+            .map(
+                result -> {
+                  MeasureSet measureSet =
+                      measureSetRepository
+                          .findByMeasureSetId(result.getMeasureSetId())
+                          .orElse(null);
+                  result.setMeasureSet(measureSet);
+                  return result;
+                })
+            .toList();
+    return ResponseEntity.status(HttpStatus.OK).body(updatedResults);
   }
 
   @GetMapping("/measures/recentsByMeasureSetId")
@@ -92,6 +106,17 @@ public class MeasureController {
           MeasureSet measureSet =
               measureSetRepository.findByMeasureSetId(measure.getMeasureSetId()).orElse(null);
           measure.setMeasureSet(measureSet);
+          List<Measure> filteredMeasures =
+              repository.findAllByMeasureSetIdAndActive(measure.getMeasureSetId(), true);
+          if (filteredMeasures.size() > 0) {
+            // to check for a given measureSetId, if it has more than 1 measure associated with it
+            // excluding the main one
+            measure.setHasAssociatedMeasures(
+                filteredMeasures.stream()
+                        .filter(filteredMeasure -> filteredMeasure.getId() != measure.getId())
+                        .count()
+                    > 1);
+          }
           return measure;
         });
     return ResponseEntity.ok(measures);
@@ -191,14 +216,29 @@ public class MeasureController {
       @RequestBody @Validated AclOperation aclOperation,
       @Value("${admin-api-key}") String apiKey) {
     List<AclSpecification> aclSpecifications =
-        measureService.updateAccessControlList(id, aclOperation);
+        measureService.updateAccessControlList(id, aclOperation, "admin");
     return ResponseEntity.ok().body(aclSpecifications);
   }
 
   @GetMapping("/measures/shared")
-  public ResponseEntity<Map<String, List<String>>> getSharedWithUserIds(
-      HttpServletRequest request, @RequestParam(name = "measureIds") List<String> measureIds) {
-    return ResponseEntity.ok().body(measureService.getSharedWithUserIds(measureIds));
+  public ResponseEntity<Map<String, List<SharedUser>>> getSharedMeasures(
+      HttpServletRequest request,
+      @RequestParam(name = "measureIds") List<String> measureIds,
+      Principal principal) {
+    return ResponseEntity.ok()
+        .body(measureService.getSharedMeasures(measureIds, principal.getName()));
+  }
+
+  @PutMapping("/measures/shared")
+  public ResponseEntity<Map<String, List<AclSpecification>>> shareMeasures(
+      @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
+    return ResponseEntity.ok(measureService.shareMeasures(measureUserIdMap, principal.getName()));
+  }
+
+  @PutMapping("/measures/unshared")
+  public ResponseEntity<Map<String, List<AclSpecification>>> unshareMeasures(
+      @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
+    return ResponseEntity.ok(measureService.unshareMeasures(measureUserIdMap, principal.getName()));
   }
 
   @PutMapping("/measures/{id}/ownership")
