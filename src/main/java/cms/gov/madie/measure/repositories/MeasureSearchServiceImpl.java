@@ -124,13 +124,23 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       // If query is given, search for the query string in measureName and ecqmTitle
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
           && CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
-        measureCriteria.andOperator(
-            new Criteria()
-                .orOperator(
-                    Criteria.where("measureName")
-                        .regex(measureSearchCriteria.getSearchField(), "i"),
-                    Criteria.where("ecqmTitle")
-                        .regex(measureSearchCriteria.getSearchField(), "i")));
+        String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
+        List<Criteria> wordCriteria = new ArrayList<>();
+
+        for (String word : searchWords) {
+          word = word.replaceAll("[^a-zA-Z0-9]", ""); // Remove special characters
+          if (StringUtils.isNotBlank(word)) {
+            wordCriteria.add(
+                new Criteria()
+                    .orOperator(
+                        Criteria.where("measureName").regex(".*" + word + ".*", "i"),
+                        Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i")));
+          }
+        }
+
+        if (!wordCriteria.isEmpty()) {
+          measureCriteria.andOperator(wordCriteria.toArray(new Criteria[0]));
+        }
       }
       // optional query provided
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())

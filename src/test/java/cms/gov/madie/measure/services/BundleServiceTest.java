@@ -139,7 +139,8 @@ class BundleServiceTest implements ResourceUtil {
   @Test
   void testBundleMeasureReturnsBundleStringForVersionedMeasureWithGridFS() {
     final String json = "{\"message\": \"GOOD JSON\"}";
-    Export export = Export.builder().measureId(measure.getId()).measureBundleGridFsId("gridFsId").build();
+    Export export =
+        Export.builder().measureId(measure.getId()).measureBundleGridFsId("gridFsId").build();
     measure.getMeasureMetaData().setDraft(false);
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
     when(mongoGridFsService.findById(anyString())).thenReturn(json);
