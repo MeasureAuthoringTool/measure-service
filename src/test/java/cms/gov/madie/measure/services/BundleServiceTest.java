@@ -2,6 +2,7 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
+import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.utils.ResourceUtil;
 import gov.cms.madie.models.common.ModelType;
@@ -27,10 +28,10 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
+import static cms.gov.madie.measure.utils.ServiceConstants.LEGACY_MEASURE_EXPORT_WARNING;
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
@@ -46,7 +47,6 @@ import java.util.zip.ZipInputStream;
 class BundleServiceTest implements ResourceUtil {
 
   @Mock private FhirServicesClient fhirServicesClient;
-  @Mock private ElmTranslatorClient elmTranslatorClient;
   @Mock private ExportRepository exportRepository;
   @Mock private ElmToJsonService elmToJsonService;
   @Mock private MongoGridFsService mongoGridFsService;
@@ -87,6 +87,7 @@ class BundleServiceTest implements ResourceUtil {
             .cqlErrors(false)
             .elmJson(elmJson)
             .measureSetId("IDIDID")
+            .ecqmTitle("MEAS")
             .measureName("MSR01")
             .version(new Version(0, 0, 1))
             .groups(groups)
@@ -179,7 +180,6 @@ class BundleServiceTest implements ResourceUtil {
             .measureBundleGridFsId("id1")
             .measureBundleWithoutWarningsGridFsId("id2")
             .build();
-    measure.setEcqmTitle("MEAS");
     measure.setMeasureMetaData(
         MeasureMetaData.builder()
             .draft(false)
@@ -197,6 +197,48 @@ class BundleServiceTest implements ResourceUtil {
     String fileName = entry.getName();
     assertEquals("resources/measure-TestCreateNewLibrary-1.0.000.json", fileName);
     verify(mongoGridFsService, times(1)).findById("id1");
+  }
+
+  @Test
+  void testExportWithElmWarningsWhenBundleIsNotAvailableInGridFsButIsStoredAsBundleJson() {
+    final String json = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("grid-fs-id-1")
+            .measureBundleWithoutWarningsGridFsId("id2")
+            .measureBundleJson(json)
+            .build();
+    measure.getMeasureMetaData().setDraft(false);
+    measure.setModel("QI-Core v4.1.1");
+    when(mongoGridFsService.findById("grid-fs-id-1")).thenReturn(null);
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
+    PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
+    assertNotNull(output.getExportPackage());
+    verify(mongoGridFsService, times(1)).findById("grid-fs-id-1");
+  }
+
+  @Test
+  void
+      testExportWithElmWarningsThrowsExceptionWhenBundleIsNotAvailableInGridFsAndBundleJsonIsAlsoEmpty() {
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("grid-fs-id-1")
+            .measureBundleWithoutWarningsGridFsId("id2")
+            .measureBundleJson("") // no saved export
+            .build();
+    measure.getMeasureMetaData().setDraft(false);
+    measure.setModel("QI-Core v4.1.1");
+    when(mongoGridFsService.findById("grid-fs-id-1")).thenReturn(null);
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
+    Exception ex =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN"));
+    assertThat(
+        ex.getMessage(),
+        is(equalTo("Could not find saved export for Measure with id: xyz-p13r-13ert")));
   }
 
   @Test
@@ -231,6 +273,26 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   @Test
+  void testExportWithoutElmWarningsThrowsExceptionWhenGridFsDoesNotContainSavedExport() {
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("grid-fs-id-1")
+            .measureBundleWithoutWarningsGridFsId("grid-fs-id-2")
+            .measureBundleJson("") // no saved export
+            .build();
+    measure.getMeasureMetaData().setDraft(false);
+    measure.setModel("QI-Core v4.1.1");
+    when(mongoGridFsService.findById("grid-fs-id-2")).thenReturn("");
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
+    Exception ex =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> bundleService.getMeasureExport(measure, "Error", "Bearer TOKEN"));
+    assertThat(ex.getMessage(), is(equalTo(LEGACY_MEASURE_EXPORT_WARNING)));
+  }
+
+  @Test
   void testExportBundleMeasureForVersionedMeasureDoesntExistInMongo() {
     doThrow(
             new BundleOperationException(
@@ -261,7 +323,7 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testExportBundleMeasureForDraftMeasure() throws IOException {
+  void testExportBundleMeasureForDraftMeasure() {
     measure.setEcqmTitle("MEAS");
     measure.setMeasureMetaData(
         MeasureMetaData.builder()
@@ -279,7 +341,7 @@ class BundleServiceTest implements ResourceUtil {
 
     PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
     assertNotNull(output);
-    assertTrue(Arrays.equals("TEST".getBytes(), output.getExportPackage()));
+    assertArrayEquals("TEST".getBytes(), output.getExportPackage());
   }
 
   @Test
@@ -312,7 +374,7 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testExportBundleMeasureForNullMeasureReturnsNull() throws IOException {
+  void testExportBundleMeasureForNullMeasureReturnsNull() {
     PackageDto output = bundleService.getMeasureExport(null, "Info", "Bearer TOKEN");
     assertNull(output);
   }
