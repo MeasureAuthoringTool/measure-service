@@ -61,7 +61,6 @@ public class VersionServiceTest {
 
   @Mock ActionLogService actionLogService;
   @Mock MeasureService measureService;
-  @Mock ExportService exportService;
   @Mock TestCaseSequenceService sequenceService;
   @Mock QdmPackageService qdmPackageService;
   @Mock AppConfigService appConfigService;

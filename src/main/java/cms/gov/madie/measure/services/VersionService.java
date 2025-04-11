@@ -43,7 +43,6 @@ public class VersionService {
   private final CqmMeasureRepository cqmMeasureRepository;
   private final MeasureService measureService;
   private final QdmPackageService qdmPackageService;
-  private final ExportService exportService;
   private final TestCaseSequenceService sequenceService;
   private final ElmToJsonService elmToJsonService;
   private final MongoGridFsService mongoGridFsService;
