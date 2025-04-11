@@ -3,6 +3,7 @@ package cms.gov.madie.measure.services;
 import java.lang.reflect.InvocationTargetException;
 
 import cms.gov.madie.measure.dto.PackageDto;
+import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClientException;
@@ -16,6 +17,8 @@ import gov.cms.madie.packaging.utils.PackagingUtility;
 import gov.cms.madie.packaging.utils.PackagingUtilityFactory;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import static cms.gov.madie.measure.utils.ServiceConstants.LEGACY_MEASURE_EXPORT_WARNING;
 
 @Slf4j
 @Service
@@ -99,25 +102,26 @@ public class BundleService {
       Export export = exportRepository.findByMeasureId(measure.getId()).orElse(null);
       if (export == null) {
         log.error("Export not available for versioned measure with id: {}", measure.getId());
-        throw new BundleOperationException("Measure", measure.getId(), null);
+        throw new ResourceNotFoundException("saved export for Measure", measure.getId());
       }
-
-      // Original implementation where everything exists on export object
-      if (StringUtils.isNotEmpty(export.getMeasureBundleJson())) {
-        return PackageDto.builder()
-            .fromStorage(true)
-            .exportPackage(utility.getZipBundle(export, exportFileName))
-            .build();
-      }
-      // Fetch content from GridFS if IDs exist
-      String measureBundle = null;
-      if (StringUtils.isNotBlank(elmErrorSeverity)) {
-        if (elmErrorSeverity.equals("Error")
-            && export.getMeasureBundleWithoutWarningsGridFsId() != null) {
-          measureBundle =
-              mongoGridFsService.findById(export.getMeasureBundleWithoutWarningsGridFsId());
-        } else if (export.getMeasureBundleGridFsId() != null) {
-          measureBundle = mongoGridFsService.findById(export.getMeasureBundleGridFsId());
+      String measureBundle;
+      if ("Error".equalsIgnoreCase(elmErrorSeverity)) {
+        measureBundle =
+            mongoGridFsService.findById(export.getMeasureBundleWithoutWarningsGridFsId());
+        if (StringUtils.isEmpty(measureBundle)) {
+          log.error(
+              "Publishable export not available for versioned measure with id: {}",
+              measure.getId());
+          throw new ResourceNotFoundException(LEGACY_MEASURE_EXPORT_WARNING);
+        }
+      } else {
+        measureBundle = mongoGridFsService.findById(export.getMeasureBundleGridFsId());
+        if (StringUtils.isEmpty(measureBundle)) {
+          measureBundle = export.getMeasureBundleJson();
+          if (StringUtils.isEmpty(measureBundle)) {
+            log.error("Export not available for versioned measure with id: {}", measure.getId());
+            throw new ResourceNotFoundException("saved export for Measure", measure.getId());
+          }
         }
       }
       export.setMeasureBundleJson(measureBundle);
