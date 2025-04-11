@@ -43,7 +43,6 @@ public class VersionService {
   private final CqmMeasureRepository cqmMeasureRepository;
   private final MeasureService measureService;
   private final QdmPackageService qdmPackageService;
-  private final ExportService exportService;
   private final TestCaseSequenceService sequenceService;
   private final ElmToJsonService elmToJsonService;
   private final MongoGridFsService mongoGridFsService;
@@ -97,9 +96,9 @@ public class VersionService {
     Measure upversionedMeasure = version(versionType, username, measure);
 
     PackageDto measurePackage =
-        exportService.getMeasureExport(upversionedMeasure, accessToken, "Info");
+        qdmPackageService.createNewMeasurePackage(upversionedMeasure, accessToken, true);
     PackageDto publishableMeasurePackage =
-        exportService.getMeasureExport(upversionedMeasure, accessToken, "Error");
+        qdmPackageService.createNewMeasurePackage(upversionedMeasure, accessToken, false);
 
     String humanReadable =
         qdmPackageService.getHumanReadable(upversionedMeasure, username, accessToken);

@@ -34,29 +34,54 @@ public class QdmPackageService implements PackageService {
   @Override
   public PackageDto getMeasurePackage(
       Measure measure, boolean includeElmWarnings, String accessToken) {
-    if (!measure.getMeasureMetaData().isDraft()) {
-      Optional<Export> savedExport = repository.findByMeasureId(measure.getId());
-      if (savedExport.isEmpty()) {
-        log.error("Export not available for versioned measure with id: {}", measure.getId());
-        throw new ResourceNotFoundException("saved export for Measure", measure.getId());
+    if (measure.getMeasureMetaData().isDraft()) {
+      return createNewMeasurePackage(measure, accessToken, includeElmWarnings);
+    }
+    return getExistingMeasurePackage(measure.getId(), includeElmWarnings);
+  }
+
+  /**
+   * Fetch the already persisted measure package for a measure.
+   *
+   * @param measureId the measure id
+   * @param includeElmWarnings whether to include Elm warnings
+   * @return the packageDto
+   */
+  public PackageDto getExistingMeasurePackage(String measureId, boolean includeElmWarnings) {
+    Optional<Export> savedExport = repository.findByMeasureId(measureId);
+    if (savedExport.isEmpty()) {
+      log.error("Export not available for versioned measure with id: {}", measureId);
+      throw new ResourceNotFoundException("saved export for Measure", measureId);
+    }
+    if (includeElmWarnings) {
+      return PackageDto.builder()
+          .fromStorage(true)
+          .exportPackage(savedExport.get().getPackageData())
+          .build();
+    } else {
+      if (savedExport.get().getPublishablePackageData() == null) {
+        log.error("Publishable export not available for versioned measure with id: {}", measureId);
+        throw new ResourceNotFoundException(LEGACY_MEASURE_EXPORT_WARNING);
       }
-      if (includeElmWarnings) {
-        return PackageDto.builder()
-            .fromStorage(true)
-            .exportPackage(savedExport.get().getPackageData())
-            .build();
-      } else {
-        if (savedExport.get().getPublishablePackageData() == null) {
-          log.error(
-              "Publishable export not available for versioned measure with id: {}",
-              measure.getId());
-          throw new ResourceNotFoundException(LEGACY_MEASURE_EXPORT_WARNING);
-        }
-        return PackageDto.builder()
-            .fromStorage(true)
-            .exportPackage(savedExport.get().getPublishablePackageData())
-            .build();
-      }
+      return PackageDto.builder()
+          .fromStorage(true)
+          .exportPackage(savedExport.get().getPublishablePackageData())
+          .build();
+    }
+  }
+
+  /**
+   * Create a new measure package for a measure.
+   *
+   * @param measure the measure
+   * @param includeElmWarnings whether to include Elm warnings
+   * @param accessToken the access token
+   * @return the packageDto
+   */
+  public PackageDto createNewMeasurePackage(
+      Measure measure, String accessToken, boolean includeElmWarnings) {
+    if (measure == null) {
+      return null;
     }
     URI uri =
         URI.create(
