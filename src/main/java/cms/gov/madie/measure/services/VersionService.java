@@ -97,9 +97,9 @@ public class VersionService {
     Measure upversionedMeasure = version(versionType, username, measure);
 
     PackageDto measurePackage =
-        exportService.getMeasureExport(upversionedMeasure, accessToken, "Info");
+        qdmPackageService.createNewMeasurePackage(upversionedMeasure, accessToken, true);
     PackageDto publishableMeasurePackage =
-        exportService.getMeasureExport(upversionedMeasure, accessToken, "Error");
+        qdmPackageService.createNewMeasurePackage(upversionedMeasure, accessToken, false);
 
     String humanReadable =
         qdmPackageService.getHumanReadable(upversionedMeasure, username, accessToken);

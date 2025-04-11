@@ -659,7 +659,7 @@ public class VersionServiceTest {
     when(measureRepository.save(any(Measure.class))).thenReturn(updatedMeasure);
 
     byte[] exportPackage = "Look, I'm a measure package".getBytes();
-    when(exportService.getMeasureExport(any(Measure.class), anyString(), anyString()))
+    when(qdmPackageService.createNewMeasurePackage(any(Measure.class), anyString(), anyBoolean()))
         .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(exportPackage).build());
     when(qdmPackageService.getHumanReadable(any(Measure.class), anyString(), anyString()))
         .thenReturn("test human readable");
