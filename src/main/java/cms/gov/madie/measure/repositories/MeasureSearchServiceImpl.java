@@ -282,4 +282,34 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         .aggregate(aggregation, Measure.class, LibraryUsage.class)
         .getMappedResults();
   }
+
+  @Override
+  public int countAllMyMeasures(boolean isActive, String userId) {
+    // join measure and measure_set to lookup owner and ACL info
+    LookupOperation lookupOperation = getLookupOperation();
+    Criteria measureCriteria = Criteria.where("active").is(true);
+
+    Criteria measureSetCriteria =
+        new Criteria()
+            .orOperator(
+                Criteria.where("measureSet.owner").regex("^\\Q" + userId + "\\E$", "i"),
+                Criteria.where("measureSet.acls.userId")
+                    .regex("^\\Q" + userId + "\\E$", "i")
+                    .and("measureSet.acls.roles")
+                    .in(RoleEnum.SHARED_WITH));
+
+    MatchOperation matchOperation =
+        match(new Criteria().andOperator(measureCriteria, measureSetCriteria));
+
+    Aggregation aggregation =
+        newAggregation(lookupOperation, matchOperation, Aggregation.group().count().as("count"));
+
+    return Integer.parseInt(
+        mongoTemplate
+            .aggregate(aggregation, Measure.class, Map.class)
+            .getMappedResults()
+            .get(0)
+            .get("count")
+            .toString());
+  }
 }
