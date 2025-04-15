@@ -145,7 +145,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         }
 
         if (!wordCriteria.isEmpty()) {
-          measureCriteria.andOperator(wordCriteria.toArray(new Criteria[0]));
+          measureCriteria.andOperator(wordCriteria);
         }
       }
       // optional query provided
