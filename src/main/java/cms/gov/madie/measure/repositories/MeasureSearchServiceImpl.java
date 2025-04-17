@@ -287,7 +287,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   public int countAllMyMeasures(boolean isActive, String userId) {
     // join measure and measure_set to lookup owner and ACL info
     LookupOperation lookupOperation = getLookupOperation();
-    Criteria measureCriteria = Criteria.where("active").is(true);
+    Criteria measureCriteria = Criteria.where("active").is(isActive);
 
     Criteria measureSetCriteria =
         new Criteria()
@@ -301,8 +301,40 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     MatchOperation matchOperation =
         match(new Criteria().andOperator(measureCriteria, measureSetCriteria));
 
+    GroupOperation groupOperation = group("measureSetId");
+
     Aggregation aggregation =
-        newAggregation(lookupOperation, matchOperation, Aggregation.group().count().as("count"));
+        newAggregation(
+            lookupOperation,
+            matchOperation,
+            groupOperation,
+            Aggregation.group().count().as("count"));
+
+    return Integer.parseInt(
+        mongoTemplate
+            .aggregate(aggregation, Measure.class, Map.class)
+            .getMappedResults()
+            .get(0)
+            .get("count")
+            .toString());
+  }
+
+  @Override
+  public int countAllMeasures(boolean isActive) {
+    // join measure and measure_set to lookup owner and ACL info
+    LookupOperation lookupOperation = getLookupOperation();
+    Criteria measureCriteria = Criteria.where("active").is(isActive);
+
+    MatchOperation matchOperation = match(measureCriteria);
+
+    GroupOperation groupOperation = group("measureSetId");
+
+    Aggregation aggregation =
+        newAggregation(
+            lookupOperation,
+            matchOperation,
+            groupOperation,
+            Aggregation.group().count().as("count"));
 
     return Integer.parseInt(
         mongoTemplate

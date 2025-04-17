@@ -57,7 +57,5 @@ public interface MeasureRepository
 
   List<Measure> findAllByMeasureSetIdAndActive(String measureSetId, boolean isActive);
 
-  int countAllByActive(boolean isActive);
-
   int countAllByActiveAndMeasureSetContaining(boolean isActive, String userId);
 }

@@ -929,7 +929,7 @@ public class MeasureService {
   }
 
   public int countAllMeasures() {
-    return measureRepository.countAllByActive(true);
+    return measureRepository.countAllMeasures(true);
   }
 
   public int countMyMeasures(String user) {

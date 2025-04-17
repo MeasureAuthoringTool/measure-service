@@ -30,4 +30,6 @@ public interface MeasureSearchService {
   List<LibraryUsage> findLibraryUsageByLibraryName(String name);
 
   int countAllMyMeasures(boolean isActive, String userId);
+
+  int countAllMeasures(boolean isActive);
 }

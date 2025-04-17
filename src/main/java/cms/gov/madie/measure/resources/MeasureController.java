@@ -124,7 +124,7 @@ public class MeasureController {
   }
 
   @GetMapping("/measures/count")
-  public ResponseEntity<Map> getCounts(Principal principal) {
+  public ResponseEntity<Map<String, Integer>> getCounts(Principal principal) {
     Map<String, Integer> results = new HashMap<>();
     results.put("allMeasures", measureService.countAllMeasures());
     results.put("myMeasures", measureService.countMyMeasures(principal.getName()));
