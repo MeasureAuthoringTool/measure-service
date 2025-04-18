@@ -318,7 +318,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             lookupOperation,
             matchOperation,
             groupOperation,
-            Aggregation.group().count().as("count"));
+            group().count().as("count"));
 
     return Integer.parseInt(
         mongoTemplate
@@ -344,7 +344,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             lookupOperation,
             matchOperation,
             groupOperation,
-            Aggregation.group().count().as("count"));
+            group().count().as("count"));
 
     return Integer.parseInt(
         mongoTemplate
