@@ -358,6 +358,29 @@ public class VersionServiceTest {
   }
 
   @Test
+  public void testCreateVersionThrowsBadVersionRequestExceptionForNoGroup() {
+    Measure existingMeasure =
+        Measure.builder()
+            .id("testMeasureId")
+            .measureName("test measure")
+            .createdBy("testUser")
+            .cqlErrors(false)
+            .model(ModelType.QDM_5_6.getValue())
+            .cql("test cql")
+            .measureSet(measureSet)
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    existingMeasure.setMeasureMetaData(metaData);
+
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+
+    assertThrows(
+        BadVersionRequestException.class,
+        () -> versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+  }
+
+  @Test
   public void testCreateVersionThrowsCqlElmTranslationErrorExceptionForInvalidCQL() {
     Measure existingMeasure =
         Measure.builder()
@@ -367,6 +390,7 @@ public class VersionServiceTest {
             .cqlErrors(false)
             .model(ModelType.QDM_5_6.getValue())
             .cql("test cql")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .measureSet(measureSet)
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
@@ -393,6 +417,7 @@ public class VersionServiceTest {
             .createdBy("testUser")
             .cqlErrors(false)
             .cql("test cql")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .model(ModelType.QDM_5_6.getValue())
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
@@ -419,6 +444,7 @@ public class VersionServiceTest {
             .id("testMeasureId")
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .model(ModelType.QDM_5_6.getValue())
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
@@ -444,6 +470,7 @@ public class VersionServiceTest {
             .id("testMeasureId")
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .model(ModelType.QDM_5_6.getValue())
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
@@ -483,6 +510,7 @@ public class VersionServiceTest {
             .measureSetId("testMeasureSetId")
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001'")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .model(ModelType.QI_CORE.getValue())
             .measureSet(measureSet)
             .build();
@@ -536,6 +564,7 @@ public class VersionServiceTest {
             .measureSetId("testMeasureSetId")
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001'")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .model(ModelType.QI_CORE.getValue())
             .measureSet(measureSet)
             .build();
@@ -629,6 +658,7 @@ public class VersionServiceTest {
             .measureSetId("testMeasureSetId")
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001'")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .model(ModelType.QDM_5_6.getValue())
             .measureSet(measureSet)
             .build();
@@ -696,6 +726,7 @@ public class VersionServiceTest {
             .model(ModelType.QI_CORE_6_0_0.getValue())
             .createdBy("testUser")
             .cql("library Test1CQLLib version '2.3.001'")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .ecqmTitle("testMsr")
             .version(Version.builder().major(2).minor(3).revisionNumber(1).build())
             .measureSet(measureSet)

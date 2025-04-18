@@ -343,12 +343,24 @@ public class VersionService {
           measure.getId());
       throw new BadVersionRequestException(
           "Measure", measure.getId(), username, "Measure has no CQL.");
-    } else {
-      final ElmJson elmJson =
-          elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), accessToken);
-      if (elmTranslatorClient.hasErrors(elmJson)) {
-        throw new CqlElmTranslationErrorException(measure.getMeasureName());
-      }
+    }
+    if (CollectionUtils.isEmpty(measure.getGroups())) {
+      log.error(
+          "User [{}] attempted to version measure with id [{}] which does not have at least "
+              + "one Population Criteria",
+          username,
+          measure.getId());
+      throw new BadVersionRequestException(
+          "Measure",
+          measure.getId(),
+          username,
+          "Measure does not have at least one Population Criteria.");
+    }
+
+    final ElmJson elmJson =
+        elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), accessToken);
+    if (elmTranslatorClient.hasErrors(elmJson)) {
+      throw new CqlElmTranslationErrorException(measure.getMeasureName());
     }
   }
 
