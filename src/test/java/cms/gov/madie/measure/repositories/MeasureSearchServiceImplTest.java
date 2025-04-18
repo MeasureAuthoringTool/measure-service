@@ -23,7 +23,9 @@ import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -272,5 +274,18 @@ public class MeasureSearchServiceImplTest {
     assertEquals(libraryUsages.size(), 1);
     assertEquals(libraryUsages.get(0).getName(), libraryName);
     assertEquals(libraryUsages.get(0).getOwner(), owner);
+  }
+
+  @Test
+  void testCountAllMyMeasures() {
+    String owner = "john";
+    Map<String, String> resultMap = new HashMap<>();
+    resultMap.put("count", "5");
+    AggregationResults result = new AggregationResults<>(List.of(resultMap), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(result);
+    int count = measureAclRepository.countAllMyMeasures(true, owner);
+    assertEquals(count, 5);
   }
 }

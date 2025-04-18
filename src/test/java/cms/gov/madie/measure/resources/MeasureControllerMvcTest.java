@@ -2146,4 +2146,20 @@ public class MeasureControllerMvcTest {
     verify(measureSetService, times(1))
         .getRecentMeasuresByMeasureSetId(eq(List.of("set1", "set2")));
   }
+
+  @Test
+  public void testGetCounts() throws Exception {
+    when(measureService.countAllMeasures()).thenReturn(500);
+    when(measureService.countMyMeasures(anyString())).thenReturn(5);
+
+    mockMvc
+        .perform(get("/measures/count").with(user(TEST_USER_ID)).accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+        .andExpect(jsonPath("allMeasures").value(500))
+        .andExpect(jsonPath("myMeasures").value(5));
+
+    verify(measureService, times(1)).countAllMeasures();
+    verify(measureService, times(1)).countMyMeasures(eq(TEST_USER_ID));
+  }
 }
