@@ -927,4 +927,12 @@ public class MeasureService {
     }
     return measureRepository.findLibraryUsageByLibraryName(libraryName);
   }
+
+  public int countAllMeasures() {
+    return measureRepository.countAllMeasures(true);
+  }
+
+  public int countMyMeasures(String user) {
+    return measureRepository.countAllMyMeasures(true, user);
+  }
 }
