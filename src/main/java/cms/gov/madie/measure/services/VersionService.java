@@ -179,7 +179,6 @@ public class VersionService {
   private Measure validateVersionOptions(
       String id, String versionType, String username, String accessToken) {
     Measure measure = measureService.findMeasureById(id);
-    measureService.verifyAuthorization("asdf", measure);
     if (measure == null) {
       throw new ResourceNotFoundException("Measure", id);
     }
