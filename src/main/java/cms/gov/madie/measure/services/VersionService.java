@@ -179,6 +179,7 @@ public class VersionService {
   private Measure validateVersionOptions(
       String id, String versionType, String username, String accessToken) {
     Measure measure = measureService.findMeasureById(id);
+    measureService.verifyAuthorization("asdf", measure);
     if (measure == null) {
       throw new ResourceNotFoundException("Measure", id);
     }
@@ -186,8 +187,14 @@ public class VersionService {
     if (!VERSION_TYPE_MAJOR.equalsIgnoreCase(versionType)
         && !VERSION_TYPE_MINOR.equalsIgnoreCase(versionType)
         && !VERSION_TYPE_PATCH.equalsIgnoreCase(versionType)) {
+      log.error(
+          "User [{}] attempted to version measure with id [{}] with an invalid version type" +
+              " [{}]",
+          username,
+          measure.getId(),
+          versionType);
       throw new BadVersionRequestException(
-          "Measure", measure.getId(), username, "Invalid version request.");
+          "Measure", measure.getId(), username, "Invalid version type received.");
     }
     measureService.verifyAuthorization(username, measure);
     validateMeasureForVersioning(measure, username, accessToken);
