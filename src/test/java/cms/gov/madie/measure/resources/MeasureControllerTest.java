@@ -828,4 +828,16 @@ class MeasureControllerTest {
     assertThat(usage.get(0).getName(), is(equalTo(libraryName)));
     assertThat(usage.get(0).getOwner(), is(equalTo(owner)));
   }
+
+  @Test
+  void testGetCounts() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    when(measureService.countAllMeasures()).thenReturn(500);
+    when(measureService.countMyMeasures(anyString())).thenReturn(5);
+    ResponseEntity<Map<String, Integer>> response = controller.getCounts(principal);
+    Map<String, Integer> result = response.getBody();
+    assertThat(result.get("allMeasures"), is(equalTo(500)));
+    assertThat(result.get("myMeasures"), is(equalTo(5)));
+  }
 }

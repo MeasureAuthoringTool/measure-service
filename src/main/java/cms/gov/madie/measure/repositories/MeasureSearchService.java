@@ -28,4 +28,8 @@ public interface MeasureSearchService {
    * @return List<LibraryUsage> -> LibraryUsage: name, version and owner of including library
    */
   List<LibraryUsage> findLibraryUsageByLibraryName(String name);
+
+  int countAllMyMeasures(boolean isActive, String userId);
+
+  int countAllMeasures(boolean isActive);
 }

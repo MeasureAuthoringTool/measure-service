@@ -40,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.security.Principal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -120,6 +121,14 @@ public class MeasureController {
           return measure;
         });
     return ResponseEntity.ok(measures);
+  }
+
+  @GetMapping("/measures/count")
+  public ResponseEntity<Map<String, Integer>> getCounts(Principal principal) {
+    Map<String, Integer> results = new HashMap<>();
+    results.put("allMeasures", measureService.countAllMeasures());
+    results.put("myMeasures", measureService.countMyMeasures(principal.getName()));
+    return ResponseEntity.ok(results);
   }
 
   @GetMapping("/measures/{id}")
