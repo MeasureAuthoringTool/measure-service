@@ -352,8 +352,8 @@ public final class JsonUtil {
         group.getPopulations().stream()
             .filter(population -> criteriaReference.equalsIgnoreCase(population.getId()))
             .findFirst();
-    if (populationOpt.isPresent()) {
-      return populationOpt.get().getDefinition().toLowerCase() + "-observation";
+    if (populationOpt.isPresent() && populationOpt.get().getName() != null) {
+      return populationOpt.get().getName().name().toLowerCase() + "-observation";
     }
     return "";
   }
