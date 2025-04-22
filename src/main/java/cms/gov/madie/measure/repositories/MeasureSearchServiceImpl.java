@@ -130,13 +130,23 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       // If query is given, search for the query string in measureName and ecqmTitle
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
           && CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
-        measureCriteria.andOperator(
-            new Criteria()
-                .orOperator(
-                    Criteria.where("measureName")
-                        .regex(measureSearchCriteria.getSearchField(), "i"),
-                    Criteria.where("ecqmTitle")
-                        .regex(measureSearchCriteria.getSearchField(), "i")));
+        String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
+        List<Criteria> wordCriteria = new ArrayList<>();
+
+        for (String word : searchWords) {
+          word = word.replaceAll("[^a-zA-Z0-9]", ""); // Remove special characters
+          if (StringUtils.isNotBlank(word)) {
+            wordCriteria.add(
+                new Criteria()
+                    .orOperator(
+                        Criteria.where("measureName").regex(".*" + word + ".*", "i"),
+                        Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i")));
+          }
+        }
+
+        if (!wordCriteria.isEmpty()) {
+          measureCriteria.andOperator(wordCriteria);
+        }
       }
       // optional query provided
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
@@ -281,5 +291,61 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     return mongoTemplate
         .aggregate(aggregation, Measure.class, LibraryUsage.class)
         .getMappedResults();
+  }
+
+  @Override
+  public int countAllMyMeasures(boolean isActive, String userId) {
+    // join measure and measure_set to lookup owner and ACL info
+    LookupOperation lookupOperation = getLookupOperation();
+    Criteria measureCriteria = Criteria.where("active").is(isActive);
+
+    Criteria measureSetCriteria =
+        new Criteria()
+            .orOperator(
+                Criteria.where("measureSet.owner").regex("^\\Q" + userId + "\\E$", "i"),
+                Criteria.where("measureSet.acls.userId")
+                    .regex("^\\Q" + userId + "\\E$", "i")
+                    .and("measureSet.acls.roles")
+                    .in(RoleEnum.SHARED_WITH));
+
+    MatchOperation matchOperation =
+        match(new Criteria().andOperator(measureCriteria, measureSetCriteria));
+
+    GroupOperation groupOperation = group("measureSetId");
+
+    Aggregation aggregation =
+        newAggregation(
+            lookupOperation, matchOperation, groupOperation, group().count().as("count"));
+
+    return Integer.parseInt(
+        mongoTemplate
+            .aggregate(aggregation, Measure.class, Map.class)
+            .getMappedResults()
+            .get(0)
+            .get("count")
+            .toString());
+  }
+
+  @Override
+  public int countAllMeasures(boolean isActive) {
+    // join measure and measure_set to lookup owner and ACL info
+    LookupOperation lookupOperation = getLookupOperation();
+    Criteria measureCriteria = Criteria.where("active").is(isActive);
+
+    MatchOperation matchOperation = match(measureCriteria);
+
+    GroupOperation groupOperation = group("measureSetId");
+
+    Aggregation aggregation =
+        newAggregation(
+            lookupOperation, matchOperation, groupOperation, group().count().as("count"));
+
+    return Integer.parseInt(
+        mongoTemplate
+            .aggregate(aggregation, Measure.class, Map.class)
+            .getMappedResults()
+            .get(0)
+            .get("count")
+            .toString());
   }
 }
