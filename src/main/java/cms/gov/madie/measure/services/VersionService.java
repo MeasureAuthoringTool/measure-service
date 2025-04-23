@@ -187,8 +187,8 @@ public class VersionService {
         && !VERSION_TYPE_MINOR.equalsIgnoreCase(versionType)
         && !VERSION_TYPE_PATCH.equalsIgnoreCase(versionType)) {
       log.error(
-          "User [{}] attempted to version measure with id [{}] with an invalid version type" +
-              " [{}]",
+          "User [{}] attempted to version measure with id [{}] with an invalid version type"
+              + " [{}]",
           username,
           measure.getId(),
           versionType);
