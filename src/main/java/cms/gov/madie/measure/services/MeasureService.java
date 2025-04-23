@@ -862,6 +862,18 @@ public class MeasureService {
   }
 
   public void validateCmsIdAssociation(String username, Measure qiCoreMeasure, Measure qdmMeasure) {
+    if (!qiCoreMeasure.getModel().equals(ModelType.QI_CORE.getValue())
+        && !qiCoreMeasure.getModel().equals(ModelType.QI_CORE_6_0_0.getValue())) {
+      log.info("CMS ID could not be associated. Must pass in one QDM and one QI-Core measure");
+      throw new InvalidRequestException(
+          "CMS ID could not be associated. Must select one QDM and" + " one QI-Core measure.");
+    }
+
+    if (!qdmMeasure.getModel().equals(ModelType.QDM_5_6.getValue())) {
+      log.info("CMS ID could not be associated. Must pass in one QDM and one QI-Core measure");
+      throw new InvalidRequestException(
+          "CMS ID could not be associated. Must select one QDM and" + " one QI-Core measure.");
+    }
 
     // only owners(not shared users) can perform cms id association
     if (!(StringUtils.equals(qiCoreMeasure.getMeasureSet().getOwner(), username)
@@ -872,14 +884,6 @@ public class MeasureService {
           qiCoreMeasure.getId(),
           qdmMeasure.getId());
       throw new UnauthorizedException("CMS ID could not be associated. Please try again.");
-    }
-
-    if (StringUtils.equals(qiCoreMeasure.getModel(), qdmMeasure.getModel())) {
-      log.info(
-          "CMS ID could not be associated. Both measures with IDs [{}],[{}] are of same model type",
-          qiCoreMeasure.getId(),
-          qdmMeasure.getId());
-      throw new InvalidRequestException("CMS ID could not be associated. Please try again.");
     }
 
     if (qdmMeasure.getMeasureSet().getCmsId() == null) {
