@@ -14,12 +14,14 @@
   <name>Measure Service</name>
   <description>Measure Service for MADiE</description>
   <properties>
+    <cqframework.version>3.22.0</cqframework.version>
     <java.version>17</java.version>
     <junit-jupiter.version>5.10.3</junit-jupiter.version>
     <mvn.checkstyle.file>madie-checkstyle.xml</mvn.checkstyle.file>
     <mvn.checkstyle.version>3.1.2</mvn.checkstyle.version>
     <mvnreports.version>3.1.1</mvnreports.version>
     <mvnsite.version>3.9.1</mvnsite.version>
+    <org.fhir.ucum.version>1.0.9</org.fhir.ucum.version>
     <springdoc.version>2.8.3</springdoc.version>
   </properties>
 
@@ -49,6 +51,11 @@
         <groupId>org.junit.jupiter</groupId>
         <artifactId>junit-jupiter-engine</artifactId>
         <version>${junit-jupiter.version}</version>
+      </dependency>
+      <dependency>
+        <groupId>org.fhir</groupId>
+        <artifactId>ucum</artifactId>
+        <version>${org.fhir.ucum.version}</version>
       </dependency>
       <dependency>
         <groupId>io.mongock</groupId>
@@ -148,7 +155,12 @@
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-rest-commons</artifactId>
-      <version>0.0.8-SNAPSHOT</version>
+      <version>1.0.1-SNAPSHOT</version>
+    </dependency>
+    <dependency>
+      <groupId>info.cqframework</groupId>
+      <artifactId>cql-to-elm</artifactId>
+      <version>${cqframework.version}</version>
     </dependency>
     <dependency>
       <groupId>ca.uhn.hapi.fhir</groupId>
