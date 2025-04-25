@@ -20,6 +20,7 @@
     <mvn.checkstyle.version>3.1.2</mvn.checkstyle.version>
     <mvnreports.version>3.1.1</mvnreports.version>
     <mvnsite.version>3.9.1</mvnsite.version>
+    <org.apache.poi.version>5.4.1</org.apache.poi.version>
     <springdoc.version>2.8.3</springdoc.version>
   </properties>
 
@@ -143,7 +144,7 @@
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-java-models</artifactId>
-      <version>0.6.91-SNAPSHOT</version>
+      <version>0.6.92-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>gov.cms.madie</groupId>
@@ -193,6 +194,16 @@
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
       <version>3.17.0</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi</artifactId>
+      <version>${org.apache.poi.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.poi</groupId>
+      <artifactId>poi-ooxml</artifactId>
+      <version>${org.apache.poi.version}</version>
     </dependency>
 
     <dependency>

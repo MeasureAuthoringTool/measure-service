@@ -19,11 +19,14 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.nimbusds.oauth2.sdk.util.CollectionUtils;
+
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.FhirServicesClient;
 import cms.gov.madie.measure.utils.ControllerUtil;
 import cms.gov.madie.measure.utils.ExportFileNamesUtil;
+import gov.cms.madie.models.dto.OverlappingCodeDto;
 import gov.cms.madie.models.measure.Measure;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -113,5 +116,41 @@ public class ExportController {
                 + ".zip\"")
         .contentType(MediaType.APPLICATION_OCTET_STREAM)
         .body(exportService.getQRDA(requestDTO, accessToken));
+  }
+
+  @PutMapping(
+      path = ControllerUtil.TEST_CASES + "/exportOverlappingValueSets",
+      produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+  public ResponseEntity<byte[]> getOverlappingValueSets(
+      Principal principal,
+      @PathVariable("measureId") String measureId,
+      @RequestBody List<OverlappingCodeDto> requestDTOs,
+      @RequestHeader("Authorization") String accessToken) {
+
+    final String username = principal.getName();
+    log.info(
+        "User [{}] is attempting to export overlapping value sets for measure [{}]",
+        username,
+        measureId);
+    if (CollectionUtils.isEmpty(requestDTOs)) {
+      throw new ResourceNotFoundException("Measure", measureId);
+    }
+
+    Optional<Measure> measureOptional = measureRepository.findById(measureId);
+
+    if (measureOptional.isEmpty()) {
+      throw new ResourceNotFoundException("Measure", measureId);
+    }
+
+    return ResponseEntity.status(HttpStatus.OK)
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION,
+            "attachment;filename=\""
+                + ExportFileNamesUtil.getOverlappingValueSetsExportZipName(measureOptional.get())
+                + ".xlsx\"")
+        .contentType(
+            MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+        .body(exportService.getOverlappingValueSets(requestDTOs));
   }
 }

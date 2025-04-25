@@ -8,6 +8,7 @@ import cms.gov.madie.measure.services.ExportService;
 import cms.gov.madie.measure.services.FhirServicesClient;
 import cms.gov.madie.measure.services.MeasureService;
 import gov.cms.madie.models.common.Version;
+import gov.cms.madie.models.dto.OverlappingCodeDto;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCase;
 import org.junit.jupiter.api.Disabled;
@@ -24,6 +25,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.security.Principal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -228,5 +230,67 @@ class ExportControllerTest {
             QrdaRequestDTO.builder().measure(measure).build(),
             "Bearer TOKEN");
     assertEquals(HttpStatus.OK, output.getStatusCode());
+  }
+
+  @Test
+  void testGetOverlappingValueSetsSuccess() {
+    OverlappingCodeDto overlappingCodeDto =
+        OverlappingCodeDto.builder()
+            .code("4525004")
+            .codeSystem("http://snomed.info/sct")
+            .description("Emergency department patient visit (procedure)")
+            .codeSystemName("http://snomed.info/sct")
+            .codeSystemVersion("http://snomed.info/sct/731000124108/version/20250301")
+            .build();
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    final Measure measure =
+        Measure.builder()
+            .ecqmTitle("test_ecqm_title")
+            .version(new Version(0, 0, 0))
+            .model("QiCore 4.1.1")
+            .createdBy("test.user")
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(exportService.getOverlappingValueSets(anyList())).thenReturn(new byte[0]);
+    ResponseEntity<byte[]> output =
+        exportController.getOverlappingValueSets(
+            principal, "test_id", List.of(overlappingCodeDto), "Bearer TOKEN");
+    assertEquals(HttpStatus.OK, output.getStatusCode());
+  }
+
+  @Test
+  void testGetOverlappingValueSetsMeasureNotFound() {
+    OverlappingCodeDto overlappingCodeDto =
+        OverlappingCodeDto.builder()
+            .code("4525004")
+            .codeSystem("http://snomed.info/sct")
+            .description("Emergency department patient visit (procedure)")
+            .codeSystemName("http://snomed.info/sct")
+            .codeSystemVersion("http://snomed.info/sct/731000124108/version/20250301")
+            .build();
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () ->
+            exportController.getOverlappingValueSets(
+                principal, "test_id", List.of(overlappingCodeDto), "Bearer TOKEN"));
+  }
+
+  @Test
+  void testGetOverlappingValueSetsMeasureEmptyCodes() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () ->
+            exportController.getOverlappingValueSets(
+                principal, "test_id", Collections.emptyList(), "Bearer TOKEN"));
   }
 }
