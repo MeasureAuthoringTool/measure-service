@@ -866,13 +866,13 @@ public class MeasureService {
         && !qiCoreMeasure.getModel().equals(ModelType.QI_CORE_6_0_0.getValue())) {
       log.info("CMS ID could not be associated. Must pass in one QDM and one QI-Core measure");
       throw new InvalidRequestException(
-          "CMS ID could not be associated. Must select one QDM and" + " one QI-Core measure.");
+          "CMS ID could not be associated. Must select one QDM and one QI-Core measure.");
     }
 
     if (!qdmMeasure.getModel().equals(ModelType.QDM_5_6.getValue())) {
       log.info("CMS ID could not be associated. Must pass in one QDM and one QI-Core measure");
       throw new InvalidRequestException(
-          "CMS ID could not be associated. Must select one QDM and" + " one QI-Core measure.");
+          "CMS ID could not be associated. Must select one QDM and one QI-Core measure.");
     }
 
     // only owners(not shared users) can perform cms id association
