@@ -47,6 +47,9 @@ public class TestCaseService {
   private MeasureService measureService;
   private TestCaseSequenceService sequenceService;
   private AppConfigService appConfigService;
+  private ValidationWebSocketService webSocketService;
+
+  private final AsyncService asyncService;
 
   @Value("${madie.json.resources.base-uri}")
   @Getter
@@ -63,7 +66,9 @@ public class TestCaseService {
       ObjectMapper mapper,
       MeasureService measureService,
       TestCaseSequenceService sequenceService,
-      AppConfigService appConfigService) {
+      AppConfigService appConfigService,
+      ValidationWebSocketService webSocketService,
+      AsyncService asyncService) {
     this.measureRepository = measureRepository;
     this.actionLogService = actionLogService;
     this.fhirServicesClient = fhirServicesClient;
@@ -71,6 +76,8 @@ public class TestCaseService {
     this.measureService = measureService;
     this.sequenceService = sequenceService;
     this.appConfigService = appConfigService;
+    this.webSocketService = webSocketService;
+    this.asyncService = asyncService;
   }
 
   protected TestCase enrichNewTestCase(TestCase testCase, String username, String measureId) {
@@ -277,6 +284,67 @@ public class TestCaseService {
     }
   }
 
+  public TestCase applyValidationResultsAndPersist(
+      String measureId,
+      String testCaseId,
+      HapiOperationOutcome hapiOperationOutcome,
+      String updatedBy) {
+
+    Measure measure = measureService.findMeasureById(measureId);
+    if (measure == null) {
+      log.error(
+          "Measure not found when trying to persist validation outcome for testCase {}",
+          testCaseId);
+      return null;
+    }
+
+    Optional<TestCase> matching =
+        measure.getTestCases().stream().filter(tc -> tc.getId().equals(testCaseId)).findFirst();
+
+    if (matching.isEmpty()) {
+      log.error("TestCase with ID {} not found in measure {}", testCaseId, measureId);
+      return null;
+    }
+
+    TestCase existing = matching.get();
+
+    TestCase updated =
+        existing.toBuilder()
+            .hapiOperationOutcome(hapiOperationOutcome)
+            .validResource(hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful())
+            .lastModifiedAt(Instant.now())
+            .lastModifiedBy(updatedBy)
+            .build();
+
+    measure.getTestCases().remove(existing);
+    measure.getTestCases().add(updated);
+
+    measureRepository.save(measure);
+
+    log.info("Validation outcome persisted for testCase {} in measure {}", testCaseId, measureId);
+
+    return updated;
+  }
+
+  public void validateTestCaseAsResourceAsync(
+      String measureId,
+      final TestCase testCase,
+      final ModelType modelType,
+      final String accessToken,
+      String username) {
+    asyncService
+        .validateTestCaseJsonAsync(testCase, modelType, accessToken)
+        .thenApply(
+            hapiOutcome ->
+                applyValidationResultsAndPersist(
+                    measureId, testCase.getId(), hapiOutcome, username))
+        .thenAccept(
+            updatedTestCase -> {
+              log.info("Updated test case: {}", updatedTestCase.getId());
+              webSocketService.notifyValidation(updatedTestCase);
+            });
+  }
+
   public TestCase updateTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
     Measure measure = measureService.findMeasureById(measureId);
@@ -324,19 +392,25 @@ public class TestCaseService {
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
     }
-
-    TestCase validatedTestCase =
-        validateTestCaseAsResource(
-            testCase, ModelType.valueOfName(measure.getModel()), accessToken);
-    measure.getTestCases().add(validatedTestCase);
-
+    if (ModelType.QDM_5_6.equals(ModelType.valueOfName(measure.getModel()))) {
+      testCase.setValidResource(JsonUtil.isValidJson(testCase.getJson()));
+    } else {
+      // Save to measure before validating
+      testCase.setHapiOperationOutcome(HapiOperationOutcome.builder().message("Pending").build());
+      // Async call that triggers validator and saves the results to DB
+      // Then Notifies WebSocket about the result
+      validateTestCaseAsResourceAsync(
+          measureId, testCase, ModelType.valueOfName(measure.getModel()), accessToken, username);
+    }
+    measure.getTestCases().add(testCase);
     measureRepository.save(measure);
     log.info(
         "User [{}] successfully updated the test case with ID [{}] for the measure with ID[{}] ",
         username,
         testCase.getId(),
         measureId);
-    return validatedTestCase;
+    // returns in-validated Test Case for Qi-Core
+    return testCase;
   }
 
   public TestCase getTestCase(

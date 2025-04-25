@@ -17,10 +17,16 @@ public class SecurityConfig {
     "/log/**",
     "/measures/*/grant",
     "/organizations/**",
-    "/measures/*/ownership"
+    "/measures/*/ownership",
+    "/ws/**"
   };
   private static final String[] AUTH_WHITELIST = {
-    "/measure-transfer/**", "/actuator/**", "/log/**", "/measures/*/grant", "/measures/*/ownership"
+    "/measure-transfer/**",
+    "/actuator/**",
+    "/log/**",
+    "/measures/*/grant",
+    "/measures/*/ownership",
+    "/ws/**"
   };
 
   @Bean

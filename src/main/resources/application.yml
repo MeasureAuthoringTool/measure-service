@@ -2,7 +2,8 @@ spring:
   data:
     mongodb:
       database: ${MONGO_DATABASE:madie}
-      uri: ${MONGO_URI:mongodb://${DBUSER}:${DBPASS}@localhost:27017/madie}?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
+#      uri: ${MONGO_URI:mongodb://${DBUSER}:${DBPASS}@localhost:27017/madie}?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
+      uri: ${MONGO_URI:mongodb://localhost:27017/madie}?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
       auto-index-creation: true
   servlet:
     multipart:
@@ -55,9 +56,11 @@ madie:
     retrieve-cqmmeasure-urn: /qdm/measures/cqm
   service-config:
     json-url: ${SERVICE_CONFIG_JSON_URL:http://localhost:9000/env-config/serviceConfig.json}
-    cql-template-qicore411-url: ${CQL_TEMPLATE_QICORE411_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore411_CQLTemplate.txt}
-    cql-template-qdm56-url: ${CQL_TEMPLATE_QDM56_URL:https://madie-dev-static.s3.amazonaws.com/templates/QDM56_CQLTemplate.txt}
-    cql-template-qicore600-url: ${CQL_TEMPLATE_QICORE600_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore600_CQLTemplate.txt}
+#    cql-template-qicore411-url: ${CQL_TEMPLATE_QICORE411_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore411_CQLTemplate.txt}
+    cql-template-qicore411-url: file:/Users/43093/Documents/git/madie-ms/measure-service/src/test/resources/QICore411_CQLTemplate.txt
+#    cql-template-qdm56-url: ${CQL_TEMPLATE_QDM56_URL:https://madie-dev-static.s3.amazonaws.com/templates/QDM56_CQLTemplate.txt}
+    cql-template-qdm56-url: file:/Users/43093/Documents/git/madie-ms/measure-service/src/test/resources/QDM56_CQLTemplate.txt
+    cql-template-qicore600-url: file:/Users/43093/Documents/git/madie-ms/measure-service/src/test/resources/QICore600_CQLTemplate.txt
 
 
 management:
