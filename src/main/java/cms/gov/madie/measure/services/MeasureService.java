@@ -806,15 +806,7 @@ public class MeasureService {
     Measure qiCoreMeasure = findMeasureById(qiCoreMeasureId);
     Measure qdmMeasure = findMeasureById(qdmMeasureId);
 
-    if (qiCoreMeasure == null || qdmMeasure == null) {
-      log.info(
-          "CMS ID could not be associated. Measures with given Ids [{}],[{}] are not found",
-          qiCoreMeasureId,
-          qdmMeasureId);
-      throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
-    }
-
-    validateCmsIdAssociation(username, qiCoreMeasure, qdmMeasure);
+    validateCmsIdAssociation(username, qiCoreMeasureId, qiCoreMeasure, qdmMeasureId, qdmMeasure);
 
     if (copyMetaData) {
       copyQdmMetaData(qiCoreMeasure, qdmMeasure);
@@ -861,7 +853,20 @@ public class MeasureService {
     return measureRepository.findAllByModelAndCmsId(ModelType.QI_CORE.getValue(), qdmCmsId);
   }
 
-  public void validateCmsIdAssociation(String username, Measure qiCoreMeasure, Measure qdmMeasure) {
+  private void validateCmsIdAssociation(
+      String username,
+      String qiCoreMeasureId,
+      Measure qiCoreMeasure,
+      String qdmMeasureId,
+      Measure qdmMeasure) {
+    if (qiCoreMeasure == null || qdmMeasure == null) {
+      log.info(
+          "CMS ID could not be associated. Measures with given Ids [{}],[{}] are not found",
+          qiCoreMeasureId,
+          qdmMeasureId);
+      throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
+    }
+
     if ((!qiCoreMeasure.getModel().equals(ModelType.QI_CORE.getValue())
             && !qiCoreMeasure.getModel().equals(ModelType.QI_CORE_6_0_0.getValue()))
         || !qdmMeasure.getModel().equals(ModelType.QDM_5_6.getValue())) {
