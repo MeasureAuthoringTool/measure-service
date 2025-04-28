@@ -47,7 +47,7 @@ public class TestCaseService {
   private MeasureService measureService;
   private TestCaseSequenceService sequenceService;
   private AppConfigService appConfigService;
-  private ValidationWebSocketService webSocketService;
+  private SseEmitters sseEmitters;
 
   private final AsyncService asyncService;
 
@@ -67,7 +67,7 @@ public class TestCaseService {
       MeasureService measureService,
       TestCaseSequenceService sequenceService,
       AppConfigService appConfigService,
-      ValidationWebSocketService webSocketService,
+      SseEmitters sseEmitters,
       AsyncService asyncService) {
     this.measureRepository = measureRepository;
     this.actionLogService = actionLogService;
@@ -76,7 +76,7 @@ public class TestCaseService {
     this.measureService = measureService;
     this.sequenceService = sequenceService;
     this.appConfigService = appConfigService;
-    this.webSocketService = webSocketService;
+    this.sseEmitters = sseEmitters;
     this.asyncService = asyncService;
   }
 
@@ -326,25 +326,6 @@ public class TestCaseService {
     return updated;
   }
 
-  public void validateTestCaseAsResourceAsync(
-      String measureId,
-      final TestCase testCase,
-      final ModelType modelType,
-      final String accessToken,
-      String username) {
-    asyncService
-        .validateTestCaseJsonAsync(testCase, modelType, accessToken)
-        .thenApply(
-            hapiOutcome ->
-                applyValidationResultsAndPersist(
-                    measureId, testCase.getId(), hapiOutcome, username))
-        .thenAccept(
-            updatedTestCase -> {
-              log.info("Updated test case: {}", updatedTestCase.getId());
-              webSocketService.notifyValidation(updatedTestCase);
-            });
-  }
-
   public TestCase updateTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
     Measure measure = measureService.findMeasureById(measureId);
@@ -396,7 +377,7 @@ public class TestCaseService {
       testCase.setValidResource(JsonUtil.isValidJson(testCase.getJson()));
     } else {
       // Save to measure before validating
-      testCase.setHapiOperationOutcome(HapiOperationOutcome.builder().message("Pending").build());
+      testCase.setHapiOperationOutcome(HapiOperationOutcome.builder().message("Test Case validation is under progress").build());
       // Async call that triggers validator and saves the results to DB
       // Then Notifies WebSocket about the result
       validateTestCaseAsResourceAsync(
@@ -411,6 +392,25 @@ public class TestCaseService {
         measureId);
     // returns in-validated Test Case for Qi-Core
     return testCase;
+  }
+
+  public void validateTestCaseAsResourceAsync(
+          String measureId,
+          final TestCase testCase,
+          final ModelType modelType,
+          final String accessToken,
+          String username) {
+    asyncService
+            .validateTestCaseJsonAsync(testCase, modelType, accessToken)
+            .thenApply(
+                    hapiOutcome ->
+                            applyValidationResultsAndPersist(
+                                    measureId, testCase.getId(), hapiOutcome, username))
+            .thenAccept(
+                    updatedTestCase -> {
+                      log.info("Updated test case: {}", updatedTestCase.getId());
+                      sseEmitters.sendValidationResult(updatedTestCase);
+                    });
   }
 
   public TestCase getTestCase(

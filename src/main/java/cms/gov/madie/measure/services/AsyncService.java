@@ -32,6 +32,7 @@ public class AsyncService {
 
     try {
       Thread.sleep(3000);
+      // calls madie-fhir-service
       HapiOperationOutcome outcome =
           fhirServicesClient.validateBundle(testCase.getJson(), modelType, accessToken).getBody();
 
