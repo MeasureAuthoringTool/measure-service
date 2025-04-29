@@ -806,7 +806,15 @@ public class MeasureService {
     Measure qiCoreMeasure = findMeasureById(qiCoreMeasureId);
     Measure qdmMeasure = findMeasureById(qdmMeasureId);
 
-    validateCmsIdAssociation(username, qiCoreMeasureId, qiCoreMeasure, qdmMeasureId, qdmMeasure);
+    if (qiCoreMeasure == null || qdmMeasure == null) {
+      log.info(
+          "CMS ID could not be associated. Measures with given Ids [{}],[{}] are not found",
+          qiCoreMeasureId,
+          qdmMeasureId);
+      throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
+    }
+
+    validateCmsIdAssociation(username, qiCoreMeasure, qdmMeasure);
 
     if (copyMetaData) {
       copyQdmMetaData(qiCoreMeasure, qdmMeasure);
@@ -854,16 +862,8 @@ public class MeasureService {
   }
 
   private void validateCmsIdAssociation(
-      String username,
-      String qiCoreMeasureId,
-      Measure qiCoreMeasure,
-      String qdmMeasureId,
-      Measure qdmMeasure) {
+      String username, Measure qiCoreMeasure, Measure qdmMeasure) {
     if (qiCoreMeasure == null || qdmMeasure == null) {
-      log.info(
-          "CMS ID could not be associated. Measures with given Ids [{}],[{}] are not found",
-          qiCoreMeasureId,
-          qdmMeasureId);
       throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
     }
 
