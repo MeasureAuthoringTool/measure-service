@@ -14,7 +14,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.mongodb.core.mapping.Document;
-import org.springframework.data.mongodb.core.mapping.DocumentReference;
 import java.time.Instant;
 
 @Data
@@ -47,7 +46,7 @@ public class MeasureListDTO {
       groups = {Measure.ValidationOrder5.class})
   private String model;
 
-  @DocumentReference private MeasureSet measureSet;
+  private MeasureSet measureSet;
 
   private boolean active;
   private String ecqmTitle;
