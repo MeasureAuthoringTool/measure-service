@@ -247,7 +247,7 @@ public class TestCaseControllerMvcTest {
                         + "\"validResource\":false,"
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
                         + "\"groupPopulations\":null,"
-                        + "\"testCaseValidationStatus\":\"Valid\","
+                        + "\"testCaseValidationStatus\":null,"
                         + "\"testCaseValidationMessage\":null"
                         + "}]"));
     verify(testCaseService, times(1)).findTestCasesByMeasureId(measureIdCaptor.capture());
@@ -296,7 +296,7 @@ public class TestCaseControllerMvcTest {
                         + "\"validResource\":false,"
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
                         + "\"groupPopulations\":null,"
-                        + "\"testCaseValidationStatus\":\"Pending\","
+                        + "\"testCaseValidationStatus\":null,"
                         + "\"testCaseValidationMessage\":null"
                         + "}"));
     verify(testCaseService, times(1))
