@@ -246,7 +246,10 @@ public class TestCaseControllerMvcTest {
                         + "\"lastModifiedBy\":\"TestUser2\","
                         + "\"validResource\":false,"
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
-                        + "\"groupPopulations\":null}]"));
+                        + "\"groupPopulations\":null,"
+                        + "\"testCaseValidationStatus\":\"Valid\","
+                        + "\"testCaseValidationMessage\":null"
+                        + "}]"));
     verify(testCaseService, times(1)).findTestCasesByMeasureId(measureIdCaptor.capture());
     String measureId = measureIdCaptor.getValue();
     assertEquals("1234", measureId);
@@ -292,7 +295,10 @@ public class TestCaseControllerMvcTest {
                         + "\"lastModifiedBy\":\"TestUser2\","
                         + "\"validResource\":false,"
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
-                        + "\"groupPopulations\":null}"));
+                        + "\"groupPopulations\":null,"
+                        + "\"testCaseValidationStatus\":\"Pending\","
+                        + "\"testCaseValidationMessage\":null"
+                        + "}"));
     verify(testCaseService, times(1))
         .getTestCase(
             measureIdCaptor.capture(), testCaseIdCaptor.capture(), anyBoolean(), anyString());
@@ -336,7 +342,10 @@ public class TestCaseControllerMvcTest {
                         + "\"lastModifiedBy\":\"TestUser2\","
                         + "\"validResource\":false,"
                         + "\"json\":\"{\\\"new\\\":\\\"json\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
-                        + "\"groupPopulations\":null}"));
+                        + "\"groupPopulations\":null,"
+                        + "\"testCaseValidationStatus\":null,"
+                        + "\"testCaseValidationMessage\":null"
+                        + "}"));
     verify(testCaseService, times(1))
         .updateTestCase(
             testCaseCaptor.capture(),
