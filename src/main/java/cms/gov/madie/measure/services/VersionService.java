@@ -227,6 +227,7 @@ public class VersionService {
     }
 
     measureDraft.getMeasureMetaData().setDraft(true);
+    measureDraft.getMeasureMetaData().setVersionDate(null);
     measureDraft.setGroups(cloneMeasureGroups(measure.getGroups()));
 
     measureDraft.setTestCases(cloneTestCases(measure, measureDraft.getGroups(), accessToken));
