@@ -107,7 +107,6 @@ public class MeasureUtil {
       measureBuilder.cqlErrors(false);
     } else {
       measureBuilder.errors(errors);
-      measureBuilder.cqlErrors(cqlErrors);
     }
     return measureBuilder.build();
   }
