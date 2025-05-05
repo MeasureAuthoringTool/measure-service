@@ -144,11 +144,17 @@ public class VersionService {
   private Measure version(String versionType, String username, Measure measure) {
     Measure upversionedMeasure = measure.toBuilder().build();
     upversionedMeasure.getMeasureMetaData().setDraft(false);
+    upversionedMeasure.getMeasureMetaData().setVersionDate(Instant.now());
     upversionedMeasure.setLastModifiedAt(Instant.now());
     upversionedMeasure.setLastModifiedBy(username);
     Version oldVersion = upversionedMeasure.getVersion();
     Version newVersion = getNextVersion(upversionedMeasure, versionType);
     upversionedMeasure.setVersion(newVersion);
+    if (!CollectionUtils.isEmpty(upversionedMeasure.getTestCases())) {
+      upversionedMeasure
+          .getTestCases()
+          .forEach(testCase -> testCase.setCreatedBeforeVersioning(true));
+    }
     String newCql =
         upversionedMeasure
             .getCql()
