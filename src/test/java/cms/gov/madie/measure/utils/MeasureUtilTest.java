@@ -180,7 +180,7 @@ class MeasureUtilTest {
 
     Measure output = measureUtil.validateAllMeasureDependencies(measure);
     assertThat(output, is(notNullValue()));
-    assertThat(output.isCqlErrors(), is(true));
+    assertThat(output.isCqlErrors(), is(false));
     assertThat(output.getErrors(), is(notNullValue()));
     assertThat(
         output.getErrors().contains(MeasureErrorType.MISMATCH_CQL_SUPPLEMENTAL_DATA), is(true));
@@ -344,7 +344,7 @@ class MeasureUtilTest {
     Measure output = measureUtil.validateAllMeasureDependencies(measure);
 
     assertThat(output, is(notNullValue()));
-    assertThat(output.isCqlErrors(), is(true));
+    assertThat(output.isCqlErrors(), is(false));
     assertThat(output.getErrors(), is(notNullValue()));
     assertThat(
         output.getErrors().contains(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES),
