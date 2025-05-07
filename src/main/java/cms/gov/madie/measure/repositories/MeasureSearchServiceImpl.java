@@ -28,6 +28,7 @@ import java.util.Map;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.Cond.when;
 
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
@@ -125,6 +126,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       boolean filterByCurrentUser) {
     // join measure and measure_set to lookup owner and ACL info
     LookupOperation lookupOperation = getLookupOperation();
+
+    UnwindOperation unwindOperation = unwind("measureSet");
     Criteria measureCriteria = Criteria.where("active").is(true);
     if (measureSearchCriteria != null) {
       // If query is given, search for the query string in measureName and ecqmTitle
@@ -198,51 +201,37 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     Aggregation pipeline = null;
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)) {
       SortOperation sortOperation =
-          sort(
-              Sort.by(
-                  Sort.Direction.DESC, "version.major", "version.minor", "version.revisionNumber"));
+          sort(Sort.by(Sort.Direction.DESC, "measureMetaData.draft", "version"));
 
-      GroupOperation groupOperation = group("measureSetId").push("$$ROOT").as("docs");
+      GroupOperation groupOperation =
+          group("measureSetId").count().as("count").first("$$ROOT").as("selectedDoc");
 
-      ProjectionOperation projectionOperation =
-          project()
-              .and(
-                  ConditionalOperators.when(
-                          ComparisonOperators.Gt.valueOf(
-                                  ArrayOperators.Size.lengthOfArray(
-                                      ArrayOperators.Filter.filter("docs")
-                                          .as("item")
-                                          .by(
-                                              ComparisonOperators.Eq.valueOf(
-                                                      "item.measureMetaData.draft")
-                                                  .equalToValue(true))))
-                              .greaterThanValue(0))
-                      .thenValueOf(
-                          ArrayOperators.ArrayElemAt.arrayOf(
-                                  ArrayOperators.Filter.filter("docs")
-                                      .as("item")
-                                      .by(
-                                          ComparisonOperators.Eq.valueOf(
-                                                  "item.measureMetaData.draft")
-                                              .equalToValue(true)))
-                              .elementAt(0))
-                      .otherwiseValueOf(ArrayOperators.ArrayElemAt.arrayOf("docs").elementAt(0)))
-              .as("selectedDoc");
+      AddFieldsOperation addFieldsOperation =
+          addFields()
+              .addField("selectedDoc.hasAssociatedMeasures")
+              .withValueOf(
+                  when(ComparisonOperators.Gt.valueOf("count").greaterThanValue(1))
+                      .then(true)
+                      .otherwise(false))
+              .build();
 
       ReplaceRootOperation replaceRootOperation = replaceRoot("selectedDoc");
 
       pipeline =
           newAggregation(
               lookupOperation,
+              unwindOperation,
               matchOperation,
               sortOperation,
+              project(MeasureListDTO.class),
               groupOperation,
-              projectionOperation,
+              addFieldsOperation,
               replaceRootOperation,
+              sort(Sort.by(Sort.Direction.DESC, "lastModifiedAt")),
               facets);
 
     } else {
-      pipeline = newAggregation(lookupOperation, matchOperation, facets);
+      pipeline = newAggregation(lookupOperation, unwindOperation, matchOperation, facets);
     }
 
     List<FacetDTO> results =
