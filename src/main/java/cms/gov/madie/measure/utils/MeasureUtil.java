@@ -56,9 +56,7 @@ public class MeasureUtil {
     measureBuilder.clearErrors();
     Set<MeasureErrorType> errors = new HashSet<>();
 
-    boolean cqlErrors = false;
     if (elmJson == null) {
-      cqlErrors = true;
       errors.add(MeasureErrorType.MISSING_ELM);
     }
 
@@ -107,7 +105,6 @@ public class MeasureUtil {
       measureBuilder.cqlErrors(false);
     } else {
       measureBuilder.errors(errors);
-      measureBuilder.cqlErrors(cqlErrors);
     }
     return measureBuilder.build();
   }

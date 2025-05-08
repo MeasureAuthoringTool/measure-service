@@ -245,8 +245,11 @@ public class TestCaseControllerMvcTest {
                         + "\"createdBy\":\"TestUser\",\"lastModifiedAt\":null,"
                         + "\"lastModifiedBy\":\"TestUser2\","
                         + "\"validResource\":false,"
+                        + "\"createdBeforeVersioning\":false,"
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
-                        + "\"groupPopulations\":null}]"));
+                        + "\"groupPopulations\":null,"
+                        + "\"testCaseValidationStatus\":null"
+                        + "}]"));
     verify(testCaseService, times(1)).findTestCasesByMeasureId(measureIdCaptor.capture());
     String measureId = measureIdCaptor.getValue();
     assertEquals("1234", measureId);
@@ -291,8 +294,11 @@ public class TestCaseControllerMvcTest {
                         + "\"createdBy\":\"TestUser\",\"lastModifiedAt\":null,"
                         + "\"lastModifiedBy\":\"TestUser2\","
                         + "\"validResource\":false,"
+                        + "\"createdBeforeVersioning\":false,"
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
-                        + "\"groupPopulations\":null}"));
+                        + "\"groupPopulations\":null,"
+                        + "\"testCaseValidationStatus\":null"
+                        + "}"));
     verify(testCaseService, times(1))
         .getTestCase(
             measureIdCaptor.capture(), testCaseIdCaptor.capture(), anyBoolean(), anyString());
@@ -335,8 +341,11 @@ public class TestCaseControllerMvcTest {
                         + "\"createdBy\":\"TestUser\",\"lastModifiedAt\":null,"
                         + "\"lastModifiedBy\":\"TestUser2\","
                         + "\"validResource\":false,"
+                        + "\"createdBeforeVersioning\":false,"
                         + "\"json\":\"{\\\"new\\\":\\\"json\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
-                        + "\"groupPopulations\":null}"));
+                        + "\"groupPopulations\":null,"
+                        + "\"testCaseValidationStatus\":null"
+                        + "}"));
     verify(testCaseService, times(1))
         .updateTestCase(
             testCaseCaptor.capture(),

@@ -144,11 +144,17 @@ public class VersionService {
   private Measure version(String versionType, String username, Measure measure) {
     Measure upversionedMeasure = measure.toBuilder().build();
     upversionedMeasure.getMeasureMetaData().setDraft(false);
+    upversionedMeasure.getMeasureMetaData().setVersionDate(Instant.now());
     upversionedMeasure.setLastModifiedAt(Instant.now());
     upversionedMeasure.setLastModifiedBy(username);
     Version oldVersion = upversionedMeasure.getVersion();
     Version newVersion = getNextVersion(upversionedMeasure, versionType);
     upversionedMeasure.setVersion(newVersion);
+    if (!CollectionUtils.isEmpty(upversionedMeasure.getTestCases())) {
+      upversionedMeasure
+          .getTestCases()
+          .forEach(testCase -> testCase.setCreatedBeforeVersioning(true));
+    }
     String newCql =
         upversionedMeasure
             .getCql()
@@ -186,8 +192,14 @@ public class VersionService {
     if (!VERSION_TYPE_MAJOR.equalsIgnoreCase(versionType)
         && !VERSION_TYPE_MINOR.equalsIgnoreCase(versionType)
         && !VERSION_TYPE_PATCH.equalsIgnoreCase(versionType)) {
+      log.error(
+          "User [{}] attempted to version measure with id [{}] with an invalid version type"
+              + " [{}]",
+          username,
+          measure.getId(),
+          versionType);
       throw new BadVersionRequestException(
-          "Measure", measure.getId(), username, "Invalid version request.");
+          "Measure", measure.getId(), username, "Invalid version type received.");
     }
     measureService.verifyAuthorization(username, measure);
     validateMeasureForVersioning(measure, username, accessToken);
@@ -215,6 +227,7 @@ public class VersionService {
     }
 
     measureDraft.getMeasureMetaData().setDraft(true);
+    measureDraft.getMeasureMetaData().setVersionDate(null);
     measureDraft.setGroups(cloneMeasureGroups(measure.getGroups()));
 
     measureDraft.setTestCases(cloneTestCases(measure, measureDraft.getGroups(), accessToken));
@@ -343,12 +356,24 @@ public class VersionService {
           measure.getId());
       throw new BadVersionRequestException(
           "Measure", measure.getId(), username, "Measure has no CQL.");
-    } else {
-      final ElmJson elmJson =
-          elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), accessToken);
-      if (elmTranslatorClient.hasErrors(elmJson)) {
-        throw new CqlElmTranslationErrorException(measure.getMeasureName());
-      }
+    }
+    if (CollectionUtils.isEmpty(measure.getGroups())) {
+      log.error(
+          "User [{}] attempted to version measure with id [{}] which does not have at least "
+              + "one Population Criteria",
+          username,
+          measure.getId());
+      throw new BadVersionRequestException(
+          "Measure",
+          measure.getId(),
+          username,
+          "Measure does not have at least one Population Criteria.");
+    }
+
+    final ElmJson elmJson =
+        elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), accessToken);
+    if (elmTranslatorClient.hasErrors(elmJson)) {
+      throw new CqlElmTranslationErrorException(measure.getMeasureName());
     }
   }
 

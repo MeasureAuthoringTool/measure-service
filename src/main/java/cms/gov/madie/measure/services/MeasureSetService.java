@@ -15,11 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.aggregation.Aggregation;
-import org.springframework.data.mongodb.core.aggregation.LookupOperation;
-import org.springframework.data.mongodb.core.aggregation.MatchOperation;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.SortOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
@@ -317,6 +314,7 @@ public class MeasureSetService {
   public List<MeasureListDTO> getMeasuresByMeasureSetId(
       String measureSetId, boolean sortByLatestVersion) {
     LookupOperation lookupOperation = getLookupOperation();
+    UnwindOperation unwindOperation = unwind("measureSet");
 
     Criteria measureCriteria =
         Criteria.where("active").is(true).and("measureSetId").is(measureSetId);
@@ -328,9 +326,9 @@ public class MeasureSetService {
           sort(
               Sort.by(
                   Sort.Direction.DESC, "version.major", "version.minor", "version.revisionNumber"));
-      aggregation = newAggregation(lookupOperation, matchOperation, sortOperation);
+      aggregation = newAggregation(lookupOperation, unwindOperation, matchOperation, sortOperation);
     } else {
-      aggregation = newAggregation(lookupOperation, matchOperation);
+      aggregation = newAggregation(lookupOperation, unwindOperation, matchOperation);
     }
     return mongoTemplate.aggregate(aggregation, "measure", MeasureListDTO.class).getMappedResults();
   }
