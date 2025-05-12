@@ -192,6 +192,8 @@ public class MeasureSetService {
       measureSet.setOwner(userId);
       MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
       log.info("Owner changed in Measure set [{}]", updatedMeasureSet.getId());
+      actionLogService.logMeasureSetAction(
+          measureSetId, MeasureSet.class, ActionType.UPDATED, "apiKey");
       return updatedMeasureSet;
     } else {
       String error =
