@@ -432,8 +432,7 @@ public class MeasureService {
     Measure measure = persistedMeasure.get();
     MeasureSet measureSet =
         measureSetService.updateMeasureSetAcls(measure.getMeasureSetId(), aclOperation, userName);
-    actionLogService.logAction(
-        measureId, Measure.class, ActionType.UPDATED, userName, "ACL updated successfully");
+
     log.info(
         "User [{}] successfully called updateAccessControlList with measure ID [{}] and "
             + "AclOperation [{}]. The AclSpecification is now [{}]",
