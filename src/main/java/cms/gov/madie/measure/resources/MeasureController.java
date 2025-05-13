@@ -235,7 +235,6 @@ public class MeasureController {
       response =
           ResponseEntity.ok()
               .body(String.format("%s granted ownership to Measure successfully.", userid));
-      actionLogService.logAction(id, Measure.class, ActionType.UPDATED, "apiKey");
     }
 
     return response;
