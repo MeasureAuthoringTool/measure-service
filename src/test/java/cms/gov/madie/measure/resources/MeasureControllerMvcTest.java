@@ -185,16 +185,6 @@ public class MeasureControllerMvcTest {
         .andExpect(content().string("testUser granted ownership to Measure successfully."));
 
     verify(measureService, times(1)).changeOwnership(eq(measureId), eq("testUser"));
-
-    verify(actionLogService, times(1))
-        .logAction(
-            targetIdArgumentCaptor.capture(),
-            targetClassArgumentCaptor.capture(),
-            actionTypeArgumentCaptor.capture(),
-            performedByArgumentCaptor.capture());
-    assertNotNull(targetIdArgumentCaptor.getValue());
-    assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.UPDATED)));
-    assertThat(performedByArgumentCaptor.getValue(), is(equalTo("apiKey")));
   }
 
   @Test

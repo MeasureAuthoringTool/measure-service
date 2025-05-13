@@ -56,7 +56,6 @@ public class MeasureServiceAclTest {
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.updateMeasureSetAcls(any(), any(), eq("userName")))
         .thenReturn(measureSet);
-    when(actionLogService.logAction(any(), any(), any(), any(), any())).thenReturn(true);
 
     List<AclSpecification> aclSpecifications =
         measureService.updateAccessControlList(measure.getId(), aclOperation, "userName");
