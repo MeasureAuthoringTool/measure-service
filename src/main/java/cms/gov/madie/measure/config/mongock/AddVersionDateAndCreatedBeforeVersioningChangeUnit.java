@@ -29,11 +29,10 @@ public class AddVersionDateAndCreatedBeforeVersioningChangeUnit {
 
             List<TestCase> testCases = measure.getTestCases();
             if (!CollectionUtils.isEmpty(testCases)) {
-              testCases.stream()
-                  .forEach(
-                      testCase -> {
-                        testCase.setCreatedBeforeVersioning(true);
-                      });
+              testCases.forEach(
+                  testCase -> {
+                    testCase.setCreatedBeforeVersioning(true);
+                  });
             }
             measureRepository.save(measure);
           }
