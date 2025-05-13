@@ -28,15 +28,13 @@ public class AddVersionDateAndCreatedBeforeVersioningChangeUnit {
             measure.getMeasureMetaData().setVersionDate(measure.getLastModifiedAt());
 
             List<TestCase> testCases = measure.getTestCases();
-            if (CollectionUtils.isEmpty(testCases)) {
-              return;
+            if (!CollectionUtils.isEmpty(testCases)) {
+              testCases.stream()
+                  .forEach(
+                      testCase -> {
+                        testCase.setCreatedBeforeVersioning(true);
+                      });
             }
-
-            testCases.stream()
-                .forEach(
-                    testCase -> {
-                      testCase.setCreatedBeforeVersioning(true);
-                    });
             measureRepository.save(measure);
           }
         });
@@ -45,6 +43,6 @@ public class AddVersionDateAndCreatedBeforeVersioningChangeUnit {
   @RollbackExecution
   public void rollbackExecution() {
     log.debug(
-        "Something went wrong while updating measure version date and createdBeforeVersioning fields.");
+        "Something went wrong while updating measure versionDate and createdBeforeVersioning fields.");
   }
 }
