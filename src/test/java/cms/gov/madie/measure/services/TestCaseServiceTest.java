@@ -2,6 +2,7 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.CopyTestCaseResult;
 import cms.gov.madie.measure.dto.JobStatus;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
 import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
@@ -127,6 +128,8 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCase() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     Optional<Measure> optional = Optional.of(measure);
     Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
@@ -579,6 +582,23 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThrows(
         ResourceNotFoundException.class,
         () -> testCaseService.persistTestCases(newTestCases, measureId, username, accessToken));
+  }
+
+  @Test
+  public void testPersistTestCasesThrowsNoExceptionForNonDraftMeasure() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
+    List<TestCase> newTestCases = List.of(TestCase.builder().title("Test1").build());
+    String measureId = measure.getId();
+    String username = "user01";
+    String accessToken = "Bearer Token";
+    measure.getMeasureMetaData().setDraft(false);
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    List<TestCase> testCases =
+        testCaseService.persistTestCases(newTestCases, measureId, username, accessToken);
+    System.out.println(testCases);
+    assertEquals(1, testCases.size());
+    assertEquals("Test1", testCases.get(0).getTitle());
   }
 
   @Test

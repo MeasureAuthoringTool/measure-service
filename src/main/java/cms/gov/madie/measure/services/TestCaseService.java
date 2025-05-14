@@ -1,9 +1,6 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.CopyTestCaseResult;
-import cms.gov.madie.measure.dto.JobStatus;
-import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
-import cms.gov.madie.measure.dto.TestCaseValidationReport;
+import cms.gov.madie.measure.dto.*;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.*;
@@ -111,7 +108,8 @@ public class TestCaseService {
   public TestCase persistTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
     final Measure measure = findMeasureById(measureId);
-    if (!measure.getMeasureMetaData().isDraft()) {
+    if (!appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
+        && !measure.getMeasureMetaData().isDraft()) {
       throw new InvalidDraftStatusException(measure.getId());
     }
 
@@ -154,7 +152,8 @@ public class TestCaseService {
       return newTestCases;
     }
     final Measure measure = findMeasureById(measureId);
-    if (!measure.getMeasureMetaData().isDraft()) {
+    if (!appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
+        && !measure.getMeasureMetaData().isDraft()) {
       throw new InvalidDraftStatusException(measure.getId());
     }
 
@@ -284,7 +283,8 @@ public class TestCaseService {
       throw new ResourceNotFoundException("Measure", measureId);
     }
 
-    if (!measure.getMeasureMetaData().isDraft()) {
+    if (!appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
+        && !measure.getMeasureMetaData().isDraft()) {
       throw new InvalidDraftStatusException(measure.getId());
     }
     checkTestCaseSpecialCharacters(testCase);
@@ -368,7 +368,8 @@ public class TestCaseService {
       throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
     }
     Measure measure = findMeasureById(measureId);
-    if (!measure.getMeasureMetaData().isDraft()) {
+    if (!appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
+        && !measure.getMeasureMetaData().isDraft()) {
       throw new InvalidDraftStatusException(measure.getId());
     }
     measureService.verifyAuthorization(username, measure);
@@ -403,7 +404,8 @@ public class TestCaseService {
       throw new InvalidIdException("Test cases cannot be deleted, please contact the helpdesk");
     }
     Measure measure = findMeasureById(measureId);
-    if (!measure.getMeasureMetaData().isDraft()) {
+    if (!appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
+        && !measure.getMeasureMetaData().isDraft()) {
       throw new InvalidDraftStatusException(measure.getId());
     }
     measureService.verifyAuthorization(username, measure);

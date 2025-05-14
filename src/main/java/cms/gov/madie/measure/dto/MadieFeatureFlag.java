@@ -5,7 +5,8 @@ public enum MadieFeatureFlag {
   QDM_EXPORT("qdmExport"),
   QDM_TEST_CASES("qdmTestCases"),
   IMPORT_TEST_CASES("importTestCases"),
-  MEASURE_SEARCH("MeasureSearch");
+  MEASURE_SEARCH("MeasureSearch"),
+  EDIT_TESTS_ON_VERSIONED_MEASURES("EditTestsOnVersionedMeasures");
 
   private final String flag;
 
