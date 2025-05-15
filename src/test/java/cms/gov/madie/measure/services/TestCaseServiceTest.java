@@ -2,6 +2,7 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.CopyTestCaseResult;
 import cms.gov.madie.measure.dto.JobStatus;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
 import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
@@ -80,6 +81,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Mock private FhirServicesClient fhirServicesClient;
   @Mock private MeasureService measureService;
   @Mock private AppConfigService appConfigService;
+  @Mock private TestCaseValidationExecutorService testCaseValidationExecutorService;
   @Mock private TestCaseSequenceService testCaseSequenceService;
 
   @Spy @InjectMocks private TestCaseService testCaseService;
@@ -435,6 +437,13 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testUpdateTestCaseValidResourcesForMeasureValidList() {
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
+        .thenReturn(false);
+    Mockito.doAnswer((args) -> args.getArgument(0))
+        .when(measureRepository)
+        .save(any(Measure.class));
+
     TestCase testCase =
         TestCase.builder()
             .id("TestID")
@@ -443,29 +452,25 @@ public class TestCaseServiceTest implements ResourceUtil {
     Measure measure =
         Measure.builder().testCases(List.of(testCase)).model(ModelType.QI_CORE.getValue()).build();
     final String accessToken = "Bearer Token";
-    // TestCaseService spy = Mockito.spy(testCaseService);
-    TestCase validatedTestCase =
-        testCase.toBuilder()
-            .hapiOperationOutcome(HapiOperationOutcome.builder().build())
-            .validResource(true)
-            .build();
-    doReturn(List.of(validatedTestCase))
-        .when(testCaseService)
-        .validateTestCasesAsResources(anyList(), any(ModelType.class), anyString());
+    doReturn(ResponseEntity.ok(HapiOperationOutcome.builder().successful(true).build()))
+        .when(fhirServicesClient)
+        .validateBundle(anyString(), any(ModelType.class), anyString());
 
     List<TestCase> output =
         testCaseService.updateTestCaseValidResourcesForMeasure(measure, accessToken);
 
+    verify(measureRepository, times(1)).save(measureCaptor.capture());
     assertThat(output, is(notNullValue()));
     assertThat(output.size(), is(equalTo(1)));
-    assertThat(output.get(0), is(equalTo(validatedTestCase)));
+    assertTrue(output.get(0).isValidResource());
   }
 
   @Test
   public void testValidateTestCasesAsResourcesNullList() {
     final String accessToken = "Bearer Token";
     final ModelType model = ModelType.QI_CORE;
-    List<TestCase> output = testCaseService.validateTestCasesAsResources(null, model, accessToken);
+    List<TestCase> output =
+        testCaseService.validateTestCasesAsResources(measure.getId(), null, model, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.isEmpty(), is(true));
   }
@@ -476,13 +481,14 @@ public class TestCaseServiceTest implements ResourceUtil {
     final ModelType model = ModelType.QI_CORE;
     final List<TestCase> testCases = List.of();
     List<TestCase> output =
-        testCaseService.validateTestCasesAsResources(testCases, model, accessToken);
+        testCaseService.validateTestCasesAsResources(
+            measure.getId(), testCases, model, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.isEmpty(), is(true));
   }
 
   @Test
-  public void testValidateTestCasesAsResourcesWithEntries() throws JsonProcessingException {
+  public void testValidateTestCasesAsResourcesWithEntries() {
     TestCase testCase =
         TestCase.builder()
             .id("TestID")
@@ -496,7 +502,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     final ModelType model = ModelType.QI_CORE;
     final List<TestCase> testCases = List.of(testCase);
     List<TestCase> output =
-        testCaseService.validateTestCasesAsResources(testCases, model, accessToken);
+        testCaseService.validateTestCasesAsResources(
+            measure.getId(), testCases, model, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.isEmpty(), is(false));
     assertThat(output.get(0), is(notNullValue()));
@@ -506,7 +513,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testValidateTestCaseAsResource() throws JsonProcessingException {
+  public void testValidateTestCaseAsResource() {
     TestCase testCase =
         TestCase.builder()
             .id("TestID")
@@ -519,7 +526,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()));
 
     TestCase output =
-        testCaseService.validateTestCaseAsResource(testCase, ModelType.QI_CORE, accessToken);
+        testCaseService.validateTestCaseAsResource(
+            measure.getId(), testCase, ModelType.QI_CORE, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.getJson(), is(notNullValue()));
     assertThat(output.getHapiOperationOutcome(), is(notNullValue()));
@@ -532,7 +540,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     TestCase testCase = TestCase.builder().id("TestID").json(qdmJson).build();
     final String accessToken = "Bearer Token";
     TestCase output =
-        testCaseService.validateTestCaseAsResource(testCase, ModelType.QDM_5_6, accessToken);
+        testCaseService.validateTestCaseAsResource(
+            measure.getId(), testCase, ModelType.QDM_5_6, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.getJson(), is(notNullValue()));
     assertThat(output.isValidResource(), is(true));
@@ -544,7 +553,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     TestCase testCase = TestCase.builder().id("TestID").json(qdmJson).build();
     final String accessToken = "Bearer Token";
     TestCase output =
-        testCaseService.validateTestCaseAsResource(testCase, ModelType.QDM_5_6, accessToken);
+        testCaseService.validateTestCaseAsResource(
+            measure.getId(), testCase, ModelType.QDM_5_6, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.getJson(), is(notNullValue()));
     assertThat(output.isValidResource(), is(false));
@@ -554,7 +564,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testValidateTestCaseAsResourceNull() {
     final String accessToken = "Bearer Token";
     TestCase output =
-        testCaseService.validateTestCaseAsResource(null, ModelType.QDM_5_6, accessToken);
+        testCaseService.validateTestCaseAsResource(
+            measure.getId(), null, ModelType.QDM_5_6, accessToken);
     assertThat(output, is(nullValue()));
   }
 
@@ -564,8 +575,31 @@ public class TestCaseServiceTest implements ResourceUtil {
     final String accessToken = "Bearer Token";
 
     TestCase output =
-        testCaseService.validateTestCaseAsResource(testCase, ModelType.QI_CORE, accessToken);
+        testCaseService.validateTestCaseAsResource(
+            measure.getId(), testCase, ModelType.QI_CORE, accessToken);
     assertThat(output, is(nullValue()));
+  }
+
+  @Test
+  public void testValidateTestCaseAsResourceForSTU6Measures() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
+        .thenReturn(true);
+    measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
+    TestCase testCase =
+        TestCase.builder()
+            .id("TestID")
+            .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
+            .build();
+    final String accessToken = "Bearer Token";
+
+    doNothing()
+        .when(testCaseValidationExecutorService)
+        .submitValidationTask(anyString(), anyString(), anyString(), any(ModelType.class));
+
+    TestCase output =
+        testCaseService.validateTestCaseAsResource(
+            measure.getId(), testCase, ModelType.QI_CORE_6_0_0, accessToken);
+    assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
   }
 
   @Test
@@ -622,9 +656,15 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCasesHandlesListToMeasureNoExistingTestCases() {
+    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+        .thenReturn(
+            ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()))
+        .thenReturn(
+            ResponseEntity.ok(HapiOperationOutcome.builder().code(400).successful(false).build()));
     List<TestCase> newTestCases =
         List.of(
-            TestCase.builder().title("Test1").build(), TestCase.builder().title("Test2").build());
+            TestCase.builder().title("Test1").json("test-json").build(),
+            TestCase.builder().title("Test2").json("test-json").build());
     String measureId = measure.getId();
     String username = "user01";
     String accessToken = "Bearer Token";
@@ -640,18 +680,16 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(output.get(0).getLastModifiedAt(), is(notNullValue()));
     assertThat(output.get(0).getLastModifiedBy(), is(equalTo("user01")));
     assertThat(output.get(0).getResourceUri(), is(nullValue()));
-    assertThat(output.get(0).getHapiOperationOutcome(), is(nullValue()));
-    assertThat(output.get(0).isValidResource(), is(false));
+    assertTrue(output.get(0).getHapiOperationOutcome().isSuccessful());
+    assertTrue(output.get(0).isValidResource());
     assertThat(output.get(1).getId(), is(notNullValue()));
     assertThat(output.get(1).getCreatedAt(), is(notNullValue()));
     assertThat(output.get(1).getCreatedBy(), is(equalTo("user01")));
     assertThat(output.get(1).getLastModifiedAt(), is(notNullValue()));
     assertThat(output.get(1).getLastModifiedBy(), is(equalTo("user01")));
     assertThat(output.get(1).getResourceUri(), is(nullValue()));
-    assertThat(output.get(1).getHapiOperationOutcome(), is(nullValue()));
+    assertNotNull(output.get(1).getHapiOperationOutcome());
     assertThat(output.get(1).isValidResource(), is(false));
-
-    verifyNoInteractions(fhirServicesClient);
   }
 
   @Test
@@ -662,8 +700,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setModel(ModelType.QDM_5_6.getValue());
     List<TestCase> newTestCases =
         List.of(
-            TestCase.builder().title("Test1").series("series1").build(),
-            TestCase.builder().title("Test2").series("series2").build());
+            TestCase.builder().title("Test1").series("series1").json("test-json").build(),
+            TestCase.builder().title("Test2").series("series2").json("test-json").build());
     String measureId = measure.getId();
     String username = "user01";
     String accessToken = "Bearer Token";
