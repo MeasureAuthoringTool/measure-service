@@ -17,7 +17,7 @@ public class TestCaseValidationExecutorService {
   /**
    * ThreadPoolExecutor config corePoolSize - this handles the number of concurrent threads
    * maximumPoolSize - The max threshold of threads that will be created if the queue is full
-   * KeelAliveTime - Number of seconds a thread will be active, if no new task is submitted it will
+   * KeepAliveTime - Number of seconds a thread will be active, if no new task is submitted it will
    * be terminated Unbounded Queue - New Tasks will be added to Queue if number of tasks are above
    * CorePoolSize. if Queue is filled (unbounded queues doesn't have an upper limit) then executor
    * increase the CorePoolSize from 10 until it reaches 50 to handle extra load. So technically only
