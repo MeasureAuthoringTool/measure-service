@@ -602,7 +602,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doNothing()
         .when(testCaseValidationExecutorService)
-        .submitValidationTask(anyString(), anyString(), anyString(), any(ModelType.class));
+        .submitValidationTask(anyString(), any(TestCase.class), anyString(), any(ModelType.class));
 
     TestCase output =
         testCaseService.updateTestCase(testCase, measure.getId(), "test-user", accessToken);
