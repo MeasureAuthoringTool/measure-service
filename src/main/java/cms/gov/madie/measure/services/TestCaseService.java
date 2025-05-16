@@ -126,7 +126,7 @@ public class TestCaseService {
     TestCase enrichedTestCase = enrichNewTestCase(testCase, username, measureId);
     enrichedTestCase =
         validateTestCaseAsResource(
-            measureId, enrichedTestCase, ModelType.valueOfName(measure.getModel()), accessToken);
+            enrichedTestCase, ModelType.valueOfName(measure.getModel()), accessToken);
 
     if (measure.getTestCases() == null) {
       measure.setTestCases(List.of(enrichedTestCase));
@@ -163,7 +163,7 @@ public class TestCaseService {
       TestCase enriched = enrichNewTestCase(testCase, username, measureId);
       enriched =
           validateTestCaseAsResource(
-              measureId, enriched, ModelType.valueOfName(measure.getModel()), accessToken);
+              enriched, ModelType.valueOfName(measure.getModel()), accessToken);
       enrichedTestCases.add(enriched);
       actionLogService.logAction(enriched.getId(), TestCase.class, ActionType.IMPORTED, username);
     }
@@ -238,28 +238,20 @@ public class TestCaseService {
       Measure measure, final String accessToken) {
     List<TestCase> validatedTestCases =
         validateTestCasesAsResources(
-            measure.getId(),
-            measure.getTestCases(),
-            ModelType.valueOfName(measure.getModel()),
-            accessToken);
+            measure.getTestCases(), ModelType.valueOfName(measure.getModel()), accessToken);
     measure.setTestCases(validatedTestCases);
     measureRepository.save(measure);
     return validatedTestCases;
   }
 
   public List<TestCase> validateTestCasesAsResources(
-      final String measureId,
-      final List<TestCase> testCases,
-      final ModelType modelType,
-      final String accessToken) {
+      final List<TestCase> testCases, final ModelType modelType, final String accessToken) {
     List<TestCase> validatedTestCases = new ArrayList<>();
 
     if (!isEmpty(testCases)) {
       validatedTestCases =
           testCases.stream()
-              .map(
-                  testCase ->
-                      validateTestCaseAsResource(measureId, testCase, modelType, accessToken))
+              .map(testCase -> validateTestCaseAsResource(testCase, modelType, accessToken))
               .collect(Collectors.toList());
     }
 
@@ -267,10 +259,7 @@ public class TestCaseService {
   }
 
   public TestCase validateTestCaseAsResource(
-      final String measureId,
-      final TestCase testCase,
-      final ModelType modelType,
-      final String accessToken) {
+      final TestCase testCase, final ModelType modelType, final String accessToken) {
     if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
       return null;
     }
@@ -278,24 +267,30 @@ public class TestCaseService {
     if (ModelType.QDM_5_6.equals(modelType)) {
       return testCase.toBuilder().validResource(JsonUtil.isValidJson(testCase.getJson())).build();
     } else {
-      if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
-        // executorService works asynchronously
-        testCaseValidationExecutorService.submitValidationTask(
-            measureId, testCase.getId(), accessToken, modelType);
-
-        // Return testCase with pending status
-        return testCase.toBuilder()
-            .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
-            .build();
-      } else {
-        final HapiOperationOutcome hapiOperationOutcome =
-            validateTestCaseJson(testCase, modelType, accessToken);
-        return testCase.toBuilder()
-            .hapiOperationOutcome(hapiOperationOutcome)
-            .validResource(hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful())
-            .build();
-      }
+      final HapiOperationOutcome hapiOperationOutcome =
+          validateTestCaseJson(testCase, modelType, accessToken);
+      return testCase.toBuilder()
+          .hapiOperationOutcome(hapiOperationOutcome)
+          .validResource(hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful())
+          .build();
     }
+  }
+
+  private TestCase validateResourceAsynchronously(
+      Measure measure, TestCase testCase, String accessToken) {
+    TestCase updatedTestCase =
+        testCase.toBuilder()
+            .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
+            .hapiOperationOutcome(null)
+            .build();
+    measure.getTestCases().add(updatedTestCase);
+    measureRepository.save(measure);
+    // executorService works asynchronously
+    testCaseValidationExecutorService.submitValidationTask(
+        measure.getId(), testCase.getId(), accessToken, ModelType.valueOfName(measure.getModel()));
+
+    // Return testCase with pending status and set validationOutcome to null
+    return updatedTestCase;
   }
 
   public TestCase updateTestCase(
@@ -337,18 +332,27 @@ public class TestCaseService {
         testCase.setPatientId(UUID.randomUUID());
       }
     }
+    boolean isQiCoreModel =
+        ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())
+            || ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel());
+
+    boolean hasJson = StringUtils.isNotBlank(testCase.getJson());
     // this transformation logic needs to be run before hapiFhirValidations or they will fail.
-    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())
-        && StringUtils.isNotBlank(testCase.getJson())) {
+    if (isQiCoreModel && hasJson) {
       testCase.setJson(JsonUtil.enforcePatientId(testCase, madieJsonResourcesBaseUri));
       testCase.setJson(JsonUtil.updateResourceFullUrls(testCase, madieJsonResourcesBaseUri));
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
     }
+    if (isQiCoreModel
+        && hasJson
+        && appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
+      return validateResourceAsynchronously(measure, testCase, accessToken);
+    }
 
     TestCase validatedTestCase =
         validateTestCaseAsResource(
-            measureId, testCase, ModelType.valueOfName(measure.getModel()), accessToken);
+            testCase, ModelType.valueOfName(measure.getModel()), accessToken);
     measure.getTestCases().add(validatedTestCase);
 
     measureRepository.save(measure);
