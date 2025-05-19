@@ -15,6 +15,7 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
 
+import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -81,6 +82,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Mock private FhirServicesClient fhirServicesClient;
   @Mock private MeasureService measureService;
   @Mock private AppConfigService appConfigService;
+  @Mock private TestCaseServiceUtil testCaseServiceUtil;
   @Mock private TestCaseValidationExecutorService testCaseValidationExecutorService;
   @Mock private TestCaseSequenceService testCaseSequenceService;
 
@@ -129,6 +131,8 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCase() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     Optional<Measure> optional = Optional.of(measure);
     Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
@@ -572,6 +576,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testValidateResourceAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
@@ -615,6 +621,45 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThrows(
         ResourceNotFoundException.class,
         () -> testCaseService.persistTestCases(newTestCases, measureId, username, accessToken));
+  }
+
+  @Test
+  public void testPersistTestCasesThrowsNoExceptionForNonDraftMeasure1() {
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
+        .thenReturn(true);
+    measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
+    TestCase testCase =
+        TestCase.builder()
+            .id("TestID")
+            .title("test-title")
+            .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
+            .build();
+    final String accessToken = "Bearer Token";
+
+    measure.toBuilder()
+        .model(ModelType.QI_CORE_6_0_0.getValue())
+        .testCases(List.of(testCase))
+        .build();
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
+    Mockito.doAnswer((args) -> args.getArgument(0))
+        .when(measureRepository)
+        .save(any(Measure.class));
+
+    doNothing()
+        .when(testCaseValidationExecutorService)
+        .submitValidationTask(anyString(), anyString(), anyString(), any(ModelType.class));
+
+    TestCase output =
+        testCaseService.updateTestCase(testCase, measure.getId(), "test-user", accessToken);
+    assertNotNull(output);
+    verify(measureRepository, times(1)).save(measureCaptor.capture());
+    assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
+    assertEquals("test-user", output.getCreatedBy());
+    assertEquals("test-title", output.getTitle());
   }
 
   @Test
