@@ -36,14 +36,14 @@ import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 @Slf4j
 @Service
 public class TestCaseService {
-
   private final MeasureRepository measureRepository;
-  private ActionLogService actionLogService;
-  private FhirServicesClient fhirServicesClient;
-  private ObjectMapper mapper;
-  private MeasureService measureService;
-  private TestCaseSequenceService sequenceService;
-  private AppConfigService appConfigService;
+  private final ActionLogService actionLogService;
+  private final FhirServicesClient fhirServicesClient;
+  private final ObjectMapper mapper;
+  private final MeasureService measureService;
+  private final TestCaseSequenceService sequenceService;
+  private final AppConfigService appConfigService;
+  private final TestCaseValidationExecutorService testCaseValidationExecutorService;
 
   @Value("${madie.json.resources.base-uri}")
   @Getter
@@ -60,7 +60,8 @@ public class TestCaseService {
       ObjectMapper mapper,
       MeasureService measureService,
       TestCaseSequenceService sequenceService,
-      AppConfigService appConfigService) {
+      AppConfigService appConfigService,
+      TestCaseValidationExecutorService testCaseValidationExecutorService) {
     this.measureRepository = measureRepository;
     this.actionLogService = actionLogService;
     this.fhirServicesClient = fhirServicesClient;
@@ -68,6 +69,7 @@ public class TestCaseService {
     this.measureService = measureService;
     this.sequenceService = sequenceService;
     this.appConfigService = appConfigService;
+    this.testCaseValidationExecutorService = testCaseValidationExecutorService;
   }
 
   protected TestCase enrichNewTestCase(TestCase testCase, String username, String measureId) {
@@ -260,20 +262,37 @@ public class TestCaseService {
 
   public TestCase validateTestCaseAsResource(
       final TestCase testCase, final ModelType modelType, final String accessToken) {
+    if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
+      return null;
+    }
+
     if (ModelType.QDM_5_6.equals(modelType)) {
-      return testCase == null
-          ? null
-          : testCase.toBuilder().validResource(JsonUtil.isValidJson(testCase.getJson())).build();
+      return testCase.toBuilder().validResource(JsonUtil.isValidJson(testCase.getJson())).build();
     } else {
       final HapiOperationOutcome hapiOperationOutcome =
           validateTestCaseJson(testCase, modelType, accessToken);
-      return testCase == null
-          ? null
-          : testCase.toBuilder()
-              .hapiOperationOutcome(hapiOperationOutcome)
-              .validResource(hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful())
-              .build();
+      return testCase.toBuilder()
+          .hapiOperationOutcome(hapiOperationOutcome)
+          .validResource(hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful())
+          .build();
     }
+  }
+
+  private TestCase validateResourceAsynchronously(
+      Measure measure, TestCase testCase, String accessToken) {
+    TestCase updatedTestCase =
+        testCase.toBuilder()
+            .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
+            .hapiOperationOutcome(null)
+            .build();
+    measure.getTestCases().add(updatedTestCase);
+    measureRepository.save(measure);
+    // executorService works asynchronously
+    testCaseValidationExecutorService.submitValidationTask(
+        measure.getId(), testCase.getId(), accessToken, ModelType.valueOfName(measure.getModel()));
+
+    // Return testCase with pending status and set validationOutcome to null
+    return updatedTestCase;
   }
 
   public TestCase updateTestCase(
@@ -316,13 +335,22 @@ public class TestCaseService {
         testCase.setPatientId(UUID.randomUUID());
       }
     }
+    boolean isQiCoreModel =
+        ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())
+            || ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel());
+
+    boolean hasJson = StringUtils.isNotBlank(testCase.getJson());
     // this transformation logic needs to be run before hapiFhirValidations or they will fail.
-    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())
-        && StringUtils.isNotBlank(testCase.getJson())) {
+    if (isQiCoreModel && hasJson) {
       testCase.setJson(JsonUtil.enforcePatientId(testCase, madieJsonResourcesBaseUri));
       testCase.setJson(JsonUtil.updateResourceFullUrls(testCase, madieJsonResourcesBaseUri));
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
+    }
+    if (isQiCoreModel
+        && hasJson
+        && appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
+      return validateResourceAsynchronously(measure, testCase, accessToken);
     }
 
     TestCase validatedTestCase =
