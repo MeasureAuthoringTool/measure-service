@@ -120,10 +120,8 @@ public class TestCaseService {
     if (StringUtils.deleteWhitespace(testCase.getTitle() + testCase.getSeries()).length() > 255) {
       throw new TestCaseNameLengthException();
     }
-
     defaultTestCaseJsonForQdmMeasure(testCase, measure);
     checkTestCaseSpecialCharacters(testCase);
-
     TestCase enrichedTestCase = enrichNewTestCase(testCase, username, measureId);
     enrichedTestCase =
         validateTestCaseAsResource(
@@ -139,7 +137,6 @@ public class TestCaseService {
 
     actionLogService.logAction(
         enrichedTestCase.getId(), TestCase.class, ActionType.CREATED, username);
-
     log.info(
         "User [{}] successfully created new test case with ID [{}] for the measure with ID[{}] ",
         username,
@@ -290,7 +287,6 @@ public class TestCaseService {
     // executorService works asynchronously
     testCaseValidationExecutorService.submitValidationTask(
         measure.getId(), testCase.getId(), accessToken, ModelType.valueOfName(measure.getModel()));
-
     // Return testCase with pending status and set validationOutcome to null
     return updatedTestCase;
   }
@@ -301,7 +297,6 @@ public class TestCaseService {
     if (measure == null) {
       throw new ResourceNotFoundException("Measure", measureId);
     }
-
     TestCaseServiceUtil.checkIfEditable(
         appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
         measure.getMeasureMetaData().isDraft(),
