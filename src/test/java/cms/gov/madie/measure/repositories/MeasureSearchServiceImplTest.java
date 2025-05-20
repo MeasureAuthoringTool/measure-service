@@ -297,6 +297,7 @@ public class MeasureSearchServiceImplTest {
     assertEquals(count, 0);
   }
 
+  @Test
   void testCountAllMeasures() {
     Map<String, String> resultMap = new HashMap<>();
     resultMap.put("count", "5");
