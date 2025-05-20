@@ -287,7 +287,7 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  void testCountAllMyMeasuresReturn0() {
+  void testCountAllMyMeasuresReturnZero() {
     String owner = "john";
     AggregationResults result = new AggregationResults<>(new ArrayList<>(), new Document());
 
@@ -298,7 +298,6 @@ public class MeasureSearchServiceImplTest {
   }
 
   void testCountAllMeasures() {
-    String owner = "john";
     Map<String, String> resultMap = new HashMap<>();
     resultMap.put("count", "5");
     AggregationResults result = new AggregationResults<>(List.of(resultMap), new Document());
@@ -310,8 +309,7 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  void testCountAllMeasuresReturn0() {
-    String owner = "john";
+  void testCountAllMeasuresReturnZero() {
     AggregationResults result = new AggregationResults<>(new ArrayList<>(), new Document());
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
