@@ -22,10 +22,7 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -287,5 +284,39 @@ public class MeasureSearchServiceImplTest {
         .thenReturn(result);
     int count = measureAclRepository.countAllMyMeasures(true, owner);
     assertEquals(count, 5);
+  }
+
+  @Test
+  void testCountAllMyMeasuresReturn0() {
+    String owner = "john";
+    AggregationResults result = new AggregationResults<>(new ArrayList<>(), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+            .thenReturn(result);
+    int count = measureAclRepository.countAllMyMeasures(true, owner);
+    assertEquals(count, 0);
+  }
+
+  void testCountAllMeasures() {
+    String owner = "john";
+    Map<String, String> resultMap = new HashMap<>();
+    resultMap.put("count", "5");
+    AggregationResults result = new AggregationResults<>(List.of(resultMap), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+            .thenReturn(result);
+    int count = measureAclRepository.countAllMeasures(true);
+    assertEquals(count, 5);
+  }
+
+  @Test
+  void testCountAllMeasuresReturn0() {
+    String owner = "john";
+    AggregationResults result = new AggregationResults<>(new ArrayList<>(), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+            .thenReturn(result);
+    int count = measureAclRepository.countAllMeasures(true);
+    assertEquals(count, 0);
   }
 }
