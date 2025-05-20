@@ -387,10 +387,6 @@ public class TestCaseService {
       throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
     }
     Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
     measureService.verifyAuthorization(username, measure);
     if (isEmpty(measure.getTestCases())) {
       log.info("Measure with ID [{}] doesn't have any test cases", measureId);
@@ -425,10 +421,6 @@ public class TestCaseService {
       throw new InvalidIdException("Test cases cannot be deleted, please contact the helpdesk");
     }
     Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
     measureService.verifyAuthorization(username, measure);
     if (isEmpty(measure.getTestCases())) {
       log.info("Measure with ID [{}] doesn't have any test cases", measureId);
