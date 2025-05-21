@@ -260,7 +260,7 @@ public class TestCaseService {
   public TestCase validateTestCaseAsResource(
       final TestCase testCase, final ModelType modelType, final String accessToken) {
     if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
-      return null;
+      return testCase;
     }
 
     if (ModelType.QDM_5_6.equals(modelType)) {
