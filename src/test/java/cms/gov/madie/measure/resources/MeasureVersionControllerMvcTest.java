@@ -211,7 +211,8 @@ public class MeasureVersionControllerMvcTest {
   public void testCreateDraftWhenMeasureNotDraftable() throws Exception {
     when(versionService.createDraft(
             anyString(), anyString(), anyString(), anyString(), anyString()))
-        .thenThrow(new MeasureNotDraftableException("Test"));
+        .thenThrow(
+            new MeasureNotDraftableException("Test", "Only one draft is permitted per measure."));
     MvcResult result =
         mockMvc
             .perform(
