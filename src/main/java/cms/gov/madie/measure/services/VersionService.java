@@ -366,11 +366,12 @@ public class VersionService {
 
   /** Returns false if a QI-Core 6.0.0 versioned measure is drafted with model version to 4.1.1 */
   private boolean isValidQiCore600(Measure measure, String model) {
+    boolean valid = true;
     if (ModelType.QI_CORE_6_0_0.getValue().equals(measure.getModel())
         && ModelType.QI_CORE.getValue().equals(model)) {
-      return false;
+      valid = false;
     }
-    return true;
+    return valid;
   }
 
   private void validateMeasureForVersioning(Measure measure, String username, String accessToken) {
