@@ -224,13 +224,13 @@ public class VersionService {
           measure.getMeasureName(), "Only one draft is permitted per measure.");
     }
 
-    if (!isValidQiCore411WithNoQiCore600(measure)) {
+    if (!isValidQiCore411WithNoOtherQiCoreVersion(measure)) {
       throw new MeasureNotDraftableException(
           measure.getMeasureName(),
           "You cannot draft a 4.1.1 measure when a 6.0.0 version is available.");
     }
 
-    if (!isValidQiCore600(measure, model)) {
+    if (!isValidDraftableVersion(measure, model)) {
       throw new MeasureNotDraftableException(
           measure.getMeasureName(), "You cannot draft a 6.0.0 measure to a 4.1.1 measure.");
     }
@@ -354,7 +354,7 @@ public class VersionService {
    * Returns false if a QI-Core 4.1.1 versioned measure with another 6.0.0 versioned measure in the
    * measure set
    */
-  private boolean isValidQiCore411WithNoQiCore600(Measure measure) {
+  private boolean isValidQiCore411WithNoOtherQiCoreVersion(Measure measure) {
     if (ModelType.QI_CORE.getValue().equals(measure.getModel())) {
       List<Measure> measures =
           measureRepository.findByMeasureSetIdAndModelAndMeasureMetaDataDraft(
@@ -365,7 +365,7 @@ public class VersionService {
   }
 
   /** Returns false if a QI-Core 6.0.0 versioned measure is drafted with model version to 4.1.1 */
-  private boolean isValidQiCore600(Measure measure, String model) {
+  private boolean isValidDraftableVersion(Measure measure, String model) {
     boolean valid = true;
     if (ModelType.QI_CORE_6_0_0.getValue().equals(measure.getModel())
         && ModelType.QI_CORE.getValue().equals(model)) {
