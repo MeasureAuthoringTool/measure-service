@@ -556,11 +556,12 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testValidateTestCaseAsResourceNull() {
+  public void testValidateTestCaseAsResourceWhenJsonIsNull() {
     final String accessToken = "Bearer Token";
+    TestCase testCase = TestCase.builder().id("TestID").build();
     TestCase output =
-        testCaseService.validateTestCaseAsResource(null, ModelType.QDM_5_6, accessToken);
-    assertThat(output, is(nullValue()));
+        testCaseService.validateTestCaseAsResource(testCase, ModelType.QDM_5_6, accessToken);
+    assertEquals(testCase, output);
   }
 
   @Test
