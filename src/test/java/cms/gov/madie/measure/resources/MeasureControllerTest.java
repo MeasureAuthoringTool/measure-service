@@ -114,7 +114,8 @@ class MeasureControllerTest {
     when(measureService.getMeasuresByCriteria(
             eq(null), eq(false), any(Pageable.class), eq("test.user")))
         .thenReturn(measures);
-    ResponseEntity<Page<MeasureListDTO>> response = controller.getMeasures(principal, false, 10, 0);
+    ResponseEntity<Page<MeasureListDTO>> response =
+        controller.getMeasures(principal, false, 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(eq(null), eq(false), any(Pageable.class), eq("test.user"));
     verifyNoMoreInteractions(repository);
@@ -133,7 +134,8 @@ class MeasureControllerTest {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
-    ResponseEntity<Page<MeasureListDTO>> response = controller.getMeasures(principal, true, 10, 0);
+    ResponseEntity<Page<MeasureListDTO>> response =
+        controller.getMeasures(principal, true, 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(eq(null), eq(true), any(Pageable.class), eq("test.user"));
 
