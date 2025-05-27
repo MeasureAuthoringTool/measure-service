@@ -85,10 +85,13 @@ public class MeasureController {
       @RequestParam(required = false, defaultValue = "false", name = "currentUser")
           boolean filterByCurrentUser,
       @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
-      @RequestParam(required = false, defaultValue = "0", name = "page") int page) {
+      @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+      @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
+      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
     final String username = principal.getName();
     Page<MeasureListDTO> measures;
-    final Pageable pageReq = PageRequest.of(page, limit, Sort.by("lastModifiedAt").descending());
+    final Pageable pageReq =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
     measures = measureService.getMeasuresByCriteria(null, filterByCurrentUser, pageReq, username);
     return ResponseEntity.ok(measures);
   }
