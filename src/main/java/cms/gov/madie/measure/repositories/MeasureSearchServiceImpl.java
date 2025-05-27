@@ -306,13 +306,12 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         newAggregation(
             lookupOperation, matchOperation, groupOperation, group().count().as("count"));
 
-    return Integer.parseInt(
-        mongoTemplate
-            .aggregate(aggregation, Measure.class, Map.class)
-            .getMappedResults()
-            .get(0)
-            .get("count")
-            .toString());
+    List<Map> results = mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
+    if (!results.isEmpty()) {
+      return Integer.parseInt(results.get(0).get("count").toString());
+    } else {
+      return 0;
+    }
   }
 
   @Override
@@ -329,12 +328,11 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         newAggregation(
             lookupOperation, matchOperation, groupOperation, group().count().as("count"));
 
-    return Integer.parseInt(
-        mongoTemplate
-            .aggregate(aggregation, Measure.class, Map.class)
-            .getMappedResults()
-            .get(0)
-            .get("count")
-            .toString());
+    List<Map> results = mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
+    if (!results.isEmpty()) {
+      return Integer.parseInt(results.get(0).get("count").toString());
+    } else {
+      return 0;
+    }
   }
 }
