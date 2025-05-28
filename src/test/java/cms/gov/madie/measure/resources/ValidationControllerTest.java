@@ -140,7 +140,8 @@ class ValidationControllerTest {
   @Test
   void testScanFileHandlesCleanFileResponse() {
     MultipartFile multipartFile = Mockito.mock(MultipartFile.class);
-    when(multipartFile.getOriginalFilename()).thenReturn("TestFile.txt");
+    when(multipartFile.getOriginalFilename()).thenReturn("TestFile.zip");
+    when(multipartFile.getContentType()).thenReturn("application/zip");
     Resource resource = Mockito.mock(Resource.class);
     when(multipartFile.getResource()).thenReturn(resource);
     Principal principal = Mockito.mock(Principal.class);
@@ -150,7 +151,7 @@ class ValidationControllerTest {
     when(virusScanClient.scanFile(any(Resource.class))).thenReturn(scanResponse);
 
     ScanValidationDto expected =
-        ScanValidationDto.builder().fileName("TestFile.txt").valid(true).build();
+        ScanValidationDto.builder().fileName("TestFile.zip").valid(true).build();
     ResponseEntity<ScanValidationDto> output =
         validationController.scanFile(multipartFile, principal);
     assertThat(output, is(notNullValue()));
@@ -161,7 +162,8 @@ class ValidationControllerTest {
   @Test
   void testScanFileHandlesInfectedFileResponse() {
     MultipartFile multipartFile = Mockito.mock(MultipartFile.class);
-    when(multipartFile.getOriginalFilename()).thenReturn("TestFile.txt");
+    when(multipartFile.getOriginalFilename()).thenReturn("TestFile.zip");
+    when(multipartFile.getContentType()).thenReturn("application/zip");
     Resource resource = Mockito.mock(Resource.class);
     when(multipartFile.getResource()).thenReturn(resource);
     Principal principal = Mockito.mock(Principal.class);
@@ -174,7 +176,7 @@ class ValidationControllerTest {
             .scanResults(
                 List.of(
                     VirusScanResultDto.builder()
-                        .fileName("TestFile.txt")
+                        .fileName("TestFile.zip")
                         .infected(true)
                         .viruses(List.of("SomeBadVirus", "LessBadVirusButStillBad"))
                         .build()))
@@ -187,7 +189,7 @@ class ValidationControllerTest {
     assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
     assertThat(output.getBody(), is(notNullValue()));
     assertThat(output.getBody().isValid(), is(false));
-    assertThat(output.getBody().getFileName(), is(equalTo("TestFile.txt")));
+    assertThat(output.getBody().getFileName(), is(equalTo("TestFile.zip")));
     assertThat(output.getBody().getError(), is(notNullValue()));
     assertThat(
         output.getBody().getError().getDefaultMessage(),
