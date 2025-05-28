@@ -63,7 +63,9 @@ public class ValidationController {
     final String username = principal.getName();
     // Validate file type
     final String contentType = multipartFile.getContentType();
-    if (!"application/zip".equals(contentType) && !"application/json".equals(contentType)) {
+    if (!"application/zip".equals(contentType)
+        && !"application/json".equals(contentType)
+        && !"application/x-zip-compressed".equals(contentType)) {
       log.warn(
           "User [{}] tried to upload an unsupported file type [{}] for file [{}]",
           username,
