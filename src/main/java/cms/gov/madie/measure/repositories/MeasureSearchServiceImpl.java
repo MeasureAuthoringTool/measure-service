@@ -188,13 +188,21 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     MatchOperation matchOperation =
         match(new Criteria().andOperator(measureCriteria, measureSetCriteria));
 
+    // Handle unpaged case
+    Pageable pageableToUse = pageable.isPaged() ? pageable : Pageable.ofSize(Integer.MAX_VALUE);
+    Sort sortToUse =
+        pageableToUse.getSort().isSorted()
+            ? pageableToUse.getSort()
+            : Sort.by(
+                Sort.Direction.ASC,
+                "defaultField"); // Replace "defaultField" with a valid field name
     FacetOperation facets =
         facet(sortByCount("id"))
             .as("count")
             .and(
-                sort(pageable.getSort()),
-                skip(pageable.getOffset()),
-                limit(pageable.getPageSize()),
+                sort(sortToUse), // Use sortToUse instead of pageableToUse.getSort()
+                skip(pageableToUse.getOffset()),
+                limit(pageableToUse.getPageSize()),
                 project(MeasureListDTO.class))
             .as("queryResults");
 
@@ -251,11 +259,11 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           }
         }
       }
-      return new PageImpl<>(results.get(0).getQueryResults(), pageable, totalSize);
+      return new PageImpl<>(results.get(0).getQueryResults(), pageableToUse, totalSize);
     }
 
     return new PageImpl<>(
-        results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());
+        results.get(0).getQueryResults(), pageableToUse, results.get(0).getCount().size());
   }
 
   @Override
@@ -306,7 +314,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         newAggregation(
             lookupOperation, matchOperation, groupOperation, group().count().as("count"));
 
-    List<Map> results = mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
+    List<Map> results =
+        mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
     if (!results.isEmpty()) {
       return Integer.parseInt(results.get(0).get("count").toString());
     } else {
@@ -328,7 +337,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         newAggregation(
             lookupOperation, matchOperation, groupOperation, group().count().as("count"));
 
-    List<Map> results = mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
+    List<Map> results =
+        mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
     if (!results.isEmpty()) {
       return Integer.parseInt(results.get(0).get("count").toString());
     } else {

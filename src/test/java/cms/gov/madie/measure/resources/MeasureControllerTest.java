@@ -115,7 +115,7 @@ class MeasureControllerTest {
             eq(null), eq(false), any(Pageable.class), eq("test.user")))
         .thenReturn(measures);
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.getMeasures(principal, false, 10, 0, "lastModifiedAt", "DESC");
+        controller.getMeasures(principal, false, "10", 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(eq(null), eq(false), any(Pageable.class), eq("test.user"));
     verifyNoMoreInteractions(repository);
@@ -135,7 +135,7 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.getMeasures(principal, true, 10, 0, "lastModifiedAt", "DESC");
+        controller.getMeasures(principal, true, "10", 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(eq(null), eq(true), any(Pageable.class), eq("test.user"));
 
@@ -689,7 +689,7 @@ class MeasureControllerTest {
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.measureSearchByCriteria(principal, false, measureSearchCriteria, 10, 0);
+        controller.measureSearchByCriteria(principal, false, measureSearchCriteria, "10", 0);
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class), eq(false), any(Pageable.class), eq("test.user"));
@@ -716,7 +716,7 @@ class MeasureControllerTest {
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.measureSearchByCriteria(principal, true, measureSearchCriteria, 10, 0);
+        controller.measureSearchByCriteria(principal, true, measureSearchCriteria, "10", 0);
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class), eq(true), any(Pageable.class), eq("test.user"));

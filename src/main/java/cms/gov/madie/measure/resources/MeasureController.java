@@ -84,14 +84,23 @@ public class MeasureController {
       Principal principal,
       @RequestParam(required = false, defaultValue = "false", name = "currentUser")
           boolean filterByCurrentUser,
-      @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
+      @RequestParam(required = false, defaultValue = "10", name = "limit") String limit,
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
       @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
       @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
     final String username = principal.getName();
     Page<MeasureListDTO> measures;
-    final Pageable pageReq =
-        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
+    final Pageable pageReq;
+    System.out.println("limit: " + limit);
+    if ("NaN".equalsIgnoreCase(limit) || "All".equalsIgnoreCase(limit)) {
+      pageReq = Pageable.unpaged();
+    } else {
+      pageReq =
+          PageRequest.of(
+              page, Integer.parseInt(limit), Sort.by(Sort.Direction.valueOf(direction), sort));
+    }
+    //    final Pageable pageReq =
+    //        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
     measures = measureService.getMeasuresByCriteria(null, filterByCurrentUser, pageReq, username);
     return ResponseEntity.ok(measures);
   }
@@ -334,11 +343,18 @@ public class MeasureController {
       @RequestParam(required = false, defaultValue = "false", name = "currentUser")
           boolean filterByCurrentUser,
       @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
-      @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
+      @RequestParam(required = false, defaultValue = "10", name = "limit") String limit,
       @RequestParam(required = false, defaultValue = "0", name = "page") int page) {
 
     final String username = principal.getName();
-    final Pageable pageReq = PageRequest.of(page, limit, Sort.by("lastModifiedAt").descending());
+    final Pageable pageReq;
+    if ("NaN".equalsIgnoreCase(limit) || "All".equalsIgnoreCase(limit)) {
+      pageReq = Pageable.unpaged();
+    } else {
+      pageReq =
+          PageRequest.of(page, Integer.parseInt(limit), Sort.by("lastModifiedAt").descending());
+    }
+    // final Pageable pageReq = PageRequest.of(page, limit, Sort.by("lastModifiedAt").descending());
 
     Page<MeasureListDTO> measures =
         measureService.getMeasuresByCriteria(
