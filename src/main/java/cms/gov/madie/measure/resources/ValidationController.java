@@ -61,6 +61,28 @@ public class ValidationController {
       @RequestParam("file") MultipartFile multipartFile, Principal principal) {
     final String fileName = StringUtils.cleanPath(multipartFile.getOriginalFilename());
     final String username = principal.getName();
+     // Validate file type
+    final String contentType = multipartFile.getContentType();
+    if (!"application/zip".equals(contentType) && !"application/json".equals(contentType)) {
+        log.warn(
+            "User [{}] tried to upload an unsupported file type [{}] for file [{}]",
+            username,
+            contentType,
+            fileName);
+        return ResponseEntity.badRequest()
+            .body(
+                ScanValidationDto.builder()
+                    .fileName(fileName)
+                    .valid(false)
+                    .error(
+                        new ObjectError(
+                            fileName,
+                            new String[] {"400"},
+                            null,
+                            "Unsupported file type. Only ZIP and JSON files are allowed."))
+                    .build());
+    }
+    //Scan with virus service
     VirusScanResponseDto scanResponse = virusScanClient.scanFile(multipartFile.getResource());
     if (scanResponse.getFilesScanned() == 0) {
       log.warn(
