@@ -292,7 +292,7 @@ public class MeasureSearchServiceImplTest {
     AggregationResults result = new AggregationResults<>(new ArrayList<>(), new Document());
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
-            .thenReturn(result);
+        .thenReturn(result);
     int count = measureAclRepository.countAllMyMeasures(true, owner);
     assertEquals(count, 0);
   }
@@ -304,7 +304,7 @@ public class MeasureSearchServiceImplTest {
     AggregationResults result = new AggregationResults<>(List.of(resultMap), new Document());
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
-            .thenReturn(result);
+        .thenReturn(result);
     int count = measureAclRepository.countAllMeasures(true);
     assertEquals(count, 5);
   }
@@ -314,7 +314,7 @@ public class MeasureSearchServiceImplTest {
     AggregationResults result = new AggregationResults<>(new ArrayList<>(), new Document());
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
-            .thenReturn(result);
+        .thenReturn(result);
     int count = measureAclRepository.countAllMeasures(true);
     assertEquals(count, 0);
   }

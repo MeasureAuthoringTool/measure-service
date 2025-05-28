@@ -113,7 +113,7 @@ class ValidationControllerTest {
             accessTokenCaptor.capture());
   }
 
-@Test
+  @Test
   void testScanFileHandlesBadContentType() {
     MultipartFile multipartFile = Mockito.mock(MultipartFile.class);
     when(multipartFile.getOriginalFilename()).thenReturn("TestFile.txt");
