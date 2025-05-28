@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
+import cms.gov.madie.measure.exceptions.InvalidIdException;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
@@ -608,5 +609,22 @@ public class TestCaseServiceUtil {
     if (!editTestsOnVersionedMeasures && !isDraft) {
       throw new InvalidDraftStatusException(measureId);
     }
+  }
+
+  public static boolean checkIfDeletable(
+      List<TestCase> testCases, List<String> testCaseIds, boolean isDraft) {
+    if (!isDraft) {
+      boolean checkIfCreatedBeforeVersioning =
+          testCases.stream()
+              .anyMatch(
+                  testCase ->
+                      (testCaseIds.contains(testCase.getId())
+                          && testCase.isCreatedBeforeVersioning()));
+
+      if (checkIfCreatedBeforeVersioning) {
+        throw new InvalidIdException("Test case(s) cannot be deleted, please contact the helpdesk");
+      }
+    }
+    return true;
   }
 }

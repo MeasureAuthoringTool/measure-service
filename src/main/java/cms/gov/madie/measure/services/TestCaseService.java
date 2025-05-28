@@ -173,7 +173,6 @@ public class TestCaseService {
     }
 
     measureRepository.save(measure);
-
     log.info(
         "User [{}] successfully imported [{}] test cases to the measure with ID[{}] ",
         username,
@@ -262,7 +261,6 @@ public class TestCaseService {
     if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
       return testCase;
     }
-
     if (ModelType.QDM_5_6.equals(modelType)) {
       return testCase.toBuilder().validResource(JsonUtil.isValidJson(testCase.getJson())).build();
     } else {
@@ -287,8 +285,7 @@ public class TestCaseService {
     // executorService works asynchronously
     testCaseValidationExecutorService.submitValidationTask(
         measure.getId(), testCase.getId(), accessToken, ModelType.valueOfName(measure.getModel()));
-    // Return testCase with pending status and set validationOutcome to null
-    return updatedTestCase;
+    return updatedTestCase; // Return testCase with pending status and set validationOutcome to null
   }
 
   public TestCase updateTestCase(
@@ -318,8 +315,7 @@ public class TestCaseService {
       testCase.setCreatedAt(existing.getCreatedAt());
       testCase.setCreatedBy(existing.getCreatedBy());
       testCase.setResourceUri(existing.getResourceUri());
-      // assure patientId is not overwritten
-      testCase.setPatientId(existing.getPatientId());
+      testCase.setPatientId(existing.getPatientId()); // assure patientId is not overwritten
       measure.getTestCases().remove(existing);
     } else {
       // still allowing upsert
@@ -391,15 +387,13 @@ public class TestCaseService {
       throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
     }
     Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
     measureService.verifyAuthorization(username, measure);
     if (isEmpty(measure.getTestCases())) {
       log.info("Measure with ID [{}] doesn't have any test cases", measureId);
       throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
     }
+    TestCaseServiceUtil.checkIfDeletable(
+        measure.getTestCases(), List.of(testCaseId), measure.getMeasureMetaData().isDraft());
     List<TestCase> remainingTestCases =
         measure.getTestCases().stream().filter(g -> !g.getId().equals(testCaseId)).toList();
     // to check if given test case id is present
@@ -427,16 +421,14 @@ public class TestCaseService {
       throw new InvalidIdException("Test cases cannot be deleted, please contact the helpdesk");
     }
     Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
     measureService.verifyAuthorization(username, measure);
     if (isEmpty(measure.getTestCases())) {
       log.info("Measure with ID [{}] doesn't have any test cases", measureId);
       throw new InvalidIdException(
           "Measure {} doesn't have any existing test cases to delete", measureId);
     }
+    TestCaseServiceUtil.checkIfDeletable(
+        measure.getTestCases(), testCaseIds, measure.getMeasureMetaData().isDraft());
     List<TestCase> deletedTestCases =
         measure.getTestCases().stream().filter(tc -> testCaseIds.contains(tc.getId())).toList();
     List<TestCase> remainingTestCases =
