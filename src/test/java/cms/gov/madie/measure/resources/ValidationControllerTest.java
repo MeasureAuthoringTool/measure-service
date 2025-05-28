@@ -121,7 +121,6 @@ class ValidationControllerTest {
     Principal principal = Mockito.mock(Principal.class);
     when(principal.getName()).thenReturn("TestUser");
 
-
     ResponseEntity<ScanValidationDto> output =
         validationController.scanFile(multipartFile, principal);
     assertThat(output.getStatusCode(), is(equalTo(HttpStatus.BAD_REQUEST)));
@@ -164,6 +163,28 @@ class ValidationControllerTest {
     MultipartFile multipartFile = Mockito.mock(MultipartFile.class);
     when(multipartFile.getOriginalFilename()).thenReturn("TestFile.zip");
     when(multipartFile.getContentType()).thenReturn("application/zip");
+    Resource resource = Mockito.mock(Resource.class);
+    when(multipartFile.getResource()).thenReturn(resource);
+    Principal principal = Mockito.mock(Principal.class);
+    when(principal.getName()).thenReturn("TestUser");
+    VirusScanResponseDto scanResponse =
+        VirusScanResponseDto.builder().filesScanned(1).cleanFileCount(1).build();
+    when(virusScanClient.scanFile(any(Resource.class))).thenReturn(scanResponse);
+
+    ScanValidationDto expected =
+        ScanValidationDto.builder().fileName("TestFile.zip").valid(true).build();
+    ResponseEntity<ScanValidationDto> output =
+        validationController.scanFile(multipartFile, principal);
+    assertThat(output, is(notNullValue()));
+    assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
+    assertThat(output.getBody(), is(equalTo(expected)));
+  }
+
+  @Test
+  void testScanFileHandlesCleanFileResponseWindowsZip() {
+    MultipartFile multipartFile = Mockito.mock(MultipartFile.class);
+    when(multipartFile.getOriginalFilename()).thenReturn("TestFile.zip");
+    when(multipartFile.getContentType()).thenReturn("application/x-zip-compressed");
     Resource resource = Mockito.mock(Resource.class);
     when(multipartFile.getResource()).thenReturn(resource);
     Principal principal = Mockito.mock(Principal.class);
