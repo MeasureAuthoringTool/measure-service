@@ -118,13 +118,9 @@ class ValidationControllerTest {
     MultipartFile multipartFile = Mockito.mock(MultipartFile.class);
     when(multipartFile.getOriginalFilename()).thenReturn("TestFile.txt");
     when(multipartFile.getContentType()).thenReturn("text/plain");
-    Resource resource = Mockito.mock(Resource.class);
-    when(multipartFile.getResource()).thenReturn(resource);
     Principal principal = Mockito.mock(Principal.class);
     when(principal.getName()).thenReturn("TestUser");
-    VirusScanResponseDto scanResponse =
-        VirusScanResponseDto.builder().filesScanned(1).cleanFileCount(1).build();
-    when(virusScanClient.scanFile(any(Resource.class))).thenReturn(scanResponse);
+
 
     ResponseEntity<ScanValidationDto> output =
         validationController.scanFile(multipartFile, principal);
