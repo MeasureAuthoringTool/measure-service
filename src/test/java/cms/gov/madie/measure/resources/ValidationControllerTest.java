@@ -113,10 +113,36 @@ class ValidationControllerTest {
             accessTokenCaptor.capture());
   }
 
+@Test
+  void testScanFileHandlesBadContentType() {
+    MultipartFile multipartFile = Mockito.mock(MultipartFile.class);
+    when(multipartFile.getOriginalFilename()).thenReturn("TestFile.txt");
+    when(multipartFile.getContentType()).thenReturn("text/plain");
+    Resource resource = Mockito.mock(Resource.class);
+    when(multipartFile.getResource()).thenReturn(resource);
+    Principal principal = Mockito.mock(Principal.class);
+    when(principal.getName()).thenReturn("TestUser");
+    VirusScanResponseDto scanResponse =
+        VirusScanResponseDto.builder().filesScanned(1).cleanFileCount(1).build();
+    when(virusScanClient.scanFile(any(Resource.class))).thenReturn(scanResponse);
+
+    ResponseEntity<ScanValidationDto> output =
+        validationController.scanFile(multipartFile, principal);
+    assertThat(output.getStatusCode(), is(equalTo(HttpStatus.BAD_REQUEST)));
+    assertThat(output, is(notNullValue()));
+    assertThat(output.getBody(), is(notNullValue()));
+    assertThat(output.getBody().isValid(), is(false));
+    assertThat(output.getBody().getError(), is(notNullValue()));
+    assertThat(
+        output.getBody().getError().getDefaultMessage(),
+        is(equalTo("Unsupported file type. Only ZIP and JSON files are allowed.")));
+  }
+
   @Test
   void testScanFileHandlesNoFileResponse() {
     MultipartFile multipartFile = Mockito.mock(MultipartFile.class);
-    when(multipartFile.getOriginalFilename()).thenReturn("TestFile.txt");
+    when(multipartFile.getOriginalFilename()).thenReturn("TestFile.zip");
+    when(multipartFile.getContentType()).thenReturn("application/zip");
     Resource resource = Mockito.mock(Resource.class);
     when(multipartFile.getResource()).thenReturn(resource);
     Principal principal = Mockito.mock(Principal.class);
