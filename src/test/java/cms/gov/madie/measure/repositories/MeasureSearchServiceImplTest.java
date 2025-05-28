@@ -5,6 +5,7 @@ import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.services.AppConfigService;
+import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.dto.LibraryUsage;
 import org.bson.Document;
 
@@ -45,10 +46,20 @@ public class MeasureSearchServiceImplTest {
   @BeforeEach
   void setup() {
     measure1 =
-        MeasureListDTO.builder().id("1").ecqmTitle("test measure 1").measureSetId("1-1").build();
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("test-measure-name")
+            .ecqmTitle("test measure 1")
+            .measureSetId("1-1")
+            .build();
     measure2 =
         MeasureListDTO.builder().id("2").ecqmTitle("test measure 2").measureSetId("2-2").build();
-    measure3 = MeasureListDTO.builder().id("3").measureSetId("3-3").build();
+    measure3 =
+        MeasureListDTO.builder()
+            .id("3")
+            .model(ModelType.QDM_5_6.getValue())
+            .measureSetId("3-3")
+            .build();
     measure4 = MeasureListDTO.builder().id("4").measureSetId("4-4").build();
     measure5 = MeasureListDTO.builder().id("5").measureSetId("5-5").build();
   }
@@ -133,7 +144,7 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  public void testFindMyActiveMeasuresWithVersionparts1() {
+  public void testFindMyActiveMeasuresWithVersionParts1() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
@@ -158,7 +169,7 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  public void testFindMyActiveMeasuresWithVersionparts2() {
+  public void testFindMyActiveMeasuresWithVersionParts2() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
@@ -183,7 +194,7 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  public void testFindMyActiveMeasuresWithVersionparts3() {
+  public void testFindMyActiveMeasuresWithVersionParts3() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
@@ -258,6 +269,54 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
+  public void testFindMyActiveMeasuresWithSearchFieldFilteredByMeasureName() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 3);
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder()
+            .searchField("test-measure-name")
+            .optionalSearchProperties(List.of("measure"))
+            .build();
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", pageRequest, measureSearchCriteria, true);
+    assertEquals(page.getTotalElements(), 1);
+    assertEquals(page.getTotalPages(), 1);
+    assertEquals(page.getContent().size(), 1);
+    List<MeasureListDTO> page1Measures = page.getContent();
+    assertEquals("test-measure-name", page1Measures.get(0).getMeasureName());
+  }
+
+  @Test
+  public void testFindMyActiveMeasuresWithSearchFieldFilteredByModel() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 3);
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure3)).count(List.of(1)).build();
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder()
+            .searchField("qdm")
+            .optionalSearchProperties(List.of("model"))
+            .build();
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", pageRequest, measureSearchCriteria, true);
+    assertEquals(page.getTotalElements(), 1);
+    assertEquals(page.getTotalPages(), 1);
+    assertEquals(page.getContent().size(), 1);
+    List<MeasureListDTO> page1Measures = page.getContent();
+    assertEquals(ModelType.QDM_5_6.getValue(), page1Measures.get(0).getModel());
+  }
+
+  @Test
   void testFindLibraryUsageByLibraryName() {
     String libraryName = "test";
     String owner = "john";
@@ -292,7 +351,7 @@ public class MeasureSearchServiceImplTest {
     AggregationResults result = new AggregationResults<>(new ArrayList<>(), new Document());
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
-            .thenReturn(result);
+        .thenReturn(result);
     int count = measureAclRepository.countAllMyMeasures(true, owner);
     assertEquals(count, 0);
   }
@@ -304,7 +363,7 @@ public class MeasureSearchServiceImplTest {
     AggregationResults result = new AggregationResults<>(List.of(resultMap), new Document());
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
-            .thenReturn(result);
+        .thenReturn(result);
     int count = measureAclRepository.countAllMeasures(true);
     assertEquals(count, 5);
   }
@@ -314,7 +373,7 @@ public class MeasureSearchServiceImplTest {
     AggregationResults result = new AggregationResults<>(new ArrayList<>(), new Document());
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
-            .thenReturn(result);
+        .thenReturn(result);
     int count = measureAclRepository.countAllMeasures(true);
     assertEquals(count, 0);
   }
