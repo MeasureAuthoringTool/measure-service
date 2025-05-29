@@ -340,8 +340,8 @@ public class MeasureController {
       @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
 
     final String username = principal.getName();
-      final Pageable pageReq =
-              PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
+    final Pageable pageReq =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
 
     Page<MeasureListDTO> measures =
         measureService.getMeasuresByCriteria(

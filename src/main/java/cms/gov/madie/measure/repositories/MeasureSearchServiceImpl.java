@@ -115,8 +115,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               Criteria.where("model").regex(".*" + Pattern.quote(searchField) + ".*", "i"));
           break;
         default:
-          orConditions.add(
-              Criteria.where(property).regex(measureSearchCriteria.getSearchField(), "i"));
+          if (!StringUtils.isBlank(property)) {
+            orConditions.add(
+                Criteria.where(property).regex(measureSearchCriteria.getSearchField(), "i"));
+          }
       }
     }
     Criteria allOrConditions = new Criteria();

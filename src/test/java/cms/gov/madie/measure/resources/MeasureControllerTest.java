@@ -689,7 +689,8 @@ class MeasureControllerTest {
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.measureSearchByCriteria(principal, false, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC");
+        controller.measureSearchByCriteria(
+            principal, false, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class), eq(false), any(Pageable.class), eq("test.user"));
@@ -716,7 +717,8 @@ class MeasureControllerTest {
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.measureSearchByCriteria(principal, true, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC");
+        controller.measureSearchByCriteria(
+            principal, true, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class), eq(true), any(Pageable.class), eq("test.user"));
