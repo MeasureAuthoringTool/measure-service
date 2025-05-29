@@ -15,6 +15,7 @@ import java.util.List;
 import java.util.UUID;
 
 import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
+import cms.gov.madie.measure.exceptions.InvalidIdException;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
@@ -140,6 +141,7 @@ public class TestCaseServiceUtilTest {
             .series("BloodPressure>124")
             .json("{\"resourceType\":\"Patient\"}")
             .patientId(UUID.randomUUID())
+            .createdBeforeVersioning(true)
             .build();
 
     measureObservation1 =
@@ -1455,5 +1457,24 @@ public class TestCaseServiceUtilTest {
     assertThrows(
         InvalidDraftStatusException.class,
         () -> TestCaseServiceUtil.checkIfEditable(false, false, "measureId"));
+  }
+
+  @Test
+  void testIfDeletableIfMeasureIsDraft() {
+    assertDoesNotThrow(() -> TestCaseServiceUtil.checkIfDeletable(List.of(), List.of(), true));
+  }
+
+  @Test
+  void testIfDeletableIfMeasureIsNotDraftAndTestCaseIsCreatedBeforeVersioning() {
+    assertThrows(
+        InvalidIdException.class,
+        () -> TestCaseServiceUtil.checkIfDeletable(List.of(testCase), List.of("TESTID"), false));
+  }
+
+  @Test
+  void testIfDeletableIfMeasureIsNotDraftAndTestCaseIsCreatedAfterVersioning() {
+    testCase.setCreatedBeforeVersioning(false);
+    assertDoesNotThrow(
+        () -> TestCaseServiceUtil.checkIfDeletable(List.of(testCase), List.of("TESTID"), false));
   }
 }
