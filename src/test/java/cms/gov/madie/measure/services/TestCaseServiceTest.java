@@ -1407,6 +1407,48 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
+  void testDeleteTestCaseCreatedAfterVersioning() {
+    List<TestCase> testCases =
+        List.of(
+            TestCase.builder().id("TC1_ID").title("TC1").build(),
+            TestCase.builder().id("TC2_ID").title("TC2").build());
+
+    Measure existingMeasure =
+        Measure.builder()
+            .id("measure-id")
+            .createdBy("test.user")
+            .testCases(testCases)
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(existingMeasure));
+
+    doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
+
+    String output = testCaseService.deleteTestCase("measure-id", "TC2_ID", "test.user");
+    assertThat(output, is(equalTo("Test case deleted successfully: TC2_ID")));
+  }
+
+  @Test
+  void testThrowErrorWhenDeletingTestCaseWhichIsCreatedBeforeVersioning() {
+    List<TestCase> testCases =
+        List.of(
+            TestCase.builder().id("TC1_ID").title("TC1").createdBeforeVersioning(true).build(),
+            TestCase.builder().id("TC2_ID").title("TC2").build());
+
+    Measure existingMeasure =
+        Measure.builder()
+            .id("measure-id")
+            .createdBy("test.user")
+            .testCases(testCases)
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(existingMeasure));
+    assertThrows(
+        InvalidIdException.class,
+        () -> testCaseService.deleteTestCase("measure-id", "TC1_ID", "test.user"));
+  }
+
+  @Test
   void testDeleteTestCaseReturnsExceptionForNullMeasureId() {
     assertThrows(
         InvalidIdException.class,
@@ -1487,27 +1529,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testDeleteTestCaseReturnsInvalidDraftStatusException() {
-    List<TestCase> testCases =
-        List.of(
-            TestCase.builder().id("TC1_ID").title("TC1").build(),
-            TestCase.builder().id("TC2_ID").title("TC2").build());
-
-    Measure existingMeasure =
-        Measure.builder()
-            .id("measure-id")
-            .createdBy("test.user")
-            .testCases(testCases)
-            .measureMetaData(MeasureMetaData.builder().draft(false).build())
-            .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(existingMeasure));
-
-    assertThrows(
-        InvalidDraftStatusException.class,
-        () -> testCaseService.deleteTestCase("measure-id", "TC2_ID", "test.user"));
-  }
-
-  @Test
   void testDeleteTestCasesThrowsInvalidIdExceptionIfMeasureIdIsNull() {
     measure.setId(null);
     assertThrows(
@@ -1541,7 +1562,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
 
     assertThrows(
-        InvalidDraftStatusException.class,
+        InvalidIdException.class,
         () ->
             testCaseService.deleteTestCases(
                 measure.getId(), List.of("TC1_ID", "TC2_ID"), "test.user"));
