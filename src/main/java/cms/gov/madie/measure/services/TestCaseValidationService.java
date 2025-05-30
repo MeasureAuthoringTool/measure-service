@@ -10,26 +10,32 @@ import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCase;
 import gov.cms.madie.models.measure.TestCaseValidationStatus;
 import jakarta.annotation.PostConstruct;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 
 @Slf4j
 @Service
+@AllArgsConstructor
 public class TestCaseValidationService {
 
-  private final ExecutorService executor;
+  @Qualifier("testCaseValidationExecutor")
+  private final ThreadPoolTaskExecutor taskExecutor;
 
   private final FhirServicesClient fhirServicesClient;
 
@@ -37,30 +43,80 @@ public class TestCaseValidationService {
 
   private final ObjectMapper mapper;
 
-  public TestCaseValidationService(FhirServicesClient fhirServicesClient, MeasureRepository measureRepository, ObjectMapper mapper) {
-    this.fhirServicesClient = fhirServicesClient;
-    this.measureRepository = measureRepository;
-    this.mapper = mapper;
-    this.executor =
-        new ThreadPoolExecutor(10, 50, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
-  }
-
   @PostConstruct
   public void populateValidationQueue() {
-    // TODO Populate the validation queue with test cases marked as "Pending" in the database.
+    // TODO Future task, Populate the validation queue with test cases marked
+    //  as "Pending" in the database.
   }
 
-  public void submitValidationTask(
-      String measureId, String testCaseId, String accessToken, ModelType modelType) {
-    executor.submit(
-        () -> {
-          try {
-            log.info("TestCase Validation Initiated for Test Case Id {} ", testCaseId);
-          } catch (Exception e) {
-            log.error(
-                "Error validating Test Case with Id {} from Measure {} ", testCaseId, measureId);
-          }
-        });
+  Future<TestCase> submitValidationTask(
+      String measureId, TestCase testCase, String accessToken, ModelType modelType) {
+    UUID taskId = UUID.randomUUID();
+    log.info(
+        "TestCase Validation::submit::{}::{}::{}::{}",
+        testCase.getId(),
+        taskId,
+        Instant.now(),
+        taskExecutor.getQueueSize());
+    return taskExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
+  }
+
+  TestCase validate(
+      UUID taskId, String measureId, TestCase testCase, ModelType modelType, String accessToken) {
+    Instant startTime = Instant.now();
+    log.info(
+        "TestCase Validation::execute::{}::{}::{}::{}",
+        testCase.getId(),
+        Thread.currentThread().getId(),
+        taskId,
+        startTime);
+    try {
+      TestCase latestTestCase =
+          setValidationStatus(measureId, testCase.getId(), TestCaseValidationStatus.VALIDATING);
+      // TODO What should happen when fhir-services is down?
+      HapiOperationOutcome validationOutcome =
+          validateTestCaseJson(latestTestCase, modelType, accessToken);
+      setValidationStatus(
+          measureId,
+          testCase.getId(),
+          validationOutcome.isSuccessful()
+              ? TestCaseValidationStatus.VALID
+              : TestCaseValidationStatus.INVALID);
+      testCase.toBuilder()
+          .hapiOperationOutcome(validationOutcome)
+          .validResource(validationOutcome.isSuccessful())
+          .build();
+      // TODO MAT-8601: save the test case with the validation outcome
+      Instant stopTime = Instant.now();
+      log.info(
+          "TestCase Validation::completed::{}::{}::{}::{}",
+          testCase.getId(),
+          taskId,
+          Duration.between(startTime, stopTime),
+          taskExecutor.getQueueSize());
+    } catch (Exception e) {
+      log.error(
+          "Error validating Test Case with Id {} from Measure {} ", testCase.getId(), measureId);
+    }
+    return testCase;
+  }
+
+  private TestCase setValidationStatus(
+      String measureId, String testCaseId, TestCaseValidationStatus status) {
+    Optional<Measure> measure = measureRepository.findById(measureId);
+    if (measure.isPresent()) {
+      Optional<TestCase> updatedTestCase =
+          measure.get().getTestCases().stream()
+              .filter(testCase -> testCase.getId().equals(testCaseId))
+              .findFirst();
+      updatedTestCase.ifPresent(
+          testCase -> {
+            testCase.setTestCaseValidationStatus(status);
+            measureRepository.save(measure.get());
+          });
+      return updatedTestCase.orElse(null);
+    }
+    return null;
   }
 
   public TestCase validateResourceAsynchronously(
@@ -73,10 +129,8 @@ public class TestCaseValidationService {
     measure.getTestCases().add(updatedTestCase);
     measureRepository.save(measure);
     submitValidationTask(
-        measure.getId(), testCase.getId(), accessToken, ModelType.valueOfName(measure.getModel()));
-
-    // Return testCase with pending status and null validationOutcome.
-    return updatedTestCase;
+        measure.getId(), testCase, accessToken, ModelType.valueOfName(measure.getModel()));
+    return updatedTestCase; // Return testCase with pending status and set validationOutcome to null
   }
 
   public List<TestCase> validateTestCasesAsResources(
@@ -98,7 +152,6 @@ public class TestCaseValidationService {
     if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
       return testCase;
     }
-
     if (ModelType.QDM_5_6.equals(modelType)) {
       return testCase.toBuilder().validResource(JsonUtil.isValidJson(testCase.getJson())).build();
     } else {

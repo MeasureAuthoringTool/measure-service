@@ -14,12 +14,14 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.client.HttpClientErrorException;
 
 import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -34,6 +36,7 @@ public class TestCaseValidationServiceTest {
   @Spy private ObjectMapper mapper;
   @Mock private FhirServicesClient fhirServicesClient;
   @Mock private MeasureRepository measureRepository;
+  @Mock private ThreadPoolTaskExecutor validationExecutor;
 
   @InjectMocks private TestCaseValidationService testCaseValidationService;
 
@@ -86,15 +89,33 @@ public class TestCaseValidationServiceTest {
   public void testAsyncValidationStu6UpdatesValidationStatus() {
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
 
-    Mockito.doAnswer((args) -> args.getArgument(0))
-        .when(measureRepository)
-        .save(any(Measure.class));
+    doAnswer((args) -> args.getArgument(0)).when(measureRepository).save(any(Measure.class));
 
     TestCase output =
         testCaseValidationService.validateResourceAsynchronously(measure, testCase, "Bearer Token");
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
     assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
+  }
+
+  @Test
+  public void testValidationUpdatesValidationStatus() {
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+
+    when(measureRepository.findById(anyString())).thenReturn(java.util.Optional.of(measure));
+
+    doAnswer((args) -> args.getArgument(0)).when(measureRepository).save(any(Measure.class));
+
+    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+        .thenReturn(hapiValidOutcome);
+
+    TestCase validatedTestCase =
+        testCaseValidationService.validate(
+            UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
+
+    assertThat(
+        validatedTestCase.getTestCaseValidationStatus(), equalTo(TestCaseValidationStatus.VALID));
+    verify(measureRepository, times(2)).save(measureCaptor.capture());
   }
 
   @Test
