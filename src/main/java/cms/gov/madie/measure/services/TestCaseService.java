@@ -10,7 +10,6 @@ import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -20,7 +19,6 @@ import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Instant;
 import java.util.*;
@@ -39,11 +37,11 @@ public class TestCaseService {
   private final MeasureRepository measureRepository;
   private final ActionLogService actionLogService;
   private final FhirServicesClient fhirServicesClient;
-  private final ObjectMapper mapper;
+
   private final MeasureService measureService;
   private final TestCaseSequenceService sequenceService;
   private final AppConfigService appConfigService;
-  private final TestCaseValidationExecutorService testCaseValidationExecutorService;
+  final TestCaseValidationService testCaseValidationService;
 
   @Value("${madie.json.resources.base-uri}")
   @Getter
@@ -57,19 +55,17 @@ public class TestCaseService {
       MeasureRepository measureRepository,
       ActionLogService actionLogService,
       FhirServicesClient fhirServicesClient,
-      ObjectMapper mapper,
       MeasureService measureService,
       TestCaseSequenceService sequenceService,
       AppConfigService appConfigService,
-      TestCaseValidationExecutorService testCaseValidationExecutorService) {
+      TestCaseValidationService testCaseValidationService) {
     this.measureRepository = measureRepository;
     this.actionLogService = actionLogService;
     this.fhirServicesClient = fhirServicesClient;
-    this.mapper = mapper;
     this.measureService = measureService;
     this.sequenceService = sequenceService;
     this.appConfigService = appConfigService;
-    this.testCaseValidationExecutorService = testCaseValidationExecutorService;
+    this.testCaseValidationService = testCaseValidationService;
   }
 
   protected TestCase enrichNewTestCase(TestCase testCase, String username, String measureId) {
@@ -124,7 +120,7 @@ public class TestCaseService {
     checkTestCaseSpecialCharacters(testCase);
     TestCase enrichedTestCase = enrichNewTestCase(testCase, username, measureId);
     enrichedTestCase =
-        validateTestCaseAsResource(
+        testCaseValidationService.validateTestCaseAsResource(
             enrichedTestCase, ModelType.valueOfName(measure.getModel()), accessToken);
 
     if (measure.getTestCases() == null) {
@@ -161,7 +157,7 @@ public class TestCaseService {
       checkTestCaseSpecialCharacters(testCase);
       TestCase enriched = enrichNewTestCase(testCase, username, measureId);
       enriched =
-          validateTestCaseAsResource(
+          testCaseValidationService.validateTestCaseAsResource(
               enriched, ModelType.valueOfName(measure.getModel()), accessToken);
       enrichedTestCases.add(enriched);
       actionLogService.logAction(enriched.getId(), TestCase.class, ActionType.IMPORTED, username);
@@ -235,57 +231,11 @@ public class TestCaseService {
   public List<TestCase> updateTestCaseValidResourcesForMeasure(
       Measure measure, final String accessToken) {
     List<TestCase> validatedTestCases =
-        validateTestCasesAsResources(
+        testCaseValidationService.validateTestCasesAsResources(
             measure.getTestCases(), ModelType.valueOfName(measure.getModel()), accessToken);
     measure.setTestCases(validatedTestCases);
     measureRepository.save(measure);
     return validatedTestCases;
-  }
-
-  public List<TestCase> validateTestCasesAsResources(
-      final List<TestCase> testCases, final ModelType modelType, final String accessToken) {
-    List<TestCase> validatedTestCases = new ArrayList<>();
-
-    if (!isEmpty(testCases)) {
-      validatedTestCases =
-          testCases.stream()
-              .map(testCase -> validateTestCaseAsResource(testCase, modelType, accessToken))
-              .collect(Collectors.toList());
-    }
-
-    return validatedTestCases;
-  }
-
-  public TestCase validateTestCaseAsResource(
-      final TestCase testCase, final ModelType modelType, final String accessToken) {
-    if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
-      return testCase;
-    }
-    if (ModelType.QDM_5_6.equals(modelType)) {
-      return testCase.toBuilder().validResource(JsonUtil.isValidJson(testCase.getJson())).build();
-    } else {
-      final HapiOperationOutcome hapiOperationOutcome =
-          validateTestCaseJson(testCase, modelType, accessToken);
-      return testCase.toBuilder()
-          .hapiOperationOutcome(hapiOperationOutcome)
-          .validResource(hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful())
-          .build();
-    }
-  }
-
-  private TestCase validateResourceAsynchronously(
-      Measure measure, TestCase testCase, String accessToken) {
-    TestCase updatedTestCase =
-        testCase.toBuilder()
-            .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
-            .hapiOperationOutcome(null)
-            .build();
-    measure.getTestCases().add(updatedTestCase);
-    measureRepository.save(measure);
-    // executorService works asynchronously
-    testCaseValidationExecutorService.submitValidationTask(
-        measure.getId(), testCase.getId(), accessToken, ModelType.valueOfName(measure.getModel()));
-    return updatedTestCase; // Return testCase with pending status and set validationOutcome to null
   }
 
   public TestCase updateTestCase(
@@ -341,11 +291,12 @@ public class TestCaseService {
     if (isQiCoreModel
         && hasJson
         && appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
-      return validateResourceAsynchronously(measure, testCase, accessToken);
+      return testCaseValidationService.validateResourceAsynchronously(
+          measure, testCase, accessToken);
     }
 
     TestCase validatedTestCase =
-        validateTestCaseAsResource(
+        testCaseValidationService.validateTestCaseAsResource(
             testCase, ModelType.valueOfName(measure.getModel()), accessToken);
     measure.getTestCases().add(validatedTestCase);
 
@@ -372,7 +323,8 @@ public class TestCaseService {
       throw new ResourceNotFoundException("Test Case", testCaseId);
     } else if (validate) {
       testCase.setHapiOperationOutcome(
-          validateTestCaseJson(testCase, ModelType.valueOfName(measure.getModel()), accessToken));
+          testCaseValidationService.validateTestCaseJson(
+              testCase, ModelType.valueOfName(measure.getModel()), accessToken));
     }
     return testCase;
   }
@@ -867,36 +819,6 @@ public class TestCaseService {
         .collect(Collectors.toList());
   }
 
-  public HapiOperationOutcome validateTestCaseJson(
-      TestCase testCase, ModelType modelType, String accessToken) {
-    if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
-      return null;
-    }
-
-    try {
-      return fhirServicesClient
-          .validateBundle(testCase.getJson(), modelType, accessToken)
-          .getBody();
-    } catch (HttpClientErrorException ex) {
-      log.warn("HAPI FHIR returned response code [{}]", ex.getRawStatusCode(), ex);
-      try {
-        return HapiOperationOutcome.builder()
-            .code(ex.getRawStatusCode())
-            .message("Unable to validate test case JSON due to errors")
-            .outcomeResponse(mapper.readValue(ex.getResponseBodyAsString(), Object.class))
-            .build();
-      } catch (JsonProcessingException e) {
-        return handleJsonProcessingException();
-      }
-    } catch (Exception ex) {
-      log.error("Exception occurred validating bundle with FHIR Service:", ex);
-      return HapiOperationOutcome.builder()
-          .code(500)
-          .message("An unknown exception occurred while validating the test case JSON.")
-          .build();
-    }
-  }
-
   public List<TestCase> shiftQiCoreTestCaseDates(
       List<TestCase> testCases, int shifted, String accessToken) {
     if (isEmpty(testCases)) {
@@ -916,15 +838,6 @@ public class TestCaseService {
       return shiftedTestCases.get(0);
     }
     return null;
-  }
-
-  private HapiOperationOutcome handleJsonProcessingException() {
-    return HapiOperationOutcome.builder()
-        .code(500)
-        .message(
-            "Unable to validate test case JSON due to errors, "
-                + "but outcome not able to be interpreted!")
-        .build();
   }
 
   protected void defaultTestCaseJsonForQdmMeasure(TestCase testCase, Measure measure) {
