@@ -58,4 +58,7 @@ public interface MeasureRepository
   List<Measure> findAllByMeasureSetIdAndActive(String measureSetId, boolean isActive);
 
   int countAllByActiveAndMeasureSetContaining(boolean isActive, String userId);
+
+  List<Measure> findByMeasureSetIdAndModelAndMeasureMetaDataDraft(
+      String setId, String model, boolean draft);
 }
