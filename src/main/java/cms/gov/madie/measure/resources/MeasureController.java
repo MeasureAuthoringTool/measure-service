@@ -335,10 +335,13 @@ public class MeasureController {
           boolean filterByCurrentUser,
       @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
       @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
-      @RequestParam(required = false, defaultValue = "0", name = "page") int page) {
+      @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+      @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
+      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
 
     final String username = principal.getName();
-    final Pageable pageReq = PageRequest.of(page, limit, Sort.by("lastModifiedAt").descending());
+    final Pageable pageReq =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
 
     Page<MeasureListDTO> measures =
         measureService.getMeasuresByCriteria(
