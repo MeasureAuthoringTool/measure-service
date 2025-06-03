@@ -209,7 +209,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         facet(sortByCount("id"))
             .as("count")
             .and(
-                sort(sortToUse), // Use sortToUse instead of pageableToUse.getSort()
+                sort(sortToUse),
                 skip(pageableToUse.getOffset()),
                 limit(pageableToUse.getPageSize()),
                 project(MeasureListDTO.class))
