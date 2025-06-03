@@ -1306,4 +1306,131 @@ public class VersionServiceTest {
         is(equalTo("clonedGroupId1")));
     assertThat(draft.getTestCases().get(0).getCaseNumber(), is(equalTo(1)));
   }
+
+  @Test
+  public void testCreateDraftWhenQiCore411HasQiCore600() {
+    Measure measure = buildBasicMeasure();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.findByMeasureSetIdAndModelAndMeasureMetaDataDraft(
+            anyString(), anyString(), anyBoolean()))
+        .thenReturn(List.of(measure));
+
+    Exception ex =
+        assertThrows(
+            MeasureNotDraftableException.class,
+            () ->
+                versionService.createDraft(
+                    measure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN));
+    assertThat(
+        ex.getMessage(),
+        is(
+            equalTo(
+                "Can not create a draft for the measure \"Test\". You cannot draft a 4.1.1 measure when a 6.0.0 version is available.")));
+  }
+
+  @Test
+  public void testCreateQiCore600DraftWithQiCore411Model() {
+    Measure measure = buildBasicMeasure();
+    measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+
+    Exception ex =
+        assertThrows(
+            MeasureNotDraftableException.class,
+            () ->
+                versionService.createDraft(
+                    measure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN));
+    assertThat(
+        ex.getMessage(),
+        is(
+            equalTo(
+                "Can not create a draft for the measure \"Test\". You cannot draft a 6.0.0 measure to a 4.1.1 measure.")));
+  }
+
+  @Test
+  public void testCreateQiCore600DraftSuccessfully() {
+    Measure versionedMeasure = buildBasicMeasure();
+    versionedMeasure.setModel(ModelType.QI_CORE_6_0_0.getValue());
+
+    Measure versionedCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .groups(List.of())
+            .testCases(List.of())
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+        .thenReturn(ResponseEntity.ok(validTestCaseHapiOperationOutcome));
+    when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+
+    Measure draft =
+        versionService.createDraft(
+            versionedMeasure.getId(),
+            "Test",
+            ModelType.QDM_5_6.getValue(),
+            "test-user",
+            TEST_ACCESS_TOKEN);
+
+    assertThat(draft.getMeasureName(), is(equalTo("Test")));
+    // draft flag to true
+    assertThat(draft.getMeasureMetaData().isDraft(), is(equalTo(true)));
+    // version remains same
+    assertThat(draft.getVersion().getMajor(), is(equalTo(2)));
+    assertThat(draft.getVersion().getMinor(), is(equalTo(3)));
+    assertThat(draft.getVersion().getRevisionNumber(), is(equalTo(1)));
+    assertThat(draft.getGroups().size(), is(equalTo(0)));
+    assertThat(draft.getTestCases().size(), is(equalTo(0)));
+  }
+
+  @Test
+  public void testCreateDraftWhenMeasureIsDraft() {
+    Measure measure = buildBasicMeasure();
+    measure.getMeasureMetaData().setDraft(true);
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+
+    Exception ex =
+        assertThrows(
+            MeasureNotDraftableException.class,
+            () ->
+                versionService.createDraft(
+                    measure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN));
+    assertThat(
+        ex.getMessage(),
+        is(
+            equalTo(
+                "Can not create a draft for the measure \"Test\". Only versioned measure can be drafted.")));
+  }
+
+  @Test
+  public void testCreateDraftWhenMeasureMetaDataIsNull() {
+    Measure measure = buildBasicMeasure();
+    measure.setMeasureMetaData(null);
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+
+    Exception ex =
+        assertThrows(
+            MeasureNotDraftableException.class,
+            () ->
+                versionService.createDraft(
+                    measure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN));
+    assertThat(
+        ex.getMessage(),
+        is(
+            equalTo(
+                "Can not create a draft for the measure \"Test\". Only versioned measure can be drafted.")));
+  }
 }

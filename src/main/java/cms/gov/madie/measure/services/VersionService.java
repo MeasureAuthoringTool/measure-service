@@ -214,9 +214,27 @@ public class VersionService {
             .orElseThrow(() -> new ResourceNotFoundException("Measure", id));
 
     measureService.verifyAuthorization(username, measure);
-    if (!isDraftable(measure)) {
-      throw new MeasureNotDraftableException(measure.getMeasureName());
+
+    if (measure.getMeasureMetaData() == null || measure.getMeasureMetaData().isDraft()) {
+      throw new MeasureNotDraftableException(
+          measure.getMeasureName(), "Only versioned measure can be drafted.");
     }
+    if (!isDraftable(measure)) {
+      throw new MeasureNotDraftableException(
+          measure.getMeasureName(), "Only one draft is permitted per measure.");
+    }
+
+    if (!isValidQiCore411WithNoOtherQiCoreVersion(measure)) {
+      throw new MeasureNotDraftableException(
+          measure.getMeasureName(),
+          "You cannot draft a 4.1.1 measure when a 6.0.0 version is available.");
+    }
+
+    if (!isValidDraftableVersion(measure, model)) {
+      throw new MeasureNotDraftableException(
+          measure.getMeasureName(), "You cannot draft a 6.0.0 measure to a 4.1.1 measure.");
+    }
+
     Measure measureDraft = measure.toBuilder().build();
     measureDraft.setId(null);
     measureDraft.setVersionId(UUID.randomUUID().toString());
@@ -330,6 +348,30 @@ public class VersionService {
   private boolean isDraftable(Measure measure) {
     return !measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
         measure.getMeasureSetId(), true, true);
+  }
+
+  /**
+   * Returns false if a QI-Core 4.1.1 versioned measure with another 6.0.0 versioned measure in the
+   * measure set
+   */
+  private boolean isValidQiCore411WithNoOtherQiCoreVersion(Measure measure) {
+    if (ModelType.QI_CORE.getValue().equals(measure.getModel())) {
+      List<Measure> measures =
+          measureRepository.findByMeasureSetIdAndModelAndMeasureMetaDataDraft(
+              measure.getMeasureSetId(), ModelType.QI_CORE_6_0_0.getValue(), false);
+      return CollectionUtils.isEmpty(measures);
+    }
+    return true;
+  }
+
+  /** Returns false if a QI-Core 6.0.0 versioned measure is drafted with model version to 4.1.1 */
+  private boolean isValidDraftableVersion(Measure measure, String model) {
+    boolean valid = true;
+    if (ModelType.QI_CORE_6_0_0.getValue().equals(measure.getModel())
+        && ModelType.QI_CORE.getValue().equals(model)) {
+      valid = false;
+    }
+    return valid;
   }
 
   private void validateMeasureForVersioning(Measure measure, String username, String accessToken) {

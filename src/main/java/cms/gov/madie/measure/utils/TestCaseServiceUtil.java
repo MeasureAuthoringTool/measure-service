@@ -622,7 +622,7 @@ public class TestCaseServiceUtil {
                           && testCase.isCreatedBeforeVersioning()));
 
       if (checkIfCreatedBeforeVersioning) {
-        throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
+        throw new InvalidIdException("Test case(s) cannot be deleted, please contact the helpdesk");
       }
     }
     return true;

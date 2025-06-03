@@ -218,7 +218,8 @@ public class AdminController {
 
     if (!CollectionUtils.isEmpty(relatedMeasures)
         && !relatedMeasures.get(0).getId().equals(measureToCorrectVersion.getId())) {
-      throw new MeasureNotDraftableException(measureToCorrectVersion.getId());
+      throw new MeasureNotDraftableException(
+          measureToCorrectVersion.getId(), "Only one draft is permitted per measure.");
     }
 
     // check if the draftVersion is less than correctVersion
