@@ -91,16 +91,13 @@ public class MeasureController {
     final String username = principal.getName();
     Page<MeasureListDTO> measures;
     final Pageable pageReq;
-    System.out.println("limit: " + limit);
-    if ("NaN".equalsIgnoreCase(limit) || "All".equalsIgnoreCase(limit)) {
+    if ("All".equalsIgnoreCase(limit)) {
       pageReq = Pageable.unpaged();
     } else {
       pageReq =
           PageRequest.of(
               page, Integer.parseInt(limit), Sort.by(Sort.Direction.valueOf(direction), sort));
     }
-    //    final Pageable pageReq =
-    //        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
     measures = measureService.getMeasuresByCriteria(null, filterByCurrentUser, pageReq, username);
     return ResponseEntity.ok(measures);
   }
