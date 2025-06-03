@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,10 +21,7 @@ import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.Future;
 import java.util.stream.Collectors;
 
@@ -62,61 +60,52 @@ public class TestCaseValidationService {
   }
 
   TestCase validate(
-      UUID taskId, String measureId, TestCase testCase, ModelType modelType, String accessToken) {
+      UUID taskId,
+      String measureId,
+      TestCase submittedTestCase,
+      ModelType modelType,
+      String accessToken) {
+    // TODO replace with decorator
     Instant startTime = Instant.now();
     log.info(
         "TestCase Validation::execute::{}::{}::{}::{}",
-        testCase.getId(),
+        submittedTestCase.getId(),
         Thread.currentThread().getId(),
         taskId,
         startTime);
+    Optional<TestCase> currentTestCase =
+        measureRepository
+            .findAndUpdateValidationStatus(
+                submittedTestCase.getId(), measureId, TestCaseValidationStatus.VALIDATING)
+            .getTestCases()
+            .stream()
+            .filter((tc -> tc.getId().equals(submittedTestCase.getId())))
+            .findFirst();
+    if (currentTestCase.isEmpty()) {
+      throw new ResourceNotFoundException("Test Case", submittedTestCase.getId());
+    }
+    log.info(
+        "TestCase Validation::taskId::{}::lastModifiedDateTime::{}::",
+        taskId,
+        submittedTestCase.getLastModifiedAt());
     try {
-      TestCase latestTestCase =
-          setValidationStatus(measureId, testCase.getId(), TestCaseValidationStatus.VALIDATING);
       // TODO What should happen when fhir-services is down?
-      HapiOperationOutcome validationOutcome =
-          validateTestCaseJson(latestTestCase, modelType, accessToken);
-      setValidationStatus(
-          measureId,
-          testCase.getId(),
-          validationOutcome.isSuccessful()
-              ? TestCaseValidationStatus.VALID
-              : TestCaseValidationStatus.INVALID);
-      testCase.toBuilder()
-          .hapiOperationOutcome(validationOutcome)
-          .validResource(validationOutcome.isSuccessful())
-          .build();
-      // TODO MAT-8601: save the test case with the validation outcome
+          validateTestCaseJson(currentTestCase.get(), modelType, accessToken);
       Instant stopTime = Instant.now();
       log.info(
           "TestCase Validation::completed::{}::{}::{}::{}",
-          testCase.getId(),
+          currentTestCase.get().getId(),
           taskId,
           Duration.between(startTime, stopTime),
           taskExecutor.getQueueSize());
+      return currentTestCase.get();
     } catch (Exception e) {
       log.error(
-          "Error validating Test Case with Id {} from Measure {} ", testCase.getId(), measureId);
+          "Error validating Test Case with Id {} from Measure {} ",
+          currentTestCase.get().getId(),
+          measureId);
     }
-    return testCase;
-  }
-
-  private TestCase setValidationStatus(
-      String measureId, String testCaseId, TestCaseValidationStatus status) {
-    Optional<Measure> measure = measureRepository.findById(measureId);
-    if (measure.isPresent()) {
-      Optional<TestCase> updatedTestCase =
-          measure.get().getTestCases().stream()
-              .filter(testCase -> testCase.getId().equals(testCaseId))
-              .findFirst();
-      updatedTestCase.ifPresent(
-          testCase -> {
-            testCase.setTestCaseValidationStatus(status);
-            measureRepository.save(measure.get());
-          });
-      return updatedTestCase.orElse(null);
-    }
-    return null;
+    return submittedTestCase;
   }
 
   public TestCase validateResourceAsynchronously(
