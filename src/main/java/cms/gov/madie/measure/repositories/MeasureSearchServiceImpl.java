@@ -25,6 +25,7 @@ import org.springframework.stereotype.Repository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
@@ -48,24 +49,23 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         .as("measureSet");
   }
 
-  private void appendAdditionalSearchCriteriaOmittingcmsId(
+  private void appendAdditionalSearchCriteria(
       Criteria measureCriteria, MeasureSearchCriteria measureSearchCriteria) {
-    // Ensure optionalSearchProperties exists and isn’t empty
-    if (CollectionUtils.isNotEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
-      // Build the orOperator for the remaining properties
-      List<Criteria> orConditions = new ArrayList<>();
-      for (String property : measureSearchCriteria.getOptionalSearchProperties()) {
-        // this needs to run whenever we have multiple, however we need to force a search even if
-        // the searchField split is less than 3 if the version is the only category that is applied
-        if (property.equals("version")) {
-          String[] versionParts = measureSearchCriteria.getSearchField().split("\\.");
+    // Build the orOperator for the remaining properties
+    String searchField = measureSearchCriteria.getSearchField();
+    List<Criteria> orConditions = new ArrayList<>();
+
+    for (String property : measureSearchCriteria.getOptionalSearchProperties()) {
+      // this needs to run whenever we have multiple, however we need to force a search even if
+      // the searchField split is less than 3 if the version is the only category that is applied
+      switch (property) {
+        case "version":
+          String[] versionParts = searchField.split("\\.");
           if (versionParts.length == 3) {
             if (isNumeric(versionParts[0])
                 && isNumeric(versionParts[1])
                 && isNumeric(versionParts[2])) {
-              Criteria otherCriteria =
-                  Criteria.where("version")
-                      .is(Version.parse(measureSearchCriteria.getSearchField()));
+              Criteria otherCriteria = Criteria.where("version").is(Version.parse(searchField));
               orConditions.add(otherCriteria);
             }
           }
@@ -99,23 +99,33 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           }
           //  if its a bad version that's a random string, and there are no other optional params
           // provided, we need to force this criteria search
-        } else if (property.equals("cmsId")) {
-          String searchField = measureSearchCriteria.getSearchField();
+          break;
+        case "cmsId":
           if (isNumeric(searchField)) {
             int number = Integer.parseInt(searchField);
             orConditions.add(Criteria.where("measureSet.cmsId").is(number));
           }
-        } else {
+          break;
+        case "measure":
           orConditions.add(
-              Criteria.where(property).regex(measureSearchCriteria.getSearchField(), "i"));
-        }
+              Criteria.where("measureName").regex(".*" + Pattern.quote(searchField) + ".*", "i"));
+          break;
+        case "model":
+          orConditions.add(
+              Criteria.where("model").regex(".*" + Pattern.quote(searchField) + ".*", "i"));
+          break;
+        default:
+          if (!StringUtils.isBlank(property)) {
+            orConditions.add(
+                Criteria.where(property).regex(measureSearchCriteria.getSearchField(), "i"));
+          }
       }
-      Criteria allOrConditions = new Criteria();
-      if (!orConditions.isEmpty()) {
-        allOrConditions.orOperator(orConditions);
-      }
-      measureCriteria.andOperator(allOrConditions);
     }
+    Criteria allOrConditions = new Criteria();
+    if (!orConditions.isEmpty()) {
+      allOrConditions.orOperator(orConditions);
+    }
+    measureCriteria.andOperator(allOrConditions);
   }
 
   @Override
@@ -154,7 +164,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       // optional query provided
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
           && CollectionUtils.isNotEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
-        appendAdditionalSearchCriteriaOmittingcmsId(measureCriteria, measureSearchCriteria);
+        appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
       // If model is provided, filter out those measures with that model
       if (StringUtils.isNotBlank(measureSearchCriteria.getModel())) {
