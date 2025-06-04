@@ -198,20 +198,13 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     MatchOperation matchOperation =
         match(new Criteria().andOperator(measureCriteria, measureSetCriteria));
 
-    // Handle unpaged case
-    Pageable pageableToUse = pageable.isPaged() ? pageable : Pageable.ofSize(Integer.MAX_VALUE);
-    Sort sortToUse =
-        pageableToUse.getSort().isSorted()
-            ? pageableToUse.getSort()
-            : Sort.by(Sort.Direction.ASC, "defaultField");
-
     FacetOperation facets =
         facet(sortByCount("id"))
             .as("count")
             .and(
-                sort(sortToUse),
-                skip(pageableToUse.getOffset()),
-                limit(pageableToUse.getPageSize()),
+                sort(pageable.getSort()),
+                skip(pageable.getOffset()),
+                limit(pageable.getPageSize()),
                 project(MeasureListDTO.class))
             .as("queryResults");
 
@@ -268,11 +261,11 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           }
         }
       }
-      return new PageImpl<>(results.get(0).getQueryResults(), pageableToUse, totalSize);
+      return new PageImpl<>(results.get(0).getQueryResults(), pageable, totalSize);
     }
 
     return new PageImpl<>(
-        results.get(0).getQueryResults(), pageableToUse, results.get(0).getCount().size());
+        results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());
   }
 
   @Override

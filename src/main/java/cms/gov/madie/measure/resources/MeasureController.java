@@ -90,14 +90,9 @@ public class MeasureController {
       @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
     final String username = principal.getName();
     Page<MeasureListDTO> measures;
-    final Pageable pageReq;
-    if ("All".equalsIgnoreCase(limit)) {
-      pageReq = Pageable.unpaged();
-    } else {
-      pageReq =
-          PageRequest.of(
-              page, Integer.parseInt(limit), Sort.by(Sort.Direction.valueOf(direction), sort));
-    }
+    int limitSize = limit.equals("All") ? Integer.MAX_VALUE : Integer.parseInt(limit);
+    final Pageable pageReq =
+        PageRequest.of(page, limitSize, Sort.by(Sort.Direction.valueOf(direction), sort));
     measures = measureService.getMeasuresByCriteria(null, filterByCurrentUser, pageReq, username);
     return ResponseEntity.ok(measures);
   }
@@ -346,14 +341,9 @@ public class MeasureController {
       @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
 
     final String username = principal.getName();
-    final Pageable pageReq;
-    if ("All".equalsIgnoreCase(limit)) {
-      pageReq = Pageable.unpaged();
-    } else {
-      pageReq =
-          PageRequest.of(page, Integer.parseInt(limit), Sort.by("lastModifiedAt").descending());
-    }
-
+    int limitSize = limit.equals("All") ? Integer.MAX_VALUE : Integer.parseInt(limit);
+    final Pageable pageReq =
+        PageRequest.of(page, limitSize, Sort.by(Sort.Direction.valueOf(direction), sort));
     Page<MeasureListDTO> measures =
         measureService.getMeasuresByCriteria(
             searchCriteria, filterByCurrentUser, pageReq, username);
