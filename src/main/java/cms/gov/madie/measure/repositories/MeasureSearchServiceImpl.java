@@ -104,6 +104,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           if (isNumeric(searchField)) {
             int number = Integer.parseInt(searchField);
             orConditions.add(Criteria.where("measureSet.cmsId").is(number));
+          } else {
+            orConditions.add(Criteria.where("measureSet.cmsId").is(searchField));
           }
           break;
         case "measure":
