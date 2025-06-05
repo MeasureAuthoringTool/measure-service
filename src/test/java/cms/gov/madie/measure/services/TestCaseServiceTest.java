@@ -1205,15 +1205,19 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testGetTestCaseReturnsTestCaseByIdValidatesByUpsert() {
-    when(testCaseValidationService.validateTestCaseJson(
+    when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
-        .thenReturn(HapiOperationOutcome.builder().code(200).successful(true).build());
+        .thenReturn(
+            testCase.toBuilder()
+                .hapiOperationOutcome(
+                    HapiOperationOutcome.builder().code(200).successful(true).build())
+                .validResource(true)
+                .build());
 
     Optional<Measure> optional =
         Optional.of(measure.toBuilder().testCases(Arrays.asList(testCase)).build());
     Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
     TestCase output = testCaseService.getTestCase(measure.getId(), testCase.getId(), true, "TOKEN");
-    assertEquals(testCase, output);
     assertNotNull(output.getHapiOperationOutcome());
     assertEquals(200, output.getHapiOperationOutcome().getCode());
   }

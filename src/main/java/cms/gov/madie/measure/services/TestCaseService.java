@@ -322,9 +322,8 @@ public class TestCaseService {
     if (testCase == null) {
       throw new ResourceNotFoundException("Test Case", testCaseId);
     } else if (validate) {
-      testCase.setHapiOperationOutcome(
-          testCaseValidationService.validateTestCaseJson(
-              testCase, ModelType.valueOfName(measure.getModel()), accessToken));
+      return testCaseValidationService.validateTestCaseAsResource(
+          testCase, ModelType.valueOfName(measure.getModel()), accessToken);
     }
     return testCase;
   }

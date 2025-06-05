@@ -73,36 +73,41 @@ public class TestCaseValidationService {
         Thread.currentThread().getId(),
         taskId,
         startTime);
-    Optional<TestCase> currentTestCase =
+    TestCase currentTestCase =
         measureRepository
             .findAndUpdateValidationStatus(
                 submittedTestCase.getId(), measureId, TestCaseValidationStatus.VALIDATING)
             .getTestCases()
             .stream()
             .filter((tc -> tc.getId().equals(submittedTestCase.getId())))
-            .findFirst();
-    if (currentTestCase.isEmpty()) {
-      throw new ResourceNotFoundException("Test Case", submittedTestCase.getId());
-    }
+            .findFirst()
+            .orElseThrow(
+                () -> {
+                  log.error(
+                      "TestCase with Id {} not found in Measure with Id {}",
+                      submittedTestCase.getId(),
+                      measureId);
+                  return new ResourceNotFoundException("Test Case", submittedTestCase.getId());
+                });
     log.info(
         "TestCase Validation::taskId::{}::lastModifiedDateTime::{}::",
         taskId,
         submittedTestCase.getLastModifiedAt());
     try {
       // TODO What should happen when fhir-services is down?
-          validateTestCaseJson(currentTestCase.get(), modelType, accessToken);
+      validateTestCaseJson(currentTestCase, modelType, accessToken);
       Instant stopTime = Instant.now();
       log.info(
           "TestCase Validation::completed::{}::{}::{}::{}",
-          currentTestCase.get().getId(),
+          currentTestCase.getId(),
           taskId,
           Duration.between(startTime, stopTime),
           taskExecutor.getQueueSize());
-      return currentTestCase.get();
+      return currentTestCase;
     } catch (Exception e) {
       log.error(
           "Error validating Test Case with Id {} from Measure {} ",
-          currentTestCase.get().getId(),
+          currentTestCase.getId(),
           measureId);
     }
     return submittedTestCase;
@@ -111,14 +116,16 @@ public class TestCaseValidationService {
   public TestCase validateResourceAsynchronously(
       Measure measure, TestCase testCase, String accessToken) {
     TestCase updatedTestCase =
-        testCase.toBuilder()
-            .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
-            .hapiOperationOutcome(null)
-            .build();
-    measure.getTestCases().add(updatedTestCase);
-    measureRepository.save(measure);
+        measureRepository
+            .findAndUpdateValidationStatus(
+                testCase.getId(), measure.getId(), TestCaseValidationStatus.PENDING)
+            .getTestCases()
+            .stream()
+            .filter((tc -> tc.getId().equals(testCase.getId())))
+            .findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Test Case", testCase.getId()));
     submitValidationTask(
-        measure.getId(), testCase, accessToken, ModelType.valueOfName(measure.getModel()));
+        measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
     return updatedTestCase; // Return testCase with pending status and set validationOutcome to null
   }
 
@@ -153,7 +160,7 @@ public class TestCaseValidationService {
     }
   }
 
-  public HapiOperationOutcome validateTestCaseJson(
+  HapiOperationOutcome validateTestCaseJson(
       TestCase testCase, ModelType modelType, String accessToken) {
     if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
       return null;

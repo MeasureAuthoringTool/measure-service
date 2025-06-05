@@ -87,12 +87,22 @@ public class TestCaseValidationServiceTest {
 
   @Test
   public void testAsyncValidationStu6UpdatesValidationStatus() {
-    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    Measure validingTestCaseMeasure =
+        measure.toBuilder()
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
+                        .build()))
+            .build();
+
+    when(measureRepository.findAndUpdateValidationStatus(
+            anyString(), anyString(), any(TestCaseValidationStatus.class)))
+        .thenReturn(validingTestCaseMeasure);
 
     TestCase output =
         testCaseValidationService.validateResourceAsynchronously(measure, testCase, "Bearer Token");
 
-    verify(measureRepository, times(1)).save(measureCaptor.capture());
     assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
   }
 
@@ -107,7 +117,8 @@ public class TestCaseValidationServiceTest {
                         .build()))
             .build();
 
-    when(measureRepository.findAndUpdateValidationStatus(anyString(), anyString(), any(TestCaseValidationStatus.class)))
+    when(measureRepository.findAndUpdateValidationStatus(
+            anyString(), anyString(), any(TestCaseValidationStatus.class)))
         .thenReturn(validingTestCaseMeasure);
 
     when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
@@ -118,7 +129,8 @@ public class TestCaseValidationServiceTest {
             UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
 
     assertThat(
-        validatedTestCase.getTestCaseValidationStatus(), equalTo(TestCaseValidationStatus.VALIDATING));
+        validatedTestCase.getTestCaseValidationStatus(),
+        equalTo(TestCaseValidationStatus.VALIDATING));
   }
 
   @Test
