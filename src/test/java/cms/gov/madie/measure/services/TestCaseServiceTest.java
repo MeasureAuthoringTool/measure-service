@@ -41,12 +41,7 @@ import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.Spy;
+import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
@@ -490,6 +485,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
+    // Mocks a validation request awaiting execution.
     when(testCaseValidationService.validateResourceAsynchronously(
             any(), any(TestCase.class), anyString()))
         .thenAnswer(
@@ -498,8 +494,13 @@ public class TestCaseServiceTest implements ResourceUtil {
                     .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
                     .build());
 
+    InOrder saveValidationOrder = inOrder(measureRepository, testCaseValidationService);
     TestCase output =
         testCaseService.updateTestCase(testCase, measure.getId(), "test-user", accessToken);
+    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
+    saveValidationOrder.verify(measureRepository).save(measure);
+    saveValidationOrder.verify(testCaseValidationService).validateResourceAsynchronously(
+        measureArgumentCaptor.capture(), any(TestCase.class), eq(accessToken));
     assertNotNull(output);
     assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
   }

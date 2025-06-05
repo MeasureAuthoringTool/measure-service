@@ -291,8 +291,14 @@ public class TestCaseService {
     if (isQiCoreModel
         && hasJson
         && appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
-      return testCaseValidationService.validateResourceAsynchronously(
-          measure, testCase, accessToken);
+      measure.getTestCases().add(testCase);
+      measureRepository.save(measure);
+      log.info(
+          "User [{}] successfully updated the test case with ID [{}] for the measure with ID[{}] ",
+          username,
+          testCase.getId(),
+          measureId);
+      return testCaseValidationService.validateResourceAsynchronously(measure, testCase, accessToken);
     }
 
     TestCase validatedTestCase =

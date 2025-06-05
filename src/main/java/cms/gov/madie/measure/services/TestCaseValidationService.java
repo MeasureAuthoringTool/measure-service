@@ -47,7 +47,7 @@ public class TestCaseValidationService {
     //  as "Pending" in the database.
   }
 
-  Future<TestCase> submitValidationTask(
+  void submitValidationTask(
       String measureId, TestCase testCase, String accessToken, ModelType modelType) {
     UUID taskId = UUID.randomUUID();
     log.info(
@@ -56,7 +56,7 @@ public class TestCaseValidationService {
         taskId,
         Instant.now(),
         taskExecutor.getQueueSize());
-    return taskExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
+    taskExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
   }
 
   TestCase validate(
