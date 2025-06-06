@@ -57,9 +57,9 @@ public class MeasureController {
   private final MeasureSetRepository measureSetRepository;
   private final MeasureSetService measureSetService;
 
-  @GetMapping("/measures/draftstatus")
+  @PutMapping("/measures/draftstatus")
   public ResponseEntity<Map<String, Boolean>> getDraftStatuses(
-      @RequestParam(name = "measureSetIds") List<String> measureSetIds) {
+      @RequestBody List<String> measureSetIds) {
     Map<String, Boolean> results = measureService.getMeasureDrafts(measureSetIds);
     return ResponseEntity.status(HttpStatus.CREATED).body(results);
   }
@@ -328,7 +328,7 @@ public class MeasureController {
             measureId, groupId, stratificationId, principal.getName()));
   }
 
-  @PostMapping("/measures/searches")
+  @PutMapping("/measures/searches")
   public ResponseEntity<Page<MeasureListDTO>> measureSearchByCriteria(
       Principal principal,
       @RequestParam(required = false, defaultValue = "false", name = "currentUser")
