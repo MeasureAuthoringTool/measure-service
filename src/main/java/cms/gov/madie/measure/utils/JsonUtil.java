@@ -434,7 +434,6 @@ public final class JsonUtil {
                 && theNode.has("fullUrl")) {
               String id = resourceNode.get("id").asText();
               String newUrl = buildFullUrl(id, resourceType, madieJsonResourcesBaseUri);
-              log.info("Updating the full url of a resource [{}], new fullUrl is [{}]", id, newUrl);
               ObjectNode node = (ObjectNode) theNode;
               node.put("fullUrl", newUrl);
             }
