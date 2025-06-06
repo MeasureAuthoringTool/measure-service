@@ -57,9 +57,9 @@ public class MeasureController {
   private final MeasureSetRepository measureSetRepository;
   private final MeasureSetService measureSetService;
 
-  @GetMapping("/measures/draftstatus")
+  @PostMapping("/measures/draftstatus")
   public ResponseEntity<Map<String, Boolean>> getDraftStatuses(
-      @RequestParam(name = "measureSetIds") List<String> measureSetIds) {
+      @RequestBody List<String> measureSetIds) {
     Map<String, Boolean> results = measureService.getMeasureDrafts(measureSetIds);
     return ResponseEntity.status(HttpStatus.CREATED).body(results);
   }

@@ -298,7 +298,8 @@ public class TestCaseService {
           username,
           testCase.getId(),
           measureId);
-      return testCaseValidationService.validateResourceAsynchronously(measure, testCase, accessToken);
+      return testCaseValidationService.validateResourceAsynchronously(
+          measure, testCase, accessToken);
     }
 
     TestCase validatedTestCase =

@@ -499,8 +499,10 @@ public class TestCaseServiceTest implements ResourceUtil {
         testCaseService.updateTestCase(testCase, measure.getId(), "test-user", accessToken);
     verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
     saveValidationOrder.verify(measureRepository).save(measure);
-    saveValidationOrder.verify(testCaseValidationService).validateResourceAsynchronously(
-        measureArgumentCaptor.capture(), any(TestCase.class), eq(accessToken));
+    saveValidationOrder
+        .verify(testCaseValidationService)
+        .validateResourceAsynchronously(
+            measureArgumentCaptor.capture(), any(TestCase.class), eq(accessToken));
     assertNotNull(output);
     assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
   }
