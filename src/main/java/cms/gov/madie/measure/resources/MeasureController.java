@@ -328,7 +328,7 @@ public class MeasureController {
             measureId, groupId, stratificationId, principal.getName()));
   }
 
-  @PutMapping("/measures/searches")
+  @PostMapping("/measures/searches")
   public ResponseEntity<Page<MeasureListDTO>> measureSearchByCriteria(
       Principal principal,
       @RequestParam(required = false, defaultValue = "false", name = "currentUser")

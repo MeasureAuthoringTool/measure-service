@@ -1790,7 +1790,7 @@ public class MeasureControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                put("/measures/searches")
+                post("/measures/searches")
                     .with(user(TEST_USER_ID))
                     .with(csrf())
                     .content(
@@ -1828,7 +1828,7 @@ public class MeasureControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                put("/measures/searches")
+                post("/measures/searches")
                     .with(user(TEST_USER_ID))
                     .with(csrf())
                     .queryParam("currentUser", "false")
@@ -1868,7 +1868,7 @@ public class MeasureControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                put("/measures/searches")
+                post("/measures/searches")
                     .with(user(TEST_USER_ID))
                     .with(csrf())
                     .queryParam("currentUser", "true")
