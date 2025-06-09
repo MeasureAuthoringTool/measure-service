@@ -15,7 +15,8 @@ public interface MeasureRepository
     extends MongoRepository<Measure, String>,
         MeasureVersionRepository,
         MeasureSearchService,
-        MeasureCmsIdRepository {
+        MeasureCmsIdRepository,
+        TestCaseRepository {
   @Query("{cqlLibraryName : ?0, active : true}")
   List<Measure> findAllByCqlLibraryName(String cqlLibraryName);
 
