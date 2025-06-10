@@ -73,6 +73,21 @@ public class MeasureServiceApplication {
     return taskExecutor;
   }
 
+  /*
+   * testCaseValidationExecutor for imported test cases
+   */
+  @Bean
+  ThreadPoolTaskExecutor testCaseValidationExecutorImport() {
+    ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+
+    taskExecutor.setCorePoolSize(corePoolSize);
+    taskExecutor.setMaxPoolSize(maxPoolSize);
+    taskExecutor.setQueueCapacity(queueCapacity);
+    taskExecutor.setAwaitTerminationSeconds(shutdownWaitSeconds);
+    taskExecutor.setWaitForTasksToCompleteOnShutdown(true);
+    return taskExecutor;
+  }
+
   @Bean
   public ValidLibraryNameValidator libraryNameValidator() {
     return new ValidLibraryNameValidator();

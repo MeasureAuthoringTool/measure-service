@@ -15,7 +15,6 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
@@ -34,6 +33,9 @@ public class TestCaseValidationService {
 
   @Qualifier("testCaseValidationExecutor")
   private final ThreadPoolTaskExecutor taskExecutor;
+
+  @Qualifier("testCaseValidationExecutorImport")
+  private final ThreadPoolTaskExecutor testCaseValidationExecutorImport;
 
   private final FhirServicesClient fhirServicesClient;
 
@@ -207,7 +209,6 @@ public class TestCaseValidationService {
             });
   }
 
-  @Async
   void submitValidationTaskForImport(
       String measureId, TestCase testCase, String accessToken, ModelType modelType) {
     UUID taskId = UUID.randomUUID();
@@ -216,8 +217,8 @@ public class TestCaseValidationService {
         testCase.getId(),
         taskId,
         Instant.now(),
-        taskExecutor.getQueueSize());
-    taskExecutor.submit(
+        testCaseValidationExecutorImport.getQueueSize());
+    testCaseValidationExecutorImport.submit(
         () -> {
           log.info("Submitting test case to validation import queue");
         });

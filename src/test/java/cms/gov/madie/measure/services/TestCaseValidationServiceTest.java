@@ -41,6 +41,7 @@ public class TestCaseValidationServiceTest {
   @Mock private FhirServicesClient fhirServicesClient;
   @Mock private MeasureRepository measureRepository;
   @Mock private ThreadPoolTaskExecutor validationExecutor;
+  @Mock private ThreadPoolTaskExecutor testCaseValidationExecutorImport;
 
   @InjectMocks private TestCaseValidationService testCaseValidationService;
 
@@ -464,5 +465,24 @@ public class TestCaseValidationServiceTest {
             UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
 
     assertNull(validatedTestCase.getTestCaseValidationStatus());
+  }
+
+  @Test
+  public void testSubmitValidationTaskForImportSubmitsRunnable() {
+    TestCaseValidationService service =
+        new TestCaseValidationService(
+            validationExecutor,
+            testCaseValidationExecutorImport,
+            fhirServicesClient,
+            measureRepository,
+            mapper);
+    TestCase testCase = TestCase.builder().id("testCaseId").build();
+    String measureId = "measureId";
+    String accessToken = "token";
+    ModelType modelType = ModelType.QI_CORE_6_0_0;
+
+    service.submitValidationTaskForImport(measureId, testCase, accessToken, modelType);
+
+    verify(testCaseValidationExecutorImport, times(1)).submit(any(Runnable.class));
   }
 }
