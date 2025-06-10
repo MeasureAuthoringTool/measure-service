@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
+import gov.cms.madie.models.measure.HapiOperationOutcome;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCaseValidationStatus;
 import org.springframework.data.mongodb.core.MongoOperations;
@@ -24,6 +25,23 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
 
     Update update = new Update();
     update.set("testCases.$.testCaseValidationStatus", status);
+
+    return mongoOperations.findAndModify(query, update, Measure.class);
+  }
+
+  @Override
+  public Measure findAndUpdateValidationResults(
+      String testCaseId, String measureId, HapiOperationOutcome validationResults) {
+    Query query = new Query();
+    query.addCriteria(Criteria.where("_id").is(measureId).and("testCases._id").is(testCaseId));
+
+    Update update = new Update();
+    update.set(
+        "testCases.$.testCaseValidationStatus",
+        validationResults.isSuccessful()
+            ? TestCaseValidationStatus.VALID
+            : TestCaseValidationStatus.INVALID);
+    update.set("testCases.$.hapiOperationOutcome", validationResults);
 
     return mongoOperations.findAndModify(query, update, Measure.class);
   }

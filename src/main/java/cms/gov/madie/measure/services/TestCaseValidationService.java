@@ -84,7 +84,19 @@ public class TestCaseValidationService {
         submittedTestCase.getLastModifiedAt());
     try {
       // TODO What should happen when fhir-services is down?
-      validateTestCaseJson(currentTestCase, modelType, accessToken);
+      HapiOperationOutcome validationOutcome =
+          validateTestCaseJson(currentTestCase, modelType, accessToken);
+      Optional<TestCase> validatedTestCase =
+          measureRepository
+              .findAndUpdateValidationResults(currentTestCase.getId(), measureId, validationOutcome)
+              .getTestCases()
+              .stream()
+              .filter((tc -> tc.getId().equals(submittedTestCase.getId())))
+              .findFirst();
+      if (validatedTestCase.isEmpty()) {
+        measureRepository.findAndUpdateValidationStatus(
+            currentTestCase.getId(), measureId, TestCaseValidationStatus.NOT_COMPLETE);
+      }
       Instant stopTime = Instant.now();
       log.info(
           "TestCase Validation::completed::{}::{}::{}::{}",
@@ -92,11 +104,12 @@ public class TestCaseValidationService {
           taskId,
           Duration.between(startTime, stopTime),
           saveExecutor.getQueueSize());
-      return currentTestCase;
+      return validatedTestCase.orElseThrow(
+          () -> new ResourceNotFoundException("Test Case", currentTestCase.getId()));
     } catch (Exception e) {
       log.error(
           "Error validating Test Case with Id {} from Measure {} ",
-          currentTestCase.getId(),
+          submittedTestCase.getId(),
           measureId);
     }
     return submittedTestCase;
