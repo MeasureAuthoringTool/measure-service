@@ -153,7 +153,7 @@ public class TestCaseShiftDatesServiceQdmTest {
 
     doReturn(testCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
 
     List<String> failedTestCases =
         qdmTestCaseShiftDatesService.shiftTestCaseDates(

@@ -15,6 +15,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
@@ -73,21 +74,8 @@ public class TestCaseValidationService {
         taskId,
         startTime);
     TestCase currentTestCase =
-        measureRepository
-            .findAndUpdateValidationStatus(
-                submittedTestCase.getId(), measureId, TestCaseValidationStatus.VALIDATING)
-            .getTestCases()
-            .stream()
-            .filter((tc -> tc.getId().equals(submittedTestCase.getId())))
-            .findFirst()
-            .orElseThrow(
-                () -> {
-                  log.error(
-                      "TestCase with Id {} not found in Measure with Id {}",
-                      submittedTestCase.getId(),
-                      measureId);
-                  return new ResourceNotFoundException("Test Case", submittedTestCase.getId());
-                });
+        saveUpdatedTestCaseValidationStatus(
+            measureId, submittedTestCase.getId(), TestCaseValidationStatus.VALIDATING);
     log.info(
         "TestCase Validation::taskId::{}::lastModifiedDateTime::{}::",
         taskId,
@@ -115,14 +103,8 @@ public class TestCaseValidationService {
   public TestCase validateResourceAsynchronously(
       Measure measure, TestCase testCase, String accessToken) {
     TestCase updatedTestCase =
-        measureRepository
-            .findAndUpdateValidationStatus(
-                testCase.getId(), measure.getId(), TestCaseValidationStatus.PENDING)
-            .getTestCases()
-            .stream()
-            .filter((tc -> tc.getId().equals(testCase.getId())))
-            .findFirst()
-            .orElseThrow(() -> new ResourceNotFoundException("Test Case", testCase.getId()));
+        saveUpdatedTestCaseValidationStatus(
+            measure.getId(), testCase.getId(), TestCaseValidationStatus.PENDING);
     submitValidationTask(
         measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
     return updatedTestCase; // Return testCase with pending status and set validationOutcome to null
@@ -196,5 +178,48 @@ public class TestCaseValidationService {
             "Unable to validate test case JSON due to errors, "
                 + "but outcome not able to be interpreted!")
         .build();
+  }
+
+  public TestCase validateTestCaseAsynchronouslyForImport(
+      Measure measure, TestCase testCase, String accessToken) {
+    TestCase updatedTestCase =
+        saveUpdatedTestCaseValidationStatus(
+            measure.getId(), testCase.getId(), TestCaseValidationStatus.PENDING);
+
+    submitValidationTaskForImport(
+        measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
+    return updatedTestCase;
+  }
+
+  private TestCase saveUpdatedTestCaseValidationStatus(
+      String measureId, String testCaseId, TestCaseValidationStatus validationStatus) {
+    return measureRepository
+        .findAndUpdateValidationStatus(testCaseId, measureId, validationStatus)
+        .getTestCases()
+        .stream()
+        .filter((tc -> tc.getId().equals(testCaseId)))
+        .findFirst()
+        .orElseThrow(
+            () -> {
+              log.error(
+                  "TestCase with Id {} not found in Measure with Id {}", testCaseId, measureId);
+              return new ResourceNotFoundException("Test Case", testCaseId);
+            });
+  }
+
+  @Async
+  void submitValidationTaskForImport(
+      String measureId, TestCase testCase, String accessToken, ModelType modelType) {
+    UUID taskId = UUID.randomUUID();
+    log.info(
+        "TestCase Validation Import Queue::submit::{}::{}::{}::{}",
+        testCase.getId(),
+        taskId,
+        Instant.now(),
+        taskExecutor.getQueueSize());
+    taskExecutor.submit(
+        () -> {
+          log.info("Submitting test case to validation import queue");
+        });
   }
 }

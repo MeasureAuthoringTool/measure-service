@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -20,12 +21,15 @@ import org.springframework.web.client.HttpClientErrorException;
 import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -399,5 +403,66 @@ public class TestCaseValidationServiceTest {
     assertThat(output.get(0).isValidResource(), is(true));
     assertThat(output.get(0).getHapiOperationOutcome(), is(notNullValue()));
     assertThat(output.get(0).getHapiOperationOutcome().getCode(), is(equalTo(200)));
+  }
+
+  @Test
+  public void testValidateTestCaseAsynchronouslyForImport() {
+    Measure validingTestCaseMeasure =
+        measure.toBuilder()
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
+                        .build()))
+            .build();
+
+    when(measureRepository.findAndUpdateValidationStatus(
+            anyString(), anyString(), any(TestCaseValidationStatus.class)))
+        .thenReturn(validingTestCaseMeasure);
+
+    TestCase output =
+        testCaseValidationService.validateTestCaseAsynchronouslyForImport(
+            measure, testCase, "Bearer Token");
+
+    assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
+  }
+
+  @Test
+  public void testValidateTestCaseAsynchronouslyForImportThrowsException() {
+    Measure measure = Measure.builder().id("testId").testCases(Collections.emptyList()).build();
+    when(measureRepository.findAndUpdateValidationStatus(
+            anyString(), anyString(), any(TestCaseValidationStatus.class)))
+        .thenReturn(measure);
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () ->
+            testCaseValidationService.validateTestCaseAsynchronouslyForImport(
+                measure, testCase, "Bearer Token"));
+  }
+
+  @Test
+  public void testValidateThrowsExcpetion() {
+    Measure validingTestCaseMeasure =
+        measure.toBuilder()
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
+                        .build()))
+            .build();
+
+    when(measureRepository.findAndUpdateValidationStatus(
+            anyString(), anyString(), any(TestCaseValidationStatus.class)))
+        .thenReturn(validingTestCaseMeasure);
+
+    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+        .thenThrow(HttpClientErrorException.class);
+
+    TestCase validatedTestCase =
+        testCaseValidationService.validate(
+            UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
+
+    assertNull(validatedTestCase.getTestCaseValidationStatus());
   }
 }

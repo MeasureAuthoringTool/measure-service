@@ -97,7 +97,12 @@ public class TestCaseController {
     sanitizeTestCase(testCase);
 
     return ResponseEntity.ok(
-        testCaseService.updateTestCase(testCase, measureId, principal.getName(), accessToken));
+        testCaseService.updateTestCase(
+            testCase,
+            measureId,
+            principal.getName(),
+            accessToken,
+            ControllerUtil.SAVE_VALIDATION_QUEUE));
   }
 
   @GetMapping(ControllerUtil.TEST_CASES + "/series")
@@ -240,7 +245,11 @@ public class TestCaseController {
       try {
         TestCase updatedTestCase =
             testCaseService.updateTestCase(
-                shiftedTestCase, measureId, principal.getName(), accessToken);
+                shiftedTestCase,
+                measureId,
+                principal.getName(),
+                accessToken,
+                ControllerUtil.SAVE_VALIDATION_QUEUE);
         savedTestCaseIds.add(updatedTestCase.getId());
       } catch (Exception e) {
         log.error(
@@ -291,7 +300,11 @@ public class TestCaseController {
       try {
         TestCase updatedTestCase =
             testCaseService.updateTestCase(
-                shiftedTestCase, measureId, principal.getName(), accessToken);
+                shiftedTestCase,
+                measureId,
+                principal.getName(),
+                accessToken,
+                ControllerUtil.SAVE_VALIDATION_QUEUE);
         savedTestCaseIds.add(updatedTestCase.getId());
       } catch (Exception e) {
         log.error(

@@ -19,6 +19,7 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import cms.gov.madie.measure.exceptions.CqmConversionException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.utils.ControllerUtil;
 import gov.cms.madie.models.cqm.datacriteria.basetypes.DataElement;
 import gov.cms.madie.models.cqm.datacriteria.basetypes.TestCaseJson;
 import gov.cms.madie.models.measure.TestCase;
@@ -70,7 +71,11 @@ public class QdmTestCaseShiftDatesService {
                     TestCase shiftedTestCase = shiftDatesForTestCase(testCase, shifted);
                     TestCase updatedTestCase =
                         testCaseService.updateTestCase(
-                            shiftedTestCase, measureId, principal.getName(), accessToken);
+                            shiftedTestCase,
+                            measureId,
+                            principal.getName(),
+                            accessToken,
+                            ControllerUtil.SAVE_VALIDATION_QUEUE);
                     return updatedTestCase.getId();
                   } catch (CqmConversionException e) {
                     log.error(
@@ -152,7 +157,8 @@ public class QdmTestCaseShiftDatesService {
       try {
         TestCase shiftedTC = shiftDatesForTestCase(testCase, shifted);
         allTestCases.add(shiftedTC);
-        testCaseService.updateTestCase(shiftedTC, measureId, username, accessToken);
+        testCaseService.updateTestCase(
+            shiftedTC, measureId, username, accessToken, ControllerUtil.SAVE_VALIDATION_QUEUE);
       } catch (CqmConversionException ex) {
         testCaseFailures.append(ex.getMessage());
         allTestCases.add(testCase);
