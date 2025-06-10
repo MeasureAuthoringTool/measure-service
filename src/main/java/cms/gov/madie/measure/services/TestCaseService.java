@@ -426,6 +426,14 @@ public class TestCaseService {
     List<TestCase> copiedTestCases = new ArrayList<>(sourceTestCases.size());
 
     Measure targetMeasure = measureService.findMeasureById(targetMeasureId);
+
+    if (targetMeasure != null && !targetMeasure.getMeasureMetaData().isDraft()) {
+      sourceTestCases.stream()
+          .peek(sourceTestCase -> sourceTestCase.setCreatedBeforeVersioning(false))
+          .toList();
+      ;
+    }
+
     List<Group> targetGroups =
         TestCaseServiceUtil.getGroupsWithValidPopulations(targetMeasure.getGroups());
 
