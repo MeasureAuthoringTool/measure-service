@@ -105,8 +105,10 @@ public class ErrorHandlingControllerAdvice {
       errorMessage = "Model is required";
     }
     if (ex.getMessage()
-        .contains("known type ids = [Measure, QDM v5.6, QI-Core v4.1.1, QI-Core v6.0.0]")) {
-      errorMessage = "Model should be either QDM v5.6 or QI-Core v4.1.1 or QI-Core v6.0.0";
+        .contains(
+            "known type ids = [Measure, QDM v5.6, QI-Core v4.1.1, QI-Core v6.0.0, QI-Core v7.0.0]")) {
+      errorMessage =
+          "Model should be either QDM v5.6 or QI-Core v4.1.1 or QI-Core v6.0.0 or QI-Core v7.0.0";
     }
     if (StringUtils.isNotBlank(errorMessage)) {
       validationErrors.put("model", errorMessage);
