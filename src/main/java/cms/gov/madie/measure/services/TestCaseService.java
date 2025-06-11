@@ -427,13 +427,6 @@ public class TestCaseService {
 
     Measure targetMeasure = measureService.findMeasureById(targetMeasureId);
 
-    if (targetMeasure != null && !targetMeasure.getMeasureMetaData().isDraft()) {
-      sourceTestCases.stream()
-          .peek(sourceTestCase -> sourceTestCase.setCreatedBeforeVersioning(false))
-          .toList();
-      ;
-    }
-
     List<Group> targetGroups =
         TestCaseServiceUtil.getGroupsWithValidPopulations(targetMeasure.getGroups());
 
@@ -445,6 +438,10 @@ public class TestCaseService {
       // Only applies to QiCore
       if (!targetMeasure.getModel().equals(ModelType.QDM_5_6.getValue())) {
         dupTestCase.setJson(convertDateTimeToUTC(dupTestCase.getJson()));
+      }
+
+      if (targetMeasure != null && !targetMeasure.getMeasureMetaData().isDraft()) {
+        dupTestCase.setCreatedBeforeVersioning(false);
       }
 
       // Empty Test Case Group Populations match any Measure Pop Criteria.
