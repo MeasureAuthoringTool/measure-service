@@ -60,7 +60,7 @@ public class MeasureServiceApplication {
    * of threads will not be created until we have surpassed the QueueCapacity count.
    */
   @Bean
-  ThreadPoolTaskExecutor testCaseValidationExecutor() {
+  ThreadPoolTaskExecutor saveExecutor() {
     ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
 
     taskExecutor.setCorePoolSize(corePoolSize);
@@ -77,7 +77,7 @@ public class MeasureServiceApplication {
    * testCaseValidationExecutor for imported test cases
    */
   @Bean
-  ThreadPoolTaskExecutor testCaseValidationExecutorImport() {
+  ThreadPoolTaskExecutor importExecutor() {
     ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
 
     taskExecutor.setCorePoolSize(corePoolSize);

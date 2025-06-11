@@ -1063,7 +1063,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .build();
     List<TestCase> testCases = new ArrayList<>();
     testCases.add(originalTestCase);
-    Measure originalMeasure = measure.toBuilder().testCases(testCases).build();
+    Measure originalMeasure =
+        measure.toBuilder().model(ModelType.QDM_5_6.getValue()).testCases(testCases).build();
     when(measureService.findMeasureById(anyString())).thenReturn(originalMeasure);
 
     TestCase updatingTestCase =
@@ -1082,12 +1083,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase updatedTestCase =
-        testCaseService.updateTestCase(
-            updatingTestCase,
-            measure.getId(),
-            "test.user5",
-            "TOKEN",
-            ControllerUtil.SAVE_VALIDATION_QUEUE);
+        testCaseService.updateTestCase(updatingTestCase, measure.getId(), "test.user5", "TOKEN");
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =

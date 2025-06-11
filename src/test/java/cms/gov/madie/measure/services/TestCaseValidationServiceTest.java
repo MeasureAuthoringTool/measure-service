@@ -40,8 +40,8 @@ public class TestCaseValidationServiceTest {
   @Spy private ObjectMapper mapper;
   @Mock private FhirServicesClient fhirServicesClient;
   @Mock private MeasureRepository measureRepository;
-  @Mock private ThreadPoolTaskExecutor validationExecutor;
-  @Mock private ThreadPoolTaskExecutor testCaseValidationExecutorImport;
+  @Mock private ThreadPoolTaskExecutor saveExecutor;
+  @Mock private ThreadPoolTaskExecutor importExecutor;
 
   @InjectMocks private TestCaseValidationService testCaseValidationService;
 
@@ -471,11 +471,7 @@ public class TestCaseValidationServiceTest {
   public void testSubmitValidationTaskForImportSubmitsRunnable() {
     TestCaseValidationService service =
         new TestCaseValidationService(
-            validationExecutor,
-            testCaseValidationExecutorImport,
-            fhirServicesClient,
-            measureRepository,
-            mapper);
+            saveExecutor, importExecutor, fhirServicesClient, measureRepository, mapper);
     TestCase testCase = TestCase.builder().id("testCaseId").build();
     String measureId = "measureId";
     String accessToken = "token";
@@ -483,6 +479,6 @@ public class TestCaseValidationServiceTest {
 
     service.submitValidationTaskForImport(measureId, testCase, accessToken, modelType);
 
-    verify(testCaseValidationExecutorImport, times(1)).submit(any(Runnable.class));
+    verify(importExecutor, times(1)).submit(any(Runnable.class));
   }
 }

@@ -31,11 +31,11 @@ import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 @AllArgsConstructor
 public class TestCaseValidationService {
 
-  @Qualifier("testCaseValidationExecutor")
-  private final ThreadPoolTaskExecutor taskExecutor;
+  @Qualifier("saveExecutor")
+  private final ThreadPoolTaskExecutor saveExecutor;
 
-  @Qualifier("testCaseValidationExecutorImport")
-  private final ThreadPoolTaskExecutor testCaseValidationExecutorImport;
+  @Qualifier("importExecutor")
+  private final ThreadPoolTaskExecutor importExecutor;
 
   private final FhirServicesClient fhirServicesClient;
 
@@ -57,8 +57,8 @@ public class TestCaseValidationService {
         testCase.getId(),
         taskId,
         Instant.now(),
-        taskExecutor.getQueueSize());
-    taskExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
+        saveExecutor.getQueueSize());
+    saveExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
   }
 
   TestCase validate(
@@ -91,7 +91,7 @@ public class TestCaseValidationService {
           currentTestCase.getId(),
           taskId,
           Duration.between(startTime, stopTime),
-          taskExecutor.getQueueSize());
+          saveExecutor.getQueueSize());
       return currentTestCase;
     } catch (Exception e) {
       log.error(
@@ -217,8 +217,8 @@ public class TestCaseValidationService {
         testCase.getId(),
         taskId,
         Instant.now(),
-        testCaseValidationExecutorImport.getQueueSize());
-    testCaseValidationExecutorImport.submit(
+        importExecutor.getQueueSize());
+    importExecutor.submit(
         () -> {
           log.info("Submitting test case to validation import queue");
         });
