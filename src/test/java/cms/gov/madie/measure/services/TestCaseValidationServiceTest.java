@@ -122,10 +122,22 @@ public class TestCaseValidationServiceTest {
                         .build()))
             .build();
 
+    Measure validTestCaseMeasure =
+        measure.toBuilder()
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .testCaseValidationStatus(TestCaseValidationStatus.VALID)
+                        .hapiOperationOutcome(hapiValidOutcome.getBody())
+                        .build()))
+            .build();
+
     when(measureRepository.findAndUpdateValidationStatus(
             anyString(), anyString(), any(TestCaseValidationStatus.class)))
         .thenReturn(validingTestCaseMeasure);
-
+    when(measureRepository.findAndUpdateValidationResults(
+            anyString(), anyString(), any(HapiOperationOutcome.class)))
+        .thenReturn(validTestCaseMeasure);
     when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
         .thenReturn(hapiValidOutcome);
 
@@ -134,8 +146,7 @@ public class TestCaseValidationServiceTest {
             UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
 
     assertThat(
-        validatedTestCase.getTestCaseValidationStatus(),
-        equalTo(TestCaseValidationStatus.VALIDATING));
+        validatedTestCase.getTestCaseValidationStatus(), equalTo(TestCaseValidationStatus.VALID));
   }
 
   @Test
