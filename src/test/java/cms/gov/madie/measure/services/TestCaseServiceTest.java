@@ -2825,6 +2825,9 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void testCopyToAnotherMeasure() {
     // Set-up
+    MeasureMetaData metaData = MeasureMetaData.builder().draft(false).build();
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
     TestCase source =
         testCase.deepCopy().toBuilder()
             .json(testCaseImportWithMeasureReport)
@@ -2872,6 +2875,7 @@ public class TestCaseServiceTest implements ResourceUtil {
                                     .definition("def")
                                     .build()))
                         .build()))
+            .measureMetaData(metaData)
             .build();
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(targetMeasure));
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
@@ -2915,10 +2919,11 @@ public class TestCaseServiceTest implements ResourceUtil {
         is(
             (Boolean)
                 source.getGroupPopulations().get(0).getPopulationValues().get(0).getExpected()));
+
     assertThat(
         result.getCopiedTestCases().get(0).getJson(),
         containsString("2012-01-16T08:00:00.000+00:00"));
-
+    assertFalse(result.getCopiedTestCases().get(0).isCreatedBeforeVersioning());
     // Verify target measure now has a single Test Case
     assertThat(targetMeasure.getTestCases().size(), is(1));
   }
