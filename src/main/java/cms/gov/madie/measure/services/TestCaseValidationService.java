@@ -93,10 +93,6 @@ public class TestCaseValidationService {
               .stream()
               .filter((tc -> tc.getId().equals(submittedTestCase.getId())))
               .findFirst();
-      if (validatedTestCase.isEmpty()) {
-        measureRepository.findAndUpdateValidationStatus(
-            currentTestCase.getId(), measureId, TestCaseValidationStatus.NOT_COMPLETE);
-      }
       Instant stopTime = Instant.now();
       log.info(
           "TestCase Validation::completed::{}::{}::{}::{}",
@@ -111,6 +107,8 @@ public class TestCaseValidationService {
           "Error validating Test Case with Id {} from Measure {} ",
           submittedTestCase.getId(),
           measureId);
+      measureRepository.findAndUpdateValidationStatus(
+          currentTestCase.getId(), measureId, TestCaseValidationStatus.NOT_COMPLETE);
     }
     return submittedTestCase;
   }
