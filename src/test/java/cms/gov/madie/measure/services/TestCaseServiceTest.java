@@ -12,6 +12,7 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.SpecialCharacterException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.utils.ControllerUtil;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
 
@@ -496,7 +497,12 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     InOrder saveValidationOrder = inOrder(measureRepository, testCaseValidationService);
     TestCase output =
-        testCaseService.updateTestCase(testCase, measure.getId(), "test-user", accessToken);
+        testCaseService.updateTestCase(
+            testCase,
+            measure.getId(),
+            "test-user",
+            accessToken,
+            ControllerUtil.SAVE_VALIDATION_QUEUE);
     verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
     saveValidationOrder.verify(measureRepository).save(measure);
     saveValidationOrder
@@ -550,7 +556,12 @@ public class TestCaseServiceTest implements ResourceUtil {
                     .build());
 
     TestCase output =
-        testCaseService.updateTestCase(testCase, measure.getId(), "test-user", accessToken);
+        testCaseService.updateTestCase(
+            testCase,
+            measure.getId(),
+            "test-user",
+            accessToken,
+            ControllerUtil.SAVE_VALIDATION_QUEUE);
     assertNotNull(output);
     assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
     assertEquals("test-user", output.getCreatedBy());
@@ -865,7 +876,12 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase updatedTestCase =
-        testCaseService.updateTestCase(updatingTestCase, measure.getId(), "test.user5", "TOKEN");
+        testCaseService.updateTestCase(
+            updatingTestCase,
+            measure.getId(),
+            "test.user5",
+            "TOKEN",
+            ControllerUtil.SAVE_VALIDATION_QUEUE);
     assertNotNull(updatedTestCase);
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -929,7 +945,12 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase updatedTestCase =
-        testCaseService.updateTestCase(updatingTestCase, measure.getId(), "test.user5", "TOKEN");
+        testCaseService.updateTestCase(
+            updatingTestCase,
+            measure.getId(),
+            "test.user5",
+            "TOKEN",
+            ControllerUtil.SAVE_VALIDATION_QUEUE);
     assertNotNull(updatedTestCase);
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -983,7 +1004,12 @@ public class TestCaseServiceTest implements ResourceUtil {
         .when(measureRepository)
         .save(any(Measure.class));
     TestCase updatedTestCase =
-        testCaseService.updateTestCase(updatingTestCase, measure.getId(), "test.user5", "TOKEN");
+        testCaseService.updateTestCase(
+            updatingTestCase,
+            measure.getId(),
+            "test.user5",
+            "TOKEN",
+            ControllerUtil.SAVE_VALIDATION_QUEUE);
 
     assertNotNull(updatedTestCase);
 
@@ -1016,7 +1042,13 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(anyString())).thenReturn(null);
     assertThrows(
         ResourceNotFoundException.class,
-        () -> testCaseService.updateTestCase(testCase, measure.getId(), "test.user", "TOKEN"));
+        () ->
+            testCaseService.updateTestCase(
+                testCase,
+                measure.getId(),
+                "test.user",
+                "TOKEN",
+                ControllerUtil.SAVE_VALIDATION_QUEUE));
   }
 
   @Test
@@ -1031,7 +1063,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .build();
     List<TestCase> testCases = new ArrayList<>();
     testCases.add(originalTestCase);
-    Measure originalMeasure = measure.toBuilder().testCases(testCases).build();
+    Measure originalMeasure =
+        measure.toBuilder().model(ModelType.QDM_5_6.getValue()).testCases(testCases).build();
     when(measureService.findMeasureById(anyString())).thenReturn(originalMeasure);
 
     TestCase updatingTestCase =
@@ -1070,7 +1103,13 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     assertThrows(
         InvalidDraftStatusException.class,
-        () -> testCaseService.updateTestCase(testCase, measure.getId(), "test.user", "TOKEN"));
+        () ->
+            testCaseService.updateTestCase(
+                testCase,
+                measure.getId(),
+                "test.user",
+                "TOKEN",
+                ControllerUtil.SAVE_VALIDATION_QUEUE));
   }
 
   @Test
@@ -1094,7 +1133,12 @@ public class TestCaseServiceTest implements ResourceUtil {
             .build();
 
     TestCase updatedTestCase =
-        testCaseService.updateTestCase(upsertingTestCase, measure.getId(), "test.user5", "TOKEN");
+        testCaseService.updateTestCase(
+            upsertingTestCase,
+            measure.getId(),
+            "test.user5",
+            "TOKEN",
+            ControllerUtil.SAVE_VALIDATION_QUEUE);
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =
@@ -1134,7 +1178,12 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(anyString())).thenReturn(originalMeasure);
 
     TestCase updatedTestCase =
-        testCaseService.updateTestCase(upsertingTestCase, measure.getId(), "test.user5", "TOKEN");
+        testCaseService.updateTestCase(
+            upsertingTestCase,
+            measure.getId(),
+            "test.user5",
+            "TOKEN",
+            ControllerUtil.SAVE_VALIDATION_QUEUE);
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =
@@ -1177,7 +1226,12 @@ public class TestCaseServiceTest implements ResourceUtil {
             .build();
 
     TestCase updatedTestCase =
-        testCaseService.updateTestCase(upsertingTestCase, measure.getId(), "test.user5", "TOKEN");
+        testCaseService.updateTestCase(
+            upsertingTestCase,
+            measure.getId(),
+            "test.user5",
+            "TOKEN",
+            ControllerUtil.SAVE_VALIDATION_QUEUE);
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =
@@ -1510,7 +1564,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(updatedTestCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(testCase.getPatientId())
@@ -1543,7 +1597,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(updatedTestCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(testCase.getPatientId())
@@ -1579,7 +1633,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doThrow(new ResourceNotFoundException("Measure", measure.getId()))
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(testCase.getPatientId())
@@ -1607,7 +1661,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doThrow(new NullPointerException())
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(testCase.getPatientId())
@@ -1636,7 +1690,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doThrow(new DuplicateTestCaseNameException())
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(testCase.getPatientId())
@@ -1793,7 +1847,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
     doReturn(updatedTestCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(UUID.randomUUID())
@@ -1930,7 +1984,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
     doReturn(updatedTestCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(UUID.randomUUID())
@@ -1973,7 +2027,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(updatedTestCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(UUID.randomUUID())
@@ -2148,7 +2202,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(updatedTestCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(testCase.getPatientId())
@@ -2209,7 +2263,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(updatedTestCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(testCase.getPatientId())
@@ -2269,7 +2323,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(updatedTestCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .patientId(testCase.getPatientId())
@@ -2326,7 +2380,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(updatedTestCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
             .familyName("John")
@@ -2417,7 +2471,12 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase updatedTestCase =
-        testCaseService.updateTestCase(updatingTestCase, measure.getId(), "test.user5", "TOKEN");
+        testCaseService.updateTestCase(
+            updatingTestCase,
+            measure.getId(),
+            "test.user5",
+            "TOKEN",
+            ControllerUtil.SAVE_VALIDATION_QUEUE);
     assertNotNull(updatedTestCase);
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -3267,5 +3326,54 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(
         result.getCopiedTestCases().get(0).getJson(),
         containsString("2024-12-30T09:00:00.000+04:00"));
+  }
+
+  @Test
+  public void testValidateTestCaseAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
+        .thenReturn(true);
+    measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
+    TestCase testCase =
+        TestCase.builder()
+            .id("TestID")
+            .title("test-title")
+            .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
+            .build();
+    final String accessToken = "Bearer Token";
+
+    measure.toBuilder()
+        .model(ModelType.QI_CORE_6_0_0.getValue())
+        .testCases(List.of(testCase))
+        .build();
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
+
+    // Mocks a validation request awaiting execution.
+    when(testCaseValidationService.validateTestCaseAsynchronouslyForImport(
+            any(), any(TestCase.class), anyString()))
+        .thenAnswer(
+            invocation ->
+                invocation.getArgument(1, TestCase.class).toBuilder()
+                    .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
+                    .build());
+
+    InOrder saveValidationOrder = inOrder(measureRepository, testCaseValidationService);
+    TestCase output =
+        testCaseService.updateTestCase(
+            testCase,
+            measure.getId(),
+            "test-user",
+            accessToken,
+            ControllerUtil.IMPORT_VALIDATION_QUEUE);
+    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
+    saveValidationOrder.verify(measureRepository).save(measure);
+    saveValidationOrder
+        .verify(testCaseValidationService)
+        .validateTestCaseAsynchronouslyForImport(
+            measureArgumentCaptor.capture(), any(TestCase.class), eq(accessToken));
+    assertNotNull(output);
+    assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
   }
 }

@@ -187,7 +187,8 @@ public class TestCaseControllerTest {
 
     doReturn(testCase)
         .when(testCaseService)
-        .updateTestCase(any(TestCase.class), any(String.class), any(String.class), anyString());
+        .updateTestCase(
+            any(TestCase.class), any(String.class), any(String.class), anyString(), anyString());
 
     ResponseEntity<TestCase> response =
         controller.updateTestCase(testCase, measure.getId(), testCase.getId(), "TOKEN", principal);
@@ -198,7 +199,8 @@ public class TestCaseControllerTest {
 
     ArgumentCaptor<String> usernameCaptor = ArgumentCaptor.forClass(String.class);
     verify(testCaseService, times(1))
-        .updateTestCase(any(TestCase.class), anyString(), usernameCaptor.capture(), anyString());
+        .updateTestCase(
+            any(TestCase.class), anyString(), usernameCaptor.capture(), anyString(), anyString());
     assertEquals("test.user2", usernameCaptor.getValue());
   }
 
@@ -287,7 +289,8 @@ public class TestCaseControllerTest {
 
     doReturn(testCase)
         .when(testCaseService)
-        .updateTestCase(any(TestCase.class), any(String.class), any(String.class), anyString());
+        .updateTestCase(
+            any(TestCase.class), any(String.class), any(String.class), anyString(), anyString());
 
     testCase.setDescription("TESTCASEDESCRIPTION<script>alert('Wufff!')</script>");
 
@@ -300,7 +303,8 @@ public class TestCaseControllerTest {
 
     ArgumentCaptor<String> usernameCaptor = ArgumentCaptor.forClass(String.class);
     verify(testCaseService, times(1))
-        .updateTestCase(any(TestCase.class), anyString(), usernameCaptor.capture(), anyString());
+        .updateTestCase(
+            any(TestCase.class), anyString(), usernameCaptor.capture(), anyString(), anyString());
     assertEquals("test.user2", usernameCaptor.getValue());
   }
 
@@ -454,7 +458,7 @@ public class TestCaseControllerTest {
 
     doReturn(testCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
         .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString());
@@ -498,7 +502,7 @@ public class TestCaseControllerTest {
 
     doReturn(testCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     doReturn(List.of(testCase2))
         .when(testCaseService)
         .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString());
@@ -559,7 +563,7 @@ public class TestCaseControllerTest {
 
     doReturn(testCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
         .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString());
@@ -594,7 +598,7 @@ public class TestCaseControllerTest {
 
     doReturn(testCase)
         .when(testCaseService)
-        .updateTestCase(any(), anyString(), anyString(), anyString());
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     doReturn(List.of(testCase))
         .when(testCaseService)
         .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString());

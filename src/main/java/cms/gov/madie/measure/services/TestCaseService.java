@@ -8,6 +8,7 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
+import cms.gov.madie.measure.utils.ControllerUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
@@ -238,12 +239,28 @@ public class TestCaseService {
     return validatedTestCases;
   }
 
+  // updateTestCase for QDM
   public TestCase updateTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
+    Measure measure = getAndCheckMeasure(measureId);
+
+    handleTestCasesForUpdate(testCase, measureId, username, measure);
+
+    return validateAndSave(testCase, measure, username, accessToken);
+  }
+
+  // common method 1 for two overloading updateTestCase() method
+  private Measure getAndCheckMeasure(String measureId) {
     Measure measure = measureService.findMeasureById(measureId);
     if (measure == null) {
       throw new ResourceNotFoundException("Measure", measureId);
     }
+    return measure;
+  }
+
+  // common method 2 for two overloading updateTestCase() method
+  private void handleTestCasesForUpdate(
+      TestCase testCase, String measureId, String username, Measure measure) {
     TestCaseServiceUtil.checkIfEditable(
         appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
         measure.getMeasureMetaData().isDraft(),
@@ -276,6 +293,32 @@ public class TestCaseService {
         testCase.setPatientId(UUID.randomUUID());
       }
     }
+  }
+
+  // common method 3 for two overloading updateTestCase() method
+  private TestCase validateAndSave(
+      TestCase testCase, Measure measure, String username, String accessToken) {
+    TestCase validatedTestCase =
+        testCaseValidationService.validateTestCaseAsResource(
+            testCase, ModelType.valueOfName(measure.getModel()), accessToken);
+    measure.getTestCases().add(validatedTestCase);
+
+    measureRepository.save(measure);
+    log.info(
+        "User [{}] successfully updated the test case with ID [{}] for the measure with ID[{}] ",
+        username,
+        testCase.getId(),
+        measure.getId());
+    return validatedTestCase;
+  }
+
+  // overloading method
+  public TestCase updateTestCase(
+      TestCase testCase, String measureId, String username, String accessToken, String queueType) {
+    Measure measure = getAndCheckMeasure(measureId);
+
+    handleTestCasesForUpdate(testCase, measureId, username, measure);
+
     boolean isQiCoreModel =
         ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())
             || ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel());
@@ -287,33 +330,26 @@ public class TestCaseService {
       testCase.setJson(JsonUtil.updateResourceFullUrls(testCase, madieJsonResourcesBaseUri));
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
-    }
-    if (isQiCoreModel
-        && hasJson
-        && appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
-      measure.getTestCases().add(testCase);
-      measureRepository.save(measure);
-      log.info(
-          "User [{}] successfully updated the test case with ID [{}] for the measure with ID[{}] ",
-          username,
-          testCase.getId(),
-          measureId);
-      return testCaseValidationService.validateResourceAsynchronously(
-          measure, testCase, accessToken);
+
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
+        measure.getTestCases().add(testCase);
+        measureRepository.save(measure);
+        log.info(
+            "User [{}] successfully updated the test case with ID [{}] for the measure with ID[{}] ",
+            username,
+            testCase.getId(),
+            measureId);
+        if (ControllerUtil.SAVE_VALIDATION_QUEUE.equals(queueType)) {
+          return testCaseValidationService.validateResourceAsynchronously(
+              measure, testCase, accessToken);
+        } else {
+          return testCaseValidationService.validateTestCaseAsynchronouslyForImport(
+              measure, testCase, accessToken);
+        }
+      }
     }
 
-    TestCase validatedTestCase =
-        testCaseValidationService.validateTestCaseAsResource(
-            testCase, ModelType.valueOfName(measure.getModel()), accessToken);
-    measure.getTestCases().add(validatedTestCase);
-
-    measureRepository.save(measure);
-    log.info(
-        "User [{}] successfully updated the test case with ID [{}] for the measure with ID[{}] ",
-        username,
-        testCase.getId(),
-        measureId);
-    return validatedTestCase;
+    return validateAndSave(testCase, measure, username, accessToken);
   }
 
   public TestCase getTestCase(
@@ -712,7 +748,13 @@ public class TestCaseService {
       existingTestCase.setDescription(
           getDescription(model, testCaseImportRequest.getJson(), testCaseImportRequest));
       existingTestCase.setJson(getJson(model, testCaseImportRequest.getJson()));
-      TestCase updatedTestCase = updateTestCase(existingTestCase, measureId, userName, accessToken);
+      TestCase updatedTestCase =
+          updateTestCase(
+              existingTestCase,
+              measureId,
+              userName,
+              accessToken,
+              ControllerUtil.IMPORT_VALIDATION_QUEUE);
       log.info(
           "User {} successfully imported test case with patient id : {}",
           userName,

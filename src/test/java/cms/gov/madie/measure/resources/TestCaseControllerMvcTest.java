@@ -312,7 +312,7 @@ public class TestCaseControllerMvcTest {
     testCase.setDescription(modifiedDescription);
     testCase.setJson("{\"new\":\"json\"}");
     when(testCaseService.updateTestCase(
-            any(TestCase.class), any(String.class), any(String.class), anyString()))
+            any(TestCase.class), any(String.class), any(String.class), anyString(), anyString()))
         .thenReturn(testCase);
 
     mockMvc
@@ -351,6 +351,7 @@ public class TestCaseControllerMvcTest {
             testCaseCaptor.capture(),
             measureIdCaptor.capture(),
             usernameCaptor.capture(),
+            anyString(),
             anyString());
     assertEquals("1234", measureIdCaptor.getValue());
     assertEquals("TESTID", testCaseCaptor.getValue().getId());
@@ -796,7 +797,7 @@ public class TestCaseControllerMvcTest {
     testCase.setDescription(modifiedDescription);
     testCase.setJson("{\"new\":\"json\"}");
     when(testCaseService.updateTestCase(
-            any(TestCase.class), any(String.class), any(String.class), anyString()))
+            any(TestCase.class), any(String.class), any(String.class), anyString(), anyString()))
         .thenReturn(testCase);
 
     mockMvc
@@ -830,7 +831,7 @@ public class TestCaseControllerMvcTest {
                 .with(csrf()))
         .andExpect(status().isBadRequest());
     verify(testCaseService, never())
-        .updateTestCase(any(TestCase.class), anyString(), anyString(), anyString());
+        .updateTestCase(any(TestCase.class), anyString(), anyString(), anyString(), anyString());
   }
 
   @Test
