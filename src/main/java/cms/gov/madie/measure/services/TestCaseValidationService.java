@@ -231,7 +231,7 @@ public class TestCaseValidationService {
         importExecutor.getQueueSize());
     importExecutor.submit(
         () -> {
-          log.info("Submitting test case to validation import queue");
+          validate(taskId, measureId, testCase, modelType, accessToken);
         });
   }
 }
