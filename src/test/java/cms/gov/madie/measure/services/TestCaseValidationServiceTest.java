@@ -496,7 +496,7 @@ public class TestCaseValidationServiceTest {
   @Test
   public void testSubmitValidationTaskForImportRunnableCallsValidate() {
     TestCaseValidationService spyService =
-        Mockito.spy(
+        spy(
             new TestCaseValidationService(
                 saveExecutor, importExecutor, fhirServicesClient, measureRepository, mapper));
     TestCase testCase = TestCase.builder().id("testCaseId").build();
