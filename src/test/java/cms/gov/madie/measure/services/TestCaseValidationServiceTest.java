@@ -492,4 +492,42 @@ public class TestCaseValidationServiceTest {
 
     verify(importExecutor, times(1)).submit(any(Runnable.class));
   }
+
+  @Test
+  public void testSubmitValidationTaskForImportRunnableCallsValidate() {
+    TestCaseValidationService spyService =
+        spy(
+            new TestCaseValidationService(
+                saveExecutor, importExecutor, fhirServicesClient, measureRepository, mapper));
+    TestCase testCase = TestCase.builder().id("testCaseId").build();
+    String measureId = "measureId";
+    String accessToken = "token";
+    ModelType modelType = ModelType.QI_CORE_6_0_0;
+
+    Measure validingTestCaseMeasure =
+        measure.toBuilder()
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .testCaseValidationStatus(TestCaseValidationStatus.VALIDATING)
+                        .build()))
+            .build();
+
+    when(measureRepository.findAndUpdateValidationStatus(
+            anyString(), anyString(), any(TestCaseValidationStatus.class)))
+        .thenReturn(validingTestCaseMeasure);
+
+    ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
+
+    spyService.submitValidationTaskForImport(measureId, testCase, accessToken, modelType);
+
+    verify(importExecutor).submit(runnableCaptor.capture());
+    Runnable submittedRunnable = runnableCaptor.getValue();
+
+    // Run the captured Runnable
+    submittedRunnable.run();
+
+    verify(spyService, times(1))
+        .validate(any(UUID.class), eq(measureId), eq(testCase), eq(modelType), eq(accessToken));
+  }
 }
