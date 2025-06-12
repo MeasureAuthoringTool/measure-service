@@ -326,6 +326,7 @@ public class VersionService {
               } else {
                 testCase.setJson(convertDateTimeToUTC(testCase.getJson()));
               }
+              // TODO Move this validation to after persistence and run asynchronously
               HapiOperationOutcome hapiOperationOutcome =
                   fhirServicesClient
                       .validateBundle(

@@ -60,13 +60,28 @@ public class MeasureServiceApplication {
    * of threads will not be created until we have surpassed the QueueCapacity count.
    */
   @Bean
-  ThreadPoolTaskExecutor testCaseValidationExecutor() {
+  ThreadPoolTaskExecutor saveExecutor() {
     ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
 
     taskExecutor.setCorePoolSize(corePoolSize);
     taskExecutor.setMaxPoolSize(maxPoolSize);
     // Any positive value of QueueCapacity will lead to a LinkedBlockingQueue instance;
     // any other value will lead to a SynchronousQueue instance.
+    taskExecutor.setQueueCapacity(queueCapacity);
+    taskExecutor.setAwaitTerminationSeconds(shutdownWaitSeconds);
+    taskExecutor.setWaitForTasksToCompleteOnShutdown(true);
+    return taskExecutor;
+  }
+
+  /*
+   * testCaseValidationExecutor for imported test cases
+   */
+  @Bean
+  ThreadPoolTaskExecutor importExecutor() {
+    ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+
+    taskExecutor.setCorePoolSize(corePoolSize);
+    taskExecutor.setMaxPoolSize(maxPoolSize);
     taskExecutor.setQueueCapacity(queueCapacity);
     taskExecutor.setAwaitTerminationSeconds(shutdownWaitSeconds);
     taskExecutor.setWaitForTasksToCompleteOnShutdown(true);
