@@ -124,6 +124,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
         .thenReturn(true);
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     Optional<Measure> optional = Optional.of(measure);
     Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
 
@@ -155,6 +156,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertEquals(
         UUID.fromString(capturedTestCase.getPatientId().toString()).toString(),
         capturedTestCase.getPatientId().toString());
+    assertFalse(capturedTestCase.isCreatedBeforeVersioning());
     assertNotNull(persistTestCase.getPatientId());
 
     verify(actionLogService, times(1))
@@ -702,6 +704,9 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCasesHandlesListToMeasureWithJson() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
+
     List<TestCase> newTestCases =
         List.of(
             TestCase.builder()
@@ -715,6 +720,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     String measureId = measure.getId();
     String username = "user01";
     String accessToken = "Bearer Token";
+
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
+
     when(measureRepository.findById(eq(measureId))).thenReturn(Optional.of(measure));
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -747,6 +755,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(output.get(0).getResourceUri(), is(nullValue()));
     assertThat(output.get(0).getHapiOperationOutcome(), is(notNullValue()));
     assertThat(output.get(0).getHapiOperationOutcome().getCode(), is(equalTo(200)));
+    assertThat(output.get(0).isCreatedBeforeVersioning(), is(false));
     assertThat(output.get(0).isValidResource(), is(true));
     assertThat(output.get(1).getId(), is(notNullValue()));
     assertThat(output.get(1).getCreatedAt(), is(notNullValue()));
@@ -757,6 +766,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(output.get(1).getHapiOperationOutcome(), is(notNullValue()));
     assertThat(output.get(1).getHapiOperationOutcome().getCode(), is(equalTo(400)));
     assertThat(output.get(1).isValidResource(), is(false));
+    assertThat(output.get(1).isCreatedBeforeVersioning(), is(false));
 
     verify(testCaseValidationService, times(2))
         .validateTestCaseAsResource(any(TestCase.class), any(ModelType.class), anyString());
