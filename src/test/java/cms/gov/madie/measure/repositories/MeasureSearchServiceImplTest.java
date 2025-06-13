@@ -277,13 +277,14 @@ public class MeasureSearchServiceImplTest {
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetIdDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
 
-    when(mongoTemplate.aggregate(any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+    when(mongoTemplate.aggregate(
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
             .searchField("test-measure-name")

@@ -27,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.Cond.when;
 
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
@@ -211,7 +212,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     Aggregation pipeline;
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)) {
-      // Get all measureSetIds upfront based on the requested criteria
+      // Find all the measures that matches the given Criteria and fetch unique measureSetIds
       List<String> matchedMeasureSetIds =
           mongoTemplate
               .aggregate(
@@ -224,30 +225,25 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               .map(MeasureSetIdDTO::getId)
               .collect(Collectors.toList());
 
+      // Fetch all measures associated to each measureSetId
       MatchOperation matchMeasureSetIds =
           match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
 
+      // Sort those measures based on version and draft status
       SortOperation sortByVersionAndDraft =
           sort(Sort.by(Sort.Direction.DESC, "measureMetaData.draft", "version"));
-      GroupOperation groupByMeasureSet = group("measureSetId").first("$$ROOT").as("selectedDoc");
 
-      // Lookup associated measures from the same set
-      LookupOperation lookupAssociatedMeasures =
-          LookupOperation.newLookup()
-              .from("measure")
-              .localField("selectedDoc.measureSetId")
-              .foreignField("measureSetId")
-              .as("associatedMeasures");
+      // Group all measures that has same measureSetId and get the count and also first document
+      // which will be the latest measure in the MeasureSet
+      GroupOperation groupByMeasureSet =
+          group("measureSetId").count().as("count").first("$$ROOT").as("selectedDoc");
 
-      // Set hasAssociatedMeasures = true if more than one measure found in the set
+      // Set hasAssociatedMeasures = true if more than one measure found in the MeasureSet
       AddFieldsOperation addHasAssociated =
           addFields()
               .addField("selectedDoc.hasAssociatedMeasures")
               .withValueOf(
-                  ConditionalOperators.when(
-                          ComparisonOperators.Gt.valueOf(
-                                  ArrayOperators.Size.lengthOfArray("associatedMeasures"))
-                              .greaterThanValue(1))
+                  when(ComparisonOperators.Gt.valueOf("count").greaterThanValue(1))
                       .then(true)
                       .otherwise(false))
               .build();
@@ -260,7 +256,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               matchMeasureSetIds,
               sortByVersionAndDraft,
               groupByMeasureSet,
-              lookupAssociatedMeasures,
               addHasAssociated,
               replaceRootOperation,
               sort(Sort.by(Sort.Direction.DESC, "lastModifiedAt")),
