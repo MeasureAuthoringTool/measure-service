@@ -124,6 +124,10 @@ public class TestCaseService {
         testCaseValidationService.validateTestCaseAsResource(
             enrichedTestCase, ModelType.valueOfName(measure.getModel()), accessToken);
 
+    if (enrichedTestCase != null && !measure.getMeasureMetaData().isDraft()) {
+      enrichedTestCase.setCreatedBeforeVersioning(false);
+    }
+
     if (measure.getTestCases() == null) {
       measure.setTestCases(List.of(enrichedTestCase));
     } else {
@@ -160,6 +164,9 @@ public class TestCaseService {
       enriched =
           testCaseValidationService.validateTestCaseAsResource(
               enriched, ModelType.valueOfName(measure.getModel()), accessToken);
+      if (enriched != null && !measure.getMeasureMetaData().isDraft()) {
+        enriched.setCreatedBeforeVersioning(false);
+      }
       enrichedTestCases.add(enriched);
       actionLogService.logAction(enriched.getId(), TestCase.class, ActionType.IMPORTED, username);
     }
