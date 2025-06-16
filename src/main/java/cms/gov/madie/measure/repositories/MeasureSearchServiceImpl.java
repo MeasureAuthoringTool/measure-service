@@ -1,9 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
-import cms.gov.madie.measure.dto.FacetDTO;
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
-import cms.gov.madie.measure.dto.MeasureListDTO;
-import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.Version;
@@ -26,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
@@ -142,7 +140,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     UnwindOperation unwindOperation = unwind("measureSet");
     Criteria measureCriteria = Criteria.where("active").is(true);
     if (measureSearchCriteria != null) {
-      // If query is given, search for the query string in measureName and ecqmTitle
+      // If searchField is given and no filter is applied, then search for the searchField in
+      // measureName and ecqmTitle
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
           && CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
         String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
@@ -163,7 +162,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           measureCriteria.andOperator(wordCriteria);
         }
       }
-      // optional query provided
+      // if searchField and optional filters are provided, then search for searchField only in the
+      // provided filters
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
           && CollectionUtils.isNotEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
         appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
@@ -210,15 +210,36 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                 project(MeasureListDTO.class))
             .as("queryResults");
 
-    Aggregation pipeline = null;
+    Aggregation pipeline;
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)) {
-      SortOperation sortOperation =
+      // Find all the measures that matches the given Criteria and fetch unique measureSetIds
+      List<String> matchedMeasureSetIds =
+          mongoTemplate
+              .aggregate(
+                  newAggregation(
+                      lookupOperation, unwindOperation, matchOperation, group("measureSetId")),
+                  Measure.class,
+                  MeasureSetIdDTO.class)
+              .getMappedResults()
+              .stream()
+              .map(MeasureSetIdDTO::getId)
+              .collect(Collectors.toList());
+
+      // Fetch all measures associated to each measureSetId
+      MatchOperation matchMeasureSetIds =
+          match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
+
+      // Sort those measures based on version and draft status
+      SortOperation sortByVersionAndDraft =
           sort(Sort.by(Sort.Direction.DESC, "measureMetaData.draft", "version"));
 
-      GroupOperation groupOperation =
+      // Group all measures that has same measureSetId and get the count and also first document
+      // which will be the latest measure in the MeasureSet
+      GroupOperation groupByMeasureSet =
           group("measureSetId").count().as("count").first("$$ROOT").as("selectedDoc");
 
-      AddFieldsOperation addFieldsOperation =
+      // Set hasAssociatedMeasures = true if more than one measure found in the MeasureSet
+      AddFieldsOperation addHasAssociated =
           addFields()
               .addField("selectedDoc.hasAssociatedMeasures")
               .withValueOf(
@@ -226,20 +247,19 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                       .then(true)
                       .otherwise(false))
               .build();
-
       ReplaceRootOperation replaceRootOperation = replaceRoot("selectedDoc");
 
       pipeline =
           newAggregation(
               lookupOperation,
               unwindOperation,
-              matchOperation,
-              sortOperation,
-              project(MeasureListDTO.class),
-              groupOperation,
-              addFieldsOperation,
+              matchMeasureSetIds,
+              sortByVersionAndDraft,
+              groupByMeasureSet,
+              addHasAssociated,
               replaceRootOperation,
               sort(Sort.by(Sort.Direction.DESC, "lastModifiedAt")),
+              skip(pageable.getOffset()),
               facets);
 
     } else {

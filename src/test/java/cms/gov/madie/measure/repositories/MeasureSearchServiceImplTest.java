@@ -1,18 +1,17 @@
 package cms.gov.madie.measure.repositories;
 
-import cms.gov.madie.measure.dto.FacetDTO;
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
-import cms.gov.madie.measure.dto.MeasureListDTO;
-import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.measure.Measure;
 import org.bson.Document;
 
 import org.junit.jupiter.api.BeforeEach;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -60,8 +59,8 @@ public class MeasureSearchServiceImplTest {
             .model(ModelType.QDM_5_6.getValue())
             .measureSetId("3-3")
             .build();
-    measure4 = MeasureListDTO.builder().id("4").measureSetId("4-4").build();
-    measure5 = MeasureListDTO.builder().id("5").measureSetId("5-5").build();
+    measure4 = MeasureListDTO.builder().id("4").measureSetId("1-1").build();
+    measure5 = MeasureListDTO.builder().id("5").measureSetId("1-1").build();
   }
 
   @Test
@@ -269,22 +268,33 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  public void testFindMyActiveMeasuresWithSearchFieldFilteredByMeasureName() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+  public void testFindMyActiveMeasuresWithSearchFieldFilteredByMeasureNameAndFeatureFlagIsOn() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
+
+    MeasureSetIdDTO dto1 = new MeasureSetIdDTO("set1");
+    MeasureSetIdDTO dto2 = new MeasureSetIdDTO("set2");
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetIdDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
-    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
-    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
-        .thenReturn(pagedResults);
+
+    when(mongoTemplate.aggregate(
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
             .searchField("test-measure-name")
             .optionalSearchProperties(List.of("measure"))
             .build();
+
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
             "john", pageRequest, measureSearchCriteria, true);
+
     assertEquals(page.getTotalElements(), 1);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 1);
