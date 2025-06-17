@@ -8,7 +8,6 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
-import cms.gov.madie.measure.utils.ControllerUtil;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
@@ -346,13 +345,8 @@ public class TestCaseService {
             username,
             testCase.getId(),
             measureId);
-        if (ControllerUtil.SAVE_VALIDATION_QUEUE.equals(queueType)) {
-          return testCaseValidationService.validateResourceAsynchronously(
-              measure, testCase, accessToken);
-        } else {
-          return testCaseValidationService.validateTestCaseAsynchronouslyForImport(
-              measure, testCase, accessToken);
-        }
+        return testCaseValidationService.validateResourceAsynchronously(
+            measure, testCase, queueType, accessToken);
       }
     }
 
@@ -761,7 +755,7 @@ public class TestCaseService {
               measureId,
               userName,
               accessToken,
-              ControllerUtil.IMPORT_VALIDATION_QUEUE);
+              TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE);
       log.info(
           "User {} successfully imported test case with patient id : {}",
           userName,

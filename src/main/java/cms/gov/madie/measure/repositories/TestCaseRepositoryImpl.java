@@ -3,11 +3,14 @@ package cms.gov.madie.measure.repositories;
 import gov.cms.madie.models.measure.HapiOperationOutcome;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCaseValidationStatus;
+import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
+
+import java.util.UUID;
 
 @Repository
 public class TestCaseRepositoryImpl implements TestCaseRepository {
@@ -18,31 +21,93 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
   }
 
   @Override
+  public Measure setValidationStatusToPending(String testCaseId, String measureId) {
+    Query query = new Query();
+    query.addCriteria(
+        Criteria.where("_id")
+            .is(measureId)
+            .and("testCases._id")
+            .is(testCaseId)
+            .and("testCases.testCaseValidationStatus")
+            .ne(TestCaseValidationStatus.PENDING.toString()));
+
+    Update update = new Update();
+    update.set("testCases.$.testCaseValidationStatus", TestCaseValidationStatus.PENDING.toString());
+
+    return mongoOperations.findAndModify(
+        query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
+  }
+
+  @Override
+  public Measure setValidationStatusToValidating(String testCaseId, String measureId, UUID taskId) {
+    Query query = new Query();
+    query.addCriteria(Criteria.where("_id").is(measureId).and("testCases._id").is(testCaseId));
+    query.addCriteria(
+        Criteria.where("testCases.testCaseValidationStatus")
+            .is(TestCaseValidationStatus.PENDING.toString()));
+    Update update = new Update();
+    update.set(
+        "testCases.$.testCaseValidationStatus", TestCaseValidationStatus.VALIDATING.toString());
+    // Save taskId to indicate request is processing.
+    update.set("testCases.$.taskId", taskId.toString());
+
+    return mongoOperations.findAndModify(
+        query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
+  }
+
+  @Override
   public Measure findAndUpdateValidationStatus(
       String testCaseId, String measureId, TestCaseValidationStatus status) {
+    return findAndUpdateValidationStatus(testCaseId, measureId, null, status);
+  }
+
+  @Override
+  public Measure findAndUpdateValidationStatus(
+      String testCaseId, String measureId, UUID taskId, TestCaseValidationStatus status) {
     Query query = new Query();
     query.addCriteria(Criteria.where("_id").is(measureId).and("testCases._id").is(testCaseId));
 
-    Update update = new Update();
-    update.set("testCases.$.testCaseValidationStatus", status);
+    // New validation request, skip if the test case is already PENDING.
+    if (taskId == null) {
+      query.addCriteria(
+          Criteria.where("testCases.testCaseValidationStatus")
+              .ne(TestCaseValidationStatus.PENDING.toString()));
+    }
 
-    return mongoOperations.findAndModify(query, update, Measure.class);
+    Update update = new Update();
+    update.set("testCases.$.testCaseValidationStatus", status.toString());
+    // Save taskId to indicate request is processing.
+    if (taskId != null) {
+      update.set("testCases.$.taskId", taskId.toString());
+    }
+
+    return mongoOperations.findAndModify(
+        query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
   }
 
   @Override
   public Measure findAndUpdateValidationResults(
-      String testCaseId, String measureId, HapiOperationOutcome validationResults) {
+      String testCaseId, String measureId, UUID taskId, HapiOperationOutcome validationResults) {
     Query query = new Query();
-    query.addCriteria(Criteria.where("_id").is(measureId).and("testCases._id").is(testCaseId));
+    query.addCriteria(
+        Criteria.where("_id")
+            .is(measureId)
+            .and("testCases._id")
+            .is(testCaseId)
+            .and("testCases.testCaseValidationStatus")
+            .is(TestCaseValidationStatus.VALIDATING.toString())
+            .and("testCases.taskId")
+            .is(taskId.toString()));
 
     Update update = new Update();
     update.set(
         "testCases.$.testCaseValidationStatus",
         validationResults.isSuccessful()
-            ? TestCaseValidationStatus.VALID
-            : TestCaseValidationStatus.INVALID);
+            ? TestCaseValidationStatus.VALID.toString()
+            : TestCaseValidationStatus.INVALID.toString());
     update.set("testCases.$.hapiOperationOutcome", validationResults);
 
-    return mongoOperations.findAndModify(query, update, Measure.class);
+    return mongoOperations.findAndModify(
+        query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
   }
 }

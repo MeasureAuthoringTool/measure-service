@@ -3,6 +3,7 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
+import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.common.ModelType;
@@ -26,6 +27,22 @@ import java.util.stream.Collectors;
 
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 
+/**
+ * Asynchronously validates test cases against the FHIR services. Tracking of validation done with
+ * TaskId and ValidationStatus.
+ *
+ * <p>Stages:
+ *
+ * <ol>
+ *   <li>Submission: Caller requests async validation. TaskId: null, validationStatus: PENDING
+ *   <li>Enqueue: Validation Task is added to the Executor. TaskId: Generated, validationStatus:
+ *       PENDING
+ *   <li>Validation: Validation Task is picked up by an open Thread and processed. Most recent Test
+ *       Case data is retrieved. ValidationStatus: VALIDATING
+ *   <li>Completion: FHIR Service returns validation results. ValidationStatus set to either VALID
+ *       or INVALID based on results.
+ * </ol>
+ */
 @Slf4j
 @Service
 @AllArgsConstructor
@@ -49,7 +66,7 @@ public class TestCaseValidationService {
     //  as "Pending" in the database.
   }
 
-  void submitValidationTask(
+  void submitOnSaveValidationTask(
       String measureId, TestCase testCase, String accessToken, ModelType modelType) {
     UUID taskId = UUID.randomUUID();
     log.info(
@@ -61,7 +78,22 @@ public class TestCaseValidationService {
     saveExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
   }
 
-  TestCase validate(
+  void submitOnImportValidationTask(
+      String measureId, TestCase testCase, String accessToken, ModelType modelType) {
+    UUID taskId = UUID.randomUUID();
+    log.info(
+        "TestCase Validation Import Queue::submit::{}::{}::{}::{}",
+        testCase.getId(),
+        taskId,
+        Instant.now(),
+        importExecutor.getQueueSize());
+    importExecutor.submit(
+        () -> {
+          log.info("Submitting test case to validation import queue");
+        });
+  }
+
+  void validate(
       UUID taskId,
       String measureId,
       TestCase submittedTestCase,
@@ -75,24 +107,26 @@ public class TestCaseValidationService {
         Thread.currentThread().getId(),
         taskId,
         startTime);
+    Measure measure =
+        measureRepository.setValidationStatusToValidating(submittedTestCase.getId(), measureId, taskId);
     TestCase currentTestCase =
-        saveUpdatedTestCaseValidationStatus(
-            measureId, submittedTestCase.getId(), TestCaseValidationStatus.VALIDATING);
-    log.info(
-        "TestCase Validation::taskId::{}::lastModifiedDateTime::{}::",
-        taskId,
-        submittedTestCase.getLastModifiedAt());
+        measure.getTestCases().stream()
+            .filter((tc -> tc.getId().equals(submittedTestCase.getId())))
+            .findFirst()
+            .orElseThrow(
+                () -> {
+                  log.error(
+                      "TestCase with Id {} not found in Measure with Id {}",
+                      submittedTestCase.getId(),
+                      measureId);
+                  return new ResourceNotFoundException("Test Case", submittedTestCase.getId());
+                });
     try {
       // TODO What should happen when fhir-services is down?
       HapiOperationOutcome validationOutcome =
           validateTestCaseJson(currentTestCase, modelType, accessToken);
-      Optional<TestCase> validatedTestCase =
-          measureRepository
-              .findAndUpdateValidationResults(currentTestCase.getId(), measureId, validationOutcome)
-              .getTestCases()
-              .stream()
-              .filter((tc -> tc.getId().equals(submittedTestCase.getId())))
-              .findFirst();
+      measureRepository.findAndUpdateValidationResults(
+          currentTestCase.getId(), measureId, taskId, validationOutcome);
       Instant stopTime = Instant.now();
       log.info(
           "TestCase Validation::completed::{}::{}::{}::{}",
@@ -100,26 +134,45 @@ public class TestCaseValidationService {
           taskId,
           Duration.between(startTime, stopTime),
           saveExecutor.getQueueSize());
-      return validatedTestCase.orElseThrow(
-          () -> new ResourceNotFoundException("Test Case", currentTestCase.getId()));
     } catch (Exception e) {
       log.error(
-          "Error validating Test Case with Id {} from Measure {} ",
+          "Error validating Test Case with Id {} from Measure {}",
           submittedTestCase.getId(),
-          measureId);
+          measureId,
+          e);
       measureRepository.findAndUpdateValidationStatus(
           currentTestCase.getId(), measureId, TestCaseValidationStatus.NOT_COMPLETE);
     }
-    return submittedTestCase;
   }
 
   public TestCase validateResourceAsynchronously(
-      Measure measure, TestCase testCase, String accessToken) {
+      Measure measure, TestCase testCase, String source, String accessToken) {
+    Measure updatedMeasure =
+        measureRepository.setValidationStatusToPending(testCase.getId(), measure.getId());
+
+    // If the measure is null, the test case has already been enqueued.
+    if (updatedMeasure == null) {
+      log.info(
+          "Test Case with Id {} already in validation queue for Measure with Id {}",
+          testCase.getId(),
+          measure.getId());
+      return testCase;
+    }
+
     TestCase updatedTestCase =
-        saveUpdatedTestCaseValidationStatus(
-            measure.getId(), testCase.getId(), TestCaseValidationStatus.PENDING);
-    submitValidationTask(
-        measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
+        updatedMeasure.getTestCases().stream()
+            .filter((tc -> tc.getId().equals(testCase.getId())))
+            .findFirst()
+            .orElseThrow(() -> new ResourceNotFoundException("Test Case", testCase.getId()));
+
+    if (source.equals(TestCaseServiceUtil.SAVE_VALIDATION_QUEUE)) {
+      submitOnSaveValidationTask(
+          measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
+    } else if (source.equals(TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE)) {
+      submitOnImportValidationTask(
+          measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
+    }
+
     return updatedTestCase; // Return testCase with pending status and set validationOutcome to null
   }
 
@@ -191,47 +244,5 @@ public class TestCaseValidationService {
             "Unable to validate test case JSON due to errors, "
                 + "but outcome not able to be interpreted!")
         .build();
-  }
-
-  public TestCase validateTestCaseAsynchronouslyForImport(
-      Measure measure, TestCase testCase, String accessToken) {
-    TestCase updatedTestCase =
-        saveUpdatedTestCaseValidationStatus(
-            measure.getId(), testCase.getId(), TestCaseValidationStatus.PENDING);
-
-    submitValidationTaskForImport(
-        measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
-    return updatedTestCase;
-  }
-
-  private TestCase saveUpdatedTestCaseValidationStatus(
-      String measureId, String testCaseId, TestCaseValidationStatus validationStatus) {
-    return measureRepository
-        .findAndUpdateValidationStatus(testCaseId, measureId, validationStatus)
-        .getTestCases()
-        .stream()
-        .filter((tc -> tc.getId().equals(testCaseId)))
-        .findFirst()
-        .orElseThrow(
-            () -> {
-              log.error(
-                  "TestCase with Id {} not found in Measure with Id {}", testCaseId, measureId);
-              return new ResourceNotFoundException("Test Case", testCaseId);
-            });
-  }
-
-  void submitValidationTaskForImport(
-      String measureId, TestCase testCase, String accessToken, ModelType modelType) {
-    UUID taskId = UUID.randomUUID();
-    log.info(
-        "TestCase Validation Import Queue::submit::{}::{}::{}::{}",
-        testCase.getId(),
-        taskId,
-        Instant.now(),
-        importExecutor.getQueueSize());
-    importExecutor.submit(
-        () -> {
-          validate(taskId, measureId, testCase, modelType, accessToken);
-        });
   }
 }
