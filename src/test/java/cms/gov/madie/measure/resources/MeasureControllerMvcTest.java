@@ -1439,7 +1439,7 @@ public class MeasureControllerMvcTest {
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), any(Boolean.class), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null), any(Boolean.class), any(Pageable.class), eq(TEST_USER_ID), eq("measures")))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1452,7 +1452,8 @@ public class MeasureControllerMvcTest {
     assertTrue(resultStr.length() > 0);
 
     verify(measureService, times(1))
-        .getMeasuresByCriteria(eq(null), any(Boolean.class), any(Pageable.class), eq(TEST_USER_ID));
+        .getMeasuresByCriteria(
+            eq(null), any(Boolean.class), any(Pageable.class), eq(TEST_USER_ID), eq("measures"));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1467,7 +1468,7 @@ public class MeasureControllerMvcTest {
 
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID), eq("measures")))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1484,7 +1485,8 @@ public class MeasureControllerMvcTest {
     assertTrue(resultStr.length() > 0);
 
     verify(measureService, times(1))
-        .getMeasuresByCriteria(eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID));
+        .getMeasuresByCriteria(
+            eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID), eq("measures"));
 
     verifyNoMoreInteractions(measureService);
   }
@@ -1500,7 +1502,7 @@ public class MeasureControllerMvcTest {
 
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID), eq("measures")))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1520,7 +1522,11 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), activeCaptor.capture(), pageRequestCaptor.capture(), eq(TEST_USER_ID));
+            eq(null),
+            activeCaptor.capture(),
+            pageRequestCaptor.capture(),
+            eq(TEST_USER_ID),
+            eq("measures"));
 
     PageRequest pageRequestValue = pageRequestCaptor.getValue();
     assertEquals(25, pageRequestValue.getPageSize());
@@ -1544,7 +1550,7 @@ public class MeasureControllerMvcTest {
     final Page<MeasureListDTO> measures = new PageImpl<>(List.of(m1, m2));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(true), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null), eq(true), any(Pageable.class), eq(TEST_USER_ID), eq("measures")))
         .thenReturn(measures);
 
     MvcResult result =
@@ -1561,7 +1567,8 @@ public class MeasureControllerMvcTest {
     assertTrue(resultStr.length() > 0);
 
     verify(measureService, times(1))
-        .getMeasuresByCriteria(eq(null), eq(true), any(Pageable.class), eq(TEST_USER_ID));
+        .getMeasuresByCriteria(
+            eq(null), eq(true), any(Pageable.class), eq(TEST_USER_ID), eq("measures"));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1786,7 +1793,11 @@ public class MeasureControllerMvcTest {
     doReturn(allMeasures)
         .when(measureService)
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(false), any(Pageable.class), eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures"));
     MvcResult result =
         mockMvc
             .perform(
@@ -1806,7 +1817,11 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(false), any(Pageable.class), eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures"));
     verifyNoMoreInteractions(measureRepository);
   }
 
@@ -1824,7 +1839,11 @@ public class MeasureControllerMvcTest {
     doReturn(allMeasures)
         .when(measureService)
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(false), any(Pageable.class), eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures"));
     MvcResult result =
         mockMvc
             .perform(
@@ -1846,7 +1865,11 @@ public class MeasureControllerMvcTest {
     assertTrue(resultStr.length() > 0);
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(false), any(Pageable.class), eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures"));
     verifyNoMoreInteractions(measureRepository);
   }
 
@@ -1864,7 +1887,11 @@ public class MeasureControllerMvcTest {
     doReturn(measures)
         .when(measureService)
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(true), any(Pageable.class), eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class),
+            eq(true),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures"));
     MvcResult result =
         mockMvc
             .perform(
@@ -1886,7 +1913,11 @@ public class MeasureControllerMvcTest {
     assertTrue(resultStr.length() > 0);
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(true), any(Pageable.class), eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class),
+            eq(true),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures"));
 
     verifyNoMoreInteractions(measureRepository);
   }

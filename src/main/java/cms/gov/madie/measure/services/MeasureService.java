@@ -673,9 +673,10 @@ public class MeasureService {
       MeasureSearchCriteria searchCriteria,
       boolean filterByCurrentUser,
       Pageable pageReq,
-      String username) {
+      String username,
+      String invocationSource) {
     return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, filterByCurrentUser);
+        username, pageReq, searchCriteria, filterByCurrentUser, invocationSource);
   }
 
   protected void updateReferenceId(MeasureMetaData metaData) {

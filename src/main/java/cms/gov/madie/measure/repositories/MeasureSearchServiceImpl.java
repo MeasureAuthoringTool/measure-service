@@ -133,12 +133,18 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       String userId,
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
-      boolean filterByCurrentUser) {
+      boolean filterByCurrentUser,
+      String invocationSource) {
     // join measure and measure_set to lookup owner and ACL info
     LookupOperation lookupOperation = getLookupOperation();
 
     UnwindOperation unwindOperation = unwind("measureSet");
     Criteria measureCriteria = Criteria.where("active").is(true);
+
+    boolean nestedFlag =
+        invocationSource.equals("testCase")
+            ? appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
+            : appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH);
     if (measureSearchCriteria != null) {
       // If searchField is given and no filter is applied, then search for the searchField in
       // measureName and ecqmTitle
@@ -211,7 +217,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             .as("queryResults");
 
     Aggregation pipeline;
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)) {
+    if (nestedFlag) {
       // Find all the measures that matches the given Criteria and fetch unique measureSetIds
       List<String> matchedMeasureSetIds =
           mongoTemplate
@@ -269,7 +275,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     List<FacetDTO> results =
         mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
 
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)) {
+    if (nestedFlag) {
       long totalSize = 0;
       if (results != null && !results.isEmpty()) {
         List<?> countList = results.get(0).getCount();

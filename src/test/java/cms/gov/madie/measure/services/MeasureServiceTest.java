@@ -380,9 +380,14 @@ public class MeasureServiceTest implements ResourceUtil {
     doReturn(activeMeasures)
         .when(measureRepository)
         .searchMeasuresByCriteria(
-            eq("test.user"), any(PageRequest.class), any(MeasureSearchCriteria.class), eq(true));
+            eq("test.user"),
+            any(PageRequest.class),
+            any(MeasureSearchCriteria.class),
+            eq(true),
+            eq("testCase"));
     Object measures =
-        measureService.getMeasuresByCriteria(measureSearchCriteria, true, initialPage, "test.user");
+        measureService.getMeasuresByCriteria(
+            measureSearchCriteria, true, initialPage, "test.user", "testCase");
     assertNotNull(measures);
   }
 
@@ -397,10 +402,14 @@ public class MeasureServiceTest implements ResourceUtil {
     doReturn(activeMeasures)
         .when(measureRepository)
         .searchMeasuresByCriteria(
-            eq("test.user"), any(PageRequest.class), any(MeasureSearchCriteria.class), eq(false));
+            eq("test.user"),
+            any(PageRequest.class),
+            any(MeasureSearchCriteria.class),
+            eq(false),
+            eq("measures"));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria, false, initialPage, "test.user");
+            measureSearchCriteria, false, initialPage, "test.user", "measures");
     assertNotNull(measures);
   }
 

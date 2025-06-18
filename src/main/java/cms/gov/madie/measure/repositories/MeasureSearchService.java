@@ -19,7 +19,8 @@ public interface MeasureSearchService {
       String userId,
       Pageable pageable,
       MeasureSearchCriteria searchCriteria,
-      boolean filterByCurrentUser);
+      boolean filterByCurrentUser,
+      String invocationSource);
 
   /**
    * Get all the measures(name, version and owner) if they include any version of given library name
