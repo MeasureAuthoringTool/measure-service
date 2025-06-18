@@ -82,7 +82,7 @@ public class MeasureSearchServiceImplTest {
         .thenReturn(pagedResults);
 
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria("john", pageRequest, null, true);
+        measureAclRepository.searchMeasuresByCriteria("john", pageRequest, null, true, "measures");
     assertEquals(page.getTotalElements(), 5);
     assertEquals(page.getTotalPages(), 2);
     assertEquals(page.getContent().size(), 3);
@@ -108,7 +108,7 @@ public class MeasureSearchServiceImplTest {
         MeasureSearchCriteria.builder().searchField("test measure").build();
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, true);
+            "john", pageRequest, measureSearchCriteria, true, "measures");
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -133,7 +133,7 @@ public class MeasureSearchServiceImplTest {
             .build();
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, true);
+            "john", pageRequest, measureSearchCriteria, true, "measures");
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -158,7 +158,7 @@ public class MeasureSearchServiceImplTest {
             .build();
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, true);
+            "john", pageRequest, measureSearchCriteria, true, "measures");
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -183,7 +183,7 @@ public class MeasureSearchServiceImplTest {
             .build();
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, true);
+            "john", pageRequest, measureSearchCriteria, true, "measures");
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -208,7 +208,7 @@ public class MeasureSearchServiceImplTest {
             .build();
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, true);
+            "john", pageRequest, measureSearchCriteria, true, "measures");
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -233,7 +233,7 @@ public class MeasureSearchServiceImplTest {
             .build();
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, true);
+            "john", pageRequest, measureSearchCriteria, true, "measures");
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -258,7 +258,7 @@ public class MeasureSearchServiceImplTest {
             .build();
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, true);
+            "john", pageRequest, measureSearchCriteria, true, "measures");
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -293,7 +293,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, true);
+            "john", pageRequest, measureSearchCriteria, true, "measures");
 
     assertEquals(page.getTotalElements(), 1);
     assertEquals(page.getTotalPages(), 1);
@@ -318,7 +318,7 @@ public class MeasureSearchServiceImplTest {
             .build();
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, true);
+            "john", pageRequest, measureSearchCriteria, true, "measures");
     assertEquals(page.getTotalElements(), 1);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 1);

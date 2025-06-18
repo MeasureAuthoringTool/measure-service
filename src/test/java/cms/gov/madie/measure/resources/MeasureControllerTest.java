@@ -112,12 +112,13 @@ class MeasureControllerTest {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(false), any(Pageable.class), eq("test.user")))
+            eq(null), eq(false), any(Pageable.class), eq("test.user"), eq("measures")))
         .thenReturn(measures);
     ResponseEntity<Page<MeasureListDTO>> response =
         controller.getMeasures(principal, false, 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
-        .getMeasuresByCriteria(eq(null), eq(false), any(Pageable.class), eq("test.user"));
+        .getMeasuresByCriteria(
+            eq(null), eq(false), any(Pageable.class), eq("test.user"), eq("measures"));
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody());
     assertNotNull(response.getBody().getContent());
@@ -129,7 +130,7 @@ class MeasureControllerTest {
   void getMeasuresWithCurrentUserFilter() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(true), any(Pageable.class), eq("test.user")))
+            eq(null), eq(true), any(Pageable.class), eq("test.user"), eq("measures")))
         .thenReturn(measures);
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -137,7 +138,8 @@ class MeasureControllerTest {
     ResponseEntity<Page<MeasureListDTO>> response =
         controller.getMeasures(principal, true, 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
-        .getMeasuresByCriteria(eq(null), eq(true), any(Pageable.class), eq("test.user"));
+        .getMeasuresByCriteria(
+            eq(null), eq(true), any(Pageable.class), eq("test.user"), eq("measures"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
@@ -684,16 +686,24 @@ class MeasureControllerTest {
     doReturn(measures)
         .when(measureService)
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(false), any(Pageable.class), eq("test.user"));
+            any(MeasureSearchCriteria.class),
+            eq(false),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
         controller.measureSearchByCriteria(
-            principal, false, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC");
+            principal, false, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC", "measures");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(false), any(Pageable.class), eq("test.user"));
+            any(MeasureSearchCriteria.class),
+            eq(false),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody());
@@ -712,16 +722,24 @@ class MeasureControllerTest {
     doReturn(measures)
         .when(measureService)
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(true), any(Pageable.class), eq("test.user"));
+            any(MeasureSearchCriteria.class),
+            eq(true),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
         controller.measureSearchByCriteria(
-            principal, true, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC");
+            principal, true, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC", "measures");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(true), any(Pageable.class), eq("test.user"));
+            any(MeasureSearchCriteria.class),
+            eq(true),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
