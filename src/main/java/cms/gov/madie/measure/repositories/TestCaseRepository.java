@@ -11,11 +11,8 @@ public interface TestCaseRepository {
 
   Measure setValidationStatusToValidating(String testCaseId, String measureId, UUID taskId);
 
-  Measure findAndUpdateValidationStatus(
+  void setValidationStatusToNotComplete(
       String testCaseId, String measureId, TestCaseValidationStatus status);
-
-  Measure findAndUpdateValidationStatus(
-      String testCaseId, String measureId, UUID taskId, TestCaseValidationStatus status);
 
   Measure findAndUpdateValidationResults(
       String testCaseId, String measureId, UUID taskId, HapiOperationOutcome validationResults);

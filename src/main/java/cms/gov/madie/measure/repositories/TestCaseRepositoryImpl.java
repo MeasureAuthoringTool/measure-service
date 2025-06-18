@@ -45,10 +45,11 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
     query.addCriteria(
         Criteria.where("testCases.testCaseValidationStatus")
             .is(TestCaseValidationStatus.PENDING.toString()));
+
     Update update = new Update();
     update.set(
         "testCases.$.testCaseValidationStatus", TestCaseValidationStatus.VALIDATING.toString());
-    // Save taskId to indicate request is processing.
+    // Save taskId to identify most recent validation request.
     update.set("testCases.$.taskId", taskId.toString());
 
     return mongoOperations.findAndModify(
@@ -56,33 +57,16 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
   }
 
   @Override
-  public Measure findAndUpdateValidationStatus(
+  public void setValidationStatusToNotComplete(
       String testCaseId, String measureId, TestCaseValidationStatus status) {
-    return findAndUpdateValidationStatus(testCaseId, measureId, null, status);
-  }
-
-  @Override
-  public Measure findAndUpdateValidationStatus(
-      String testCaseId, String measureId, UUID taskId, TestCaseValidationStatus status) {
     Query query = new Query();
     query.addCriteria(Criteria.where("_id").is(measureId).and("testCases._id").is(testCaseId));
 
-    // New validation request, skip if the test case is already PENDING.
-    if (taskId == null) {
-      query.addCriteria(
-          Criteria.where("testCases.testCaseValidationStatus")
-              .ne(TestCaseValidationStatus.PENDING.toString()));
-    }
-
     Update update = new Update();
     update.set("testCases.$.testCaseValidationStatus", status.toString());
-    // Save taskId to indicate request is processing.
-    if (taskId != null) {
-      update.set("testCases.$.taskId", taskId.toString());
-    }
 
-    return mongoOperations.findAndModify(
-        query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
+    mongoOperations.findAndModify(
+      query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
   }
 
   @Override

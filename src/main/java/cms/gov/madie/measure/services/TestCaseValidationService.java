@@ -89,7 +89,7 @@ public class TestCaseValidationService {
         importExecutor.getQueueSize());
     importExecutor.submit(
         () -> {
-          log.info("Submitting test case to validation import queue");
+          validate(taskId, measureId, testCase, modelType, accessToken);
         });
   }
 
@@ -123,6 +123,9 @@ public class TestCaseValidationService {
                 });
     try {
       // TODO What should happen when fhir-services is down?
+      // Oh, also, what do if this sync call takes too long?
+      // Consider putting a cache in front of madie-fhir-service's validation to quick return
+      // duplicate requests based on the JSON hash.
       HapiOperationOutcome validationOutcome =
           validateTestCaseJson(currentTestCase, modelType, accessToken);
       measureRepository.findAndUpdateValidationResults(
@@ -140,7 +143,7 @@ public class TestCaseValidationService {
           submittedTestCase.getId(),
           measureId,
           e);
-      measureRepository.findAndUpdateValidationStatus(
+      measureRepository.setValidationStatusToNotComplete(
           currentTestCase.getId(), measureId, TestCaseValidationStatus.NOT_COMPLETE);
     }
   }
@@ -150,7 +153,7 @@ public class TestCaseValidationService {
     Measure updatedMeasure =
         measureRepository.setValidationStatusToPending(testCase.getId(), measure.getId());
 
-    // If the measure is null, the test case has already been enqueued.
+    // If the measure is null, the test case has already has PENDING status.
     if (updatedMeasure == null) {
       log.info(
           "Test Case with Id {} already in validation queue for Measure with Id {}",
