@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -60,6 +61,6 @@ public interface MeasureRepository
 
   int countAllByActiveAndMeasureSetContaining(boolean isActive, String userId);
 
-  List<Measure> findByMeasureSetIdAndModelAndMeasureMetaDataDraft(
-      String setId, String model, boolean draft);
+  List<Measure> findByMeasureSetIdAndModelInAndMeasureMetaDataDraft(
+      String setId, Collection<String> model, boolean draft);
 }
