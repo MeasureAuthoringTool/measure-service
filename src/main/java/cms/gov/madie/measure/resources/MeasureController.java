@@ -92,7 +92,11 @@ public class MeasureController {
     Page<MeasureListDTO> measures;
     final Pageable pageReq =
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
-    measures = measureService.getMeasuresByCriteria(null, filterByCurrentUser, pageReq, username);
+    // TODO Remove parameter "measures" when either measureSearch or EditTestsOnVersionedMeasure is
+    // removed.
+    measures =
+        measureService.getMeasuresByCriteria(
+            null, filterByCurrentUser, pageReq, username, "measures");
     return ResponseEntity.ok(measures);
   }
 
@@ -337,7 +341,12 @@ public class MeasureController {
       @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
       @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
-      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
+      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction,
+      // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
+      // Determines the source of the nested measures invocation (i.e., measures page or testcase
+      // copy page) as both measureSearch or EditTestsOnVersionedMeasures flags are used in this API
+      // call.
+      @RequestParam(required = false, defaultValue = "measures") String invocationSource) {
 
     final String username = principal.getName();
     final Pageable pageReq =
@@ -345,7 +354,7 @@ public class MeasureController {
 
     Page<MeasureListDTO> measures =
         measureService.getMeasuresByCriteria(
-            searchCriteria, filterByCurrentUser, pageReq, username);
+            searchCriteria, filterByCurrentUser, pageReq, username, invocationSource);
 
     return ResponseEntity.ok(measures);
   }
