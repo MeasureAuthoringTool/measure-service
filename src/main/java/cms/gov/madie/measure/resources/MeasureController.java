@@ -92,7 +92,8 @@ public class MeasureController {
     Page<MeasureListDTO> measures;
     final Pageable pageReq =
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
-    // TODO Remove parameter "measures" when either measureSearch or EditTestsOnVersionedMeasure is removed.
+    // TODO Remove parameter "measures" when either measureSearch or EditTestsOnVersionedMeasure is
+    // removed.
     measures =
         measureService.getMeasuresByCriteria(
             null, filterByCurrentUser, pageReq, username, "measures");
