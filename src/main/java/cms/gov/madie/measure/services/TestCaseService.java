@@ -289,6 +289,8 @@ public class TestCaseService {
       testCase.setCreatedBy(existing.getCreatedBy());
       testCase.setResourceUri(existing.getResourceUri());
       testCase.setPatientId(existing.getPatientId()); // assure patientId is not overwritten
+      testCase.setTestCaseValidationStatus(existing.getTestCaseValidationStatus());
+      testCase.setTaskId(existing.getTaskId());
       measure.getTestCases().remove(existing);
     } else {
       // still allowing upsert
