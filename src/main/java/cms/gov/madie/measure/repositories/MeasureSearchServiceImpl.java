@@ -134,6 +134,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
       boolean filterByCurrentUser,
+      // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource) {
     // join measure and measure_set to lookup owner and ACL info
     LookupOperation lookupOperation = getLookupOperation();

@@ -20,6 +20,7 @@ public interface MeasureSearchService {
       Pageable pageable,
       MeasureSearchCriteria searchCriteria,
       boolean filterByCurrentUser,
+      // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource);
 
   /**
