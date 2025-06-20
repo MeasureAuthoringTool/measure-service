@@ -224,15 +224,18 @@ public class VersionService {
           measure.getMeasureName(), "Only one draft is permitted per measure.");
     }
 
-    if (!isValidQiCore411WithNoOtherQiCoreVersion(measure)) {
+    if (!isValidQiCoreWithNoOtherQiCoreVersion(measure)) {
       throw new MeasureNotDraftableException(
           measure.getMeasureName(),
-          "You cannot draft a 4.1.1 measure when a 6.0.0 version is available.");
+          "You cannot draft a "
+              + measure.getModel()
+              + " measure when a newer version is available.");
     }
 
     if (!isValidDraftableVersion(measure, model)) {
       throw new MeasureNotDraftableException(
-          measure.getMeasureName(), "You cannot draft a 6.0.0 measure to a 4.1.1 measure.");
+          measure.getMeasureName(),
+          "You cannot draft a " + measure.getModel() + " measure to a " + model + " measure.");
     }
 
     Measure measureDraft = measure.toBuilder().build();
@@ -352,24 +355,35 @@ public class VersionService {
   }
 
   /**
-   * Returns false if a QI-Core 4.1.1 versioned measure with another 6.0.0 versioned measure in the
+   * Returns false if an older QI-Core versioned measure with another newer versioned measure in the
    * measure set
    */
-  private boolean isValidQiCore411WithNoOtherQiCoreVersion(Measure measure) {
+  private boolean isValidQiCoreWithNoOtherQiCoreVersion(Measure measure) {
     if (ModelType.QI_CORE.getValue().equals(measure.getModel())) {
       List<Measure> measures =
-          measureRepository.findByMeasureSetIdAndModelAndMeasureMetaDataDraft(
-              measure.getMeasureSetId(), ModelType.QI_CORE_6_0_0.getValue(), false);
+          measureRepository.findByMeasureSetIdAndModelInAndMeasureMetaDataDraft(
+              measure.getMeasureSetId(),
+              List.of(ModelType.QI_CORE_6_0_0.getValue(), ModelType.QI_CORE_7_0_0.getValue()),
+              false);
+      return CollectionUtils.isEmpty(measures);
+    } else if (ModelType.QI_CORE_6_0_0.getValue().equals(measure.getModel())) {
+      List<Measure> measures =
+          measureRepository.findByMeasureSetIdAndModelInAndMeasureMetaDataDraft(
+              measure.getMeasureSetId(), List.of(ModelType.QI_CORE_7_0_0.getValue()), false);
       return CollectionUtils.isEmpty(measures);
     }
     return true;
   }
 
-  /** Returns false if a QI-Core 6.0.0 versioned measure is drafted with model version to 4.1.1 */
+  /** Returns false if a newer QI-Core versioned measure is drafted with an older model version */
   private boolean isValidDraftableVersion(Measure measure, String model) {
     boolean valid = true;
     if (ModelType.QI_CORE_6_0_0.getValue().equals(measure.getModel())
         && ModelType.QI_CORE.getValue().equals(model)) {
+      valid = false;
+    } else if (ModelType.QI_CORE_7_0_0.getValue().equals(measure.getModel())
+        && (ModelType.QI_CORE_6_0_0.getValue().equals(model)
+            || ModelType.QI_CORE.getValue().equals(model))) {
       valid = false;
     }
     return valid;
