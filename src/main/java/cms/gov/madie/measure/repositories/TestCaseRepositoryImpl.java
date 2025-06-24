@@ -28,11 +28,11 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
             .is(measureId)
             .and("testCases._id")
             .is(testCaseId)
-            .and("testCases.testCaseValidationStatus")
+            .and("testCases.validationStatus")
             .ne(TestCaseValidationStatus.PENDING.toString()));
 
     Update update = new Update();
-    update.set("testCases.$.testCaseValidationStatus", TestCaseValidationStatus.PENDING.toString());
+    update.set("testCases.$.validationStatus", TestCaseValidationStatus.PENDING.toString());
 
     return mongoOperations.findAndModify(
         query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
@@ -43,14 +43,14 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
     Query query = new Query();
     query.addCriteria(Criteria.where("_id").is(measureId).and("testCases._id").is(testCaseId));
     query.addCriteria(
-        Criteria.where("testCases.testCaseValidationStatus")
+        Criteria.where("testCases.validationStatus")
             .is(TestCaseValidationStatus.PENDING.toString()));
 
     Update update = new Update();
     update.set(
-        "testCases.$.testCaseValidationStatus", TestCaseValidationStatus.VALIDATING.toString());
+        "testCases.$.validationStatus", TestCaseValidationStatus.VALIDATING.toString());
     // Save taskId to identify most recent validation request.
-    update.set("testCases.$.taskId", taskId.toString());
+    update.set("testCases.$.validationTaskId", taskId.toString());
 
     return mongoOperations.findAndModify(
         query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
@@ -63,7 +63,7 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
     query.addCriteria(Criteria.where("_id").is(measureId).and("testCases._id").is(testCaseId));
 
     Update update = new Update();
-    update.set("testCases.$.testCaseValidationStatus", status.toString());
+    update.set("testCases.$.validationStatus", status.toString());
 
     mongoOperations.findAndModify(
       query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
@@ -78,14 +78,14 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
             .is(measureId)
             .and("testCases._id")
             .is(testCaseId)
-            .and("testCases.testCaseValidationStatus")
+            .and("testCases.validationStatus")
             .is(TestCaseValidationStatus.VALIDATING.toString())
-            .and("testCases.taskId")
+            .and("testCases.validationTaskId")
             .is(taskId.toString()));
 
     Update update = new Update();
     update.set(
-        "testCases.$.testCaseValidationStatus",
+        "testCases.$.validationStatus",
         validationResults.isSuccessful()
             ? TestCaseValidationStatus.VALID.toString()
             : TestCaseValidationStatus.INVALID.toString());

@@ -248,7 +248,8 @@ public class TestCaseControllerMvcTest {
                         + "\"createdBeforeVersioning\":false,"
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
                         + "\"groupPopulations\":null,"
-                        + "\"testCaseValidationStatus\":null"
+                        + "\"validationStatus\":null,"
+                        + "\"validationTaskId\":null"
                         + "}]"));
     verify(testCaseService, times(1)).findTestCasesByMeasureId(measureIdCaptor.capture());
     String measureId = measureIdCaptor.getValue();
@@ -297,7 +298,8 @@ public class TestCaseControllerMvcTest {
                         + "\"createdBeforeVersioning\":false,"
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
                         + "\"groupPopulations\":null,"
-                        + "\"testCaseValidationStatus\":null"
+                        + "\"validationStatus\":null,"
+                        + "\"validationTaskId\":null"
                         + "}"));
     verify(testCaseService, times(1))
         .getTestCase(
@@ -344,7 +346,8 @@ public class TestCaseControllerMvcTest {
                         + "\"createdBeforeVersioning\":false,"
                         + "\"json\":\"{\\\"new\\\":\\\"json\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
                         + "\"groupPopulations\":null,"
-                        + "\"testCaseValidationStatus\":null"
+                        + "\"validationStatus\":null,"
+                        + "\"validationTaskId\":null"
                         + "}"));
     verify(testCaseService, times(1))
         .updateTestCase(

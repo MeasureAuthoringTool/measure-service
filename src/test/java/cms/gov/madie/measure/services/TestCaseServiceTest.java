@@ -493,7 +493,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenAnswer(
             invocation ->
                 invocation.getArgument(1, TestCase.class).toBuilder()
-                    .testCaseValidationStatus(TestCaseValidationStatus.PENDING.toString())
+                    .validationStatus(TestCaseValidationStatus.PENDING.toString())
                     .build());
 
     InOrder saveValidationOrder = inOrder(measureRepository, testCaseValidationService);
@@ -511,7 +511,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .validateResourceAsynchronously(
             measureArgumentCaptor.capture(), any(TestCase.class), eq(TestCaseServiceUtil.SAVE_VALIDATION_QUEUE), eq(accessToken));
     assertNotNull(output);
-    assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getTestCaseValidationStatus());
+    assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
   }
 
   @Test
@@ -553,7 +553,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenAnswer(
             invocation ->
                 invocation.getArgument(1, TestCase.class).toBuilder()
-                    .testCaseValidationStatus(TestCaseValidationStatus.PENDING.toString())
+                    .validationStatus(TestCaseValidationStatus.PENDING.toString())
                     .build());
 
     TestCase output =
@@ -564,7 +564,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             accessToken,
             TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
     assertNotNull(output);
-    assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getTestCaseValidationStatus());
+    assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
     assertEquals("test-user", output.getCreatedBy());
     assertEquals("test-title", output.getTitle());
   }
@@ -3365,7 +3365,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenAnswer(
             invocation ->
                 invocation.getArgument(1, TestCase.class).toBuilder()
-                    .testCaseValidationStatus(TestCaseValidationStatus.PENDING.toString())
+                    .validationStatus(TestCaseValidationStatus.PENDING.toString())
                     .build());
 
     InOrder saveValidationOrder = inOrder(measureRepository, testCaseValidationService);
@@ -3383,6 +3383,6 @@ public class TestCaseServiceTest implements ResourceUtil {
         .validateResourceAsynchronously(
             measureArgumentCaptor.capture(), any(TestCase.class), eq( TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE), eq(accessToken));
     assertNotNull(output);
-    assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getTestCaseValidationStatus());
+    assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
   }
 }
