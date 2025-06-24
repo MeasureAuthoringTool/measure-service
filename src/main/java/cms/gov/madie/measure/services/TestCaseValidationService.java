@@ -108,7 +108,8 @@ public class TestCaseValidationService {
         taskId,
         startTime);
     Measure measure =
-        measureRepository.setValidationStatusToValidating(submittedTestCase.getId(), measureId, taskId);
+        measureRepository.setValidationStatusToValidating(
+            submittedTestCase.getId(), measureId, taskId);
     TestCase currentTestCase =
         measure.getTestCases().stream()
             .filter((tc -> tc.getId().equals(submittedTestCase.getId())))

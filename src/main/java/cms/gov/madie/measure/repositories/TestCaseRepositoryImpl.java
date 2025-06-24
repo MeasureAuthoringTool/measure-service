@@ -47,8 +47,7 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
             .is(TestCaseValidationStatus.PENDING.toString()));
 
     Update update = new Update();
-    update.set(
-        "testCases.$.validationStatus", TestCaseValidationStatus.VALIDATING.toString());
+    update.set("testCases.$.validationStatus", TestCaseValidationStatus.VALIDATING.toString());
     // Save taskId to identify most recent validation request.
     update.set("testCases.$.validationTaskId", taskId.toString());
 
@@ -66,7 +65,7 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
     update.set("testCases.$.validationStatus", status.toString());
 
     mongoOperations.findAndModify(
-      query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
+        query, update, FindAndModifyOptions.options().returnNew(true), Measure.class);
   }
 
   @Override

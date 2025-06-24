@@ -100,8 +100,7 @@ public class TestCaseValidationServiceTest {
                         .build()))
             .build();
 
-    when(measureRepository.setValidationStatusToPending(
-            anyString(), anyString()))
+    when(measureRepository.setValidationStatusToPending(anyString(), anyString()))
         .thenReturn(validingTestCaseMeasure);
 
     TestCase output =
@@ -143,8 +142,8 @@ public class TestCaseValidationServiceTest {
 
     testCaseValidationService.validate(
         UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
-//        assertThat(
-//            testCase.getTestCaseValidationStatus(), equalTo(TestCaseValidationStatus.VALID));
+    //        assertThat(
+    //            testCase.getTestCaseValidationStatus(), equalTo(TestCaseValidationStatus.VALID));
   }
 
   @Test
@@ -426,8 +425,7 @@ public class TestCaseValidationServiceTest {
                         .build()))
             .build();
 
-    when(measureRepository.setValidationStatusToPending(
-            anyString(), anyString()))
+    when(measureRepository.setValidationStatusToPending(anyString(), anyString()))
         .thenReturn(validingTestCaseMeasure);
 
     TestCase output =
@@ -440,8 +438,7 @@ public class TestCaseValidationServiceTest {
   @Test
   public void testValidateTestCaseAsynchronouslyForImportThrowsException() {
     Measure measure = Measure.builder().id("testId").testCases(Collections.emptyList()).build();
-    when(measureRepository.setValidationStatusToPending(
-            anyString(), anyString()))
+    when(measureRepository.setValidationStatusToPending(anyString(), anyString()))
         .thenReturn(measure);
 
     assertThrows(
@@ -468,7 +465,7 @@ public class TestCaseValidationServiceTest {
             .build();
 
     when(measureRepository.setValidationStatusToValidating(
-        anyString(), anyString(), any(UUID.class)))
+            anyString(), anyString(), any(UUID.class)))
         .thenReturn(validating);
 
     when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
@@ -478,7 +475,12 @@ public class TestCaseValidationServiceTest {
         UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
 
     verify(spyService, times(1))
-        .validate(any(UUID.class), eq(measure.getId()), eq(measure.getTestCases().get(0)), eq(ModelType.QI_CORE_6_0_0), anyString());
+        .validate(
+            any(UUID.class),
+            eq(measure.getId()),
+            eq(measure.getTestCases().get(0)),
+            eq(ModelType.QI_CORE_6_0_0),
+            anyString());
   }
 
   @Test
@@ -526,17 +528,17 @@ public class TestCaseValidationServiceTest {
                         .build()))
             .build();
 
-    when(measureRepository.setValidationStatusToPending(
-            anyString(), anyString()))
+    when(measureRepository.setValidationStatusToPending(anyString(), anyString()))
         .thenReturn(pendingValidation);
 
     when(measureRepository.setValidationStatusToValidating(
-        anyString(), anyString(), any(UUID.class)))
+            anyString(), anyString(), any(UUID.class)))
         .thenReturn(validating);
 
     ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
 
-    spyService.validateResourceAsynchronously(measure, testCase, TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE, accessToken);
+    spyService.validateResourceAsynchronously(
+        measure, testCase, TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE, accessToken);
 
     verify(importExecutor).submit(runnableCaptor.capture());
     Runnable submittedRunnable = runnableCaptor.getValue();
@@ -545,6 +547,11 @@ public class TestCaseValidationServiceTest {
     submittedRunnable.run();
 
     verify(spyService, times(1))
-        .validate(any(UUID.class), eq(measureId), eq(pendingValidation.getTestCases().get(0)), eq(modelType), eq(accessToken));
+        .validate(
+            any(UUID.class),
+            eq(measureId),
+            eq(pendingValidation.getTestCases().get(0)),
+            eq(modelType),
+            eq(accessToken));
   }
 }
