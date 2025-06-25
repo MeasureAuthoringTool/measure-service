@@ -1170,6 +1170,8 @@ public class VersionServiceTest {
         .measureMetaData(new MeasureMetaData())
         .groups(List.of(cvGroup))
         .testCases(List.of(testCase))
+        .reviewMetaData(
+            new ReviewMetaData().toBuilder().lastReviewDate(today).approvalDate(today).build())
         .build();
   }
 
@@ -1366,6 +1368,7 @@ public class VersionServiceTest {
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .groups(List.of())
             .testCases(List.of())
+            .reviewMetaData(new ReviewMetaData())
             .build();
 
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
@@ -1388,6 +1391,8 @@ public class VersionServiceTest {
     assertThat(draft.getMeasureName(), is(equalTo("Test")));
     // draft flag to true
     assertThat(draft.getMeasureMetaData().isDraft(), is(equalTo(true)));
+    assertThat(draft.getReviewMetaData().getLastReviewDate(), is(equalTo(null)));
+    assertThat(draft.getReviewMetaData().getApprovalDate(), is(equalTo(null)));
     // version remains same
     assertThat(draft.getVersion().getMajor(), is(equalTo(2)));
     assertThat(draft.getVersion().getMinor(), is(equalTo(3)));
