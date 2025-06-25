@@ -105,7 +105,7 @@ public class TestCaseValidationServiceTest {
 
     TestCase output =
         testCaseValidationService.validateResourceAsynchronously(
-            measure, testCase, TestCaseServiceUtil.SAVE_VALIDATION_QUEUE, "Bearer Token");
+            measure, testCase, TestCaseServiceUtil.SAVE, "Bearer Token");
 
     assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
   }
@@ -430,7 +430,7 @@ public class TestCaseValidationServiceTest {
 
     TestCase output =
         testCaseValidationService.validateResourceAsynchronously(
-            measure, testCase, TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE, "Bearer Token");
+            measure, testCase, TestCaseServiceUtil.IMPORT, "Bearer Token");
 
     assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
   }
@@ -445,7 +445,7 @@ public class TestCaseValidationServiceTest {
         ResourceNotFoundException.class,
         () ->
             testCaseValidationService.validateResourceAsynchronously(
-                measure, testCase, TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE, "Bearer Token"));
+                measure, testCase, TestCaseServiceUtil.IMPORT, "Bearer Token"));
   }
 
   @Test
@@ -538,7 +538,7 @@ public class TestCaseValidationServiceTest {
     ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
 
     spyService.validateResourceAsynchronously(
-        measure, testCase, TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE, accessToken);
+        measure, testCase, TestCaseServiceUtil.IMPORT, accessToken);
 
     verify(importExecutor).submit(runnableCaptor.capture());
     Runnable submittedRunnable = runnableCaptor.getValue();

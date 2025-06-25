@@ -489,7 +489,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     // Mocks a validation request awaiting execution.
     when(testCaseValidationService.validateResourceAsynchronously(
-            any(), any(TestCase.class), eq(TestCaseServiceUtil.SAVE_VALIDATION_QUEUE), anyString()))
+            any(), any(TestCase.class), eq(TestCaseServiceUtil.SAVE), anyString()))
         .thenAnswer(
             invocation ->
                 invocation.getArgument(1, TestCase.class).toBuilder()
@@ -503,7 +503,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test-user",
             accessToken,
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+            TestCaseServiceUtil.SAVE);
     verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
     saveValidationOrder.verify(measureRepository).save(measure);
     saveValidationOrder
@@ -511,7 +511,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .validateResourceAsynchronously(
             measureArgumentCaptor.capture(),
             any(TestCase.class),
-            eq(TestCaseServiceUtil.SAVE_VALIDATION_QUEUE),
+            eq(TestCaseServiceUtil.SAVE),
             eq(accessToken));
     assertNotNull(output);
     assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
@@ -565,7 +565,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test-user",
             accessToken,
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+            TestCaseServiceUtil.SAVE);
     assertNotNull(output);
     assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
     assertEquals("test-user", output.getCreatedBy());
@@ -893,7 +893,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test.user5",
             "TOKEN",
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+            TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -962,7 +962,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test.user5",
             "TOKEN",
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+            TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -1021,7 +1021,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test.user5",
             "TOKEN",
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+            TestCaseServiceUtil.SAVE);
 
     assertNotNull(updatedTestCase);
 
@@ -1060,7 +1060,7 @@ public class TestCaseServiceTest implements ResourceUtil {
                 measure.getId(),
                 "test.user",
                 "TOKEN",
-                TestCaseServiceUtil.SAVE_VALIDATION_QUEUE));
+                TestCaseServiceUtil.SAVE));
   }
 
   @Test
@@ -1121,7 +1121,7 @@ public class TestCaseServiceTest implements ResourceUtil {
                 measure.getId(),
                 "test.user",
                 "TOKEN",
-                TestCaseServiceUtil.SAVE_VALIDATION_QUEUE));
+                TestCaseServiceUtil.SAVE));
   }
 
   @Test
@@ -1150,7 +1150,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test.user5",
             "TOKEN",
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+            TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =
@@ -1195,7 +1195,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test.user5",
             "TOKEN",
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+            TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =
@@ -1243,7 +1243,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test.user5",
             "TOKEN",
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+            TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =
@@ -2488,7 +2488,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test.user5",
             "TOKEN",
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+            TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -3366,7 +3366,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(testCaseValidationService.validateResourceAsynchronously(
             measureArgumentCaptor.capture(),
             any(TestCase.class),
-            eq(TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE),
+            eq(TestCaseServiceUtil.IMPORT),
             eq(accessToken)))
         .thenAnswer(
             invocation ->
@@ -3381,7 +3381,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             measure.getId(),
             "test-user",
             accessToken,
-            TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE);
+            TestCaseServiceUtil.IMPORT);
     verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
     saveValidationOrder.verify(measureRepository).save(measure);
     saveValidationOrder
@@ -3389,7 +3389,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .validateResourceAsynchronously(
             measureArgumentCaptor.capture(),
             any(TestCase.class),
-            eq(TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE),
+            eq(TestCaseServiceUtil.IMPORT),
             eq(accessToken));
     assertNotNull(output);
     assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());

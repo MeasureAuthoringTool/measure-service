@@ -169,10 +169,10 @@ public class TestCaseValidationService {
             .findFirst()
             .orElseThrow(() -> new ResourceNotFoundException("Test Case", testCase.getId()));
 
-    if (source.equals(TestCaseServiceUtil.SAVE_VALIDATION_QUEUE)) {
+    if (source.equals(TestCaseServiceUtil.SAVE)) {
       submitOnSaveValidationTask(
           measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
-    } else if (source.equals(TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE)) {
+    } else if (source.equals(TestCaseServiceUtil.IMPORT)) {
       submitOnImportValidationTask(
           measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
     }

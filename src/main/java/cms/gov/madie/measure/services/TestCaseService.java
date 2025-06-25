@@ -757,7 +757,7 @@ public class TestCaseService {
               measureId,
               userName,
               accessToken,
-              TestCaseServiceUtil.IMPORT_VALIDATION_QUEUE);
+              TestCaseServiceUtil.IMPORT);
       log.info(
           "User {} successfully imported test case with patient id : {}",
           userName,

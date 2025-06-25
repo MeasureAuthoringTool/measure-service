@@ -36,8 +36,8 @@ import lombok.extern.slf4j.Slf4j;
 @AllArgsConstructor
 public class TestCaseServiceUtil {
 
-  public static final String SAVE_VALIDATION_QUEUE = "saveQueue";
-  public static final String IMPORT_VALIDATION_QUEUE = "importQueue";
+  public static final String SAVE = "saveTestCase";
+  public static final String IMPORT = "importTestCase";
 
   private static final List<PopulationType> EXPECTED_VALUE_ORDER =
       List.of(

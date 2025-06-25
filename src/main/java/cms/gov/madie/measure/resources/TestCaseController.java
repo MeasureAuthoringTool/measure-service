@@ -103,7 +103,7 @@ public class TestCaseController {
             measureId,
             principal.getName(),
             accessToken,
-            TestCaseServiceUtil.SAVE_VALIDATION_QUEUE));
+            TestCaseServiceUtil.SAVE));
   }
 
   @GetMapping(ControllerUtil.TEST_CASES + "/series")
@@ -250,7 +250,7 @@ public class TestCaseController {
                 measureId,
                 principal.getName(),
                 accessToken,
-                TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+                TestCaseServiceUtil.SAVE);
         savedTestCaseIds.add(updatedTestCase.getId());
       } catch (Exception e) {
         log.error(
@@ -305,7 +305,7 @@ public class TestCaseController {
                 measureId,
                 principal.getName(),
                 accessToken,
-                TestCaseServiceUtil.SAVE_VALIDATION_QUEUE);
+                TestCaseServiceUtil.SAVE);
         savedTestCaseIds.add(updatedTestCase.getId());
       } catch (Exception e) {
         log.error(
