@@ -7,6 +7,7 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.MeasureService;
 import cms.gov.madie.measure.services.QdmTestCaseShiftDatesService;
+import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import gov.cms.madie.models.common.ModelType;
 import cms.gov.madie.measure.services.TestCaseService;
@@ -102,7 +103,7 @@ public class TestCaseController {
             measureId,
             principal.getName(),
             accessToken,
-            ControllerUtil.SAVE_VALIDATION_QUEUE));
+            TestCaseServiceUtil.SAVE));
   }
 
   @GetMapping(ControllerUtil.TEST_CASES + "/series")
@@ -249,7 +250,7 @@ public class TestCaseController {
                 measureId,
                 principal.getName(),
                 accessToken,
-                ControllerUtil.SAVE_VALIDATION_QUEUE);
+                TestCaseServiceUtil.SAVE);
         savedTestCaseIds.add(updatedTestCase.getId());
       } catch (Exception e) {
         log.error(
@@ -304,7 +305,7 @@ public class TestCaseController {
                 measureId,
                 principal.getName(),
                 accessToken,
-                ControllerUtil.SAVE_VALIDATION_QUEUE);
+                TestCaseServiceUtil.SAVE);
         savedTestCaseIds.add(updatedTestCase.getId());
       } catch (Exception e) {
         log.error(
