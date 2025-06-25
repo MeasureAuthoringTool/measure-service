@@ -265,8 +265,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               groupByMeasureSet,
               addHasAssociated,
               replaceRootOperation,
-              sort(Sort.by(Sort.Direction.DESC, "lastModifiedAt")),
-              skip(pageable.getOffset()),
               facets);
 
     } else {
