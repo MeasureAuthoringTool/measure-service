@@ -753,11 +753,7 @@ public class TestCaseService {
       existingTestCase.setJson(getJson(model, testCaseImportRequest.getJson()));
       TestCase updatedTestCase =
           updateTestCase(
-              existingTestCase,
-              measureId,
-              userName,
-              accessToken,
-              TestCaseServiceUtil.IMPORT);
+              existingTestCase, measureId, userName, accessToken, TestCaseServiceUtil.IMPORT);
       log.info(
           "User {} successfully imported test case with patient id : {}",
           userName,
