@@ -229,6 +229,11 @@ public final class JsonUtil {
                   ? group.get("id").asText().substring(group.get("id").asText().length() - 1)
                   : "0";
           int groupIndex = Integer.parseInt(groupNumber);
+          // MAT-8827: do not process when incoming test case group size are bigger than the measure
+          // group size that is imported into
+          if (groupIndex > measure.getGroups().size()) {
+            return groupPopulations;
+          }
           Group measureGroup = measure.getGroups().get(groupIndex > 0 ? groupIndex - 1 : 0);
           JsonNode populations = group.get("population");
           List<TestCasePopulationValue> populationValues = new ArrayList<>();
