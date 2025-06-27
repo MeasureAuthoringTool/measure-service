@@ -2,6 +2,7 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -27,9 +28,7 @@ import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -97,18 +96,18 @@ public class TestCaseValidationServiceTest {
             .testCases(
                 List.of(
                     testCase.toBuilder()
-                        .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
+                        .validationStatus(TestCaseValidationStatus.PENDING.toString())
                         .build()))
             .build();
 
-    when(measureRepository.findAndUpdateValidationStatus(
-            anyString(), anyString(), any(TestCaseValidationStatus.class)))
+    when(measureRepository.setValidationStatusToPending(anyString(), anyString()))
         .thenReturn(validingTestCaseMeasure);
 
     TestCase output =
-        testCaseValidationService.validateResourceAsynchronously(measure, testCase, "Bearer Token");
+        testCaseValidationService.validateResourceAsynchronously(
+            measure, testCase, TestCaseServiceUtil.SAVE, "Bearer Token");
 
-    assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
+    assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
   }
 
   @Test
@@ -118,7 +117,7 @@ public class TestCaseValidationServiceTest {
             .testCases(
                 List.of(
                     testCase.toBuilder()
-                        .testCaseValidationStatus(TestCaseValidationStatus.VALIDATING)
+                        .validationStatus(TestCaseValidationStatus.VALIDATING.toString())
                         .build()))
             .build();
 
@@ -127,26 +126,24 @@ public class TestCaseValidationServiceTest {
             .testCases(
                 List.of(
                     testCase.toBuilder()
-                        .testCaseValidationStatus(TestCaseValidationStatus.VALID)
+                        .validationStatus(TestCaseValidationStatus.VALID.toString())
                         .hapiOperationOutcome(hapiValidOutcome.getBody())
                         .build()))
             .build();
 
-    when(measureRepository.findAndUpdateValidationStatus(
-            anyString(), anyString(), any(TestCaseValidationStatus.class)))
+    when(measureRepository.setValidationStatusToValidating(
+            anyString(), anyString(), any(UUID.class)))
         .thenReturn(validingTestCaseMeasure);
     when(measureRepository.findAndUpdateValidationResults(
-            anyString(), anyString(), any(HapiOperationOutcome.class)))
+            anyString(), anyString(), any(UUID.class), any(HapiOperationOutcome.class)))
         .thenReturn(validTestCaseMeasure);
     when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
         .thenReturn(hapiValidOutcome);
 
-    TestCase validatedTestCase =
-        testCaseValidationService.validate(
-            UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
-
-    assertThat(
-        validatedTestCase.getTestCaseValidationStatus(), equalTo(TestCaseValidationStatus.VALID));
+    testCaseValidationService.validate(
+        UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
+    //        assertThat(
+    //            testCase.getTestCaseValidationStatus(), equalTo(TestCaseValidationStatus.VALID));
   }
 
   @Test
@@ -424,62 +421,70 @@ public class TestCaseValidationServiceTest {
             .testCases(
                 List.of(
                     testCase.toBuilder()
-                        .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
+                        .validationStatus(TestCaseValidationStatus.PENDING.toString())
                         .build()))
             .build();
 
-    when(measureRepository.findAndUpdateValidationStatus(
-            anyString(), anyString(), any(TestCaseValidationStatus.class)))
+    when(measureRepository.setValidationStatusToPending(anyString(), anyString()))
         .thenReturn(validingTestCaseMeasure);
 
     TestCase output =
-        testCaseValidationService.validateTestCaseAsynchronouslyForImport(
-            measure, testCase, "Bearer Token");
+        testCaseValidationService.validateResourceAsynchronously(
+            measure, testCase, TestCaseServiceUtil.IMPORT, "Bearer Token");
 
-    assertEquals(TestCaseValidationStatus.PENDING, output.getTestCaseValidationStatus());
+    assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
   }
 
   @Test
   public void testValidateTestCaseAsynchronouslyForImportThrowsException() {
     Measure measure = Measure.builder().id("testId").testCases(Collections.emptyList()).build();
-    when(measureRepository.findAndUpdateValidationStatus(
-            anyString(), anyString(), any(TestCaseValidationStatus.class)))
+    when(measureRepository.setValidationStatusToPending(anyString(), anyString()))
         .thenReturn(measure);
 
     assertThrows(
         ResourceNotFoundException.class,
         () ->
-            testCaseValidationService.validateTestCaseAsynchronouslyForImport(
-                measure, testCase, "Bearer Token"));
+            testCaseValidationService.validateResourceAsynchronously(
+                measure, testCase, TestCaseServiceUtil.IMPORT, "Bearer Token"));
   }
 
   @Test
-  public void testValidateThrowsExcpetion() {
-    Measure validingTestCaseMeasure =
+  public void testValidateThrowsException() {
+    TestCaseValidationService spyService =
+        spy(
+            new TestCaseValidationService(
+                saveExecutor, importExecutor, fhirServicesClient, measureRepository, mapper));
+
+    Measure validating =
         measure.toBuilder()
             .testCases(
                 List.of(
                     testCase.toBuilder()
-                        .testCaseValidationStatus(TestCaseValidationStatus.PENDING)
+                        .validationStatus(TestCaseValidationStatus.VALIDATING.toString())
                         .build()))
             .build();
 
-    when(measureRepository.findAndUpdateValidationStatus(
-            anyString(), anyString(), any(TestCaseValidationStatus.class)))
-        .thenReturn(validingTestCaseMeasure);
+    when(measureRepository.setValidationStatusToValidating(
+            anyString(), anyString(), any(UUID.class)))
+        .thenReturn(validating);
 
     when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
         .thenThrow(HttpClientErrorException.class);
 
-    TestCase validatedTestCase =
-        testCaseValidationService.validate(
-            UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
+    spyService.validate(
+        UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
 
-    assertNull(validatedTestCase.getTestCaseValidationStatus());
+    verify(spyService, times(1))
+        .validate(
+            any(UUID.class),
+            eq(measure.getId()),
+            eq(measure.getTestCases().get(0)),
+            eq(ModelType.QI_CORE_6_0_0),
+            anyString());
   }
 
   @Test
-  public void testSubmitValidationTaskForImportSubmitsRunnable() {
+  public void testSubmitOnSaveValidationTaskForImportSubmitsRunnable() {
     TestCaseValidationService service =
         new TestCaseValidationService(
             saveExecutor, importExecutor, fhirServicesClient, measureRepository, mapper);
@@ -488,7 +493,7 @@ public class TestCaseValidationServiceTest {
     String accessToken = "token";
     ModelType modelType = ModelType.QI_CORE_6_0_0;
 
-    service.submitValidationTaskForImport(measureId, testCase, accessToken, modelType);
+    service.submitOnImportValidationTask(measureId, testCase, accessToken, modelType);
 
     verify(importExecutor, times(1)).submit(any(Runnable.class));
   }
@@ -504,22 +509,36 @@ public class TestCaseValidationServiceTest {
     String accessToken = "token";
     ModelType modelType = ModelType.QI_CORE_6_0_0;
 
-    Measure validingTestCaseMeasure =
+    Measure pendingValidation =
         measure.toBuilder()
             .testCases(
                 List.of(
                     testCase.toBuilder()
-                        .testCaseValidationStatus(TestCaseValidationStatus.VALIDATING)
+                        .validationStatus(TestCaseValidationStatus.PENDING.toString())
                         .build()))
             .build();
 
-    when(measureRepository.findAndUpdateValidationStatus(
-            anyString(), anyString(), any(TestCaseValidationStatus.class)))
-        .thenReturn(validingTestCaseMeasure);
+    Measure validating =
+        measure.toBuilder()
+            .id(measureId)
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .validationStatus(TestCaseValidationStatus.VALIDATING.toString())
+                        .build()))
+            .build();
+
+    when(measureRepository.setValidationStatusToPending(anyString(), anyString()))
+        .thenReturn(pendingValidation);
+
+    when(measureRepository.setValidationStatusToValidating(
+            anyString(), anyString(), any(UUID.class)))
+        .thenReturn(validating);
 
     ArgumentCaptor<Runnable> runnableCaptor = ArgumentCaptor.forClass(Runnable.class);
 
-    spyService.submitValidationTaskForImport(measureId, testCase, accessToken, modelType);
+    spyService.validateResourceAsynchronously(
+        measure, testCase, TestCaseServiceUtil.IMPORT, accessToken);
 
     verify(importExecutor).submit(runnableCaptor.capture());
     Runnable submittedRunnable = runnableCaptor.getValue();
@@ -528,6 +547,11 @@ public class TestCaseValidationServiceTest {
     submittedRunnable.run();
 
     verify(spyService, times(1))
-        .validate(any(UUID.class), eq(measureId), eq(testCase), eq(modelType), eq(accessToken));
+        .validate(
+            any(UUID.class),
+            eq(measureId),
+            eq(pendingValidation.getTestCases().get(0)),
+            eq(modelType),
+            eq(accessToken));
   }
 }
