@@ -250,6 +250,7 @@ public class VersionService {
     measureDraft.getMeasureMetaData().setDraft(true);
     measureDraft.getMeasureMetaData().setVersionDate(null);
     measureDraft.setGroups(cloneMeasureGroups(measure.getGroups()));
+    measureDraft.setReviewMetaData(new ReviewMetaData());
 
     measureDraft.setTestCases(cloneTestCases(measure, measureDraft.getGroups(), accessToken));
     var now = Instant.now();
