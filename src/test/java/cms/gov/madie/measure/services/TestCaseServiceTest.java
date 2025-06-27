@@ -499,11 +499,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     InOrder saveValidationOrder = inOrder(measureRepository, testCaseValidationService);
     TestCase output =
         testCaseService.updateTestCase(
-            testCase,
-            measure.getId(),
-            "test-user",
-            accessToken,
-            TestCaseServiceUtil.SAVE);
+            testCase, measure.getId(), "test-user", accessToken, TestCaseServiceUtil.SAVE);
     verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
     saveValidationOrder.verify(measureRepository).save(measure);
     saveValidationOrder
@@ -561,11 +557,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     TestCase output =
         testCaseService.updateTestCase(
-            testCase,
-            measure.getId(),
-            "test-user",
-            accessToken,
-            TestCaseServiceUtil.SAVE);
+            testCase, measure.getId(), "test-user", accessToken, TestCaseServiceUtil.SAVE);
     assertNotNull(output);
     assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
     assertEquals("test-user", output.getCreatedBy());
@@ -889,11 +881,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     TestCase updatedTestCase =
         testCaseService.updateTestCase(
-            updatingTestCase,
-            measure.getId(),
-            "test.user5",
-            "TOKEN",
-            TestCaseServiceUtil.SAVE);
+            updatingTestCase, measure.getId(), "test.user5", "TOKEN", TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -958,11 +946,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     TestCase updatedTestCase =
         testCaseService.updateTestCase(
-            updatingTestCase,
-            measure.getId(),
-            "test.user5",
-            "TOKEN",
-            TestCaseServiceUtil.SAVE);
+            updatingTestCase, measure.getId(), "test.user5", "TOKEN", TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -1017,11 +1001,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .save(any(Measure.class));
     TestCase updatedTestCase =
         testCaseService.updateTestCase(
-            updatingTestCase,
-            measure.getId(),
-            "test.user5",
-            "TOKEN",
-            TestCaseServiceUtil.SAVE);
+            updatingTestCase, measure.getId(), "test.user5", "TOKEN", TestCaseServiceUtil.SAVE);
 
     assertNotNull(updatedTestCase);
 
@@ -1056,11 +1036,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         ResourceNotFoundException.class,
         () ->
             testCaseService.updateTestCase(
-                testCase,
-                measure.getId(),
-                "test.user",
-                "TOKEN",
-                TestCaseServiceUtil.SAVE));
+                testCase, measure.getId(), "test.user", "TOKEN", TestCaseServiceUtil.SAVE));
   }
 
   @Test
@@ -1117,11 +1093,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         InvalidDraftStatusException.class,
         () ->
             testCaseService.updateTestCase(
-                testCase,
-                measure.getId(),
-                "test.user",
-                "TOKEN",
-                TestCaseServiceUtil.SAVE));
+                testCase, measure.getId(), "test.user", "TOKEN", TestCaseServiceUtil.SAVE));
   }
 
   @Test
@@ -1146,11 +1118,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     TestCase updatedTestCase =
         testCaseService.updateTestCase(
-            upsertingTestCase,
-            measure.getId(),
-            "test.user5",
-            "TOKEN",
-            TestCaseServiceUtil.SAVE);
+            upsertingTestCase, measure.getId(), "test.user5", "TOKEN", TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =
@@ -1191,11 +1159,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     TestCase updatedTestCase =
         testCaseService.updateTestCase(
-            upsertingTestCase,
-            measure.getId(),
-            "test.user5",
-            "TOKEN",
-            TestCaseServiceUtil.SAVE);
+            upsertingTestCase, measure.getId(), "test.user5", "TOKEN", TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =
@@ -1239,11 +1203,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     TestCase updatedTestCase =
         testCaseService.updateTestCase(
-            upsertingTestCase,
-            measure.getId(),
-            "test.user5",
-            "TOKEN",
-            TestCaseServiceUtil.SAVE);
+            upsertingTestCase, measure.getId(), "test.user5", "TOKEN", TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     int lastModCompareTo =
@@ -2484,11 +2444,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     TestCase updatedTestCase =
         testCaseService.updateTestCase(
-            updatingTestCase,
-            measure.getId(),
-            "test.user5",
-            "TOKEN",
-            TestCaseServiceUtil.SAVE);
+            updatingTestCase, measure.getId(), "test.user5", "TOKEN", TestCaseServiceUtil.SAVE);
     assertNotNull(updatedTestCase);
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -3377,11 +3333,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     InOrder saveValidationOrder = inOrder(measureRepository, testCaseValidationService);
     TestCase output =
         testCaseService.updateTestCase(
-            testCase,
-            measure.getId(),
-            "test-user",
-            accessToken,
-            TestCaseServiceUtil.IMPORT);
+            testCase, measure.getId(), "test-user", accessToken, TestCaseServiceUtil.IMPORT);
     verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
     saveValidationOrder.verify(measureRepository).save(measure);
     saveValidationOrder

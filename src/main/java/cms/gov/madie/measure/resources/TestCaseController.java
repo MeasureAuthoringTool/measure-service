@@ -99,11 +99,7 @@ public class TestCaseController {
 
     return ResponseEntity.ok(
         testCaseService.updateTestCase(
-            testCase,
-            measureId,
-            principal.getName(),
-            accessToken,
-            TestCaseServiceUtil.SAVE));
+            testCase, measureId, principal.getName(), accessToken, TestCaseServiceUtil.SAVE));
   }
 
   @GetMapping(ControllerUtil.TEST_CASES + "/series")
