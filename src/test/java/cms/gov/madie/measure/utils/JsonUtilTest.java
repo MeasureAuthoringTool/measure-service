@@ -857,4 +857,26 @@ public class JsonUtilTest implements ResourceUtil {
 
     assertTrue(testCaseGroupPopulations.get(0).getPopulationValues().size() == 8);
   }
+
+  @Test
+  public void testGetTestCaseGroupPopulationsFromMeasureReportTwoGroups()
+      throws JsonProcessingException {
+    String jsonWith2Groups = getData("/test_case_export_w_two_groups.json");
+    List<TestCaseGroupPopulation> testCaseGroupPopulations =
+        JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWith2Groups, false, measure);
+    assertThat(testCaseGroupPopulations.size(), is(equalTo(1)));
+    assertThat(testCaseGroupPopulations.get(0).getPopulationValues().size(), is(equalTo(4)));
+    assertThat(
+        testCaseGroupPopulations.get(0).getPopulationValues().get(0).getExpected(),
+        is(equalTo("1")));
+    assertThat(
+        testCaseGroupPopulations.get(0).getPopulationValues().get(1).getExpected(),
+        is(equalTo("2")));
+    assertThat(
+        testCaseGroupPopulations.get(0).getPopulationValues().get(2).getExpected(),
+        is(equalTo("3")));
+    assertThat(
+        testCaseGroupPopulations.get(0).getPopulationValues().get(3).getExpected(),
+        is(equalTo("4")));
+  }
 }
