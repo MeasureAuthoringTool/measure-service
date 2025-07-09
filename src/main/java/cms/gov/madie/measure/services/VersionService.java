@@ -250,6 +250,7 @@ public class VersionService {
     measureDraft.getMeasureMetaData().setDraft(true);
     measureDraft.getMeasureMetaData().setVersionDate(null);
     measureDraft.setGroups(cloneMeasureGroups(measure.getGroups()));
+    measureDraft.setReviewMetaData(new ReviewMetaData());
 
     measureDraft.setTestCases(cloneTestCases(measure, measureDraft.getGroups(), accessToken));
     var now = Instant.now();
@@ -330,18 +331,22 @@ public class VersionService {
                 testCase.setJson(convertDateTimeToUTC(testCase.getJson()));
               }
               // TODO Move this validation to after persistence and run asynchronously
-              HapiOperationOutcome hapiOperationOutcome =
-                  fhirServicesClient
-                      .validateBundle(
-                          testCase.getJson(),
-                          ModelType.valueOfName(currentMeasure.getModel()),
-                          accessToken)
-                      .getBody();
+              HapiOperationOutcome hapiOperationOutcome = null;
+              if (testCase.getJson() != null && !testCase.getJson().isEmpty()) {
+                hapiOperationOutcome =
+                    fhirServicesClient
+                        .validateBundle(
+                            testCase.getJson(),
+                            ModelType.valueOfName(currentMeasure.getModel()),
+                            accessToken)
+                        .getBody();
+              }
 
               return testCase.toBuilder()
                   .id(ObjectId.get().toString())
                   .hapiOperationOutcome(hapiOperationOutcome)
-                  .validResource(hapiOperationOutcome.isSuccessful())
+                  .validResource(
+                      hapiOperationOutcome == null ? false : hapiOperationOutcome.isSuccessful())
                   .groupPopulations(updatedTestCaseGroupPopulations)
                   .build();
             })
