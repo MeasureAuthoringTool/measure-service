@@ -1,10 +1,12 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
@@ -46,6 +48,8 @@ public class VersionService {
   private final TestCaseSequenceService sequenceService;
   private final ElmToJsonService elmToJsonService;
   private final MongoGridFsService mongoGridFsService;
+  private final AppConfigService appConfigService;
+  private final TestCaseValidationService testCaseValidationService;
 
   public enum VersionValidationResult {
     VALID,
@@ -276,6 +280,14 @@ public class VersionService {
             savedDraft.getId(),
             findHighestCaseNumberWhenCaseNumbersExist(savedDraft.getTestCases()));
       }
+
+      if (!measure.getModel().equals(model)
+          && appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
+        for (TestCase testCase : savedDraft.getTestCases()) {
+          testCaseValidationService.validateResourceAsynchronously(
+              savedDraft, testCase, TestCaseServiceUtil.SAVE, accessToken);
+        }
+      }
     }
 
     actionLogService.logAction(savedDraft.getId(), Measure.class, ActionType.DRAFTED, username);
@@ -330,23 +342,9 @@ public class VersionService {
               } else {
                 testCase.setJson(convertDateTimeToUTC(testCase.getJson()));
               }
-              // TODO Move this validation to after persistence and run asynchronously
-              HapiOperationOutcome hapiOperationOutcome = null;
-              if (testCase.getJson() != null && !testCase.getJson().isEmpty()) {
-                hapiOperationOutcome =
-                    fhirServicesClient
-                        .validateBundle(
-                            testCase.getJson(),
-                            ModelType.valueOfName(currentMeasure.getModel()),
-                            accessToken)
-                        .getBody();
-              }
 
               return testCase.toBuilder()
                   .id(ObjectId.get().toString())
-                  .hapiOperationOutcome(hapiOperationOutcome)
-                  .validResource(
-                      hapiOperationOutcome == null ? false : hapiOperationOutcome.isSuccessful())
                   .groupPopulations(updatedTestCaseGroupPopulations)
                   .build();
             })
