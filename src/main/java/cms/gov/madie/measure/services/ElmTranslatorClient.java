@@ -35,6 +35,8 @@ public class ElmTranslatorClient {
   public ElmJson getElmJson(
       final String cql, String measureModel, String elmErrorSeverity, String accessToken) {
     try {
+      // TODO CqlCompilorException is the sole reason for this project to rely on cql-t0-elm
+      // dependency.. we could expose this value from madie-models instead
       URI uri =
           getElmJsonURI(measureModel, CqlCompilerException.ErrorSeverity.valueOf(elmErrorSeverity));
       HttpEntity<String> cqlEntity = getCqlHttpEntity(cql, accessToken, null, null);
@@ -80,9 +82,13 @@ public class ElmTranslatorClient {
 
   // overload method invocation so if we don't provide ErrorSeverity we assume that its info
   protected URI getElmJsonURI(String measureModel) {
+    // TODO CqlCompilorException is the sole reason for this project to rely on cql-t0-elm
+    // dependency.. we could expose this value from madie-models instead
     return getElmJsonURI(measureModel, CqlCompilerException.ErrorSeverity.Info);
   }
 
+  // TODO CqlCompilorException is the sole reason for this project to rely on cql-t0-elm
+  // dependency.. we could expose this value from madie-models instead
   protected URI getElmJsonURI(
       String measureModel, CqlCompilerException.ErrorSeverity errorSeverity) {
     var isQdm = StringUtils.equals(measureModel, ModelType.QDM_5_6.getValue());
