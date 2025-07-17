@@ -281,7 +281,8 @@ public class VersionService {
             findHighestCaseNumberWhenCaseNumbersExist(savedDraft.getTestCases()));
       }
 
-      if (!measure.getModel().equals(model)
+      if (!measure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
+          && !measure.getModel().equals(model)
           && appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
         for (TestCase testCase : savedDraft.getTestCases()) {
           testCaseValidationService.validateResourceAsynchronously(
