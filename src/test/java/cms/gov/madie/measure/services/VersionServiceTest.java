@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BadVersionRequestException;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
@@ -10,14 +11,10 @@ import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.cqm.CqmMeasure;
-import gov.cms.madie.models.measure.ElmJson;
-import gov.cms.madie.models.measure.Group;
-import gov.cms.madie.models.measure.Measure;
-import gov.cms.madie.models.measure.MeasureMetaData;
-import gov.cms.madie.models.measure.TestCase;
 import gov.cms.madie.packaging.utils.PackagingUtilityFactory;
 import gov.cms.madie.packaging.utils.qicore411.PackagingUtilityImpl;
 import gov.cms.madie.models.measure.*;
@@ -33,7 +30,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.ResponseEntity;
 
 import java.io.ByteArrayInputStream;
 import java.time.Instant;
@@ -50,6 +46,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -69,6 +66,8 @@ public class VersionServiceTest {
   @Mock private MongoGridFsService mongoGridFsService;
   @Mock ElmTranslatorClient elmTranslatorClient;
   @Mock FhirServicesClient fhirServicesClient;
+
+  @Mock private TestCaseValidationService testCaseValidationService;
 
   @Captor private ArgumentCaptor<Measure> measureCaptor;
   @Captor private ArgumentCaptor<CqmMeasure> cqmMeasureCaptor;
@@ -859,8 +858,6 @@ public class VersionServiceTest {
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
     when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
-        .thenReturn(ResponseEntity.ok(validTestCaseHapiOperationOutcome));
 
     Measure draft =
         versionService.createDraft(
@@ -925,8 +922,6 @@ public class VersionServiceTest {
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
     when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
-        .thenReturn(ResponseEntity.ok(validTestCaseHapiOperationOutcome));
 
     Measure draft =
         versionService.createDraft(
@@ -1043,8 +1038,6 @@ public class VersionServiceTest {
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
     when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
-        .thenReturn(ResponseEntity.ok(validTestCaseHapiOperationOutcome));
 
     versionService.createDraft(
         versionedMeasure.getId(), "Test", "QI-Core v6.0.0", "test-user", TEST_ACCESS_TOKEN);
@@ -1228,8 +1221,6 @@ public class VersionServiceTest {
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
     when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
-        .thenReturn(ResponseEntity.ok(invalidTestCaseHapiOperationOutcome));
     Measure draft =
         versionService.createDraft(
             versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
@@ -1299,8 +1290,6 @@ public class VersionServiceTest {
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
     when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
     when(sequenceService.generateSequence(anyString())).thenReturn(1);
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
-        .thenReturn(ResponseEntity.ok(validTestCaseHapiOperationOutcome));
     Measure draft =
         versionService.createDraft(
             versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
@@ -1471,8 +1460,6 @@ public class VersionServiceTest {
     when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
-        .thenReturn(ResponseEntity.ok(validTestCaseHapiOperationOutcome));
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
     when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
 
@@ -1538,8 +1525,6 @@ public class VersionServiceTest {
     when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
-        .thenReturn(ResponseEntity.ok(validTestCaseHapiOperationOutcome));
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
     when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
 
@@ -1598,5 +1583,78 @@ public class VersionServiceTest {
         is(
             equalTo(
                 "Can not create a draft for the measure \"Test\". Only versioned measure can be drafted.")));
+  }
+
+  @Test
+  public void testCreateDraftSuccessfullyWhenModelIsChanged() {
+    TestCaseGroupPopulation clonedTestCaseGroupPopulation =
+        TestCaseGroupPopulation.builder()
+            .groupId("clonedGroupId1")
+            .scoring("Cohort")
+            .populationBasis("boolean")
+            .build();
+    Measure versionedMeasure = buildBasicMeasure();
+    testCase.setJson(json.replace("}", ""));
+    versionedMeasure.setTestCases(List.of(testCase));
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure versionedCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .model(MODEL_QI_CORE)
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(metaData)
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .id(ObjectId.get().toString())
+                        .groupPopulations(List.of(clonedTestCaseGroupPopulation))
+                        .hapiOperationOutcome(validTestCaseHapiOperationOutcome)
+                        .build()))
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
+        .thenReturn(true);
+    // Mocks a validation request awaiting execution.
+    when(testCaseValidationService.validateResourceAsynchronously(
+            any(), any(TestCase.class), eq(TestCaseServiceUtil.SAVE), anyString()))
+        .thenAnswer(
+            invocation ->
+                invocation.getArgument(1, TestCase.class).toBuilder()
+                    .validationStatus(TestCaseValidationStatus.PENDING.toString())
+                    .build());
+
+    Measure draft =
+        versionService.createDraft(
+            versionedMeasure.getId(),
+            "Test",
+            ModelType.QI_CORE_6_0_0.getValue(),
+            "test-user",
+            TEST_ACCESS_TOKEN);
+
+    assertThat(draft.getMeasureName(), is(equalTo("Test")));
+    assertThat(draft.getMeasureMetaData().isDraft(), is(equalTo(true)));
+    assertThat(draft.getVersion().getMajor(), is(equalTo(2)));
+    assertThat(draft.getVersion().getMinor(), is(equalTo(3)));
+    assertThat(draft.getVersion().getRevisionNumber(), is(equalTo(1)));
+    assertThat(draft.getGroups().size(), is(equalTo(1)));
+    assertFalse(draft.getGroups().stream().anyMatch(item -> "xyz-p12r-12ert".equals(item.getId())));
+    assertThat(draft.getTestCases().size(), is(equalTo(1)));
+    assertFalse(draft.getGroups().stream().anyMatch(item -> "testId1".equals(item.getId())));
+    assertThat(
+        draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(),
+        is(equalTo("clonedGroupId1")));
+    assertTrue(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
+    assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-11T01:30:10.123+00:00"));
+    assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-10T01:31:20.456+00:00"));
   }
 }
