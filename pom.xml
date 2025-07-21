@@ -14,7 +14,7 @@
   <name>Measure Service</name>
   <description>Measure Service for MADiE</description>
   <properties>
-    <cqframework.version>3.22.0</cqframework.version>
+    <cqframework.version>3.27.0</cqframework.version>
     <java.version>17</java.version>
     <junit-jupiter.version>5.10.3</junit-jupiter.version>
     <mvn.checkstyle.file>madie-checkstyle.xml</mvn.checkstyle.file>

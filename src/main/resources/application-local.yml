@@ -8,6 +8,10 @@ logging:
   pattern:
     console: "%d{dd-MM-yyyy HH:mm:ss.SSS} [%thread] %mdc %-5level %logger{36}.%M - %msg%n"
     
-hapi-fhir:
-  url: ${HAPI_FHIR_URL:http://localhost:8080/fhir}
 
+
+madie:
+  service-config:
+    cql-template-qicore411-url: ${CQL_TEMPLATE_QICORE411_URL:http://localhost:8088/QICore411_CQLTemplate.txt}
+    cql-template-qdm56-url: ${CQL_TEMPLATE_QDM56_URL:http://localhost:8088/QDM56_CQLTemplate.txt}
+    cql-template-qicore600-url: ${CQL_TEMPLATE_QICORE600_URL:http://localhost:8088/QICore600_CQLTemplate.txt}
