@@ -12,9 +12,7 @@ import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
-import gov.cms.madie.models.measure.Measure;
-import gov.cms.madie.models.measure.MeasureMetaData;
-import gov.cms.madie.models.measure.MeasureSet;
+import gov.cms.madie.models.measure.*;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -24,11 +22,13 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -49,6 +49,7 @@ public class AdminControllerMvcTest {
   @MockitoBean private MeasureService measureService;
   @MockitoBean private MeasureSetService measureSetService;
   @MockitoBean private TestCaseService testCaseService;
+  @MockitoBean private TestCaseValidationService testCaseValidationService;
   @MockitoBean private ActionLogService actionLogService;
   @MockitoBean private VersionService versionService;
 
@@ -721,5 +722,143 @@ public class AdminControllerMvcTest {
     verify(measureRepository, times(1))
         .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(List.of("ms-123"), true, true);
     verify(measureRepository, times(1)).findAllByMeasureSetIdAndActive("ms-123", true);
+  }
+
+  @Test
+  public void updateTestCaseValidationStatusProcessesValidatingTestCases() throws Exception {
+    Measure measure =
+        Measure.builder()
+            .id("M1")
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .testCases(
+                List.of(
+                    TestCase.builder()
+                        .id("TC1")
+                        .validationStatus(TestCaseValidationStatus.VALIDATING.toString())
+                        .build()))
+            .build();
+
+    when(measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue()))
+        .thenReturn(List.of(measure));
+
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isOk());
+
+    verify(testCaseValidationService, times(1))
+        .submitOnSaveValidationTask(
+            eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0));
+    assertEquals(
+        TestCaseValidationStatus.PENDING.toString(),
+        measure.getTestCases().get(0).getValidationStatus());
+  }
+
+  @Test
+  public void updateTestCaseValidationStatusProcessesPendingTestCases() throws Exception {
+    Measure measure =
+        Measure.builder()
+            .id("M1")
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .testCases(
+                List.of(
+                    TestCase.builder()
+                        .id("TC1")
+                        .validationStatus(TestCaseValidationStatus.PENDING.toString())
+                        .build()))
+            .build();
+
+    when(measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue()))
+        .thenReturn(List.of(measure));
+
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isOk());
+
+    verify(testCaseValidationService, times(1))
+        .submitOnSaveValidationTask(
+            eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0));
+  }
+
+  @Test
+  public void updateTestCaseValidationStatusSkipsNonValidatingOrPendingTestCases()
+      throws Exception {
+    Measure measure =
+        Measure.builder()
+            .id("M1")
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .testCases(
+                List.of(
+                    TestCase.builder()
+                        .id("TC1")
+                        .validationStatus(TestCaseValidationStatus.INVALID.toString())
+                        .build()))
+            .build();
+
+    when(measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue()))
+        .thenReturn(List.of(measure));
+
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isOk());
+
+    verify(testCaseValidationService, never())
+        .submitOnSaveValidationTask(
+            anyString(), any(TestCase.class), anyString(), any(ModelType.class));
+  }
+
+  @Test
+  public void updateTestCaseValidationStatusHandlesEmptyMeasureList() throws Exception {
+    when(measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue()))
+        .thenReturn(Collections.emptyList());
+
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isOk());
+
+    verifyNoInteractions(testCaseValidationService);
+  }
+
+  @Test
+  public void updateTestCaseValidationStatusHandlesMeasuresWithoutTestCases() throws Exception {
+    Measure measure =
+        Measure.builder()
+            .id("M1")
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .testCases(Collections.emptyList())
+            .build();
+
+    when(measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue()))
+        .thenReturn(List.of(measure));
+
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isOk());
+
+    verifyNoInteractions(testCaseValidationService);
   }
 }

@@ -46,6 +46,7 @@ import lombok.extern.slf4j.Slf4j;
 public class AdminController {
   private final MeasureService measureService;
   private final TestCaseService testCaseService;
+  private final TestCaseValidationService testCaseValidationService;
   private final MeasureSetService measureSetService;
   private final ActionLogService actionLogService;
   private final VersionService versionService;
@@ -121,6 +122,60 @@ public class AdminController {
             .reports(reports)
             .impactedMeasures(impactedMeasures)
             .build());
+  }
+
+  // This endpoint is used to reset the validation queue for QI Core v6 measures test cases
+  // that are in validating state
+  @PutMapping("/measures/test-cases/restart-validation")
+  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  public void resetTestCaseValidationQueue(
+      HttpServletRequest request,
+      @Value("${admin-api-key}") String apiKey,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
+
+    log.info(
+        "User [{}] - Starting admin task to place QI Core v6 testcases back on the validation queue",
+        principal.getName());
+    List<Measure> measureList =
+        measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue());
+
+    if (CollectionUtils.isNotEmpty(measureList)) {
+      measureList.forEach(
+          measure -> {
+            if (CollectionUtils.isNotEmpty(measure.getTestCases())) {
+              measure
+                  .getTestCases()
+                  .forEach(
+                      testCase -> {
+                        if (TestCaseValidationStatus.VALIDATING
+                            .toString()
+                            .equalsIgnoreCase(testCase.getValidationStatus())) {
+                          testCase.setValidationStatus(TestCaseValidationStatus.PENDING.toString());
+                          // submit the test case after updating its status
+                          testCaseValidationService.submitOnSaveValidationTask(
+                              measure.getId(),
+                              testCase,
+                              accessToken,
+                              ModelType.valueOfName(measure.getModel()));
+                        } else if (TestCaseValidationStatus.PENDING
+                            .toString()
+                            .equalsIgnoreCase(testCase.getValidationStatus())) {
+                          // Submit test cases already in PENDING status
+                          testCaseValidationService.submitOnSaveValidationTask(
+                              measure.getId(),
+                              testCase,
+                              accessToken,
+                              ModelType.valueOfName(measure.getModel()));
+                        }
+                      });
+            }
+          });
+      log.info(
+          "User [{}] - Successfully placed QI Core v6 test cases back on the validation queue",
+          principal.getName());
+      measureRepository.saveAll(measureList);
+    }
   }
 
   @DeleteMapping("/measures/{id}")
