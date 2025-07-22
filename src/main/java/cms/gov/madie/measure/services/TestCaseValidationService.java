@@ -87,10 +87,7 @@ public class TestCaseValidationService {
         taskId,
         Instant.now(),
         importExecutor.getQueueSize());
-    importExecutor.submit(
-        () -> {
-          validate(taskId, measureId, testCase, modelType, accessToken);
-        });
+    importExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
   }
 
   void validate(
@@ -102,11 +99,7 @@ public class TestCaseValidationService {
     // TODO replace with decorator
     Instant startTime = Instant.now();
     log.info(
-        "TestCase Validation::execute::{}::{}::{}::{}",
-        submittedTestCase.getId(),
-        Thread.currentThread().getId(),
-        taskId,
-        startTime);
+        "TestCase Validation::execute::{}::{}::{}", submittedTestCase.getId(), taskId, startTime);
     Measure measure =
         measureRepository.setValidationStatusToValidating(
             submittedTestCase.getId(), measureId, taskId);
@@ -133,9 +126,10 @@ public class TestCaseValidationService {
           currentTestCase.getId(), measureId, taskId, validationOutcome);
       Instant stopTime = Instant.now();
       log.info(
-          "TestCase Validation::completed::{}::{}::{}::{}",
+          "TestCase Validation::completed::{}::{}::{}::{}::{}",
           currentTestCase.getId(),
           taskId,
+          stopTime,
           Duration.between(startTime, stopTime),
           saveExecutor.getQueueSize());
     } catch (Exception e) {
@@ -157,7 +151,7 @@ public class TestCaseValidationService {
     // If the measure is null, the test case has already has PENDING status.
     if (updatedMeasure == null) {
       log.info(
-          "Test Case with Id {} already in validation queue for Measure with Id {}",
+          "TestCase Validation::already pending::{}::measure::{}",
           testCase.getId(),
           measure.getId());
       return testCase;
