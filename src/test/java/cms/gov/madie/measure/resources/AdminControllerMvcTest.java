@@ -741,6 +741,22 @@ public class AdminControllerMvcTest {
     when(measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue()))
         .thenReturn(List.of(measure));
 
+    // Mock the repository behavior to update the validation status to PENDING
+    doAnswer(
+            invocation -> {
+              String testCaseId = invocation.getArgument(0, String.class);
+              String measureId = invocation.getArgument(1, String.class);
+              if ("TC1".equals(testCaseId) && "M1".equals(measureId)) {
+                measure
+                    .getTestCases()
+                    .get(0)
+                    .setValidationStatus(TestCaseValidationStatus.PENDING.toString());
+              }
+              return null;
+            })
+        .when(measureRepository)
+        .setValidationStatusToPending(anyString(), anyString());
+
     mockMvc
         .perform(
             MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
@@ -860,5 +876,86 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verifyNoInteractions(testCaseValidationService);
+  }
+
+  @Test
+  public void updateTestCaseValidationStatusProcessesMultipleTestCasesWithDifferentStatuses()
+      throws Exception {
+    Measure measure =
+        Measure.builder()
+            .id("M1")
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .testCases(
+                List.of(
+                    TestCase.builder()
+                        .id("TC1")
+                        .validationStatus(TestCaseValidationStatus.VALIDATING.toString())
+                        .build(),
+                    TestCase.builder()
+                        .id("TC2")
+                        .validationStatus(TestCaseValidationStatus.PENDING.toString())
+                        .build(),
+                    TestCase.builder()
+                        .id("TC3")
+                        .validationStatus(TestCaseValidationStatus.INVALID.toString())
+                        .build()))
+            .build();
+
+    when(measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue()))
+        .thenReturn(List.of(measure));
+
+    // Mock the repository behavior to update the validation status to PENDING
+    doAnswer(
+            invocation -> {
+              String testCaseId = invocation.getArgument(0, String.class);
+              String measureId = invocation.getArgument(1, String.class);
+              if ("TC1".equals(testCaseId) && "M1".equals(measureId)) {
+                measure
+                    .getTestCases()
+                    .get(0)
+                    .setValidationStatus(TestCaseValidationStatus.PENDING.toString());
+              }
+              return null;
+            })
+        .when(measureRepository)
+        .setValidationStatusToPending(anyString(), anyString());
+
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isOk());
+
+    verify(testCaseValidationService, times(1))
+        .submitOnSaveValidationTask(
+            eq("M1"),
+            eq(measure.getTestCases().get(0)),
+            eq("test-okta"),
+            eq(ModelType.QI_CORE_6_0_0));
+    verify(testCaseValidationService, times(1))
+        .submitOnSaveValidationTask(
+            eq("M1"),
+            eq(measure.getTestCases().get(1)),
+            eq("test-okta"),
+            eq(ModelType.QI_CORE_6_0_0));
+    verify(testCaseValidationService, never())
+        .submitOnSaveValidationTask(
+            eq("M1"),
+            eq(measure.getTestCases().get(2)),
+            eq("test-okta"),
+            eq(ModelType.QI_CORE_6_0_0));
+
+    assertEquals(
+        TestCaseValidationStatus.PENDING.toString(),
+        measure.getTestCases().get(0).getValidationStatus());
+    assertEquals(
+        TestCaseValidationStatus.PENDING.toString(),
+        measure.getTestCases().get(1).getValidationStatus());
+    assertEquals(
+        TestCaseValidationStatus.INVALID.toString(),
+        measure.getTestCases().get(2).getValidationStatus());
   }
 }

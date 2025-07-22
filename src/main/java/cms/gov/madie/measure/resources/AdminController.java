@@ -148,20 +148,21 @@ public class AdminController {
                   .getTestCases()
                   .forEach(
                       testCase -> {
-                        if (TestCaseValidationStatus.VALIDATING
+                        if (TestCaseValidationStatus.PENDING
                             .toString()
                             .equalsIgnoreCase(testCase.getValidationStatus())) {
-                          testCase.setValidationStatus(TestCaseValidationStatus.PENDING.toString());
-                          // submit the test case after updating its status
+                          // Submit test case already in PENDING status
                           testCaseValidationService.submitOnSaveValidationTask(
                               measure.getId(),
                               testCase,
                               accessToken,
                               ModelType.valueOfName(measure.getModel()));
-                        } else if (TestCaseValidationStatus.PENDING
+                        } else if (TestCaseValidationStatus.VALIDATING
                             .toString()
                             .equalsIgnoreCase(testCase.getValidationStatus())) {
-                          // Submit test cases already in PENDING status
+                          measureRepository.setValidationStatusToPending(
+                              testCase.getId(), measure.getId());
+                          // submit the test case after updating its status
                           testCaseValidationService.submitOnSaveValidationTask(
                               measure.getId(),
                               testCase,
@@ -174,7 +175,6 @@ public class AdminController {
       log.info(
           "User [{}] - Successfully placed QI Core v6 test cases back on the validation queue",
           principal.getName());
-      measureRepository.saveAll(measureList);
     }
   }
 
