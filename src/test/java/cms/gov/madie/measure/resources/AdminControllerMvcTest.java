@@ -741,7 +741,6 @@ public class AdminControllerMvcTest {
     when(measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue()))
         .thenReturn(List.of(measure));
 
-    // Mock the repository behavior to update the validation status to PENDING
     doAnswer(
             invocation -> {
               String testCaseId = invocation.getArgument(0, String.class);
@@ -752,7 +751,7 @@ public class AdminControllerMvcTest {
                     .get(0)
                     .setValidationStatus(TestCaseValidationStatus.PENDING.toString());
               }
-              return null;
+              return measure;
             })
         .when(measureRepository)
         .setValidationStatusToPending(anyString(), anyString());
@@ -768,7 +767,10 @@ public class AdminControllerMvcTest {
 
     verify(testCaseValidationService, times(1))
         .submitOnSaveValidationTask(
-            eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0));
+            eq("M1"),
+            eq(measure.getTestCases().get(0)),
+            eq("test-okta"),
+            eq(ModelType.QI_CORE_6_0_0));
     assertEquals(
         TestCaseValidationStatus.PENDING.toString(),
         measure.getTestCases().get(0).getValidationStatus());
@@ -929,12 +931,6 @@ public class AdminControllerMvcTest {
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk());
 
-    verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
-            eq("M1"),
-            eq(measure.getTestCases().get(0)),
-            eq("test-okta"),
-            eq(ModelType.QI_CORE_6_0_0));
     verify(testCaseValidationService, times(1))
         .submitOnSaveValidationTask(
             eq("M1"),

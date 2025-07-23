@@ -160,14 +160,17 @@ public class AdminController {
                         } else if (TestCaseValidationStatus.VALIDATING
                             .toString()
                             .equalsIgnoreCase(testCase.getValidationStatus())) {
-                          measureRepository.setValidationStatusToPending(
-                              testCase.getId(), measure.getId());
-                          // submit the test case after updating its status
-                          testCaseValidationService.submitOnSaveValidationTask(
-                              measure.getId(),
-                              testCase,
-                              accessToken,
-                              ModelType.valueOfName(measure.getModel()));
+                          Measure updatedMeasure =
+                              measureRepository.setValidationStatusToPending(
+                                  testCase.getId(), measure.getId());
+                          if (updatedMeasure != null) {
+                            // submit the test case after updating its status
+                            testCaseValidationService.submitOnSaveValidationTask(
+                                measure.getId(),
+                                testCase,
+                                accessToken,
+                                ModelType.valueOfName(measure.getModel()));
+                          }
                         }
                       });
             }
