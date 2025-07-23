@@ -66,7 +66,7 @@ public class TestCaseValidationService {
     //  as "Pending" in the database.
   }
 
-  void submitOnSaveValidationTask(
+  public void submitOnSaveValidationTask(
       String measureId, TestCase testCase, String accessToken, ModelType modelType) {
     UUID taskId = UUID.randomUUID();
     log.info(
