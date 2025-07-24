@@ -303,6 +303,41 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
+  public void testFindMyActiveMeasuresWithSearchFieldFilteredByCmsIdAndFeatureFlagIsOn() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
+
+    MeasureSetIdDTO dto1 = new MeasureSetIdDTO("set1");
+    MeasureSetIdDTO dto2 = new MeasureSetIdDTO("set2");
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetIdDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
+    PageRequest pageRequest = PageRequest.of(0, 3);
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+
+    when(mongoTemplate.aggregate(
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder()
+            .searchField("28fhir")
+            .optionalSearchProperties(List.of("cmsId"))
+            .build();
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", pageRequest, measureSearchCriteria, true, "measures");
+
+    assertEquals(page.getTotalElements(), 1);
+    assertEquals(page.getTotalPages(), 1);
+    assertEquals(page.getContent().size(), 1);
+    List<MeasureListDTO> page1Measures = page.getContent();
+    assertEquals(measure1.getMeasureName(), page1Measures.get(0).getMeasureName());
+  }
+
+  @Test
   public void testFindMyActiveMeasuresWithSearchFieldFilteredByModel() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);

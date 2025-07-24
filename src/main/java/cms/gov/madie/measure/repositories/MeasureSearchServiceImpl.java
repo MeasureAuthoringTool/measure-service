@@ -10,6 +10,7 @@ import gov.cms.madie.models.measure.Measure;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import org.bson.Document;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -99,12 +100,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           // provided, we need to force this criteria search
           break;
         case "cmsId":
-          if (isNumeric(searchField)) {
-            int number = Integer.parseInt(searchField);
-            orConditions.add(Criteria.where("measureSet.cmsId").is(number));
-          } else {
-            orConditions.add(Criteria.where("measureSet.cmsId").is(searchField));
-          }
           break;
         case "measure":
           orConditions.add(
@@ -136,6 +131,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       boolean filterByCurrentUser,
       // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource) {
+    List<AggregationOperation> aggregationOperations = new ArrayList<>();
+
     // join measure and measure_set to lookup owner and ACL info
     LookupOperation lookupOperation = getLookupOperation();
 
@@ -146,11 +143,17 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         invocationSource.equals("testCase")
             ? appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
             : appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH);
+
+    aggregationOperations.add(lookupOperation);
+    aggregationOperations.add(unwindOperation);
+
     if (measureSearchCriteria != null) {
       // If searchField is given and no filter is applied, then search for the searchField in
       // measureName and ecqmTitle
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
           && CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
+        aggregationOperations.add(addCmsIdDisplayField());
+
         String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
         List<Criteria> wordCriteria = new ArrayList<>();
 
@@ -161,12 +164,13 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                 new Criteria()
                     .orOperator(
                         Criteria.where("measureName").regex(".*" + word + ".*", "i"),
-                        Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i")));
+                        Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i"),
+                        Criteria.where("cmsIdDisplay").regex(".*" + word + ".*", "i")));
           }
         }
 
         if (!wordCriteria.isEmpty()) {
-          measureCriteria.andOperator(wordCriteria);
+          aggregationOperations.add(match(new Criteria().andOperator(wordCriteria)));
         }
       }
       // if searchField and optional filters are provided, then search for searchField only in the
@@ -256,16 +260,20 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               .build();
       ReplaceRootOperation replaceRootOperation = replaceRoot("selectedDoc");
 
-      pipeline =
-          newAggregation(
-              lookupOperation,
-              unwindOperation,
-              matchMeasureSetIds,
-              sortByVersionAndDraft,
-              groupByMeasureSet,
-              addHasAssociated,
-              replaceRootOperation,
-              facets);
+      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
+          && measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
+        aggregationOperations.add(addCmsIdDisplayField());
+        aggregationOperations.add(matchCmsIdDisplay(measureSearchCriteria.getSearchField()));
+      }
+
+      aggregationOperations.add(matchMeasureSetIds);
+      aggregationOperations.add(sortByVersionAndDraft);
+      aggregationOperations.add(groupByMeasureSet);
+      aggregationOperations.add(addHasAssociated);
+      aggregationOperations.add(replaceRootOperation);
+      aggregationOperations.add(facets);
+
+      pipeline = newAggregation(aggregationOperations);
 
     } else {
       pipeline = newAggregation(lookupOperation, unwindOperation, matchOperation, facets);
@@ -293,6 +301,34 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     return new PageImpl<>(
         results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());
+  }
+
+  // Add string field called cmsIdDisplay. If model is QI-Core, append "FHIR" to measureSet
+  // .cmsId, else only convert measureSet.cmsId to a string
+  private AggregationOperation addCmsIdDisplayField() {
+    return context ->
+        new Document(
+            "$addFields",
+            new Document(
+                "cmsIdDisplay",
+                new Document(
+                    "$cond",
+                    List.of(
+                        new Document(
+                            "$regexMatch",
+                            new Document("input", "$model").append("regex", "QI-Core")),
+                        new Document(
+                            "$concat",
+                            List.of(new Document("$toString", "$measureSet.cmsId"), "FHIR")),
+                        new Document("$toString", "$measureSet.cmsId")))));
+  }
+
+  // Case-insensitive contains search
+  private AggregationOperation matchCmsIdDisplay(String input) {
+    return context ->
+        new Document(
+            "$match",
+            new Document("cmsIdDisplay", new Document("$regex", input).append("$options", "i")));
   }
 
   @Override
