@@ -26,10 +26,12 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
     query.addCriteria(
         Criteria.where("_id")
             .is(measureId)
-            .and("testCases._id")
-            .is(testCaseId)
-            .and("testCases.validationStatus")
-            .ne(TestCaseValidationStatus.PENDING.toString()));
+            .and("testCases")
+            .elemMatch(
+                Criteria.where("_id")
+                    .is(testCaseId)
+                    .and("validationStatus")
+                    .ne(TestCaseValidationStatus.PENDING.toString())));
 
     Update update = new Update();
     update.set("testCases.$.validationStatus", TestCaseValidationStatus.PENDING.toString());
@@ -41,10 +43,15 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
   @Override
   public Measure setValidationStatusToValidating(String testCaseId, String measureId, UUID taskId) {
     Query query = new Query();
-    query.addCriteria(Criteria.where("_id").is(measureId).and("testCases._id").is(testCaseId));
     query.addCriteria(
-        Criteria.where("testCases.validationStatus")
-            .is(TestCaseValidationStatus.PENDING.toString()));
+        Criteria.where("_id")
+            .is(measureId)
+            .and("testCases")
+            .elemMatch(
+                Criteria.where("_id")
+                    .is(testCaseId)
+                    .and("validationStatus")
+                    .is(TestCaseValidationStatus.PENDING.toString())));
 
     Update update = new Update();
     update.set("testCases.$.validationStatus", TestCaseValidationStatus.VALIDATING.toString());
@@ -75,12 +82,14 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
     query.addCriteria(
         Criteria.where("_id")
             .is(measureId)
-            .and("testCases._id")
-            .is(testCaseId)
-            .and("testCases.validationStatus")
-            .is(TestCaseValidationStatus.VALIDATING.toString())
-            .and("testCases.validationTaskId")
-            .is(taskId.toString()));
+            .and("testCases")
+            .elemMatch(
+                Criteria.where("_id")
+                    .is(testCaseId)
+                    .and("validationStatus")
+                    .is(TestCaseValidationStatus.VALIDATING.toString())
+                    .and("testCases.validationTaskId")
+                    .is(taskId.toString())));
 
     Update update = new Update();
     update.set(
