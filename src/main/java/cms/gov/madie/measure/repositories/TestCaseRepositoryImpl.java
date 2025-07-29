@@ -88,7 +88,7 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
                     .is(testCaseId)
                     .and("validationStatus")
                     .is(TestCaseValidationStatus.VALIDATING.toString())
-                    .and("testCases.validationTaskId")
+                    .and("validationTaskId")
                     .is(taskId.toString())));
 
     Update update = new Update();
