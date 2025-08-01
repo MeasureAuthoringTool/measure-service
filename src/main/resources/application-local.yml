@@ -4,7 +4,7 @@ spring:
          uri: mongodb://gakins:E5press0@localhost:27017/madie?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
 logging:
   level:
-    root: ${DEBUG}
+    root: ${INFO}
   pattern:
     console: "%d{dd-MM-yyyy HH:mm:ss.SSS} [%thread] %mdc %-5level %logger{36}.%M - %msg%n"
     
