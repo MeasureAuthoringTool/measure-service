@@ -462,7 +462,7 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  void testCountAllMeasures_EmptyOwnershipTypes() {
+  void testCountAllMeasuresWithEmptyOwnershipTypes() {
     String owner = "john";
     Map<String, String> resultMap = new HashMap<>();
     resultMap.put("count", "10");
@@ -476,7 +476,7 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  void testCountAllMeasures_NullOwnershipTypes() {
+  void testCountAllMeasuresWithNullOwnershipTypes() {
     String owner = "john";
     Map<String, String> resultMap = new HashMap<>();
     resultMap.put("count", "10");
@@ -490,7 +490,7 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  void testCountAllMeasures_NoUserId() {
+  void testCountAllMeasuresWithNoUserId() {
     Map<String, String> resultMap = new HashMap<>();
     resultMap.put("count", "10");
     AggregationResults result = new AggregationResults<>(List.of(resultMap), new Document());
