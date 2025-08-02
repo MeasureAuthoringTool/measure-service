@@ -426,6 +426,7 @@ public final class JsonUtil {
   // update full urls for non-patient resources
   public static String updateResourceFullUrls(TestCase testCase, String madieJsonResourcesBaseUri) {
     ObjectMapper mapper = new ObjectMapper();
+    boolean jsonValid = false;
     try {
       JsonNode rootNode = mapper.readTree(testCase.getJson());
       JsonNode entry = rootNode.get("entry");
@@ -441,11 +442,16 @@ public final class JsonUtil {
               String newUrl = buildFullUrl(id, resourceType, madieJsonResourcesBaseUri);
               ObjectNode node = (ObjectNode) theNode;
               node.put("fullUrl", newUrl);
+              jsonValid = true;
             }
           }
         }
       }
-      return jsonNodeToString(mapper, rootNode);
+      if (!jsonValid) {
+        return testCase.getJson();
+      } else {
+        return jsonNodeToString(mapper, rootNode);
+      }
     } catch (JsonProcessingException ex) {
       log.error("Error reading testCaseJson testCaseId = " + testCase.getId(), ex);
     }
