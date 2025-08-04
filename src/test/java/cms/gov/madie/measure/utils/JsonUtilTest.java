@@ -562,6 +562,23 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
+  void updateResourceFullUrlsIfJsonInvalid() {
+    final String json = getData("/bundles/qicore_json_util_fullurl.json");
+    // remove the opening { to make json invalid
+    String invalidJson = json.substring(1, json.length());
+    TestCase tc1 =
+        TestCase.builder()
+            .id("TC1")
+            .name("TC1")
+            .patientId(UUID.randomUUID())
+            .json(invalidJson)
+            .build();
+    String updatedTc1 = JsonUtil.updateResourceFullUrls(tc1, baseUrl);
+    // original json is returned when json is invalid
+    assertEquals(updatedTc1, invalidJson);
+  }
+
+  @Test
   void updateResourceFullUrlsIfEntryNodeNotAvailable() {
     final String json =
         "{\"id\":\"6323489059967e30c06d0774\",\"resourceType\":\"Bundle\",\"type\":\"collection\"}";
