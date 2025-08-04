@@ -28,9 +28,9 @@ public class MeasureLockController {
   public ResponseEntity<Void> unlockMeasure(
       @PathVariable String measureId,
       @RequestHeader("Authorization") String accessToken,
-      Principal principal) {
+      @RequestHeader(name = "harpId") String harpId) {
 
-    measureLockService.unlockMeasure(measureId, principal.getName(), accessToken);
+    measureLockService.unlockMeasure(measureId, harpId, accessToken);
     // Always 200 even if no lock?
     return ResponseEntity.ok().build();
   }
