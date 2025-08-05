@@ -1,8 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.dto.MeasureListDTO;
-import cms.gov.madie.measure.dto.MeasureSearchCriteria;
-import cms.gov.madie.measure.dto.SharedUser;
+import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
@@ -28,15 +26,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.security.Principal;
@@ -132,6 +122,25 @@ public class MeasureController {
     Measure savedMeasure =
         measureService.createMeasure(measure, username, accessToken, addDefaultCQL);
     return ResponseEntity.status(HttpStatus.CREATED).body(savedMeasure);
+  }
+
+  @PatchMapping("/measures/{id}")
+  public ResponseEntity<Measure> patchMeasure(
+    @PathVariable("id") String id,
+    @RequestBody MeasureField patch,
+    Principal principal,
+    @RequestHeader("Authorization") String accessToken) {
+    final String username = principal.getName();
+    if (id == null || id.isEmpty() || !id.equals(patch.id())) {
+      log.info("got invalid id [{}] vs measureId: [{}]", id, patch.id());
+      throw new InvalidIdException("Measure", "Patch (PATCH)", "(PATCH [base]/[resource]/[id])");
+    }
+
+    //missing all verification/authn checks
+
+    Measure measure = measureService.partialUpdate(id, patch);
+
+    return ResponseEntity.ok(measure);
   }
 
   @PutMapping("/measures/{id}")

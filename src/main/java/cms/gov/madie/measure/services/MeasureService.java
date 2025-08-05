@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MeasureField;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -201,6 +202,10 @@ public class MeasureService {
     measureSetService.createMeasureSet(
         username, savedMeasure.getId(), savedMeasure.getMeasureSetId(), null);
     return savedMeasure;
+  }
+
+  public Measure partialUpdate(final String measureId, MeasureField update) {
+    return measureRepository.partialUpdate(measureId, update);
   }
 
   public Measure updateMeasure(

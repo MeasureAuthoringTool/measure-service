@@ -107,7 +107,7 @@ public class MeasureServiceApplication {
       public void addCorsMappings(CorsRegistry registry) {
         registry
             .addMapping("/**")
-            .allowedMethods("PUT", "POST", "GET", "DELETE")
+            .allowedMethods("PUT", "POST", "GET", "DELETE", "PATCH")
             .allowedOrigins(
                 "http://localhost:9000",
                 "https://dev-madie.hcqis.org",
