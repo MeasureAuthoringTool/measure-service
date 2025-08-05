@@ -286,7 +286,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     List<FacetDTO> results =
         mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
-    System.out.println("Results: " + results);
     if (nestedFlag) {
       long totalSize = 0;
       if (results != null && !results.isEmpty()) {
