@@ -171,8 +171,13 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
         if (!wordCriteria.isEmpty()) {
           aggregationOperations.add(match(new Criteria().andOperator(wordCriteria)));
+        } else if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+          // If search string is only special characters return no results
+          aggregationOperations.add(
+              match(Criteria.where("_id").is("123-no-results-will-EVER-match-this-123")));
         }
       }
+
       // if searchField and optional filters are provided, then search for searchField only in the
       // provided filters
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
@@ -281,7 +286,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     List<FacetDTO> results =
         mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
-
+    System.out.println("Results: " + results);
     if (nestedFlag) {
       long totalSize = 0;
       if (results != null && !results.isEmpty()) {
