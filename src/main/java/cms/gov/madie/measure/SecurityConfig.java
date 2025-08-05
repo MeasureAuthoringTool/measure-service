@@ -8,6 +8,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration
 @EnableMethodSecurity
 public class SecurityConfig {
@@ -25,32 +27,26 @@ public class SecurityConfig {
 
   @Bean
   protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-    http.cors()
-        .and()
-        .csrf()
-        .ignoringRequestMatchers(CSRF_WHITELIST)
-        .and()
-        .authorizeHttpRequests()
-        .requestMatchers(HttpMethod.POST, "/organizations/**")
-        .permitAll()
-        .requestMatchers(AUTH_WHITELIST)
-        .permitAll()
-        .and()
-        .authorizeHttpRequests()
-        .anyRequest()
-        .authenticated()
-        .and()
-        .sessionManagement()
-        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-        .and()
-        .oauth2ResourceServer()
-        .jwt()
-        .and()
-        .and()
-        .headers()
-        .xssProtection()
-        .and()
-        .contentSecurityPolicy("script-src 'self'");
+    http.cors(withDefaults())
+      .csrf(csrfConfigure -> csrfConfigure.ignoringRequestMatchers(CSRF_WHITELIST))
+      .authorizeHttpRequests(
+        authorizeRequests ->
+          authorizeRequests.requestMatchers(HttpMethod.POST, "/organizations/**").permitAll())
+      .authorizeHttpRequests(
+        authorizeRequests -> authorizeRequests.requestMatchers(AUTH_WHITELIST).permitAll())
+      .authorizeHttpRequests(authorizeRequests -> authorizeRequests.anyRequest().authenticated())
+      .sessionManagement(
+        sessionManagement ->
+          sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+      .oauth2ResourceServer(
+        oAuth2ResourceServerConfigurer -> oAuth2ResourceServerConfigurer.jwt(withDefaults()))
+      .headers(
+        headers ->
+          headers
+            .xssProtection(withDefaults())
+            .contentSecurityPolicy(
+              contentSecurityPolicyConfig ->
+                contentSecurityPolicyConfig.policyDirectives("script-src 'self'")));
     return http.build();
   }
 }
