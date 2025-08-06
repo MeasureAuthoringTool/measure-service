@@ -26,7 +26,6 @@ public class MeasureLockController {
   public ResponseEntity<LockResponse> unlockMeasure(
       @PathVariable String measureId, Principal principal) {
     LockResponse response = measureLockService.unlockMeasure(measureId, principal.getName());
-    // Always 200 even if no lock?
     return ResponseEntity.ok(response);
   }
 }
