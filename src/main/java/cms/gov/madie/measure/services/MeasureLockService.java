@@ -1,13 +1,14 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.LockResponse;
+import cms.gov.madie.measure.dto.MeasureLock;
 import cms.gov.madie.measure.repositories.MeasureLockRepository;
-import gov.cms.madie.models.common.MeasureLock;
+import cms.gov.madie.measure.resources.DuplicateKeyException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 
@@ -18,59 +19,38 @@ public class MeasureLockService {
 
   private final MeasureLockRepository measureLockRepository;
 
-  public MeasureLock lockMeasure(String measureId, String harpId, String accessToken) {
-    Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
+  public LockResponse lockMeasure(String measureId, String userName) {
+    Instant now = Instant.now();
+    Instant expiresAt = now.plus(Duration.ofMinutes(15)); // 15 minute lock
 
-    // no lock at all, make the original lock document
-    if (existingLock.isEmpty()) {
-      return measureLockRepository.save(
-          MeasureLock.builder()
-              .measureId(measureId)
-              .harpId(harpId)
-              .createdAt(Instant.now())
-              .build());
+    MeasureLock lock = new MeasureLock();
+    lock.setMeasureId(measureId);
+    lock.setLockedBy(userName);
+    lock.setLockedAt(now);
+    lock.setExpiresAt(expiresAt);
+
+    try {
+      measureLockRepository.insert(lock);
+      return new LockResponse(false, userName); // not locked by someone else
+    } catch (DuplicateKeyException ex) {
+      Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
+      if (existingLock.isPresent()) {
+        String lockedBy = existingLock.get().getLockedBy();
+        boolean locked = !lockedBy.equals(userName);
+        return new LockResponse(locked, lockedBy);
+      }
+      return new LockResponse(true, null); // fallback
     }
-
-    MeasureLock lock = existingLock.get();
-
-    // there's a cleared lock in here. We take ownership
-    if (lock.getHarpId() == null || lock.getHarpId().isEmpty()) {
-      lock.setHarpId(harpId);
-      lock.setCreatedAt(Instant.now());
-      return measureLockRepository.save(lock);
-    }
-
-    // somebody else owns lock.
-    if (!lock.getHarpId().equals(harpId)) {
-      throw new ResponseStatusException(
-          HttpStatus.CONFLICT, "Measure is already locked by user: " + lock.getHarpId());
-    }
-
-    // I own lock. I update timestamp
-    lock.setCreatedAt(Instant.now());
-    return measureLockRepository.save(lock);
   }
 
-  public MeasureLock unlockMeasure(String measureId, String harpId, String accessToken) {
+  public synchronized LockResponse unlockMeasure(String measureId, String userName) {
     Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
-
-    // No lock, dont care
-    if (existingLock.isEmpty()) {
-      return null;
+    // it's our lock. We delete it.
+    if (existingLock.isPresent() && existingLock.get().getLockedBy().equals(userName)) {
+      measureLockRepository.deleteByMeasureId(measureId);
+      return new LockResponse(false, null); // Successfully unlocked
     }
-
-    MeasureLock lock = existingLock.get();
-
-    // Someone else owns the throw?
-    if (!harpId.equals(lock.getHarpId())) {
-      throw new ResponseStatusException(
-          HttpStatus.FORBIDDEN, "You do not own the lock on this measure.");
-    }
-
-    // I own lock, I unlock
-    lock.setHarpId(null);
-    lock.setCreatedAt(null);
-
-    return measureLockRepository.save(lock);
+    // it's not our lock. we dont do anything
+    return new LockResponse(true, existingLock.map(MeasureLock::getLockedBy).orElse(null));
   }
 }
