@@ -339,7 +339,8 @@ public class TestCaseService {
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
 
-      if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION) &&
+        ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
         measure.getTestCases().add(testCase);
         measureRepository.save(measure);
         log.info(
