@@ -23,6 +23,6 @@ public class MeasureLock {
   private String lockedBy; // ID of the user locking the measure
   private Instant lockedAt; // Timestamp of when the lock was created
 
-  @Indexed(expireAfterSeconds = 0)
+  @Indexed(expireAfter = "0s")
   private Instant expiresAt;
 }
