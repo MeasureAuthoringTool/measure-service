@@ -171,10 +171,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
         if (!wordCriteria.isEmpty()) {
           aggregationOperations.add(match(new Criteria().andOperator(wordCriteria)));
-        } else if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+        } else {
           // If search string is only special characters return no results
-          aggregationOperations.add(
-              match(Criteria.where("_id").is("123-no-results-will-EVER-match-this-123")));
+          return new PageImpl<>(null, pageable, 0);
         }
       }
 
