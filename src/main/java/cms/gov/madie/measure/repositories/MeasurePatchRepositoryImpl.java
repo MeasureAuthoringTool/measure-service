@@ -1,19 +1,18 @@
 package cms.gov.madie.measure.repositories;
 
-import cms.gov.madie.measure.dto.MeasureDefinitionDTO;
-import cms.gov.madie.measure.dto.MeasureField;
-import cms.gov.madie.measure.dto.MeasureMetadataDTO;
+import cms.gov.madie.measure.exceptions.InternalServerException;
 import gov.cms.madie.models.measure.Measure;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
 
-import java.util.Objects;
+import java.lang.reflect.Field;
+import java.util.Arrays;
+import java.util.List;
 
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
-import static org.springframework.data.mongodb.core.query.Update.update;
 
 @Repository
 public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
@@ -24,49 +23,27 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
   }
 
   @Override
-  public Measure partialUpdate(String measureId, MeasureField update) {
-    if (measureId == null || measureId.isBlank()) {
-      throw new IllegalArgumentException("Measure ID must not be null or blank");
-    }
-
-    if (Objects.requireNonNull(update) instanceof MeasureMetadataDTO metadataDTO) {
-      if (metadataDTO.measureMetaData() == null) {
-        throw new IllegalArgumentException("Measure metadata must not be null");
-      }
-      return mongoOperations
-        .update(Measure.class)
-        .matching(query(where("_id").is(measureId)))
-        .apply(
-          update(
-            metadataDTO.getField(), metadataDTO.measureMetaData()))
-        .withOptions(FindAndModifyOptions.options().returnNew(true))
-        .findAndModifyValue();
-    } else if(update instanceof MeasureDefinitionDTO definitionDTO) {
-      if (definitionDTO.measureDefinition() == null) {
-        throw new IllegalArgumentException("Measure definition must not be null");
-      }
-      return mongoOperations
-        .update(Measure.class)
-        .matching(query(where("_id").is(measureId)))
-        .apply(
-          update(
-            definitionDTO.getField(), definitionDTO.measureDefinition()))
-        .withOptions(FindAndModifyOptions.options().returnNew(true))
-        .findAndModifyValue();
-    }
-
-    throw new IllegalArgumentException("Unsupported update type: " + update);
-  }
-
-  @Override
-  public Measure patchMeasure(Measure measure) {
+  public Measure findAndModify(Measure updatedMeasure) {
+    List<String> excludedFields = Arrays.asList("testCases", "testCaseConfiguration");
     Update patchUpdate = new Update();
-    patchUpdate.set("measure", measure);
+
+    for (Field field : Measure.class.getDeclaredFields()) {
+      if (!excludedFields.contains(field.getName())) {
+        field.setAccessible(true); // Allow access to private fields
+        try {
+          patchUpdate.set(field.getName(), field.get(updatedMeasure));
+        } catch (IllegalAccessException e) {
+          throw new InternalServerException(
+              "Failed to access Measure field during findAndModify Set: " + field.getName());
+        }
+      }
+    }
+
     return mongoOperations
-      .update(Measure.class)
-      .matching(query(where("_id").is(measure.getId())))
-      .apply(patchUpdate)
-      .withOptions(FindAndModifyOptions.options().returnNew(true))
-      .findAndModifyValue();
+        .update(Measure.class)
+        .matching(query(where("_id").is(updatedMeasure.getId())))
+        .apply(patchUpdate)
+        .withOptions(FindAndModifyOptions.options().returnNew(true))
+        .findAndModifyValue();
   }
 }

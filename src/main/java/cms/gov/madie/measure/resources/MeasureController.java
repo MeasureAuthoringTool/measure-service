@@ -124,25 +124,6 @@ public class MeasureController {
     return ResponseEntity.status(HttpStatus.CREATED).body(savedMeasure);
   }
 
-  @PatchMapping("/measures/{id}")
-  public ResponseEntity<Measure> patchMeasure(
-    @PathVariable("id") String id,
-    @RequestBody MeasureField patch,
-    Principal principal,
-    @RequestHeader("Authorization") String accessToken) {
-    final String username = principal.getName();
-    if (id == null || id.isEmpty() || !id.equals(patch.id())) {
-      log.info("got invalid id [{}] vs measureId: [{}]", id, patch.id());
-      throw new InvalidIdException("Measure", "Patch (PATCH)", "(PATCH [base]/[resource]/[id])");
-    }
-
-    //missing all verification/authn checks
-
-    Measure measure = measureService.partialUpdate(id, patch);
-
-    return ResponseEntity.ok(measure);
-  }
-
   @PutMapping("/measures/{id}")
   public ResponseEntity<Measure> updateMeasure(
       @PathVariable("id") String id,
@@ -157,6 +138,8 @@ public class MeasureController {
     }
 
     log.info("getMeasureId [{}]", id);
+
+    // TODO Verify Lock.
 
     final Measure existingMeasure = measureService.findMeasureById(id);
 
