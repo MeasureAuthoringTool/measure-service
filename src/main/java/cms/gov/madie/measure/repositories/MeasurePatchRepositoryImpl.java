@@ -25,6 +25,11 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
   @Override
   public Measure findAndModify(Measure updatedMeasure) {
     List<String> excludedFields = Arrays.asList("testCases", "testCaseConfiguration");
+    return findAndModify(updatedMeasure, excludedFields);
+  }
+
+  @Override
+  public Measure findAndModify(Measure updatedMeasure, List<String> excludedFields) {
     Update patchUpdate = new Update();
 
     for (Field field : Measure.class.getDeclaredFields()) {
