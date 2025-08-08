@@ -2,8 +2,8 @@ package cms.gov.madie.measure.repositories;
 
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.services.AppConfigService;
+import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.Measure;
 
@@ -21,14 +21,13 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Repository;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.apache.commons.lang3.StringUtils.isNumeric;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
-import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.Cond.when;
 
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
@@ -48,81 +47,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         .as("measureSet");
   }
 
-  private void appendAdditionalSearchCriteria(
-      Criteria measureCriteria, MeasureSearchCriteria measureSearchCriteria) {
-    // Build the orOperator for the remaining properties
-    String searchField = measureSearchCriteria.getSearchField();
-    List<Criteria> orConditions = new ArrayList<>();
-
-    for (String property : measureSearchCriteria.getOptionalSearchProperties()) {
-      // this needs to run whenever we have multiple, however we need to force a search even if
-      // the searchField split is less than 3 if the version is the only category that is applied
-      switch (property) {
-        case "version":
-          String[] versionParts = searchField.split("\\.");
-          if (versionParts.length == 3) {
-            if (isNumeric(versionParts[0])
-                && isNumeric(versionParts[1])
-                && isNumeric(versionParts[2])) {
-              Criteria otherCriteria = Criteria.where("version").is(Version.parse(searchField));
-              orConditions.add(otherCriteria);
-            }
-          }
-          if (versionParts.length == 2) {
-            if (isNumeric(versionParts[0]) && isNumeric(versionParts[1])) {
-              int major = Integer.parseInt(versionParts[0]);
-              int minor = Integer.parseInt(versionParts[1]);
-              Criteria otherCriteria =
-                  Criteria.where("version.major").is(major).and("version.minor").is(minor);
-              Criteria additionalCriteria =
-                  Criteria.where("version.minor").is(major).and("version.revisionNumber").is(minor);
-              orConditions.add(otherCriteria);
-              orConditions.add(additionalCriteria);
-            }
-          }
-          if (versionParts.length == 1) {
-            if (isNumeric(versionParts[0])) {
-              int anyMatch = Integer.parseInt(versionParts[0]);
-              Criteria majorMatch = Criteria.where("version.major").is(anyMatch);
-              Criteria minorMatch = Criteria.where("version.minor").is(anyMatch);
-              Criteria patchMatch = Criteria.where("version.revisionNumber").is(anyMatch);
-              orConditions.add(majorMatch);
-              orConditions.add(minorMatch);
-              orConditions.add(patchMatch);
-            } else {
-              if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
-                Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
-                orConditions.add(noVersionMatch);
-              }
-            }
-          }
-          //  if its a bad version that's a random string, and there are no other optional params
-          // provided, we need to force this criteria search
-          break;
-        case "cmsId":
-          break;
-        case "measure":
-          orConditions.add(
-              Criteria.where("measureName").regex(".*" + Pattern.quote(searchField) + ".*", "i"));
-          break;
-        case "model":
-          orConditions.add(
-              Criteria.where("model").regex(".*" + Pattern.quote(searchField) + ".*", "i"));
-          break;
-        default:
-          if (!StringUtils.isBlank(property)) {
-            orConditions.add(
-                Criteria.where(property).regex(measureSearchCriteria.getSearchField(), "i"));
-          }
-      }
-    }
-    Criteria allOrConditions = new Criteria();
-    if (!orConditions.isEmpty()) {
-      allOrConditions.orOperator(orConditions);
-    }
-    measureCriteria.andOperator(allOrConditions);
-  }
-
   @Override
   public Page<MeasureListDTO> searchMeasuresByCriteria(
       String userId,
@@ -135,8 +59,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     // join measure and measure_set to lookup owner and ACL info
     LookupOperation lookupOperation = getLookupOperation();
-
     UnwindOperation unwindOperation = unwind("measureSet");
+
     Criteria measureCriteria = Criteria.where("active").is(true);
 
     boolean nestedFlag =
@@ -148,36 +72,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     aggregationOperations.add(unwindOperation);
 
     if (measureSearchCriteria != null) {
-      // If searchField is given and no filter is applied, then search for the searchField in
-      // measureName and ecqmTitle
-      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
-          && CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
-        aggregationOperations.add(addCmsIdDisplayField());
-
-        String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
-        List<Criteria> wordCriteria = new ArrayList<>();
-
-        for (String word : searchWords) {
-          word = word.replaceAll("[^a-zA-Z0-9]", ""); // Remove special characters
-          if (StringUtils.isNotBlank(word)) {
-            wordCriteria.add(
-                new Criteria()
-                    .orOperator(
-                        Criteria.where("measureName").regex(".*" + word + ".*", "i"),
-                        Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i"),
-                        Criteria.where("cmsIdDisplay").regex(".*" + word + ".*", "i")));
-          }
-        }
-
-        if (!wordCriteria.isEmpty()) {
-          aggregationOperations.add(match(new Criteria().andOperator(wordCriteria)));
-        }
-      }
       // if searchField and optional filters are provided, then search for searchField only in the
       // provided filters
-      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
-          && CollectionUtils.isNotEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
-        appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
+      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+        SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
       // If model is provided, filter out those measures with that model
       if (StringUtils.isNotBlank(measureSearchCriteria.getModel())) {
@@ -198,14 +96,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     // prepare measure set search criteria(user is either owner or shared with)
     Criteria measureSetCriteria = new Criteria();
     if (filterByCurrentUser) {
-      measureSetCriteria =
-          new Criteria()
-              .orOperator(
-                  Criteria.where("measureSet.owner").regex("^\\Q" + userId + "\\E$", "i"),
-                  Criteria.where("measureSet.acls.userId")
-                      .regex("^\\Q" + userId + "\\E$", "i")
-                      .and("measureSet.acls.roles")
-                      .in(RoleEnum.SHARED_WITH));
+      measureSetCriteria = SearchUtils.getAclCriteria(userId);
     }
 
     MatchOperation matchOperation =
@@ -221,22 +112,36 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                 project(MeasureListDTO.class))
             .as("queryResults");
 
-    Aggregation pipeline;
     if (nestedFlag) {
       // Find all the measures that matches the given Criteria and fetch unique measureSetIds
-      List<String> matchedMeasureSetIds =
+      List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
           mongoTemplate
               .aggregate(
                   newAggregation(
-                      lookupOperation, unwindOperation, matchOperation, group("measureSetId")),
+                      lookupOperation,
+                      unwindOperation,
+                      matchOperation,
+                      group("measureSetId")
+                          .count()
+                          .as("matchCount")
+                          .first("_id")
+                          .as("matchedMeasureId")),
                   Measure.class,
-                  MeasureSetIdDTO.class)
-              .getMappedResults()
-              .stream()
-              .map(MeasureSetIdDTO::getId)
-              .collect(Collectors.toList());
+                  MeasureSetMatchCountDTO.class)
+              .getMappedResults();
 
-      // Fetch all measures associated to each measureSetId
+      Map<String, MeasureSetMatchCountDTO> matchInfoMap =
+          matchedMeasureSetCounts.stream()
+              .collect(
+                  Collectors.toMap(MeasureSetMatchCountDTO::getMeasureSetId, Function.identity()));
+
+      List<String> matchedMeasureSetIds = new ArrayList<>(matchInfoMap.keySet());
+
+      if (matchedMeasureSetIds.isEmpty()) {
+        return new PageImpl<>(Collections.emptyList(), pageable, 0);
+      }
+
+      // Fetch all measures associated to each MeasureSetId
       MatchOperation matchMeasureSetIds =
           match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
 
@@ -246,19 +151,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
       // Group all measures that has same measureSetId and get the count and also first document
       // which will be the latest measure in the MeasureSet
-      GroupOperation groupByMeasureSet =
-          group("measureSetId").count().as("count").first("$$ROOT").as("selectedDoc");
+      GroupOperation groupByMeasureSet = group("measureSetId").first("$$ROOT").as("selectedDoc");
 
-      // Set hasAssociatedMeasures = true if more than one measure found in the MeasureSet
-      AddFieldsOperation addHasAssociated =
-          addFields()
-              .addField("selectedDoc.hasAssociatedMeasures")
-              .withValueOf(
-                  when(ComparisonOperators.Gt.valueOf("count").greaterThanValue(1))
-                      .then(true)
-                      .otherwise(false))
-              .build();
-      ReplaceRootOperation replaceRootOperation = replaceRoot("selectedDoc");
+      ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
 
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
           && measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
@@ -269,38 +164,40 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       aggregationOperations.add(matchMeasureSetIds);
       aggregationOperations.add(sortByVersionAndDraft);
       aggregationOperations.add(groupByMeasureSet);
-      aggregationOperations.add(addHasAssociated);
-      aggregationOperations.add(replaceRootOperation);
-      aggregationOperations.add(facets);
+      aggregationOperations.add(replaceRoot);
+      //      aggregationOperations.add(facets);
 
-      pipeline = newAggregation(aggregationOperations);
+      Aggregation pipeline = newAggregation(aggregationOperations);
+      List<MeasureListDTO> measures =
+          mongoTemplate.aggregate(pipeline, Measure.class, MeasureListDTO.class).getMappedResults();
+      for (MeasureListDTO dto : measures) {
+        MeasureSetMatchCountDTO matchInfo = matchInfoMap.get(dto.getMeasureSetId());
 
-    } else {
-      pipeline = newAggregation(lookupOperation, unwindOperation, matchOperation, facets);
-    }
-
-    List<FacetDTO> results =
-        mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
-
-    if (nestedFlag) {
-      long totalSize = 0;
-      if (results != null && !results.isEmpty()) {
-        List<?> countList = results.get(0).getCount();
-        if (countList != null && !countList.isEmpty()) {
-          Object totalCount = countList.get(0);
-          if (totalCount instanceof Map<?, ?>) {
-            Object count = ((Map<?, ?>) totalCount).get("count");
-            if (count instanceof Number) {
-              totalSize = ((Number) count).longValue();
-            }
+        if (matchInfo != null) {
+          boolean hasAssociated;
+          if (matchInfo.getMatchCount() > 1) {
+            hasAssociated = true;
+          } else {
+            String selectedId = dto.getId();
+            String matchedId = matchInfo.getMatchedMeasureId();
+            hasAssociated = matchedId != null && !matchedId.equals(selectedId);
           }
+          dto.setHasAssociatedMeasures(hasAssociated);
+        } else {
+          dto.setHasAssociatedMeasures(false);
         }
       }
-      return new PageImpl<>(results.get(0).getQueryResults(), pageable, totalSize);
-    }
+      long totalSize = matchInfoMap.size();
+      return new PageImpl<>(measures, pageable, totalSize);
 
-    return new PageImpl<>(
-        results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());
+    } else {
+      Aggregation pipeline =
+          newAggregation(lookupOperation, unwindOperation, matchOperation, facets);
+      List<FacetDTO> results =
+          mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
+      return new PageImpl<>(
+          results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());
+    }
   }
 
   // Add string field called cmsIdDisplay. If model is QI-Core, append "FHIR" to measureSet

@@ -271,20 +271,18 @@ public class MeasureSearchServiceImplTest {
   public void testFindMyActiveMeasuresWithSearchFieldFilteredByMeasureNameAndFeatureFlagIsOn() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
 
-    MeasureSetIdDTO dto1 = new MeasureSetIdDTO("set1");
-    MeasureSetIdDTO dto2 = new MeasureSetIdDTO("set2");
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
-            ArgumentMatchers.eq(MeasureSetIdDTO.class)))
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
         .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
     PageRequest pageRequest = PageRequest.of(0, 3);
-    FacetDTO facetDTO =
-        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
 
     when(mongoTemplate.aggregate(
-            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
-        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(MeasureListDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(measure1), new Document()));
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
             .searchField("test-measure-name")
@@ -306,20 +304,18 @@ public class MeasureSearchServiceImplTest {
   public void testFindMyActiveMeasuresWithSearchFieldFilteredByCmsIdAndFeatureFlagIsOn() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
 
-    MeasureSetIdDTO dto1 = new MeasureSetIdDTO("set1");
-    MeasureSetIdDTO dto2 = new MeasureSetIdDTO("set2");
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
-            ArgumentMatchers.eq(MeasureSetIdDTO.class)))
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
         .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
     PageRequest pageRequest = PageRequest.of(0, 3);
-    FacetDTO facetDTO =
-        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
 
     when(mongoTemplate.aggregate(
-            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
-        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(MeasureListDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(measure1), new Document()));
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
             .searchField("28fhir")

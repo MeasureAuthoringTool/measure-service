@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.GeneratorRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -14,6 +15,7 @@ import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -27,6 +29,7 @@ import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
 
+import static cms.gov.madie.measure.utils.SearchUtils.appendAdditionalSearchCriteria;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Slf4j
@@ -314,12 +317,19 @@ public class MeasureSetService {
   }
 
   public List<MeasureListDTO> getMeasuresByMeasureSetId(
-      String measureSetId, boolean sortByLatestVersion) {
+      String measureSetId,
+      boolean sortByLatestVersion,
+      MeasureSearchCriteria measureSearchCriteria) {
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
 
     Criteria measureCriteria =
         Criteria.where("active").is(true).and("measureSetId").is(measureSetId);
+
+    if (measureSearchCriteria != null
+        && StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+      appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
+    }
 
     MatchOperation matchOperation = match(measureCriteria);
     Aggregation aggregation;
@@ -338,7 +348,7 @@ public class MeasureSetService {
   public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {
     List<Measure> mostRecentMeasures = new ArrayList<Measure>();
     for (String measureSetId : measureSetIds) {
-      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId, false);
+      List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId, false, null);
       if (measures != null && !measures.isEmpty()) {
         MeasureListDTO measure = measures.get(measures.size() - 1);
         Measure recentMeasure = measureRepository.findById(measure.getId()).orElse(null);
