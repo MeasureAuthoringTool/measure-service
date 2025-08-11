@@ -2228,4 +2228,65 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(
         measureIdToAclSpecification.get(measureId2), is(equalTo(List.of(aclSpecification1))));
   }
+
+  @Test
+  public void filtersStratificationsForQiCoreModel() {
+    Stratification strat1 = new Stratification();
+    strat1.setAssociations(List.of(PopulationType.INITIAL_POPULATION));
+    Stratification strat2 = new Stratification();
+    strat2.setAssociations(Collections.emptyList());
+    List<Group> groups = List.of(Group.builder().stratifications(List.of(strat1, strat2)).build());
+
+    Measure updatingMeasure = new Measure();
+    updatingMeasure.setModel(ModelType.QI_CORE.getValue());
+    updatingMeasure.setGroups(groups);
+
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+
+    assertEquals(1, groups.get(0).getStratifications().size());
+    assertTrue(groups.get(0).getStratifications().contains(strat1));
+  }
+
+  @Test
+  public void filtersStratificationsForQDMModel() {
+    Stratification strat1 = new Stratification();
+    strat1.setCqlDefinition("cql definition");
+    Stratification strat2 = new Stratification();
+    strat2.setCqlDefinition("");
+    List<Group> groups = List.of(Group.builder().stratifications(List.of(strat1, strat2)).build());
+
+    Measure updatingMeasure = new Measure();
+    updatingMeasure.setModel(ModelType.QDM_5_6.getValue());
+    updatingMeasure.setGroups(groups);
+
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+
+    assertEquals(1, groups.get(0).getStratifications().size());
+    assertTrue(groups.get(0).getStratifications().contains(strat1));
+  }
+
+  @Test
+  public void doesNotFilterStratificationsWhenGroupsAreEmpty() {
+    Measure updatingMeasure = new Measure();
+    updatingMeasure.setModel(ModelType.QI_CORE.getValue());
+    updatingMeasure.setGroups(Collections.emptyList());
+
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+
+    assertTrue(updatingMeasure.getGroups().isEmpty());
+  }
+
+  @Test
+  public void doesNotFilterStratificationsWhenStratificationsAreEmpty() {
+    Group group = new Group();
+    group.setStratifications(Collections.emptyList());
+
+    Measure updatingMeasure = new Measure();
+    updatingMeasure.setModel(ModelType.QI_CORE.getValue());
+    updatingMeasure.setGroups(List.of(group));
+
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+
+    assertTrue(group.getStratifications().isEmpty());
+  }
 }
