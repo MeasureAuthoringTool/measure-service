@@ -15,11 +15,8 @@ import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -29,7 +26,6 @@ import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
 
-import static cms.gov.madie.measure.utils.SearchUtils.appendAdditionalSearchCriteria;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Slf4j
@@ -308,51 +304,21 @@ public class MeasureSetService {
         .orElse(null);
   }
 
-  private LookupOperation getLookupOperation() {
-    return LookupOperation.newLookup()
-        .from("measureSet")
-        .localField("measureSetId")
-        .foreignField("measureSetId")
-        .as("measureSet");
-  }
-
   public List<MeasureListDTO> getMeasuresByMeasureSetId(
       String measureSetId,
       boolean sortByLatestVersion,
       MeasureSearchCriteria measureSearchCriteria) {
-    LookupOperation lookupOperation = getLookupOperation();
-    UnwindOperation unwindOperation = unwind("measureSet");
-
-    Criteria measureCriteria =
-        Criteria.where("active").is(true).and("measureSetId").is(measureSetId);
-
-    if (measureSearchCriteria != null
-        && StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
-      appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
-    }
-
-    MatchOperation matchOperation = match(measureCriteria);
-    Aggregation aggregation;
-    if (sortByLatestVersion) {
-      SortOperation sortOperation =
-          sort(
-              Sort.by(
-                  Sort.Direction.DESC, "version.major", "version.minor", "version.revisionNumber"));
-      aggregation = newAggregation(lookupOperation, unwindOperation, matchOperation, sortOperation);
-    } else {
-      aggregation = newAggregation(lookupOperation, unwindOperation, matchOperation);
-    }
-    return mongoTemplate.aggregate(aggregation, "measure", MeasureListDTO.class).getMappedResults();
+    return measureSetRepository.findMeasuresByMeasureSetId(
+        measureSetId, sortByLatestVersion, measureSearchCriteria);
   }
 
   public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {
-    List<Measure> mostRecentMeasures = new ArrayList<Measure>();
+    List<Measure> mostRecentMeasures = new ArrayList<>();
     for (String measureSetId : measureSetIds) {
       List<MeasureListDTO> measures = getMeasuresByMeasureSetId(measureSetId, false, null);
       if (measures != null && !measures.isEmpty()) {
         MeasureListDTO measure = measures.get(measures.size() - 1);
-        Measure recentMeasure = measureRepository.findById(measure.getId()).orElse(null);
-        mostRecentMeasures.add(recentMeasure);
+        measureRepository.findById(measure.getId()).ifPresent(mostRecentMeasures::add);
       }
     }
     return mostRecentMeasures;
