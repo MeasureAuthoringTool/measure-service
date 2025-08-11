@@ -303,7 +303,7 @@ public class MeasureService {
     // prevent users from overwriting versionId and measureSetId
     outputMeasure.setVersionId(existingMeasure.getVersionId());
     outputMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
-    return measureRepository.save(outputMeasure);
+    return measureRepository.findAndModify(outputMeasure);
   }
 
   public Measure deactivateMeasure(final String id, final String username) {
