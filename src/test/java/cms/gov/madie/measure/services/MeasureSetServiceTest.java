@@ -591,7 +591,7 @@ public class MeasureSetServiceTest {
   }
 
   @Test
-  void testGetMeasuresByMeasureSetId_delegatesToRepository() {
+  void testGetMeasuresByMeasureSetIdDelegatesToRepository() {
     MeasureSearchCriteria criteria = new MeasureSearchCriteria();
     criteria.setSearchField("test");
     MeasureListDTO mockedMeasureListDTO =
@@ -612,7 +612,7 @@ public class MeasureSetServiceTest {
   }
 
   @Test
-  void testGetRecentMeasuresByMeasureSetId_returnsMeasuresInOrder() {
+  void testGetRecentMeasuresByMeasureSetIdReturnsMeasuresInOrder() {
     List<String> measureSetIds = List.of("set1", "set2");
 
     Measure measure1B = Measure.builder().id("m1b").measureName("Measure 1B").build();
@@ -659,7 +659,7 @@ public class MeasureSetServiceTest {
   }
 
   @Test
-  void testGetRecentMeasuresByMeasureSetId_handlesEmptyMeasureLists() {
+  void testGetRecentMeasuresByMeasureSetIdHandlesEmptyMeasureLists() {
     List<String> measureSetIds = List.of("set1");
 
     when(measureSetRepository.findMeasuresByMeasureSetId("set1", false, null))
