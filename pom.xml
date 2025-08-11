@@ -206,7 +206,6 @@
       <artifactId>commons-lang3</artifactId>
       <version>3.17.0</version>
     </dependency>
-
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jsr310</artifactId>
@@ -218,6 +217,11 @@
       <type>pom</type>
       <scope>import</scope>
     </dependency>
+      <dependency>
+          <groupId>org.commonmark</groupId>
+          <artifactId>commonmark</artifactId>
+          <version>0.25.1</version>
+      </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-test</artifactId>
