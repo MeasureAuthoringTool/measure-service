@@ -66,11 +66,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                 && isNumeric(versionParts[2])) {
               Criteria otherCriteria = Criteria.where("version").is(Version.parse(searchField));
               orConditions.add(otherCriteria);
-            } else {
-              if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
-                Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
-                orConditions.add(noVersionMatch);
-              }
+            } else if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
+              Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
+              orConditions.add(noVersionMatch);
             }
           }
           if (versionParts.length == 2) {
@@ -83,11 +81,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                   Criteria.where("version.minor").is(major).and("version.revisionNumber").is(minor);
               orConditions.add(otherCriteria);
               orConditions.add(additionalCriteria);
-            } else {
-              if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
-                Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
-                orConditions.add(noVersionMatch);
-              }
+            } else if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
+              Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
+              orConditions.add(noVersionMatch);
             }
           }
           if (versionParts.length == 1) {
@@ -99,11 +95,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               orConditions.add(majorMatch);
               orConditions.add(minorMatch);
               orConditions.add(patchMatch);
-            } else {
-              if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
-                Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
-                orConditions.add(noVersionMatch);
-              }
+            } else if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
+              Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
+              orConditions.add(noVersionMatch);
             }
           }
           //  if its a bad version that's a random string, and there are no other optional params
