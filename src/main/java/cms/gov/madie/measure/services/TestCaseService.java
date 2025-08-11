@@ -311,7 +311,7 @@ public class TestCaseService {
             testCase, ModelType.valueOfName(measure.getModel()), accessToken);
     measure.getTestCases().add(validatedTestCase);
 
-    measureRepository.save(measure);
+    measureRepository.save(measure); // TODO MAT-8921: Replace with Test Case FindAndModify
     log.info(
         "User [{}] successfully updated the test case with ID [{}] for the measure with ID[{}] ",
         username,

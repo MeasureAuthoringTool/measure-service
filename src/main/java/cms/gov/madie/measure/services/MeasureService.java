@@ -231,6 +231,27 @@ public class MeasureService {
           username);
     }
 
+    // remove stratifications that do not have associations or cql definitions
+    boolean isQiCoreModel =
+        ModelType.QI_CORE.getValue().equalsIgnoreCase(updatingMeasure.getModel())
+            || ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(updatingMeasure.getModel());
+
+    if (!CollectionUtils.isEmpty(updatingMeasure.getGroups())) {
+      for (Group group : updatingMeasure.getGroups()) {
+        if (!CollectionUtils.isEmpty(group.getStratifications())) {
+          List<Stratification> filteredStratifications =
+              group.getStratifications().stream()
+                  .filter(
+                      stratification ->
+                          isQiCoreModel
+                              ? !CollectionUtils.isEmpty(stratification.getAssociations())
+                              : StringUtils.isNotBlank(stratification.getCqlDefinition()))
+                  .collect(Collectors.toList());
+          group.setStratifications(filteredStratifications);
+        }
+      }
+    }
+
     if (measureUtil.isMeasurementPeriodChanged(updatingMeasure, existingMeasure)) {
       validateMeasurementPeriod(
           updatingMeasure.getMeasurementPeriodStart(), updatingMeasure.getMeasurementPeriodEnd());
@@ -303,7 +324,7 @@ public class MeasureService {
     // prevent users from overwriting versionId and measureSetId
     outputMeasure.setVersionId(existingMeasure.getVersionId());
     outputMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
-    return measureRepository.save(outputMeasure);
+    return measureRepository.findAndModify(outputMeasure);
   }
 
   public Measure deactivateMeasure(final String id, final String username) {
