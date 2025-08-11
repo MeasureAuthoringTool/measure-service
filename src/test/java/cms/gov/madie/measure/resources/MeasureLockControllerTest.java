@@ -2,6 +2,7 @@ package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.dto.LockResponse;
 import cms.gov.madie.measure.services.MeasureLockService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,6 +17,8 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.security.Principal;
 import org.springframework.boot.test.mock.mockito.MockBean;
+
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -30,6 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class MeasureLockControllerTest {
 
   @Autowired private MockMvc mockMvc;
+  @Autowired private ObjectMapper objectMapper;
 
   @MockBean private MeasureLockService measureLockService;
 
@@ -48,12 +52,21 @@ class MeasureLockControllerTest {
     LockResponse mockResponse = new LockResponse(true, harpId);
     when(measureLockService.lockMeasure(eq(measureId), eq(harpId))).thenReturn(mockResponse);
 
-    mockMvc
-        .perform(
-            put("/measures/{measureId}/measure-lock", measureId)
-                .principal(mockPrincipal)
-                .contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isOk());
+    String jsonResponse =
+        mockMvc
+            .perform(
+                put("/measures/{measureId}/measure-lock", measureId)
+                    .principal(mockPrincipal)
+                    .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+    LockResponse actualResponse = objectMapper.readValue(jsonResponse, LockResponse.class);
+
+    assertThat(actualResponse).isNotNull();
+    assertThat(actualResponse.isLocked()).isTrue();
+    assertThat(actualResponse.getLockedBy()).isEqualTo(harpId);
   }
 
   @Test
@@ -61,8 +74,19 @@ class MeasureLockControllerTest {
     LockResponse mockResponse = new LockResponse(false, harpId);
     when(measureLockService.unlockMeasure(eq(measureId), eq(harpId))).thenReturn(mockResponse);
 
-    mockMvc
-        .perform(delete("/measures/{measureId}/measure-lock", measureId).principal(mockPrincipal))
-        .andExpect(status().isOk());
+    String jsonResponse =
+        mockMvc
+            .perform(
+                delete("/measures/{measureId}/measure-lock", measureId).principal(mockPrincipal))
+            .andExpect(status().isOk())
+            .andReturn()
+            .getResponse()
+            .getContentAsString();
+
+    LockResponse actualResponse = objectMapper.readValue(jsonResponse, LockResponse.class);
+
+    assertThat(actualResponse).isNotNull();
+    assertThat(actualResponse.isLocked()).isFalse();
+    assertThat(actualResponse.getLockedBy()).isEqualTo(harpId);
   }
 }

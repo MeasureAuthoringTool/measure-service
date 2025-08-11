@@ -29,7 +29,7 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  void testLockMeasure_InsertsSuccessfully() {
+  void testLockMeasureInsertsSuccessfully() {
     // insert succeeds
     LockResponse response = service.lockMeasure(measureId, userName);
 
@@ -39,7 +39,7 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  void testLockMeasure_WhenDuplicateKey_AndSameUserAlreadyLocked() {
+  void testLockMeasureWhenDuplicateKeyAndSameUserAlreadyLocked() {
     // insert throws DuplicateKey
     doThrow(new DuplicateKeyException("duplicate", "someKey"))
         .when(repository)
@@ -60,7 +60,7 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  void testLockMeasure_WhenDuplicateKey_AndLockedByDifferentUser() {
+  void testLockMeasureWhenDuplicateKeyAndLockedByDifferentUser() {
     doThrow(new DuplicateKeyException("duplicate", "someKey"))
         .when(repository)
         .insert(any(MeasureLock.class));
@@ -77,7 +77,7 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  void testLockMeasure_WhenDuplicateKey_AndNoExistingLockFound() {
+  void testLockMeasureWhenDuplicateKeyAndNoExistingLockFound() {
     doThrow(new DuplicateKeyException("duplicate", "someKey"))
         .when(repository)
         .insert(any(MeasureLock.class));
@@ -91,7 +91,7 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  void testUnlockMeasure_WhenUserOwnsLock() {
+  void testUnlockMeasureWhenUserOwnsLock() {
     MeasureLock lock = new MeasureLock();
     lock.setMeasureId(measureId);
     lock.setLockedBy(userName);
@@ -106,7 +106,7 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  void testUnlockMeasure_WhenDifferentUserOwnsLock() {
+  void testUnlockMeasureWhenDifferentUserOwnsLock() {
     MeasureLock lock = new MeasureLock();
     lock.setMeasureId(measureId);
     lock.setLockedBy("other-user");
@@ -120,7 +120,7 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  void testUnlockMeasure_WhenNoLockExists() {
+  void testUnlockMeasureWhenNoLockExists() {
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.empty());
 
     LockResponse response = service.unlockMeasure(measureId, userName);
