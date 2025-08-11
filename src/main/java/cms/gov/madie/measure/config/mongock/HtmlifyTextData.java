@@ -17,6 +17,11 @@ import org.jsoup.safety.Safelist;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Change unit to perform a one-time migration of text fields in the Measure model to HTML format in
+ * preparation for the Rich Text Editor. This migration is necessary to ensure that existing text
+ * data is compatible with the new Rich Text Editor.
+ */
 @Slf4j
 @ChangeUnit(id = "htmlify_text_data", order = "1", author = "madie_dev")
 public class HtmlifyTextData {
@@ -24,83 +29,144 @@ public class HtmlifyTextData {
   private List<Measure> updatedMeasures = new ArrayList<>();
 
   private static final Safelist RICH_TEXT_SAFE_LIST =
-    Safelist.basic()
-      .addTags("s", "br", "table", "tbody", "td", "th", "thead", "tr", "col", "colgroup", "del")
-      .addAttributes("table", "style", "class", "id")
-      .addAttributes("th", "rowspan", "colspan", "style", "colwidth")
-      .addAttributes("td", "rowspan", "colspan", "style", "colwidth")
-      .addAttributes("col", "style");
+      Safelist.basic()
+          .addTags("s", "br", "table", "tbody", "td", "th", "thead", "tr", "col", "colgroup", "del")
+          .addAttributes("table", "style", "class", "id")
+          .addAttributes("th", "rowspan", "colspan", "style", "colwidth")
+          .addAttributes("td", "rowspan", "colspan", "style", "colwidth")
+          .addAttributes("col", "style");
 
   @Execution
   public void htmlfiyText(MeasureRepository measureRepository) {
     // Retrieve all DRAFT measures
-    List<Measure> draftActiveMeasures = measureRepository.findAllMeasureIdsByActiveAndMeasureMetaDataDraft(true);
+    List<Measure> draftActiveMeasures =
+        measureRepository.findAllMeasureIdsByActiveAndMeasureMetaDataDraft(true);
 
-    // Duplicate list for modification
-    //TODO I thought I added a deepClone to Measure, but maybe it was just Test Case.
-    // Might be good to add for rollback.
+    // Duplicate Measures for modification
+    // TODO add deepCopy method to Measure model
 //    for (Measure measure : draftActiveMeasures) {
-//      updatedMeasures.add(measure.deepClone());
+//      updatedMeasures.add(measure.deepCopy());
 //    }
 
     // Convert text fields to HTML
     for (Measure msr : draftActiveMeasures) {
       // MetaData fields
       htlmifyMeasureMetaData(msr);
-
       // Population criteria
       htmlifyPopulationCriteria(msr);
+      // Risk Adjustment and Supplemental Data
+      hlmlifyRavAndSdes(msr);
+    }
+    measureRepository.saveAll(updatedMeasures);
+  }
+
+  private void hlmlifyRavAndSdes(Measure msr) {
+    if (StringUtils.isNotBlank(msr.getRiskAdjustmentDescription())) {
+      msr.setRiskAdjustmentDescription(toHtml(msr.getRiskAdjustmentDescription()));
+    }
+    if (CollectionUtils.isNotEmpty(msr.getRiskAdjustments())) {
+      msr.getRiskAdjustments()
+          .forEach(
+              rav -> {
+                if (StringUtils.isNotBlank(rav.getDescription())) {
+                  rav.setDescription(toHtml(rav.getDescription()));
+                }
+              });
+    }
+    if (StringUtils.isNotBlank(msr.getSupplementalDataDescription())) {
+      msr.setSupplementalDataDescription(toHtml(msr.getSupplementalDataDescription()));
+    }
+    if (CollectionUtils.isNotEmpty(msr.getSupplementalData())) {
+      msr.getSupplementalData()
+          .forEach(
+              sde -> {
+                if (StringUtils.isNotBlank(sde.getDescription())) {
+                  sde.setDescription(toHtml(sde.getDescription()));
+                }
+              });
     }
   }
 
   private void htmlifyPopulationCriteria(Measure msr) {
-
+    if (CollectionUtils.isNotEmpty(msr.getGroups())) {
+      msr.getGroups()
+          .forEach(
+              group -> {
+                if (StringUtils.isNotBlank(group.getGroupDescription())) {
+                  group.setGroupDescription(toHtml(group.getGroupDescription()));
+                }
+                if (CollectionUtils.isNotEmpty(group.getPopulations())) {
+                  group
+                      .getPopulations()
+                      .forEach(
+                          population -> {
+                            if (StringUtils.isNotBlank(population.getDescription())) {
+                              population.setDescription(toHtml(population.getDescription()));
+                            }
+                          });
+                }
+                if (CollectionUtils.isNotEmpty(group.getStratifications())) {
+                  group
+                      .getStratifications()
+                      .forEach(
+                          stratification -> {
+                            if (StringUtils.isNotBlank(stratification.getDescription())) {
+                              stratification.setDescription(
+                                  toHtml(stratification.getDescription()));
+                            }
+                          });
+                }
+                if (StringUtils.isNotBlank(group.getRateAggregation())) {
+                  group.setRateAggregation(toHtml(group.getRateAggregation()));
+                }
+                if (StringUtils.isNotBlank(group.getImprovementNotationDescription())) {
+                  group.setImprovementNotationDescription(
+                      toHtml(group.getImprovementNotationDescription()));
+                }
+              });
+    }
   }
 
   private void htlmifyMeasureMetaData(Measure msr) {
-    if(msr.getMeasureMetaData() != null) {
+    if (msr.getMeasureMetaData() != null) {
       if (StringUtils.isNotBlank(msr.getMeasureMetaData().getDescription())) {
         msr.getMeasureMetaData().setDescription(toHtml(msr.getMeasureMetaData().getDescription()));
       }
-      if( StringUtils.isNotBlank(msr.getMeasureMetaData().getRationale())) {
+      if (StringUtils.isNotBlank(msr.getMeasureMetaData().getRationale())) {
         msr.getMeasureMetaData().setRationale(toHtml(msr.getMeasureMetaData().getRationale()));
       }
-      if( StringUtils.isNotBlank(msr.getMeasureMetaData().getGuidance())) {
-        msr.getMeasureMetaData().setGuidance(
-            toHtml(msr.getMeasureMetaData().getGuidance()));
+      if (StringUtils.isNotBlank(msr.getMeasureMetaData().getGuidance())) {
+        msr.getMeasureMetaData().setGuidance(toHtml(msr.getMeasureMetaData().getGuidance()));
       }
       if (StringUtils.isNotBlank(msr.getMeasureMetaData().getClinicalRecommendation())) {
-        msr.getMeasureMetaData().setCopyright(
-            toHtml(msr.getMeasureMetaData().getClinicalRecommendation()));
+        msr.getMeasureMetaData()
+            .setClinicalRecommendation(toHtml(msr.getMeasureMetaData().getClinicalRecommendation()));
       }
-      if( StringUtils.isNotBlank(msr.getMeasureMetaData().getClinicalRecommendation())) {
-        msr.getMeasureMetaData().setClinicalRecommendation(
-            toHtml(msr.getMeasureMetaData().getClinicalRecommendation()));
+      if (StringUtils.isNotBlank(msr.getMeasureMetaData().getCopyright())) {
+        msr.getMeasureMetaData().setCopyright(toHtml(msr.getMeasureMetaData().getCopyright()));
       }
-      if( StringUtils.isNotBlank(msr.getMeasureMetaData().getCopyright())) {
-        msr.getMeasureMetaData().setCopyright(
-          toHtml(msr.getMeasureMetaData().getCopyright()));
+      if (StringUtils.isNotBlank(msr.getMeasureMetaData().getDisclaimer())) {
+        msr.getMeasureMetaData().setDisclaimer(toHtml(msr.getMeasureMetaData().getDisclaimer()));
       }
-      if(StringUtils.isNotBlank(msr.getMeasureMetaData().getDisclaimer())) {
-        msr.getMeasureMetaData().setDisclaimer(
-          toHtml(msr.getMeasureMetaData().getDisclaimer()));
+      if (CollectionUtils.isNotEmpty(msr.getMeasureMetaData().getReferences())) {
+        msr.getMeasureMetaData()
+            .getReferences()
+            .forEach(
+                reference -> {
+                  if (StringUtils.isNotBlank(reference.getReferenceText())) {
+                    reference.setReferenceText(toHtml(reference.getReferenceText()));
+                  }
+                });
       }
-      if(CollectionUtils.isNotEmpty(msr.getMeasureMetaData().getReferences())) {
-        msr.getMeasureMetaData().getReferences().forEach(
-          reference -> {
-            if (StringUtils.isNotBlank(reference.getReferenceText())) {
-              reference.setReferenceText(toHtml(reference.getReferenceText()));
-            }
-          });
-      }
-      if(CollectionUtils.isNotEmpty(msr.getMeasureMetaData().getMeasureDefinitions())) {
-        msr.getMeasureMetaData().getMeasureDefinitions().forEach(
-          msrDefinition -> {
-            if(StringUtils.isNotBlank(msrDefinition.getDefinition())) {
-              msrDefinition.setDefinition(toHtml(msrDefinition.getDefinition()));
-            }
-          }
-        );
+      if (CollectionUtils.isNotEmpty(msr.getMeasureMetaData().getMeasureDefinitions())) {
+        msr.getMeasureMetaData()
+            .getMeasureDefinitions()
+            .forEach(
+                msrDefinition -> {
+                  if (StringUtils.isNotBlank(msrDefinition.getDefinition())) {
+                    msrDefinition.setDefinition(toHtml(msrDefinition.getDefinition()));
+                  }
+                });
       }
     }
   }
