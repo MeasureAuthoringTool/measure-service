@@ -28,25 +28,25 @@ public class SecurityConfig {
   @Bean
   protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
     http.cors(withDefaults())
-      .csrf(csrfConfigure -> csrfConfigure.ignoringRequestMatchers(CSRF_WHITELIST))
-      .authorizeHttpRequests(
-        authorizeRequests ->
-          authorizeRequests.requestMatchers(HttpMethod.POST, "/organizations/**").permitAll())
-      .authorizeHttpRequests(
-        authorizeRequests -> authorizeRequests.requestMatchers(AUTH_WHITELIST).permitAll())
-      .authorizeHttpRequests(authorizeRequests -> authorizeRequests.anyRequest().authenticated())
-      .sessionManagement(
-        sessionManagement ->
-          sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-      .oauth2ResourceServer(
-        oAuth2ResourceServerConfigurer -> oAuth2ResourceServerConfigurer.jwt(withDefaults()))
-      .headers(
-        headers ->
-          headers
-            .xssProtection(withDefaults())
-            .contentSecurityPolicy(
-              contentSecurityPolicyConfig ->
-                contentSecurityPolicyConfig.policyDirectives("script-src 'self'")));
+        .csrf(csrfConfigure -> csrfConfigure.ignoringRequestMatchers(CSRF_WHITELIST))
+        .authorizeHttpRequests(
+            authorizeRequests ->
+                authorizeRequests.requestMatchers(HttpMethod.POST, "/organizations/**").permitAll())
+        .authorizeHttpRequests(
+            authorizeRequests -> authorizeRequests.requestMatchers(AUTH_WHITELIST).permitAll())
+        .authorizeHttpRequests(authorizeRequests -> authorizeRequests.anyRequest().authenticated())
+        .sessionManagement(
+            sessionManagement ->
+                sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .oauth2ResourceServer(
+            oAuth2ResourceServerConfigurer -> oAuth2ResourceServerConfigurer.jwt(withDefaults()))
+        .headers(
+            headers ->
+                headers
+                    .xssProtection(withDefaults())
+                    .contentSecurityPolicy(
+                        contentSecurityPolicyConfig ->
+                            contentSecurityPolicyConfig.policyDirectives("script-src 'self'")));
     return http.build();
   }
 }
