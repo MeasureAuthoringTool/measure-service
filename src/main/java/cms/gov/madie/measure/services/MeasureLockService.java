@@ -19,7 +19,7 @@ public class MeasureLockService {
 
   private final MeasureLockRepository measureLockRepository;
 
-  public LockResponse lockMeasure(String measureId, String userName) {
+  public synchronized LockResponse lockMeasure(String measureId, String userName) {
     Instant now = Instant.now();
     Instant expiresAt = now.plus(Duration.ofMinutes(15)); // 15 minute lock
 
@@ -31,7 +31,7 @@ public class MeasureLockService {
 
     try {
       measureLockRepository.insert(lock);
-      return new LockResponse(false, userName); // not locked by someone else
+      return new LockResponse(true, userName); // not locked by someone else
     } catch (DuplicateKeyException ex) {
       Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
       if (existingLock.isPresent()) {
