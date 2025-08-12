@@ -17,7 +17,8 @@ public interface MeasureRepository
         MeasureVersionRepository,
         MeasureSearchService,
         MeasureCmsIdRepository,
-        TestCaseRepository {
+        TestCaseRepository,
+        MeasurePatchRepository {
   @Query("{cqlLibraryName : ?0, active : true}")
   List<Measure> findAllByCqlLibraryName(String cqlLibraryName);
 

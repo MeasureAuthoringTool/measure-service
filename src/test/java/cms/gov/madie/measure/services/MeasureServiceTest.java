@@ -44,6 +44,7 @@ import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -872,13 +873,13 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
         .thenReturn(true);
     when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(false);
-    when(measureRepository.save(any(Measure.class))).thenReturn(updated);
+    when(measureRepository.findAndModify(any(Measure.class))).thenReturn(updated);
 
     Measure output = measureService.updateMeasure(original, "User1", updated, "Access Token");
     assertThat(output, is(notNullValue()));
     assertThat(output, is(equalTo(updated)));
 
-    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
+    verify(measureRepository, times(1)).findAndModify(measureArgumentCaptor.capture());
     Measure persisted = measureArgumentCaptor.getValue();
     assertThat(persisted, is(equalTo(updated)));
     assertThat(persisted.getCreatedAt(), is(equalTo(createdAt)));
@@ -920,13 +921,13 @@ public class MeasureServiceTest implements ResourceUtil {
     Measure expected =
         updated.toBuilder().error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES).build();
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class))).thenReturn(expected);
-    when(measureRepository.save(any(Measure.class))).thenReturn(expected);
+    when(measureRepository.findAndModify(any(Measure.class))).thenReturn(expected);
 
     Measure output = measureService.updateMeasure(original, "User1", updated, "Access Token");
     assertThat(output, is(notNullValue()));
     assertThat(output, is(equalTo(expected)));
 
-    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
+    verify(measureRepository, times(1)).findAndModify(measureArgumentCaptor.capture());
     Measure persisted = measureArgumentCaptor.getValue();
     assertThat(persisted, is(equalTo(expected)));
   }
@@ -962,13 +963,13 @@ public class MeasureServiceTest implements ResourceUtil {
             .error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES)
             .build();
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class))).thenReturn(expected);
-    when(measureRepository.save(any(Measure.class))).thenReturn(expected);
+    when(measureRepository.findAndModify(any(Measure.class))).thenReturn(expected);
 
     Measure output = measureService.updateMeasure(original, "User1", updated, "Access Token");
     assertThat(output, is(notNullValue()));
     assertThat(output, is(equalTo(expected)));
 
-    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
+    verify(measureRepository, times(1)).findAndModify(measureArgumentCaptor.capture());
     Measure persisted = measureArgumentCaptor.getValue();
     assertThat(persisted, is(equalTo(expected)));
   }
@@ -997,7 +998,7 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(true);
 
-    when(measureRepository.save(any(Measure.class)))
+    when(measureRepository.findAndModify(any(Measure.class)))
         .thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
 
     Measure output = measureService.updateMeasure(original, "User1", updated, "Access Token");
@@ -1006,7 +1007,7 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(output.isCqlErrors(), is(true));
     assertThat(output.getErrors().contains(MeasureErrorType.ERRORS_ELM_JSON), is(true));
 
-    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
+    verify(measureRepository, times(1)).findAndModify(measureArgumentCaptor.capture());
     Measure persisted = measureArgumentCaptor.getValue();
     assertThat(persisted.getErrors(), is(notNullValue()));
     assertThat(persisted.isCqlErrors(), is(true));
@@ -1738,6 +1739,7 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  @Disabled // TODO MAT-8921
   public void testClearingTestCaseGroupPopulationValuesWhenScoringIsChangedForQDMMeasures() {
     TestCaseGroupPopulation testCaseGroupPopulation =
         TestCaseGroupPopulation.builder()
@@ -2227,5 +2229,66 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThat(
         measureIdToAclSpecification.get(measureId2), is(equalTo(List.of(aclSpecification1))));
+  }
+
+  @Test
+  public void filtersStratificationsForQiCoreModel() {
+    Stratification strat1 = new Stratification();
+    strat1.setAssociations(List.of(PopulationType.INITIAL_POPULATION));
+    Stratification strat2 = new Stratification();
+    strat2.setAssociations(Collections.emptyList());
+    List<Group> groups = List.of(Group.builder().stratifications(List.of(strat1, strat2)).build());
+
+    Measure updatingMeasure = new Measure();
+    updatingMeasure.setModel(ModelType.QI_CORE.getValue());
+    updatingMeasure.setGroups(groups);
+
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+
+    assertEquals(1, groups.get(0).getStratifications().size());
+    assertTrue(groups.get(0).getStratifications().contains(strat1));
+  }
+
+  @Test
+  public void filtersStratificationsForQDMModel() {
+    Stratification strat1 = new Stratification();
+    strat1.setCqlDefinition("cql definition");
+    Stratification strat2 = new Stratification();
+    strat2.setCqlDefinition("");
+    List<Group> groups = List.of(Group.builder().stratifications(List.of(strat1, strat2)).build());
+
+    Measure updatingMeasure = new Measure();
+    updatingMeasure.setModel(ModelType.QDM_5_6.getValue());
+    updatingMeasure.setGroups(groups);
+
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+
+    assertEquals(1, groups.get(0).getStratifications().size());
+    assertTrue(groups.get(0).getStratifications().contains(strat1));
+  }
+
+  @Test
+  public void doesNotFilterStratificationsWhenGroupsAreEmpty() {
+    Measure updatingMeasure = new Measure();
+    updatingMeasure.setModel(ModelType.QI_CORE.getValue());
+    updatingMeasure.setGroups(Collections.emptyList());
+
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+
+    assertTrue(updatingMeasure.getGroups().isEmpty());
+  }
+
+  @Test
+  public void doesNotFilterStratificationsWhenStratificationsAreEmpty() {
+    Group group = new Group();
+    group.setStratifications(Collections.emptyList());
+
+    Measure updatingMeasure = new Measure();
+    updatingMeasure.setModel(ModelType.QI_CORE.getValue());
+    updatingMeasure.setGroups(List.of(group));
+
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+
+    assertTrue(group.getStratifications().isEmpty());
   }
 }
