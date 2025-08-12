@@ -3,6 +3,7 @@ package cms.gov.madie.measure.repositories;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.Measure;
@@ -132,8 +133,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       String userId,
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
-      boolean filterByCurrentUser,
       // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
+      List<OwnershipType> ownershipTypes,
       String invocationSource) {
     List<AggregationOperation> aggregationOperations = new ArrayList<>();
 
@@ -203,21 +204,12 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       }
     }
 
-    // prepare measure set search criteria(user is either owner or shared with)
-    Criteria measureSetCriteria = new Criteria();
-    if (filterByCurrentUser) {
-      measureSetCriteria =
-          new Criteria()
-              .orOperator(
-                  Criteria.where("measureSet.owner").regex("^\\Q" + userId + "\\E$", "i"),
-                  Criteria.where("measureSet.acls.userId")
-                      .regex("^\\Q" + userId + "\\E$", "i")
-                      .and("measureSet.acls.roles")
-                      .in(RoleEnum.SHARED_WITH));
-    }
+    Criteria measureSetCriteria = buildMeasureSetCriteria(userId, ownershipTypes);
 
     MatchOperation matchOperation =
-        match(new Criteria().andOperator(measureCriteria, measureSetCriteria));
+        (measureSetCriteria != null)
+            ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria))
+            : match(measureCriteria);
 
     FacetOperation facets =
         facet(sortByCount("id"))
@@ -268,7 +260,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               .build();
       ReplaceRootOperation replaceRootOperation = replaceRoot("selectedDoc");
 
-      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
+      if (measureSearchCriteria != null
+          && StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
           && measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
         aggregationOperations.add(addCmsIdDisplayField());
         aggregationOperations.add(matchCmsIdDisplay(measureSearchCriteria.getSearchField()));
@@ -308,6 +301,39 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     return new PageImpl<>(
         results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());
+  }
+
+  private Criteria buildMeasureSetCriteria(String userId, List<OwnershipType> ownershipTypes) {
+    // Can't filter without user ID
+    if (StringUtils.isBlank(userId)) {
+      return null;
+    }
+
+    // If null, empty, or ALL is included in the list, skip ownership filtering
+    if (ownershipTypes == null
+        || ownershipTypes.isEmpty()
+        || ownershipTypes.contains(OwnershipType.ALL)) {
+      return null;
+    }
+
+    List<Criteria> ownershipCriterias = new ArrayList<>();
+
+    if (ownershipTypes.contains(OwnershipType.OWNED)) {
+      ownershipCriterias.add(
+          Criteria.where("measureSet.owner").regex("^\\Q" + userId + "\\E$", "i"));
+    }
+
+    if (ownershipTypes.contains(OwnershipType.SHARED)) {
+      ownershipCriterias.add(
+          Criteria.where("measureSet.acls.userId")
+              .regex("^\\Q" + userId + "\\E$", "i")
+              .and("measureSet.acls.roles")
+              .in(RoleEnum.SHARED_WITH));
+    }
+
+    return ownershipCriterias.isEmpty()
+        ? null
+        : new Criteria().orOperator(ownershipCriterias.toArray(Criteria[]::new));
   }
 
   // Add string field called cmsIdDisplay. If model is QI-Core, append "FHIR" to measureSet
@@ -363,22 +389,17 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   }
 
   @Override
-  public int countAllMyMeasures(boolean isActive, String userId) {
-    // join measure and measure_set to lookup owner and ACL info
+  public int countMeasuresByOwnership(
+      boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
     LookupOperation lookupOperation = getLookupOperation();
     Criteria measureCriteria = Criteria.where("active").is(isActive);
 
-    Criteria measureSetCriteria =
-        new Criteria()
-            .orOperator(
-                Criteria.where("measureSet.owner").regex("^\\Q" + userId + "\\E$", "i"),
-                Criteria.where("measureSet.acls.userId")
-                    .regex("^\\Q" + userId + "\\E$", "i")
-                    .and("measureSet.acls.roles")
-                    .in(RoleEnum.SHARED_WITH));
+    Criteria measureSetCriteria = buildMeasureSetCriteria(userId, ownershipTypes);
 
     MatchOperation matchOperation =
-        match(new Criteria().andOperator(measureCriteria, measureSetCriteria));
+        (measureSetCriteria != null)
+            ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria))
+            : match(measureCriteria);
 
     GroupOperation groupOperation = group("measureSetId");
 
@@ -388,33 +409,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     List<Map> results =
         mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
-    if (!results.isEmpty()) {
-      return Integer.parseInt(results.get(0).get("count").toString());
-    } else {
-      return 0;
-    }
-  }
 
-  @Override
-  public int countAllMeasures(boolean isActive) {
-    // join measure and measure_set to lookup owner and ACL info
-    LookupOperation lookupOperation = getLookupOperation();
-    Criteria measureCriteria = Criteria.where("active").is(isActive);
-
-    MatchOperation matchOperation = match(measureCriteria);
-
-    GroupOperation groupOperation = group("measureSetId");
-
-    Aggregation aggregation =
-        newAggregation(
-            lookupOperation, matchOperation, groupOperation, group().count().as("count"));
-
-    List<Map> results =
-        mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
-    if (!results.isEmpty()) {
-      return Integer.parseInt(results.get(0).get("count").toString());
-    } else {
-      return 0;
-    }
+    return results.isEmpty() ? 0 : Integer.parseInt(results.get(0).get("count").toString());
   }
 }

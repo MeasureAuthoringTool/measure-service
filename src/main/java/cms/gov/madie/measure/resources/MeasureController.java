@@ -11,6 +11,7 @@ import cms.gov.madie.measure.services.MeasureSetService;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import lombok.RequiredArgsConstructor;
@@ -72,8 +73,7 @@ public class MeasureController {
   @GetMapping("/measures")
   public ResponseEntity<Page<MeasureListDTO>> getMeasures(
       Principal principal,
-      @RequestParam(required = false, defaultValue = "false", name = "currentUser")
-          boolean filterByCurrentUser,
+      @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
       @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
       @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
@@ -85,16 +85,26 @@ public class MeasureController {
     // TODO Remove parameter "measures" when either measureSearch or EditTestsOnVersionedMeasure is
     // removed.
     measures =
-        measureService.getMeasuresByCriteria(
-            null, filterByCurrentUser, pageReq, username, "measures");
+        measureService.getMeasuresByCriteria(null, ownershipTypes, pageReq, username, "measures");
     return ResponseEntity.ok(measures);
   }
 
   @GetMapping("/measures/count")
   public ResponseEntity<Map<String, Integer>> getCounts(Principal principal) {
     Map<String, Integer> results = new HashMap<>();
-    results.put("allMeasures", measureService.countAllMeasures());
-    results.put("myMeasures", measureService.countMyMeasures(principal.getName()));
+    results.put(
+        "ownedMeasures",
+        measureService.countMeasuresByOwnership(
+            true, principal.getName(), List.of(OwnershipType.OWNED)));
+    results.put(
+        "sharedMeasures",
+        measureService.countMeasuresByOwnership(
+            true, principal.getName(), List.of(OwnershipType.SHARED)));
+    results.put(
+        "allMeasures",
+        measureService.countMeasuresByOwnership(
+            true, principal.getName(), List.of(OwnershipType.ALL)));
+
     return ResponseEntity.ok(results);
   }
 
@@ -327,8 +337,7 @@ public class MeasureController {
   @PutMapping("/measures/searches")
   public ResponseEntity<Page<MeasureListDTO>> measureSearchByCriteria(
       Principal principal,
-      @RequestParam(required = false, defaultValue = "false", name = "currentUser")
-          boolean filterByCurrentUser,
+      @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
       @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
       @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
@@ -346,7 +355,7 @@ public class MeasureController {
 
     Page<MeasureListDTO> measures =
         measureService.getMeasuresByCriteria(
-            searchCriteria, filterByCurrentUser, pageReq, username, invocationSource);
+            searchCriteria, ownershipTypes, pageReq, username, invocationSource);
 
     return ResponseEntity.ok(measures);
   }
