@@ -34,7 +34,7 @@ class MeasureLockServiceTest {
     LockResponse response = service.lockMeasure(measureId, userName);
 
     verify(repository, times(1)).insert(any(MeasureLock.class));
-    assertThat(response.isLocked()).isFalse();
+    assertThat(response.isLocked()).isTrue();
     assertThat(response.getLockedBy()).isEqualTo(userName);
   }
 
