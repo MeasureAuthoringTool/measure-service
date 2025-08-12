@@ -67,6 +67,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                 && isNumeric(versionParts[2])) {
               Criteria otherCriteria = Criteria.where("version").is(Version.parse(searchField));
               orConditions.add(otherCriteria);
+            } else if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
+              Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
+              orConditions.add(noVersionMatch);
             }
           }
           if (versionParts.length == 2) {
@@ -79,6 +82,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                   Criteria.where("version.minor").is(major).and("version.revisionNumber").is(minor);
               orConditions.add(otherCriteria);
               orConditions.add(additionalCriteria);
+            } else if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
+              Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
+              orConditions.add(noVersionMatch);
             }
           }
           if (versionParts.length == 1) {
@@ -90,11 +96,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               orConditions.add(majorMatch);
               orConditions.add(minorMatch);
               orConditions.add(patchMatch);
-            } else {
-              if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
-                Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
-                orConditions.add(noVersionMatch);
-              }
+            } else if (measureSearchCriteria.getOptionalSearchProperties().size() == 1) {
+              Criteria noVersionMatch = Criteria.where("version.major").is(versionParts[0]);
+              orConditions.add(noVersionMatch);
             }
           }
           //  if its a bad version that's a random string, and there are no other optional params
@@ -172,8 +176,12 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
         if (!wordCriteria.isEmpty()) {
           aggregationOperations.add(match(new Criteria().andOperator(wordCriteria)));
+        } else {
+          // If search string is only special characters return no results
+          return new PageImpl<>(new ArrayList<MeasureListDTO>(), pageable, 0);
         }
       }
+
       // if searchField and optional filters are provided, then search for searchField only in the
       // provided filters
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
@@ -274,7 +282,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     List<FacetDTO> results =
         mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
-
     if (nestedFlag) {
       long totalSize = 0;
       if (results != null && !results.isEmpty()) {

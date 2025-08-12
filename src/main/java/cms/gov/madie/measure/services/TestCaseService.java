@@ -311,7 +311,7 @@ public class TestCaseService {
             testCase, ModelType.valueOfName(measure.getModel()), accessToken);
     measure.getTestCases().add(validatedTestCase);
 
-    measureRepository.save(measure);
+    measureRepository.save(measure); // TODO MAT-8921: Replace with Test Case FindAndModify
     log.info(
         "User [{}] successfully updated the test case with ID [{}] for the measure with ID[{}] ",
         username,
@@ -339,7 +339,8 @@ public class TestCaseService {
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
 
-      if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)
+          && ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
         measure.getTestCases().add(testCase);
         measureRepository.save(measure);
         log.info(
