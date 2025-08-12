@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import cms.gov.madie.measure.dto.LockInfo;
-// import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.TestCaseLockService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
