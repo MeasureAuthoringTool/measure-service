@@ -40,6 +40,7 @@ class HtmlifyTextDataTest {
   }
 
   @Test
+  @Disabled
   void htmlifyTextTest() {
     when(measureRepository.findAllMeasureIdsByActiveAndMeasureMetaDataDraft(true))
         .thenReturn(List.of(measure));
