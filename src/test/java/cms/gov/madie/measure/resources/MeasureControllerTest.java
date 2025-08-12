@@ -15,6 +15,7 @@ import cms.gov.madie.measure.services.MeasureSetService;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
@@ -106,42 +107,90 @@ class MeasureControllerTest {
   }
 
   @Test
-  void getMeasuresWithoutCurrentUserFilter() {
+  void getMeasuresWithOwnedOwnershipType() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
-
+    when(measureService.getMeasuresByCriteria(
+            eq(null),
+            eq(List.of(OwnershipType.OWNED)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures")))
+        .thenReturn(measures);
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
-    when(measureService.getMeasuresByCriteria(
-            eq(null), eq(false), any(Pageable.class), eq("test.user"), eq("measures")))
-        .thenReturn(measures);
+
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.getMeasures(principal, false, 10, 0, "lastModifiedAt", "DESC");
+        controller.getMeasures(
+            principal, List.of(OwnershipType.OWNED), 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), eq(false), any(Pageable.class), eq("test.user"), eq("measures"));
+            eq(null),
+            eq(List.of(OwnershipType.OWNED)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
+
     verifyNoMoreInteractions(repository);
-    assertNotNull(response.getBody());
     assertNotNull(response.getBody().getContent());
     assertNotNull(response.getBody().getContent().get(0));
     assertEquals("IDIDID", response.getBody().getContent().get(0).getMeasureSetId());
   }
 
   @Test
-  void getMeasuresWithCurrentUserFilter() {
+  void getMeasuresWithSharedOwnershipType() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(true), any(Pageable.class), eq("test.user"), eq("measures")))
+            eq(null),
+            eq(List.of(OwnershipType.SHARED)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures")))
         .thenReturn(measures);
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.getMeasures(principal, true, 10, 0, "lastModifiedAt", "DESC");
+        controller.getMeasures(
+            principal, List.of(OwnershipType.SHARED), 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), eq(true), any(Pageable.class), eq("test.user"), eq("measures"));
+            eq(null),
+            eq(List.of(OwnershipType.SHARED)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
 
     verifyNoMoreInteractions(repository);
+    assertNotNull(response.getBody().getContent());
+    assertNotNull(response.getBody().getContent().get(0));
+    assertEquals("IDIDID", response.getBody().getContent().get(0).getMeasureSetId());
+  }
+
+  @Test
+  void getMeasuresWithAllOwnershipType() {
+    Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
+
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    when(measureService.getMeasuresByCriteria(
+            eq(null),
+            eq(List.of(OwnershipType.ALL)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures")))
+        .thenReturn(measures);
+    ResponseEntity<Page<MeasureListDTO>> response =
+        controller.getMeasures(
+            principal, List.of(OwnershipType.ALL), 10, 0, "lastModifiedAt", "DESC");
+    verify(measureService, times(1))
+        .getMeasuresByCriteria(
+            eq(null),
+            eq(List.of(OwnershipType.ALL)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
+    verifyNoMoreInteractions(repository);
+    assertNotNull(response.getBody());
     assertNotNull(response.getBody().getContent());
     assertNotNull(response.getBody().getContent().get(0));
     assertEquals("IDIDID", response.getBody().getContent().get(0).getMeasureSetId());
@@ -680,6 +729,90 @@ class MeasureControllerTest {
   }
 
   @Test
+  void searchOwnedMeasuresByNameOrEcqmTitle() {
+    Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
+
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    doReturn(measures)
+        .when(measureService)
+        .getMeasuresByCriteria(
+            any(MeasureSearchCriteria.class),
+            eq(List.of(OwnershipType.OWNED)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
+
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder().searchField("test criteria").build();
+    ResponseEntity<Page<MeasureListDTO>> response =
+        controller.measureSearchByCriteria(
+            principal,
+            List.of(OwnershipType.OWNED),
+            measureSearchCriteria,
+            10,
+            0,
+            "lastModifiedAt",
+            "DESC",
+            "measures");
+    verify(measureService, times(1))
+        .getMeasuresByCriteria(
+            any(MeasureSearchCriteria.class),
+            eq(List.of(OwnershipType.OWNED)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
+
+    verifyNoMoreInteractions(repository);
+    assertNotNull(response.getBody().getContent());
+    assertNotNull(response.getBody().getContent().get(0));
+    assertEquals("IDIDID", response.getBody().getContent().get(0).getMeasureSetId());
+  }
+
+  @Test
+  void searchSharedMeasuresByNameOrEcqmTitle() {
+    Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
+
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    doReturn(measures)
+        .when(measureService)
+        .getMeasuresByCriteria(
+            any(MeasureSearchCriteria.class),
+            eq(List.of(OwnershipType.SHARED)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
+
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder().searchField("test criteria").build();
+    ResponseEntity<Page<MeasureListDTO>> response =
+        controller.measureSearchByCriteria(
+            principal,
+            List.of(OwnershipType.SHARED),
+            measureSearchCriteria,
+            10,
+            0,
+            "lastModifiedAt",
+            "DESC",
+            "measures");
+    verify(measureService, times(1))
+        .getMeasuresByCriteria(
+            any(MeasureSearchCriteria.class),
+            eq(List.of(OwnershipType.SHARED)),
+            any(Pageable.class),
+            eq("test.user"),
+            eq("measures"));
+
+    verifyNoMoreInteractions(repository);
+    assertNotNull(response.getBody().getContent());
+    assertNotNull(response.getBody().getContent().get(0));
+    assertEquals("IDIDID", response.getBody().getContent().get(0).getMeasureSetId());
+  }
+
+  @Test
   void searchAllMeasuresByNameOrEcqmTitle() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
 
@@ -690,7 +823,7 @@ class MeasureControllerTest {
         .when(measureService)
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
-            eq(false),
+            eq(List.of(OwnershipType.ALL)),
             any(Pageable.class),
             eq("test.user"),
             eq("measures"));
@@ -699,52 +832,24 @@ class MeasureControllerTest {
         MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
         controller.measureSearchByCriteria(
-            principal, false, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC", "measures");
+            principal,
+            List.of(OwnershipType.ALL),
+            measureSearchCriteria,
+            10,
+            0,
+            "lastModifiedAt",
+            "DESC",
+            "measures");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
-            eq(false),
+            eq(List.of(OwnershipType.ALL)),
             any(Pageable.class),
             eq("test.user"),
             eq("measures"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody());
-    assertNotNull(response.getBody().getContent());
-    assertNotNull(response.getBody().getContent().get(0));
-    assertEquals("IDIDID", response.getBody().getContent().get(0).getMeasureSetId());
-  }
-
-  @Test
-  void searchCurrentUsersMeasuresByNameOrEcqmTitle() {
-    Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
-
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-
-    doReturn(measures)
-        .when(measureService)
-        .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(true),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
-
-    MeasureSearchCriteria measureSearchCriteria =
-        MeasureSearchCriteria.builder().searchField("test criteria").build();
-    ResponseEntity<Page<MeasureListDTO>> response =
-        controller.measureSearchByCriteria(
-            principal, true, measureSearchCriteria, 10, 0, "lastModifiedAt", "DESC", "measures");
-    verify(measureService, times(1))
-        .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(true),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
-
-    verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
     assertNotNull(response.getBody().getContent().get(0));
     assertEquals("IDIDID", response.getBody().getContent().get(0).getMeasureSetId());
@@ -854,11 +959,21 @@ class MeasureControllerTest {
   void testGetCounts() {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
-    when(measureService.countAllMeasures()).thenReturn(500);
-    when(measureService.countMyMeasures(anyString())).thenReturn(5);
+
+    when(measureService.countMeasuresByOwnership(true, "test.user", List.of(OwnershipType.OWNED)))
+        .thenReturn(5);
+    when(measureService.countMeasuresByOwnership(true, "test.user", List.of(OwnershipType.SHARED)))
+        .thenReturn(3);
+    when(measureService.countMeasuresByOwnership(true, "test.user", List.of(OwnershipType.ALL)))
+        .thenReturn(10);
+
+    // when(measureService.countMyMeasures(anyString())).thenReturn(5);
     ResponseEntity<Map<String, Integer>> response = controller.getCounts(principal);
+
     Map<String, Integer> result = response.getBody();
-    assertThat(result.get("allMeasures"), is(equalTo(500)));
-    assertThat(result.get("myMeasures"), is(equalTo(5)));
+
+    assertThat(result.get("ownedMeasures"), is(equalTo(5)));
+    assertThat(result.get("sharedMeasures"), is(equalTo(3)));
+    assertThat(result.get("allMeasures"), is(equalTo(10)));
   }
 }

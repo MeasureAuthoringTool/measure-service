@@ -15,6 +15,7 @@ import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.MeasureSetActionLog;
 import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
@@ -231,6 +232,27 @@ public class MeasureService {
           username);
     }
 
+    // remove stratifications that do not have associations or cql definitions
+    boolean isQiCoreModel =
+        ModelType.QI_CORE.getValue().equalsIgnoreCase(updatingMeasure.getModel())
+            || ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(updatingMeasure.getModel());
+
+    if (!CollectionUtils.isEmpty(updatingMeasure.getGroups())) {
+      for (Group group : updatingMeasure.getGroups()) {
+        if (!CollectionUtils.isEmpty(group.getStratifications())) {
+          List<Stratification> filteredStratifications =
+              group.getStratifications().stream()
+                  .filter(
+                      stratification ->
+                          isQiCoreModel
+                              ? !CollectionUtils.isEmpty(stratification.getAssociations())
+                              : StringUtils.isNotBlank(stratification.getCqlDefinition()))
+                  .collect(Collectors.toList());
+          group.setStratifications(filteredStratifications);
+        }
+      }
+    }
+
     if (measureUtil.isMeasurementPeriodChanged(updatingMeasure, existingMeasure)) {
       validateMeasurementPeriod(
           updatingMeasure.getMeasurementPeriodStart(), updatingMeasure.getMeasurementPeriodEnd());
@@ -303,7 +325,7 @@ public class MeasureService {
     // prevent users from overwriting versionId and measureSetId
     outputMeasure.setVersionId(existingMeasure.getVersionId());
     outputMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
-    return measureRepository.save(outputMeasure);
+    return measureRepository.findAndModify(outputMeasure);
   }
 
   public Measure deactivateMeasure(final String id, final String username) {
@@ -671,13 +693,13 @@ public class MeasureService {
 
   public Page<MeasureListDTO> getMeasuresByCriteria(
       MeasureSearchCriteria searchCriteria,
-      boolean filterByCurrentUser,
+      List<OwnershipType> ownershipTypes,
       Pageable pageReq,
       String username,
       // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource) {
     return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, filterByCurrentUser, invocationSource);
+        username, pageReq, searchCriteria, ownershipTypes, invocationSource);
   }
 
   protected void updateReferenceId(MeasureMetaData metaData) {
@@ -951,11 +973,8 @@ public class MeasureService {
     return measureRepository.findLibraryUsageByLibraryName(libraryName);
   }
 
-  public int countAllMeasures() {
-    return measureRepository.countAllMeasures(true);
-  }
-
-  public int countMyMeasures(String user) {
-    return measureRepository.countAllMyMeasures(true, user);
+  public int countMeasuresByOwnership(
+      boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
+    return measureRepository.countMeasuresByOwnership(isActive, userId, ownershipTypes);
   }
 }
