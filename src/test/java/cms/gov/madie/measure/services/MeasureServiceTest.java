@@ -40,6 +40,7 @@ import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.MeasureSetActionLog;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import org.apache.commons.io.IOUtils;
@@ -371,7 +372,7 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testGetMeasuresByCriteriaWithCurrentUser() {
+  public void testGetOwnedMeasuresByCriteria() {
     PageRequest initialPage = PageRequest.of(0, 10);
 
     Page<Measure> activeMeasures = new PageImpl<>(List.of(measure1));
@@ -384,16 +385,17 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(true),
+            eq(List.of(OwnershipType.OWNED)),
             eq("testCase"));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria, true, initialPage, "test.user", "testCase");
+            measureSearchCriteria, List.of(OwnershipType.OWNED), initialPage, "test.user",
+            "testCase");
     assertNotNull(measures);
   }
 
   @Test
-  public void testGetMeasuresByCriteriaWithoutCurrentUser() {
+  public void testGetSharedMeasuresByCriteria() {
     PageRequest initialPage = PageRequest.of(0, 10);
 
     Page<Measure> activeMeasures = new PageImpl<>(List.of(measure1));
@@ -406,11 +408,34 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(false),
+            eq(List.of(OwnershipType.SHARED)),
+            eq("testCase"));
+    Object measures =
+        measureService.getMeasuresByCriteria(
+            measureSearchCriteria, List.of(OwnershipType.SHARED), initialPage, "test.user",
+            "testCase");
+    assertNotNull(measures);
+  }
+
+  @Test
+  public void testGetAllMeasuresByCriteria() {
+    PageRequest initialPage = PageRequest.of(0, 10);
+
+    Page<Measure> activeMeasures = new PageImpl<>(List.of(measure1));
+
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder().searchField("test criteria").build();
+    doReturn(activeMeasures)
+        .when(measureRepository)
+        .searchMeasuresByCriteria(
+            eq("test.user"),
+            any(PageRequest.class),
+            any(MeasureSearchCriteria.class),
+            eq(List.of(OwnershipType.ALL)),
             eq("measures"));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria, false, initialPage, "test.user", "measures");
+            measureSearchCriteria, List.of(OwnershipType.ALL), initialPage, "test.user", "measures");
     assertNotNull(measures);
   }
 

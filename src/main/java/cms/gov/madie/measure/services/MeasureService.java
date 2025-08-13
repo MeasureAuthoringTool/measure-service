@@ -15,6 +15,7 @@ import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.MeasureSetActionLog;
 import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
@@ -692,13 +693,13 @@ public class MeasureService {
 
   public Page<MeasureListDTO> getMeasuresByCriteria(
       MeasureSearchCriteria searchCriteria,
-      boolean filterByCurrentUser,
+      List<OwnershipType> ownershipTypes,
       Pageable pageReq,
       String username,
       // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource) {
     return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, filterByCurrentUser, invocationSource);
+        username, pageReq, searchCriteria, ownershipTypes, invocationSource);
   }
 
   protected void updateReferenceId(MeasureMetaData metaData) {
@@ -972,11 +973,8 @@ public class MeasureService {
     return measureRepository.findLibraryUsageByLibraryName(libraryName);
   }
 
-  public int countAllMeasures() {
-    return measureRepository.countAllMeasures(true);
-  }
-
-  public int countMyMeasures(String user) {
-    return measureRepository.countAllMyMeasures(true, user);
+  public int countMeasuresByOwnership(
+      boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
+    return measureRepository.countMeasuresByOwnership(isActive, userId, ownershipTypes);
   }
 }

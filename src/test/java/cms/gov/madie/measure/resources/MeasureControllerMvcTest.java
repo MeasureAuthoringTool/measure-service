@@ -35,6 +35,7 @@ import cms.gov.madie.measure.services.MeasureSetService;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import org.junit.jupiter.api.Test;
@@ -1428,7 +1429,7 @@ public class MeasureControllerMvcTest {
   }
 
   @Test
-  public void testGetMeasuresNoQueryParams() throws Exception {
+  public void testGetAllMeasuresNoQueryParams() throws Exception {
     MeasureListDTO m1 =
         MeasureListDTO.builder().active(true).measureName("Measure1").model(MODEL).build();
     MeasureListDTO m2 =
@@ -1439,7 +1440,8 @@ public class MeasureControllerMvcTest {
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), any(Boolean.class), any(Pageable.class), eq(TEST_USER_ID), eq("measures")))
+            eq(null), eq(null), any(Pageable.class), eq(TEST_USER_ID), eq(
+                "measures")))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1449,16 +1451,18 @@ public class MeasureControllerMvcTest {
             .andReturn();
     String resultStr = result.getResponse().getContentAsString();
 
-    assertTrue(resultStr.length() > 0);
+    assertTrue(resultStr.contains("Measure1"));
+    assertTrue(resultStr.contains("Measure2"));
+    assertTrue(resultStr.contains("Measure3"));
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), any(Boolean.class), any(Pageable.class), eq(TEST_USER_ID), eq("measures"));
+            eq(null), eq(null), any(Pageable.class), eq(TEST_USER_ID), eq("measures"));
     verifyNoMoreInteractions(measureService);
   }
 
   @Test
-  public void testGetMeasuresWithCurrentUserFalse() throws Exception {
+  public void testGetAllMeasures() throws Exception {
     MeasureListDTO m1 =
         MeasureListDTO.builder().active(true).measureName("Measure1").model(MODEL).build();
     MeasureListDTO m2 =
@@ -1467,8 +1471,13 @@ public class MeasureControllerMvcTest {
         MeasureListDTO.builder().active(true).measureName("Measure3").model(MODEL).build();
 
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
+
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID), eq("measures")))
+        eq(null),
+        eq(List.of(OwnershipType.ALL)),
+        any(Pageable.class),
+        eq(TEST_USER_ID),
+        eq("measures")))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1476,23 +1485,29 @@ public class MeasureControllerMvcTest {
             .perform(
                 get("/measures")
                     .with(user(TEST_USER_ID))
-                    .queryParam("currentUser", "false")
+                    .queryParam("ownershipTypes", "ALL")
                     .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andReturn();
-    String resultStr = result.getResponse().getContentAsString();
 
-    assertTrue(resultStr.length() > 0);
+    String resultStr = result.getResponse().getContentAsString();
+    assertTrue(resultStr.contains("Measure1"));
+    assertTrue(resultStr.contains("Measure2"));
+    assertTrue(resultStr.contains("Measure3"));
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID), eq("measures"));
+            eq(null),
+            eq(List.of(OwnershipType.ALL)),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures"));
 
     verifyNoMoreInteractions(measureService);
   }
 
   @Test
-  public void getMeasuresWithCustomPaging() throws Exception {
+  public void getAllMeasuresWithCustomPaging() throws Exception {
     MeasureListDTO m1 =
         MeasureListDTO.builder().active(true).measureName("Measure1").model(MODEL).build();
     MeasureListDTO m2 =
@@ -1502,7 +1517,8 @@ public class MeasureControllerMvcTest {
 
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID), eq("measures")))
+            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq(TEST_USER_ID), eq(
+                "measures")))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1510,7 +1526,7 @@ public class MeasureControllerMvcTest {
             .perform(
                 get("/measures")
                     .with(user(TEST_USER_ID))
-                    .queryParam("currentUser", "false")
+                    .queryParam("ownershipTypes", "ALL")
                     .queryParam("limit", "25")
                     .queryParam("page", "3")
                     .accept(MediaType.APPLICATION_JSON))
@@ -1518,12 +1534,14 @@ public class MeasureControllerMvcTest {
             .andReturn();
     String resultStr = result.getResponse().getContentAsString();
 
-    assertTrue(resultStr.length() > 0);
+    assertTrue(resultStr.contains("Measure1"));
+    assertTrue(resultStr.contains("Measure2"));
+    assertTrue(resultStr.contains("Measure3"));
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             eq(null),
-            activeCaptor.capture(),
+            eq(List.of(OwnershipType.ALL)),
             pageRequestCaptor.capture(),
             eq(TEST_USER_ID),
             eq("measures"));
@@ -1536,7 +1554,7 @@ public class MeasureControllerMvcTest {
   }
 
   @Test
-  public void testGetMeasuresFilterByCurrentUser() throws Exception {
+  public void testGetOwnedMeasures() throws Exception {
     MeasureListDTO m1 =
         MeasureListDTO.builder().active(true).measureName("Measure1").model(MODEL).build();
     MeasureListDTO m2 =
@@ -1550,7 +1568,8 @@ public class MeasureControllerMvcTest {
     final Page<MeasureListDTO> measures = new PageImpl<>(List.of(m1, m2));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(true), any(Pageable.class), eq(TEST_USER_ID), eq("measures")))
+            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq(TEST_USER_ID), eq(
+                "measures")))
         .thenReturn(measures);
 
     MvcResult result =
@@ -1558,17 +1577,59 @@ public class MeasureControllerMvcTest {
             .perform(
                 get("/measures")
                     .with(user(TEST_USER_ID))
-                    .queryParam("currentUser", "true")
+                    .queryParam("ownershipTypes", "OWNED")
                     .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
             .andReturn();
     String resultStr = result.getResponse().getContentAsString();
 
-    assertTrue(resultStr.length() > 0);
+    assertTrue(resultStr.contains("Measure1"));
+    assertTrue(resultStr.contains("Measure2"));
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), eq(true), any(Pageable.class), eq(TEST_USER_ID), eq("measures"));
+            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq(TEST_USER_ID), eq(
+                "measures"));
+    verifyNoMoreInteractions(measureService);
+  }
+
+  @Test
+  public void testGetSharedMeasuresList() throws Exception {
+    MeasureListDTO m1 =
+        MeasureListDTO.builder().active(true).measureName("Measure1").model(MODEL).build();
+    MeasureListDTO m2 =
+        MeasureListDTO.builder()
+            .active(true)
+            .measureName("Measure2")
+            .model(MODEL)
+            .active(true)
+            .build();
+
+    final Page<MeasureListDTO> measures = new PageImpl<>(List.of(m1, m2));
+
+    when(measureService.getMeasuresByCriteria(
+        eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq(TEST_USER_ID), eq(
+            "measures")))
+        .thenReturn(measures);
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                get("/measures")
+                    .with(user(TEST_USER_ID))
+                    .queryParam("ownershipTypes", "SHARED")
+                    .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andReturn();
+    String resultStr = result.getResponse().getContentAsString();
+
+    assertTrue(resultStr.contains("Measure1"));
+    assertTrue(resultStr.contains("Measure2"));
+
+    verify(measureService, times(1))
+        .getMeasuresByCriteria(
+            eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq(TEST_USER_ID), eq(
+                "measures"));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1780,7 +1841,7 @@ public class MeasureControllerMvcTest {
   }
 
   @Test
-  public void testSearchMeasuresByMeasureNameOrEcqmTitleNoQueryParams() throws Exception {
+  public void testSearchAllMeasuresByMeasureNameOrEcqmTitleNoQueryParams() throws Exception {
     MeasureListDTO m1 =
         MeasureListDTO.builder().measureName("measure-1").ecqmTitle("test-ecqm-title-1").build();
     MeasureListDTO m2 =
@@ -1794,7 +1855,7 @@ public class MeasureControllerMvcTest {
         .when(measureService)
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
-            eq(false),
+            eq(null),
             any(Pageable.class),
             eq(TEST_USER_ID),
             eq("measures"));
@@ -1813,12 +1874,14 @@ public class MeasureControllerMvcTest {
             .andReturn();
     String resultStr = result.getResponse().getContentAsString();
 
-    assertTrue(resultStr.length() > 0);
+    assertTrue(resultStr.contains("measure-1"));
+    assertTrue(resultStr.contains("measure-2"));
+    assertTrue(resultStr.contains("measure-3"));
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
-            eq(false),
+            eq(null),
             any(Pageable.class),
             eq(TEST_USER_ID),
             eq("measures"));
@@ -1826,7 +1889,7 @@ public class MeasureControllerMvcTest {
   }
 
   @Test
-  public void testSearchMeasuresByMeasureNameOrEcqmTitleWithCurrentUserFalse() throws Exception {
+  public void testSearchAllMeasuresByMeasureNameOrEcqmTitle() throws Exception {
     MeasureListDTO m1 =
         MeasureListDTO.builder().measureName("measure-1").ecqmTitle("test-ecqm-title-1").build();
     MeasureListDTO m2 =
@@ -1840,7 +1903,7 @@ public class MeasureControllerMvcTest {
         .when(measureService)
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
-            eq(false),
+            eq(List.of(OwnershipType.ALL)),
             any(Pageable.class),
             eq(TEST_USER_ID),
             eq("measures"));
@@ -1850,7 +1913,7 @@ public class MeasureControllerMvcTest {
                 put("/measures/searches")
                     .with(user(TEST_USER_ID))
                     .with(csrf())
-                    .queryParam("currentUser", "false")
+                    .queryParam("ownershipTypes", "ALL")
                     .queryParam("limit", "8")
                     .queryParam("page", "1")
                     .content(
@@ -1862,11 +1925,14 @@ public class MeasureControllerMvcTest {
             .andReturn();
     String resultStr = result.getResponse().getContentAsString();
 
-    assertTrue(resultStr.length() > 0);
+    assertTrue(resultStr.contains("measure-1"));
+    assertTrue(resultStr.contains("measure-2"));
+    assertTrue(resultStr.contains("measure-3"));
+
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
-            eq(false),
+            eq(List.of(OwnershipType.ALL)),
             any(Pageable.class),
             eq(TEST_USER_ID),
             eq("measures"));
@@ -1888,7 +1954,7 @@ public class MeasureControllerMvcTest {
         .when(measureService)
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
-            eq(true),
+            eq(List.of(OwnershipType.OWNED)),
             any(Pageable.class),
             eq(TEST_USER_ID),
             eq("measures"));
@@ -1898,7 +1964,7 @@ public class MeasureControllerMvcTest {
                 put("/measures/searches")
                     .with(user(TEST_USER_ID))
                     .with(csrf())
-                    .queryParam("currentUser", "true")
+                    .queryParam("ownershipTypes", "OWNED")
                     .queryParam("limit", "8")
                     .queryParam("page", "1")
                     .content(
@@ -1910,11 +1976,14 @@ public class MeasureControllerMvcTest {
             .andReturn();
     String resultStr = result.getResponse().getContentAsString();
 
-    assertTrue(resultStr.length() > 0);
+    assertTrue(resultStr.contains("measure-1"));
+    assertTrue(resultStr.contains("measure-2"));
+    assertTrue(resultStr.contains("measure-3"));
+
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
-            eq(true),
+            eq(List.of(OwnershipType.OWNED)),
             any(Pageable.class),
             eq(TEST_USER_ID),
             eq("measures"));
@@ -2170,17 +2239,29 @@ public class MeasureControllerMvcTest {
 
   @Test
   public void testGetCounts() throws Exception {
-    when(measureService.countAllMeasures()).thenReturn(500);
-    when(measureService.countMyMeasures(anyString())).thenReturn(5);
+    when(measureService.countMeasuresByOwnership(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.OWNED))))
+        .thenReturn(5);
+    when(measureService.countMeasuresByOwnership(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.SHARED))))
+        .thenReturn(3);
+    when(measureService.countMeasuresByOwnership(eq(true), eq(TEST_USER_ID),
+            eq(List.of(OwnershipType.ALL))))
+        .thenReturn(8);
 
     mockMvc
         .perform(get("/measures/count").with(user(TEST_USER_ID)).accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-        .andExpect(jsonPath("allMeasures").value(500))
-        .andExpect(jsonPath("myMeasures").value(5));
+        .andExpect(jsonPath("$.ownedMeasures").value(5))
+        .andExpect(jsonPath("$.sharedMeasures").value(3))
+        .andExpect(jsonPath("$.allMeasures").value(8));
 
-    verify(measureService, times(1)).countAllMeasures();
-    verify(measureService, times(1)).countMyMeasures(eq(TEST_USER_ID));
+    verify(measureService, times(1))
+        .countMeasuresByOwnership(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.OWNED)));
+    verify(measureService, times(1))
+        .countMeasuresByOwnership(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.SHARED)));
+    verify(measureService, times(1))
+        .countMeasuresByOwnership(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.ALL)));
+
+    verifyNoMoreInteractions(measureService);
   }
 }
