@@ -1,64 +1,197 @@
-package cms.gov.madie.measure.config.mongock;
+ package cms.gov.madie.measure.config.mongock;
 
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import gov.cms.madie.models.measure.Measure;
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.Spy;
-import org.mockito.junit.jupiter.MockitoExtension;
+ import cms.gov.madie.measure.repositories.MeasureRepository;
+ import gov.cms.madie.models.measure.*;
+ import lombok.extern.slf4j.Slf4j;
+ import org.junit.jupiter.api.BeforeEach;
+ import org.junit.jupiter.api.Disabled;
+ import org.junit.jupiter.api.Test;
+ import org.junit.jupiter.api.extension.ExtendWith;
+ import org.mockito.*;
+ import org.mockito.junit.jupiter.MockitoExtension;
+ import org.springframework.data.mongodb.core.MongoOperations;
+ import org.springframework.data.mongodb.core.query.Query;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.List;
+ import java.io.IOException;
+ import java.util.List;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.mockito.Mockito.*;
 
-@Slf4j
-@ExtendWith(MockitoExtension.class)
-class HtmlifyTextDataTest {
+ @Slf4j
+ @ExtendWith(MockitoExtension.class)
+ class HtmlifyTextDataTest {
+
+  HtmlifyTextData htmlifyTextData = new HtmlifyTextData();
 
   @Mock MeasureRepository measureRepository;
-  @Spy HtmlifyTextData htmlifyTextData;
+  @Mock MongoOperations mongoOperations;
+  @Captor ArgumentCaptor<Measure> measureCaptor;
 
   private Measure measure;
 
   @BeforeEach
   void setup() throws IOException {
-    ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
-    Path mock = Path.of("src/test/resources/measure_mock_165FHIR.json");
-    measure = objectMapper.readValue(Files.readAllBytes(mock), Measure.class);
+    measure =
+        new Measure()
+            .toBuilder()
+                .id("id")
+                .active(true)
+                .measureMetaData(
+                    MeasureMetaData.builder()
+                        .draft(true)
+                        .description("measureDesc")
+                        .rationale("rationale")
+                        .purpose("purpose")
+                        .guidance("guidance")
+                        .clinicalRecommendation("clinicalRecommendation")
+                        .references(
+                            List.of(
+                                Reference.builder()
+                                    .referenceText("reference1")
+                                    .referenceType("CITATION")
+                                    .build()))
+                        .measureDefinitions(
+                            List.of(
+                                MeasureDefinition.builder()
+                                    .definition("definition1")
+                                    .term("term")
+                                    .build()))
+                        .copyright("measure Copyright")
+                        .build())
+                .groups(
+                    List.of(
+                        Group.builder()
+                            .groupDescription("group 1 Description")
+                            .rateAggregation("rate agg")
+                            .improvementNotationDescription("line go up")
+                            .populations(
+                                List.of(
+                                    Population.builder()
+                                        .description("population 1 Description")
+                                        .build()))
+                            .stratifications(
+                                List.of(
+                                    Stratification.builder()
+                                        .description("stratification 1 Description")
+                                        .build()))
+                            .build()))
+                .supplementalDataDescription("supplemental description")
+                .supplementalData(
+                    List.of(
+                        DefDescPair.builder()
+                            .description("sde desc")
+                            .definition("sdeDefName")
+                            .build()))
+                .riskAdjustmentDescription("risk adjustment description")
+                .riskAdjustments(
+                    List.of(
+                        DefDescPair.builder()
+                            .description("rav desc")
+                            .definition("ravDefName")
+                            .build()))
+                .build();
+  }
+
+  private Measure givenAnHtmlifiedMeasure() {
+    when(mongoOperations.find(any(Query.class), any())).thenReturn(List.of(measure));
+
+    htmlifyTextData.htmlfiyText(measureRepository, mongoOperations);
+    verify(measureRepository).findAndModify(measureCaptor.capture(), anyList());
+
+    Measure capturedMeasure = measureCaptor.getValue();
+    assertThat(capturedMeasure).isNotNull();
+    return capturedMeasure;
   }
 
   @Test
-  @Disabled
-  void htmlifyTextTest() {
-    when(measureRepository.findAllMeasureIdsByActiveAndMeasureMetaDataDraft(true))
-        .thenReturn(List.of(measure));
+  void testSimpleMetaDataFieldsHtmlify() {
+    Measure htmlifiedMeasure = givenAnHtmlifiedMeasure();
 
-    htmlifyTextData.htmlfiyText(measureRepository);
+    assertThat(htmlifiedMeasure.getId()).isEqualTo(measure.getId());
+    assertThat(htmlifiedMeasure.getMeasureMetaData()).isNotNull();
+    MeasureMetaData metaData = htmlifiedMeasure.getMeasureMetaData();
+    assertThat(metaData.getDescription())
+        .isEqualTo("<p>" + measure.getMeasureMetaData().getDescription() + "</p>");
+    assertThat(metaData.getRationale())
+        .isEqualTo("<p>" + measure.getMeasureMetaData().getRationale() + "</p>");
+    assertThat(metaData.getPurpose())
+        .isEqualTo("<p>" + measure.getMeasureMetaData().getPurpose() + "</p>");
+    assertThat(metaData.getGuidance())
+        .isEqualTo("<p>" + measure.getMeasureMetaData().getGuidance() + "</p>");
+    assertThat(metaData.getClinicalRecommendation())
+        .isEqualTo("<p>" + measure.getMeasureMetaData().getClinicalRecommendation() + "</p>");
+    assertThat(metaData.getCopyright())
+        .isEqualTo("<p>" + measure.getMeasureMetaData().getCopyright() + "</p>");
+  }
 
-    ArgumentCaptor<Measure> captor = ArgumentCaptor.forClass(Measure.class);
-    verify(measureRepository, times(1)).findAndModify(captor.capture());
+  @Test
+  void testListMetaDataFieldsHtmlify() {
+    Measure htmlifiedMeasure = givenAnHtmlifiedMeasure();
 
-    Measure capturedMeasure = captor.getValue();
-    assertThat(capturedMeasure).isNotNull();
+    assertThat(htmlifiedMeasure.getId()).isEqualTo(measure.getId());
+    assertThat(htmlifiedMeasure.getMeasureMetaData()).isNotNull();
 
-    assertThat(capturedMeasure.getId()).isEqualTo(measure.getId());
-    assertThat(capturedMeasure.getMeasureMetaData().getDescription())
-      .isEqualTo("<p>"+measure.getMeasureMetaData().getDescription()+"</p>");
+    MeasureMetaData metaData = htmlifiedMeasure.getMeasureMetaData();
+    assertThat(metaData.getReferences()).hasSize(1);
+    assertThat(metaData.getReferences().get(0).getReferenceText())
+        .isEqualTo(
+            "<p>"
+                + measure.getMeasureMetaData().getReferences().get(0).getReferenceText()
+                + "</p>");
+
+    assertThat(metaData.getMeasureDefinitions()).hasSize(1);
+    assertThat(metaData.getMeasureDefinitions().get(0).getDefinition())
+        .isEqualTo(
+            "<p>"
+                + measure.getMeasureMetaData().getMeasureDefinitions().get(0).getDefinition()
+                + "</p>");
+    assertThat(metaData.getMeasureDefinitions().get(0).getTerm())
+        .isEqualTo(measure.getMeasureMetaData().getMeasureDefinitions().get(0).getTerm());
+  }
+
+  @Test
+  void testPopulationCriteriaTextFieldsHtmlify() {
+    Measure htmlifiedMeasure = givenAnHtmlifiedMeasure();
+
+    assertThat(htmlifiedMeasure.getId()).isEqualTo(measure.getId());
+    assertThat(htmlifiedMeasure.getGroups()).hasSize(1);
+    assertThat(htmlifiedMeasure.getGroups().get(0).getGroupDescription())
+        .isEqualTo("<p>" + measure.getGroups().get(0).getGroupDescription() + "</p>");
+    assertThat(htmlifiedMeasure.getGroups().get(0).getPopulations().get(0).getDescription())
+        .isEqualTo(
+            "<p>" + measure.getGroups().get(0).getPopulations().get(0).getDescription() + "</p>");
+    assertThat(htmlifiedMeasure.getGroups().get(0).getStratifications().get(0).getDescription())
+        .isEqualTo(
+            "<p>"
+                + measure.getGroups().get(0).getStratifications().get(0).getDescription()
+                + "</p>");
+    assertThat(htmlifiedMeasure.getGroups().get(0).getRateAggregation())
+        .isEqualTo("<p>" + measure.getGroups().get(0).getRateAggregation() + "</p>");
+    assertThat(htmlifiedMeasure.getGroups().get(0).getImprovementNotationDescription())
+        .isEqualTo("<p>" + measure.getGroups().get(0).getImprovementNotationDescription() +
+ "</p>");
+  }
+
+  @Test
+  void testRavAndSdesHtmlify() {
+    Measure htmlifiedMeasure = givenAnHtmlifiedMeasure();
+
+    assertThat(htmlifiedMeasure.getId()).isEqualTo(measure.getId());
+    assertThat(htmlifiedMeasure.getRiskAdjustments()).hasSize(1);
+    assertThat(htmlifiedMeasure.getRiskAdjustments().get(0).getDescription())
+        .isEqualTo("<p>" + measure.getRiskAdjustments().get(0).getDescription() + "</p>");
+    assertThat(htmlifiedMeasure.getRiskAdjustments().get(0).getDefinition())
+        .isEqualTo(measure.getRiskAdjustments().get(0).getDefinition());
+
+    assertThat(htmlifiedMeasure.getSupplementalData()).hasSize(1);
+    assertThat(htmlifiedMeasure.getSupplementalData().get(0).getDescription())
+        .isEqualTo("<p>" + measure.getSupplementalData().get(0).getDescription() + "</p>");
+    assertThat(htmlifiedMeasure.getSupplementalData().get(0).getDefinition())
+        .isEqualTo(measure.getSupplementalData().get(0).getDefinition());
   }
 
   @Test
   @Disabled
   void rollbackExecutionTest() {}
-}
+ }

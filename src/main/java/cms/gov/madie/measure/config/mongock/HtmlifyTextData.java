@@ -1,32 +1,37 @@
-package cms.gov.madie.measure.config.mongock;
+ package cms.gov.madie.measure.config.mongock;
 
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import gov.cms.madie.models.measure.Measure;
-import gov.cms.madie.models.measure.MeasureMetaData;
-import gov.cms.madie.models.measure.QdmMeasure;
-import io.mongock.api.annotations.ChangeUnit;
-import io.mongock.api.annotations.Execution;
-import io.mongock.api.annotations.RollbackExecution;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.commonmark.node.Node;
-import org.commonmark.parser.Parser;
-import org.commonmark.renderer.html.HtmlRenderer;
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Safelist;
+ import cms.gov.madie.measure.repositories.MeasureRepository;
+ import gov.cms.madie.models.measure.Measure;
+ import gov.cms.madie.models.measure.MeasureMetaData;
+ import gov.cms.madie.models.measure.QdmMeasure;
+ import io.mongock.api.annotations.ChangeUnit;
+ import io.mongock.api.annotations.Execution;
+ import io.mongock.api.annotations.RollbackExecution;
+ import lombok.extern.slf4j.Slf4j;
+ import org.apache.commons.collections4.CollectionUtils;
+ import org.apache.commons.lang3.StringUtils;
+ import org.commonmark.node.Node;
+ import org.commonmark.parser.Parser;
+ import org.commonmark.renderer.html.HtmlRenderer;
+ import org.jsoup.Jsoup;
+ import org.jsoup.safety.Safelist;
+ import org.springframework.data.mongodb.core.MongoOperations;
 
-import java.util.ArrayList;
-import java.util.List;
+ import java.util.ArrayList;
+ import java.util.List;
 
-/**
- * Change unit to perform a one-time migration of text fields in the Measure model to HTML format in
+ import static org.springframework.data.mongodb.core.query.Criteria.where;
+ import static org.springframework.data.mongodb.core.query.Query.query;
+
+ /**
+  * Change unit to perform a one-time migration of text fields in the Measure model to HTML format
+ in
  * preparation for the Rich Text Editor. This migration is necessary to ensure that existing text
  * data is compatible with the new Rich Text Editor.
- */
-@Slf4j
-@ChangeUnit(id = "htmlify_text_data", order = "1", author = "madie_dev")
-public class HtmlifyTextData {
+ **/
+ @Slf4j
+ @ChangeUnit(id = "htmlify_text_data", order = "1", author = "madie_dev")
+ public class HtmlifyTextData {
 
   private final List<Measure> draftActiveMeasures = new ArrayList<>();
   private final Parser parser = Parser.builder().build();
@@ -34,39 +39,40 @@ public class HtmlifyTextData {
 
   private static final Safelist RICH_TEXT_SAFE_LIST =
       Safelist.basic()
-          .addTags("s", "br", "table", "tbody", "td", "th", "thead", "tr", "col", "colgroup", "del")
+          .addTags("s", "br", "table", "tbody", "td", "th", "thead", "tr", "col", "colgroup",
+ "del")
           .addAttributes("table", "style", "class", "id")
           .addAttributes("th", "rowspan", "colspan", "style", "colwidth")
           .addAttributes("td", "rowspan", "colspan", "style", "colwidth")
           .addAttributes("col", "style");
 
   @Execution
-  public void htmlfiyText(MeasureRepository measureRepository) {
+  public void htmlfiyText(MeasureRepository measureRepository, MongoOperations mongoOperations) {
     // TODO: Bonus - Figure out unnumbered lists
-    // Retrieve all draft and active measures
-//    draftActiveMeasures.addAll(
-//        measureRepository.findAllMeasureIdsByActiveAndMeasureMetaDataDraft(true));
-      measureRepository.findById("67c9e2391ca229595bde4431").ifPresent(
-        measure -> {
-          if (measure.isActive() && measure.getMeasureMetaData().isDraft()) {
-            draftActiveMeasures.add(measure);
-          }
-        }
-      );
 
     // Convert text fields to HTML
+    List<Measure> draftActiveMeasures =
+        mongoOperations.find(
+            query(where("active").is(true).and("measureMetaData.draft").is(true)), Measure.class);
     for (Measure measure : draftActiveMeasures) {
-      Measure msr = measure.toBuilder().build(); // TODO replace with deepCopy
+      Measure msr = measure.deepCopy(); // TODO replace with deepCopy
       // MetaData fields
       htlmifyMeasureMetaData(msr);
       // Population criteria
       htmlifyPopulationCriteria(msr);
       // Risk Adjustment and Supplemental Data
       htmlifyRavAndSdes(msr);
-      if(msr instanceof QdmMeasure qdmMeasure) {
+      if (msr instanceof QdmMeasure qdmMeasure) {
         htmlifyReporting(qdmMeasure);
       }
-      measureRepository.findAndModify(msr);
+      measureRepository.findAndModify(
+          msr,
+          List.of(
+              "testCases",
+              "measureSetId",
+              "testCaseConfiguration",
+              "lastModifiedAt",
+              "lastModifiedBy"));
     }
   }
 
@@ -75,7 +81,8 @@ public class HtmlifyTextData {
       qdmMeasure.setRateAggregation(toHtml(qdmMeasure.getRateAggregation()));
     }
     if (StringUtils.isNotBlank(qdmMeasure.getImprovementNotationDescription())) {
-      qdmMeasure.setImprovementNotationDescription(toHtml(qdmMeasure.getImprovementNotationDescription()));
+      qdmMeasure.setImprovementNotationDescription(
+          toHtml(qdmMeasure.getImprovementNotationDescription()));
     }
   }
 
@@ -155,13 +162,15 @@ public class HtmlifyTextData {
       if (StringUtils.isNotBlank(measureMetaData.getRationale())) {
         measureMetaData.setRationale(toHtml(measureMetaData.getRationale()));
       }
+      if (StringUtils.isNotBlank(measureMetaData.getPurpose())) {
+        measureMetaData.setPurpose(toHtml(measureMetaData.getPurpose()));
+      }
       if (StringUtils.isNotBlank(measureMetaData.getGuidance())) {
         measureMetaData.setGuidance(toHtml(measureMetaData.getGuidance()));
       }
       if (StringUtils.isNotBlank(measureMetaData.getClinicalRecommendation())) {
-        measureMetaData
-            .setClinicalRecommendation(
-                toHtml(measureMetaData.getClinicalRecommendation()));
+        measureMetaData.setClinicalRecommendation(
+            toHtml(measureMetaData.getClinicalRecommendation()));
       }
       if (StringUtils.isNotBlank(measureMetaData.getCopyright())) {
         measureMetaData.setCopyright(toHtml(measureMetaData.getCopyright()));
@@ -189,15 +198,22 @@ public class HtmlifyTextData {
                   }
                 });
       }
-      if(msr instanceof QdmMeasure qdmMeasure) {
+      if (msr instanceof QdmMeasure qdmMeasure) {
         if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getTransmissionFormat())) {
-          qdmMeasure.getMeasureMetaData().setTransmissionFormat(toHtml(qdmMeasure.getMeasureMetaData().getTransmissionFormat()));
+          qdmMeasure
+              .getMeasureMetaData()
+              .setTransmissionFormat(
+                  toHtml(qdmMeasure.getMeasureMetaData().getTransmissionFormat()));
         }
         if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getDefinition())) {
-          qdmMeasure.getMeasureMetaData().setDefinition(toHtml(qdmMeasure.getMeasureMetaData().getDefinition()));
+          qdmMeasure
+              .getMeasureMetaData()
+              .setDefinition(toHtml(qdmMeasure.getMeasureMetaData().getDefinition()));
         }
         if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getMeasureSetTitle())) {
-          qdmMeasure.getMeasureMetaData().setMeasureSetTitle(toHtml(qdmMeasure.getMeasureMetaData().getMeasureSetTitle()));
+          qdmMeasure
+              .getMeasureMetaData()
+              .setMeasureSetTitle(toHtml(qdmMeasure.getMeasureMetaData().getMeasureSetTitle()));
         }
       }
     }
@@ -226,4 +242,4 @@ public class HtmlifyTextData {
     }
     log.info("Rollback htmlify text data changelog complete");
   }
-}
+ }
