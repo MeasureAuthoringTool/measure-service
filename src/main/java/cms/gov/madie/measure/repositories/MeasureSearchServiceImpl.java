@@ -166,12 +166,12 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       aggregationOperations.add(sortByVersionAndDraft);
       aggregationOperations.add(groupByMeasureSet);
       aggregationOperations.add(replaceRoot);
-      //      aggregationOperations.add(facets);
+      aggregationOperations.add(facets);
 
       Aggregation pipeline = newAggregation(aggregationOperations);
-      List<MeasureListDTO> measures =
-          mongoTemplate.aggregate(pipeline, Measure.class, MeasureListDTO.class).getMappedResults();
-      for (MeasureListDTO dto : measures) {
+      List<FacetDTO> results =
+          mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
+      for (MeasureListDTO dto : results.get(0).getQueryResults()) {
         MeasureSetMatchCountDTO matchInfo = matchInfoMap.get(dto.getMeasureSetId());
 
         if (matchInfo != null) {
@@ -189,7 +189,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         }
       }
       long totalSize = matchInfoMap.size();
-      return new PageImpl<>(measures, pageable, totalSize);
+      return new PageImpl<>(results.get(0).getQueryResults(), pageable, totalSize);
 
     } else {
       Aggregation pipeline =

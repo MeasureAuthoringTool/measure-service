@@ -271,6 +271,8 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithSearchFieldFilteredByMeasureNameAndFeatureFlagIsOn() {
+    var measuresList = List.of(measure1);
+    FacetDTO mockFacetDto = FacetDTO.builder().queryResults(measuresList).build();
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
@@ -283,8 +285,8 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 3);
 
     when(mongoTemplate.aggregate(
-            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(MeasureListDTO.class)))
-        .thenReturn(new AggregationResults<>(List.of(measure1), new Document()));
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(mockFacetDto), new Document()));
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
             .searchField("test-measure-name")
@@ -304,6 +306,8 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithSearchFieldFilteredByCmsIdAndFeatureFlagIsOn() {
+    var measuresList = List.of(measure1);
+    FacetDTO mockFacetDto = FacetDTO.builder().queryResults(measuresList).build();
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
@@ -316,8 +320,8 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 3);
 
     when(mongoTemplate.aggregate(
-            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(MeasureListDTO.class)))
-        .thenReturn(new AggregationResults<>(List.of(measure1), new Document()));
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(mockFacetDto), new Document()));
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
             .searchField("28fhir")
