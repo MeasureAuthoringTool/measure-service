@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.match;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.newAggregation;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.newAggregationOptions;
 
 @Repository
 public class MeasureCmsIdRepositoryImpl implements MeasureCmsIdRepository {
@@ -39,7 +40,10 @@ public class MeasureCmsIdRepositoryImpl implements MeasureCmsIdRepository {
     // combine measure and measure set criteria
     MatchOperation matchOperation =
         match(new Criteria().andOperator(measureCriteria, measureSetCriteria));
-    Aggregation pipeline = newAggregation(lookupOperation, matchOperation);
+    Aggregation pipeline =
+        newAggregation(lookupOperation, matchOperation)
+            .withOptions(newAggregationOptions().allowDiskUse(true).build());
+    ;
     return mongoTemplate.aggregate(pipeline, Measure.class, Measure.class).getMappedResults();
   }
 }

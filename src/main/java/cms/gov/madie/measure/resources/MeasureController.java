@@ -2,6 +2,7 @@ package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.MeasureSetListDTO;
 import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -80,7 +81,7 @@ public class MeasureController {
   }
 
   @GetMapping("/measures")
-  public ResponseEntity<Page<MeasureListDTO>> getMeasures(
+  public ResponseEntity<Page<MeasureSetListDTO>> getMeasures(
       Principal principal,
       @RequestParam(required = false, defaultValue = "false", name = "currentUser")
           boolean filterByCurrentUser,
@@ -89,7 +90,7 @@ public class MeasureController {
       @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
       @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
     final String username = principal.getName();
-    Page<MeasureListDTO> measures;
+    Page<MeasureSetListDTO> measures;
     final Pageable pageReq =
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
     // TODO Remove parameter "measures" when either measureSearch or EditTestsOnVersionedMeasure is
@@ -333,7 +334,7 @@ public class MeasureController {
   }
 
   @PutMapping("/measures/searches")
-  public ResponseEntity<Page<MeasureListDTO>> measureSearchByCriteria(
+  public ResponseEntity<Page<MeasureSetListDTO>> measureSearchByCriteria(
       Principal principal,
       @RequestParam(required = false, defaultValue = "false", name = "currentUser")
           boolean filterByCurrentUser,
@@ -352,7 +353,7 @@ public class MeasureController {
     final Pageable pageReq =
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
 
-    Page<MeasureListDTO> measures =
+    Page<MeasureSetListDTO> measures =
         measureService.getMeasuresByCriteria(
             searchCriteria, filterByCurrentUser, pageReq, username, invocationSource);
 

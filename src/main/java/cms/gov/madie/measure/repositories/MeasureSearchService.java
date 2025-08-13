@@ -1,8 +1,7 @@
 package cms.gov.madie.measure.repositories;
 
-import cms.gov.madie.measure.dto.MeasureListDTO;
-
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.MeasureSetListDTO;
 import gov.cms.madie.models.dto.LibraryUsage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -15,7 +14,7 @@ public interface MeasureSearchService {
    * @param pageable- instance of Pageable
    * @return Pageable List of measures that are active based on searchCriteria
    */
-  Page<MeasureListDTO> searchMeasuresByCriteria(
+  Page<MeasureSetListDTO> searchMeasuresByCriteria(
       String userId,
       Pageable pageable,
       MeasureSearchCriteria searchCriteria,

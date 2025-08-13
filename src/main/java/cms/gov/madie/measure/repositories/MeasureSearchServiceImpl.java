@@ -1,33 +1,53 @@
 package cms.gov.madie.measure.repositories;
 
-import cms.gov.madie.measure.dto.*;
-import cms.gov.madie.measure.services.AppConfigService;
-import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.Version;
-import gov.cms.madie.models.dto.LibraryUsage;
-import gov.cms.madie.models.measure.Measure;
+import static org.apache.commons.lang3.StringUtils.isNumeric;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+import static org.springframework.data.mongodb.core.aggregation.VariableOperators.Let.ExpressionVariable.*;
 
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.mongodb.core.MongoTemplate;
-import org.springframework.data.mongodb.core.aggregation.*;
-import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.stereotype.Repository;
+import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.Cond.when;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static org.apache.commons.lang3.StringUtils.isNumeric;
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
-import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.Cond.when;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.bson.Document;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.mongodb.MongoExpression;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.aggregation.AddFieldsOperation;
+import org.springframework.data.mongodb.core.aggregation.Aggregation;
+import org.springframework.data.mongodb.core.aggregation.AggregationExpression;
+import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.aggregation.FacetOperation;
+import org.springframework.data.mongodb.core.aggregation.GroupOperation;
+import org.springframework.data.mongodb.core.aggregation.LookupOperation;
+import org.springframework.data.mongodb.core.aggregation.MatchOperation;
+import org.springframework.data.mongodb.core.aggregation.ProjectionOperation;
+import org.springframework.data.mongodb.core.aggregation.ReplaceRootOperation;
+import org.springframework.data.mongodb.core.aggregation.SortOperation;
+import org.springframework.data.mongodb.core.aggregation.UnwindOperation;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.stereotype.Repository;
+
+import cms.gov.madie.measure.dto.FacetDTO;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.MeasureSetIdDTO;
+import cms.gov.madie.measure.dto.MeasureSetListDTO;
+import cms.gov.madie.measure.services.AppConfigService;
+import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.Version;
+import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureSet;
 
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
@@ -41,10 +61,62 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
   private LookupOperation getLookupOperation() {
     return LookupOperation.newLookup()
-        .from("measureSet")
+        .from("MeasureSet")
         .localField("measureSetId")
         .foreignField("measureSetId")
         .as("measureSet");
+  }
+
+  private LookupOperation getMeasureLookupOperation() {
+    return LookupOperation.newLookup()
+        .from("measure")
+        .let(newVariable("measureSetId").forField("measureSetId"))
+        .pipeline(
+            match(
+                AggregationExpression.from(
+                    MongoExpression.create(
+                        "{ $expr :{"
+                            + "$and : ["
+                            + "{ $eq: [\"$measureSetId\", \"$$measureSetId\"]} "
+                            // + "{ $in : [\"$measureSetId\",
+                            // [\"485c280c-9261-406c-aa92-18fe072b9b07\"]] } "
+                            + "]"
+                            + "}"
+                            + "} "))))
+        .as("measures");
+  }
+
+  private ProjectionOperation getProjectOperation() {
+    return project("owner", "measureSetId", "cmsId")
+        .and("_id")
+        .as("id")
+        .and("measures.measureSetId")
+        .as("measures.measureSetId")
+        .and(
+            AggregationExpression.from(
+                MongoExpression.create("{ $first: \"$measures.measureName\" }")))
+        .as("measureName")
+        .and(
+            AggregationExpression.from(MongoExpression.create("{ $first: \"$measures.version\" }")))
+        .as("version")
+        .and(
+            AggregationExpression.from(
+                MongoExpression.create("{ $first: \"$measures.measureMetaData\" }")))
+        .as("measureMetaData")
+        .and(
+            AggregationExpression.from(
+                MongoExpression.create("{ $first: \"$measures.measureMetaData.draft\" }")))
+        .as("active")
+        .and(
+            AggregationExpression.from(
+                MongoExpression.create("{ $first: \"$measures.lastModifiedAt\" }")))
+        .as("lastModifiedAt")
+        .and(AggregationExpression.from(MongoExpression.create("{ $first: \"$measures.model\" }")))
+        .as("model")
+        .and(
+            AggregationExpression.from(
+                MongoExpression.create("{ $gt: [ { $size: \"$measures\"}, 1 ] }")))
+        .as("hasAssociatedMeasures");
   }
 
   private void appendAdditionalSearchCriteria(
@@ -129,7 +201,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   }
 
   @Override
-  public Page<MeasureListDTO> searchMeasuresByCriteria(
+  public Page<MeasureSetListDTO> searchMeasuresByCriteria(
       String userId,
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
@@ -137,9 +209,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource) {
     // join measure and measure_set to lookup owner and ACL info
-    LookupOperation lookupOperation = getLookupOperation();
+    LookupOperation lookupOperation = getMeasureLookupOperation();
+    ProjectionOperation projectOperation = getProjectOperation();
 
-    UnwindOperation unwindOperation = unwind("measureSet");
+    UnwindOperation unwindOperation = unwind("measures");
     Criteria measureCriteria = Criteria.where("active").is(true);
 
     boolean nestedFlag =
@@ -208,13 +281,13 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         match(new Criteria().andOperator(measureCriteria, measureSetCriteria));
 
     FacetOperation facets =
-        facet(sortByCount("id"))
+        facet(sortByCount("_id"))
             .as("count")
             .and(
                 sort(pageable.getSort()),
                 skip(pageable.getOffset()),
                 limit(pageable.getPageSize()),
-                project(MeasureListDTO.class))
+                project(MeasureSetListDTO.class))
             .as("queryResults");
 
     Aggregation pipeline;
@@ -224,7 +297,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           mongoTemplate
               .aggregate(
                   newAggregation(
-                      lookupOperation, unwindOperation, matchOperation, group("measureSetId")),
+                          lookupOperation, unwindOperation, matchOperation, group("measureSetId"))
+                      .withOptions(newAggregationOptions().allowDiskUse(true).build()),
                   Measure.class,
                   MeasureSetIdDTO.class)
               .getMappedResults()
@@ -235,6 +309,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       // Fetch all measures associated to each measureSetId
       MatchOperation matchMeasureSetIds =
           match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
+
+      MatchOperation eliminateEmptyMeasures = match(Criteria.where("measures.0").exists(true));
 
       // Sort those measures based on version and draft status
       SortOperation sortByVersionAndDraft =
@@ -250,29 +326,37 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           addFields()
               .addField("selectedDoc.hasAssociatedMeasures")
               .withValueOf(
-                  when(ComparisonOperators.Gt.valueOf("count").greaterThanValue(1))
+                  when(new Document("$gt", Arrays.asList(new Document("$size", "$measures"), 1L)))
                       .then(true)
                       .otherwise(false))
               .build();
-      ReplaceRootOperation replaceRootOperation = replaceRoot("selectedDoc");
+      ReplaceRootOperation replaceRootOperation = replaceRoot("measures");
 
       pipeline =
           newAggregation(
-              lookupOperation,
-              unwindOperation,
-              matchMeasureSetIds,
-              sortByVersionAndDraft,
-              groupByMeasureSet,
-              addHasAssociated,
-              replaceRootOperation,
-              facets);
+                  lookupOperation,
+                  // unwindOperation,
+                  projectOperation,
+                  eliminateEmptyMeasures,
+                  //                  addHasAssociated,
+                  //                  matchMeasureSetIds,
+
+                  sortByVersionAndDraft,
+                  // groupByMeasureSet,
+
+                  // replaceRootOperation
+                  facets)
+              .withOptions(newAggregationOptions().allowDiskUse(true).build());
 
     } else {
-      pipeline = newAggregation(lookupOperation, unwindOperation, matchOperation, facets);
+      pipeline =
+          newAggregation(lookupOperation, unwindOperation, matchOperation, facets)
+              .withOptions(newAggregationOptions().allowDiskUse(true).build());
     }
 
-    List<FacetDTO> results =
-        mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
+    AggregationResults<FacetDTO> aggResults =
+        mongoTemplate.aggregate(pipeline, MeasureSet.class, FacetDTO.class); //
+    List<FacetDTO> results = aggResults.getMappedResults();
 
     if (nestedFlag) {
       long totalSize = 0;

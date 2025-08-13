@@ -30,7 +30,7 @@ public interface MeasureRepository
         "{'$group': {'_id': '$measureSetId',"
             + "'measureSetId': {'$first':'$measureSetId'},"
             + "'createdBy': {'$first':'$createdBy'}}}",
-        "{'$sort': {'createdAt':1}}"
+        "{'$sort': {'createdAt':1}, { $allowDiskUse: true }}}"
       })
   List<Measure> findOldestMeasureSet();
 

@@ -1,7 +1,7 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.MeasureSetListDTO;
 import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -669,7 +669,7 @@ public class MeasureService {
         .stream().map(Measure::getId).collect(Collectors.toList());
   }
 
-  public Page<MeasureListDTO> getMeasuresByCriteria(
+  public Page<MeasureSetListDTO> getMeasuresByCriteria(
       MeasureSearchCriteria searchCriteria,
       boolean filterByCurrentUser,
       Pageable pageReq,

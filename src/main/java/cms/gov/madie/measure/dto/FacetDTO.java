@@ -14,5 +14,5 @@ import java.util.List;
 public class FacetDTO {
 
   List<Object> count;
-  List<MeasureListDTO> queryResults;
+  List<MeasureSetListDTO> queryResults;
 }
