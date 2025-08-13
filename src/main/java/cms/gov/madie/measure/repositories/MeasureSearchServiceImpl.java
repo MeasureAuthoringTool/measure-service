@@ -240,9 +240,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       MatchOperation matchMeasureSetIds =
           match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
 
-      // Sort those measures based on version and draft status
+      // Sort those measures based on active status, version and draft status
+      // Active measures should come first, then draft measures, then by version
       SortOperation sortByVersionAndDraft =
-          sort(Sort.by(Sort.Direction.DESC, "measureMetaData.draft", "version"));
+          sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
 
       // Group all measures that has same measureSetId and get the count and also first document
       // which will be the latest measure in the MeasureSet
