@@ -33,12 +33,9 @@ import static org.mockito.Mockito.when;
 @EnableMongoRepositories(basePackages = "com.gov.madie.measure.repository")
 public class MeasureSearchServiceImplTest {
 
-  @Mock
-  MongoTemplate mongoTemplate;
-  @Mock
-  AppConfigService appConfigService;
-  @InjectMocks
-  MeasureSearchServiceImpl measureAclRepository;
+  @Mock MongoTemplate mongoTemplate;
+  @Mock AppConfigService appConfigService;
+  @InjectMocks MeasureSearchServiceImpl measureAclRepository;
 
   private MeasureListDTO measure1;
   private MeasureListDTO measure2;
@@ -86,9 +83,8 @@ public class MeasureSearchServiceImplTest {
         .thenReturn(pagedResults);
 
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria("john", pageRequest, null,
-            List.of(OwnershipType.OWNED),
-            "measures");
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
     assertEquals(page.getTotalElements(), 5);
     assertEquals(page.getTotalPages(), 2);
     assertEquals(page.getContent().size(), 3);
@@ -280,16 +276,16 @@ public class MeasureSearchServiceImplTest {
     MeasureSetIdDTO dto1 = new MeasureSetIdDTO("set1");
     MeasureSetIdDTO dto2 = new MeasureSetIdDTO("set2");
     when(mongoTemplate.aggregate(
-        any(Aggregation.class),
-        ArgumentMatchers.eq(Measure.class),
-        ArgumentMatchers.eq(MeasureSetIdDTO.class)))
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetIdDTO.class)))
         .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
 
     when(mongoTemplate.aggregate(
-        any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
         .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
@@ -315,16 +311,16 @@ public class MeasureSearchServiceImplTest {
     MeasureSetIdDTO dto1 = new MeasureSetIdDTO("set1");
     MeasureSetIdDTO dto2 = new MeasureSetIdDTO("set2");
     when(mongoTemplate.aggregate(
-        any(Aggregation.class),
-        ArgumentMatchers.eq(Measure.class),
-        ArgumentMatchers.eq(MeasureSetIdDTO.class)))
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetIdDTO.class)))
         .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
 
     when(mongoTemplate.aggregate(
-        any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
         .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
@@ -392,8 +388,8 @@ public class MeasureSearchServiceImplTest {
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count = measureAclRepository.countMeasuresByOwnership(true, owner,
-        List.of(OwnershipType.OWNED));
+    int count =
+        measureAclRepository.countMeasuresByOwnership(true, owner, List.of(OwnershipType.OWNED));
     assertEquals(count, 5);
   }
 
@@ -404,8 +400,8 @@ public class MeasureSearchServiceImplTest {
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count = measureAclRepository.countMeasuresByOwnership(true, owner,
-        List.of(OwnershipType.OWNED));
+    int count =
+        measureAclRepository.countMeasuresByOwnership(true, owner, List.of(OwnershipType.OWNED));
     assertEquals(count, 0);
   }
 
@@ -418,8 +414,8 @@ public class MeasureSearchServiceImplTest {
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count = measureAclRepository.countMeasuresByOwnership(true, owner,
-        List.of(OwnershipType.SHARED));
+    int count =
+        measureAclRepository.countMeasuresByOwnership(true, owner, List.of(OwnershipType.SHARED));
     assertEquals(count, 3);
   }
 
@@ -430,8 +426,8 @@ public class MeasureSearchServiceImplTest {
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count = measureAclRepository.countMeasuresByOwnership(true, owner,
-        List.of(OwnershipType.SHARED));
+    int count =
+        measureAclRepository.countMeasuresByOwnership(true, owner, List.of(OwnershipType.SHARED));
     assertEquals(count, 0);
   }
 
@@ -444,8 +440,8 @@ public class MeasureSearchServiceImplTest {
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count = measureAclRepository.countMeasuresByOwnership(true, owner,
-        List.of(OwnershipType.ALL));
+    int count =
+        measureAclRepository.countMeasuresByOwnership(true, owner, List.of(OwnershipType.ALL));
     assertEquals(count, 10);
   }
 
@@ -456,8 +452,8 @@ public class MeasureSearchServiceImplTest {
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count = measureAclRepository.countMeasuresByOwnership(true, owner,
-        List.of(OwnershipType.ALL));
+    int count =
+        measureAclRepository.countMeasuresByOwnership(true, owner, List.of(OwnershipType.ALL));
     assertEquals(count, 0);
   }
 
@@ -470,8 +466,7 @@ public class MeasureSearchServiceImplTest {
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count = measureAclRepository.countMeasuresByOwnership(true, owner,
-        List.of());
+    int count = measureAclRepository.countMeasuresByOwnership(true, owner, List.of());
     assertEquals(count, 10);
   }
 
@@ -484,8 +479,7 @@ public class MeasureSearchServiceImplTest {
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count = measureAclRepository.countMeasuresByOwnership(true, owner,
-        null);
+    int count = measureAclRepository.countMeasuresByOwnership(true, owner, null);
     assertEquals(count, 10);
   }
 
@@ -497,9 +491,7 @@ public class MeasureSearchServiceImplTest {
 
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count = measureAclRepository.countMeasuresByOwnership(true, null,
-        List.of());
+    int count = measureAclRepository.countMeasuresByOwnership(true, null, List.of());
     assertEquals(count, 10);
   }
 }
-

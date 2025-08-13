@@ -1440,8 +1440,7 @@ public class MeasureControllerMvcTest {
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(null), any(Pageable.class), eq(TEST_USER_ID), eq(
-                "measures")))
+            eq(null), eq(null), any(Pageable.class), eq(TEST_USER_ID), eq("measures")))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1473,11 +1472,11 @@ public class MeasureControllerMvcTest {
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
 
     when(measureService.getMeasuresByCriteria(
-        eq(null),
-        eq(List.of(OwnershipType.ALL)),
-        any(Pageable.class),
-        eq(TEST_USER_ID),
-        eq("measures")))
+            eq(null),
+            eq(List.of(OwnershipType.ALL)),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures")))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1517,8 +1516,11 @@ public class MeasureControllerMvcTest {
 
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq(TEST_USER_ID), eq(
-                "measures")))
+            eq(null),
+            eq(List.of(OwnershipType.ALL)),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures")))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1568,8 +1570,11 @@ public class MeasureControllerMvcTest {
     final Page<MeasureListDTO> measures = new PageImpl<>(List.of(m1, m2));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq(TEST_USER_ID), eq(
-                "measures")))
+            eq(null),
+            eq(List.of(OwnershipType.OWNED)),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures")))
         .thenReturn(measures);
 
     MvcResult result =
@@ -1588,8 +1593,11 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq(TEST_USER_ID), eq(
-                "measures"));
+            eq(null),
+            eq(List.of(OwnershipType.OWNED)),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures"));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1608,8 +1616,11 @@ public class MeasureControllerMvcTest {
     final Page<MeasureListDTO> measures = new PageImpl<>(List.of(m1, m2));
 
     when(measureService.getMeasuresByCriteria(
-        eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq(TEST_USER_ID), eq(
-            "measures")))
+            eq(null),
+            eq(List.of(OwnershipType.SHARED)),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures")))
         .thenReturn(measures);
 
     MvcResult result =
@@ -1628,8 +1639,11 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq(TEST_USER_ID), eq(
-                "measures"));
+            eq(null),
+            eq(List.of(OwnershipType.SHARED)),
+            any(Pageable.class),
+            eq(TEST_USER_ID),
+            eq("measures"));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -2239,12 +2253,14 @@ public class MeasureControllerMvcTest {
 
   @Test
   public void testGetCounts() throws Exception {
-    when(measureService.countMeasuresByOwnership(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.OWNED))))
+    when(measureService.countMeasuresByOwnership(
+            eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.OWNED))))
         .thenReturn(5);
-    when(measureService.countMeasuresByOwnership(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.SHARED))))
+    when(measureService.countMeasuresByOwnership(
+            eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.SHARED))))
         .thenReturn(3);
-    when(measureService.countMeasuresByOwnership(eq(true), eq(TEST_USER_ID),
-            eq(List.of(OwnershipType.ALL))))
+    when(measureService.countMeasuresByOwnership(
+            eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.ALL))))
         .thenReturn(8);
 
     mockMvc
