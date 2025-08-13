@@ -93,7 +93,7 @@ public class TestCaseLockServiceTest {
 
     assertEquals(lockInfo.getLockedId(), "testCaseId");
     assertEquals(lockInfo.getLockedBy(), "test.user");
-    assertFalse(lockInfo.isLocked());
+    assertTrue(lockInfo.isLocked());
   }
 
   @Test

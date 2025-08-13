@@ -28,7 +28,7 @@ public class TestCaseLockService {
   private final MeasureRepository measureRepository;
   private final TestCaseLockRepository testCaseLockRepository;
 
-  public LockInfo lockTestCase(String measureId, String testCaseId, String userName) {
+  public synchronized LockInfo lockTestCase(String measureId, String testCaseId, String userName) {
     validateMeasureAndTestCase(measureId, testCaseId);
 
     LockInfo lockInfo = null;
@@ -46,16 +46,15 @@ public class TestCaseLockService {
 
     try {
       testCaseLockRepository.insert(lock);
-      lockInfo = LockInfo.builder().lockedId(testCaseId).isLocked(false).lockedBy(userName).build();
+      lockInfo = LockInfo.builder().lockedId(testCaseId).isLocked(true).lockedBy(userName).build();
     } catch (DuplicateKeyException ex) {
       Optional<TestCaseLock> existingLock = testCaseLockRepository.findByTestCaseId(testCaseId);
       if (existingLock.isPresent()) {
-        String lockedBy = existingLock.get().getLockedBy();
         lockInfo =
             LockInfo.builder()
                 .lockedId(testCaseId)
-                .isLocked(!lockedBy.equals(userName))
-                .lockedBy(lockedBy)
+                .isLocked(true)
+                .lockedBy(existingLock.get().getLockedBy())
                 .build();
       }
       lockInfo = LockInfo.builder().isLocked(true).build();
