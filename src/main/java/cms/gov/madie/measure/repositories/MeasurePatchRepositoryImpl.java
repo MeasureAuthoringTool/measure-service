@@ -12,6 +12,7 @@ import org.springframework.stereotype.Repository;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
@@ -32,6 +33,7 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
 
   @Override
   public Measure findAndModify(Measure updatedMeasure, List<String> excludedFields) {
+    Objects.requireNonNull(updatedMeasure.getMeasureSet(), "MeasureSet cannot be null on save.");
     Update patchUpdate = new Update();
 
     if (updatedMeasure instanceof QdmMeasure) {
@@ -48,12 +50,16 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
       addFieldToUpdate(updatedMeasure, excludedFields, field, patchUpdate);
     }
 
-    return mongoOperations
+    Measure savedMeasure = mongoOperations
       .update(Measure.class)
       .matching(query(where("_id").is(updatedMeasure.getId())))
       .apply(patchUpdate)
       .withOptions(FindAndModifyOptions.options().returnNew(true))
       .findAndModifyValue();
+    // Set measureSet field since it is transient and not included in the save.
+    assert savedMeasure != null;
+    savedMeasure.setMeasureSet(updatedMeasure.getMeasureSet());
+    return savedMeasure;
   }
 
   private void addFieldToUpdate(
