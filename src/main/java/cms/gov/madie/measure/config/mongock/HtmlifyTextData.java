@@ -67,8 +67,12 @@ public class HtmlifyTextData {
       measureRepository.findAndModify(
           msr,
           List.of(
-              "testCases",
               "measureSetId",
+              "measureSet",
+              "elmXml",
+              "elmJson",
+              "cql",
+              "testCases",
               "testCaseConfiguration",
               "lastModifiedAt",
               "lastModifiedBy"));
