@@ -73,6 +73,34 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     aggregationOperations.add(unwindOperation);
 
     if (measureSearchCriteria != null) {
+      // If searchField is given and no filter is applied, then search for the searchField in
+      // measureName and ecqmTitle
+      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
+          && CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
+        aggregationOperations.add(addCmsIdDisplayField());
+
+        String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
+        List<Criteria> wordCriteria = new ArrayList<>();
+
+        for (String word : searchWords) {
+          word = word.replaceAll("[^a-zA-Z0-9]", ""); // Remove special characters
+          if (StringUtils.isNotBlank(word)) {
+            wordCriteria.add(
+                new Criteria()
+                    .orOperator(
+                        Criteria.where("measureName").regex(".*" + word + ".*", "i"),
+                        Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i"),
+                        Criteria.where("cmsIdDisplay").regex(".*" + word + ".*", "i")));
+          }
+        }
+
+        if (!wordCriteria.isEmpty()) {
+          measureCriteria = measureCriteria.andOperator(wordCriteria.toArray(new Criteria[0]));
+        } else {
+          return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        }
+      }
+
       // if searchField and optional filters are provided, then search for searchField only in the
       // provided filters
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
@@ -145,9 +173,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       MatchOperation matchMeasureSetIds =
           match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
 
-      // Sort those measures based on version and draft status
+      // Sort those measures based on active status, version and draft status
+      // Active measures should come first, then draft measures, then by version
       SortOperation sortByVersionAndDraft =
-          sort(Sort.by(Sort.Direction.DESC, "measureMetaData.draft", "version"));
+          sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
 
       // Group all measures that has same measureSetId and get the count and also first document
       // which will be the latest measure in the MeasureSet
