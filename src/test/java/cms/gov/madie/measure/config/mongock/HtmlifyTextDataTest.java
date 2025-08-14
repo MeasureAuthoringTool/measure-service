@@ -236,8 +236,4 @@ class HtmlifyTextDataTest {
     assertThat(metaData.getMeasureSetTitle())
         .isEqualTo("<p>" + qdmMeasure.getMeasureMetaData().getMeasureSetTitle() + "</p>");
   }
-
-  @Test
-  @Disabled
-  void rollbackExecutionTest() {}
 }

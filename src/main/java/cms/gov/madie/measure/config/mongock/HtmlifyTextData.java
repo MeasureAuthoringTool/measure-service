@@ -153,67 +153,68 @@ public class HtmlifyTextData {
   }
 
   private void htlmifyMeasureMetaData(Measure msr) {
-    if (msr.getMeasureMetaData() != null) {
-      MeasureMetaData measureMetaData = msr.getMeasureMetaData();
-      if (StringUtils.isNotBlank(measureMetaData.getDescription())) {
-        measureMetaData.setDescription(toHtml(measureMetaData.getDescription()));
+    if (msr == null || msr.getMeasureMetaData() == null) {
+      return;
+    }
+    MeasureMetaData measureMetaData = msr.getMeasureMetaData();
+    if (StringUtils.isNotBlank(measureMetaData.getDescription())) {
+      measureMetaData.setDescription(toHtml(measureMetaData.getDescription()));
+    }
+    if (StringUtils.isNotBlank(measureMetaData.getRationale())) {
+      measureMetaData.setRationale(toHtml(measureMetaData.getRationale()));
+    }
+    if (StringUtils.isNotBlank(measureMetaData.getPurpose())) {
+      measureMetaData.setPurpose(toHtml(measureMetaData.getPurpose()));
+    }
+    if (StringUtils.isNotBlank(measureMetaData.getGuidance())) {
+      measureMetaData.setGuidance(toHtml(measureMetaData.getGuidance()));
+    }
+    if (StringUtils.isNotBlank(measureMetaData.getClinicalRecommendation())) {
+      measureMetaData.setClinicalRecommendation(
+          toHtml(measureMetaData.getClinicalRecommendation()));
+    }
+    if (StringUtils.isNotBlank(measureMetaData.getCopyright())) {
+      measureMetaData.setCopyright(toHtml(measureMetaData.getCopyright()));
+    }
+    if (StringUtils.isNotBlank(measureMetaData.getDisclaimer())) {
+      measureMetaData.setDisclaimer(toHtml(measureMetaData.getDisclaimer()));
+    }
+    if (CollectionUtils.isNotEmpty(measureMetaData.getReferences())) {
+      measureMetaData
+          .getReferences()
+          .forEach(
+              reference -> {
+                if (StringUtils.isNotBlank(reference.getReferenceText())) {
+                  reference.setReferenceText(toHtml(reference.getReferenceText()));
+                }
+              });
+    }
+    if (CollectionUtils.isNotEmpty(measureMetaData.getMeasureDefinitions())) {
+      measureMetaData
+          .getMeasureDefinitions()
+          .forEach(
+              msrDefinition -> {
+                if (StringUtils.isNotBlank(msrDefinition.getDefinition())) {
+                  msrDefinition.setDefinition(toHtml(msrDefinition.getDefinition()));
+                }
+              });
+    }
+    if (msr instanceof QdmMeasure qdmMeasure) {
+      if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getTransmissionFormat())) {
+        qdmMeasure
+            .getMeasureMetaData()
+            .setTransmissionFormat(
+                toHtml(qdmMeasure.getMeasureMetaData().getTransmissionFormat()));
       }
-      if (StringUtils.isNotBlank(measureMetaData.getRationale())) {
-        measureMetaData.setRationale(toHtml(measureMetaData.getRationale()));
+      if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getDefinition())) {
+        qdmMeasure
+            .getMeasureMetaData()
+            .setDefinition(toHtml(qdmMeasure.getMeasureMetaData().getDefinition()));
       }
-      if (StringUtils.isNotBlank(measureMetaData.getPurpose())) {
-        measureMetaData.setPurpose(toHtml(measureMetaData.getPurpose()));
-      }
-      if (StringUtils.isNotBlank(measureMetaData.getGuidance())) {
-        measureMetaData.setGuidance(toHtml(measureMetaData.getGuidance()));
-      }
-      if (StringUtils.isNotBlank(measureMetaData.getClinicalRecommendation())) {
-        measureMetaData.setClinicalRecommendation(
-            toHtml(measureMetaData.getClinicalRecommendation()));
-      }
-      if (StringUtils.isNotBlank(measureMetaData.getCopyright())) {
-        measureMetaData.setCopyright(toHtml(measureMetaData.getCopyright()));
-      }
-      if (StringUtils.isNotBlank(measureMetaData.getDisclaimer())) {
-        measureMetaData.setDisclaimer(toHtml(measureMetaData.getDisclaimer()));
-      }
-      if (CollectionUtils.isNotEmpty(measureMetaData.getReferences())) {
-        measureMetaData
-            .getReferences()
-            .forEach(
-                reference -> {
-                  if (StringUtils.isNotBlank(reference.getReferenceText())) {
-                    reference.setReferenceText(toHtml(reference.getReferenceText()));
-                  }
-                });
-      }
-      if (CollectionUtils.isNotEmpty(measureMetaData.getMeasureDefinitions())) {
-        measureMetaData
-            .getMeasureDefinitions()
-            .forEach(
-                msrDefinition -> {
-                  if (StringUtils.isNotBlank(msrDefinition.getDefinition())) {
-                    msrDefinition.setDefinition(toHtml(msrDefinition.getDefinition()));
-                  }
-                });
-      }
-      if (msr instanceof QdmMeasure qdmMeasure) {
-        if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getTransmissionFormat())) {
-          qdmMeasure
-              .getMeasureMetaData()
-              .setTransmissionFormat(
-                  toHtml(qdmMeasure.getMeasureMetaData().getTransmissionFormat()));
-        }
-        if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getDefinition())) {
-          qdmMeasure
-              .getMeasureMetaData()
-              .setDefinition(toHtml(qdmMeasure.getMeasureMetaData().getDefinition()));
-        }
-        if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getMeasureSetTitle())) {
-          qdmMeasure
-              .getMeasureMetaData()
-              .setMeasureSetTitle(toHtml(qdmMeasure.getMeasureMetaData().getMeasureSetTitle()));
-        }
+      if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getMeasureSetTitle())) {
+        qdmMeasure
+            .getMeasureMetaData()
+            .setMeasureSetTitle(toHtml(qdmMeasure.getMeasureMetaData().getMeasureSetTitle()));
       }
     }
   }
