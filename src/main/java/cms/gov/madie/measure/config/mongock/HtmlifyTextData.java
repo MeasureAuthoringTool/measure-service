@@ -1,46 +1,44 @@
- package cms.gov.madie.measure.config.mongock;
+package cms.gov.madie.measure.config.mongock;
 
- import cms.gov.madie.measure.repositories.MeasureRepository;
- import gov.cms.madie.models.measure.Measure;
- import gov.cms.madie.models.measure.MeasureMetaData;
- import gov.cms.madie.models.measure.QdmMeasure;
- import io.mongock.api.annotations.ChangeUnit;
- import io.mongock.api.annotations.Execution;
- import io.mongock.api.annotations.RollbackExecution;
- import lombok.extern.slf4j.Slf4j;
- import org.apache.commons.collections4.CollectionUtils;
- import org.apache.commons.lang3.StringUtils;
- import org.commonmark.node.Node;
- import org.commonmark.parser.Parser;
- import org.commonmark.renderer.html.HtmlRenderer;
- import org.jsoup.Jsoup;
- import org.jsoup.safety.Safelist;
- import org.springframework.data.mongodb.core.MongoOperations;
+import cms.gov.madie.measure.repositories.MeasureRepository;
+import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureMetaData;
+import gov.cms.madie.models.measure.QdmMeasure;
+import io.mongock.api.annotations.ChangeUnit;
+import io.mongock.api.annotations.Execution;
+import io.mongock.api.annotations.RollbackExecution;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.commonmark.node.Node;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
+import org.jsoup.Jsoup;
+import org.jsoup.safety.Safelist;
+import org.springframework.data.mongodb.core.MongoOperations;
 
- import java.util.ArrayList;
- import java.util.List;
+import java.util.ArrayList;
+import java.util.List;
 
- import static org.springframework.data.mongodb.core.query.Criteria.where;
- import static org.springframework.data.mongodb.core.query.Query.query;
+import static org.springframework.data.mongodb.core.query.Criteria.where;
+import static org.springframework.data.mongodb.core.query.Query.query;
 
- /**
-  * Change unit to perform a one-time migration of text fields in the Measure model to HTML format
- in
+/**
+ * Change unit to perform a one-time migration of text fields in the Measure model to HTML format in
  * preparation for the Rich Text Editor. This migration is necessary to ensure that existing text
  * data is compatible with the new Rich Text Editor.
- **/
- @Slf4j
- @ChangeUnit(id = "htmlify_text_data", order = "1", author = "madie_dev")
- public class HtmlifyTextData {
+ */
+@Slf4j
+@ChangeUnit(id = "htmlify_text_data", order = "1", author = "madie_dev")
+public class HtmlifyTextData {
 
-  private final List<Measure> draftActiveMeasures = new ArrayList<>();
+  private final List<Measure> originalMeasures = new ArrayList<>();
   private final Parser parser = Parser.builder().build();
   private final HtmlRenderer htmlRenderer = HtmlRenderer.builder().build();
 
   private static final Safelist RICH_TEXT_SAFE_LIST =
       Safelist.basic()
-          .addTags("s", "br", "table", "tbody", "td", "th", "thead", "tr", "col", "colgroup",
- "del")
+          .addTags("s", "br", "table", "tbody", "td", "th", "thead", "tr", "col", "colgroup", "del")
           .addAttributes("table", "style", "class", "id")
           .addAttributes("th", "rowspan", "colspan", "style", "colwidth")
           .addAttributes("td", "rowspan", "colspan", "style", "colwidth")
@@ -55,7 +53,8 @@
         mongoOperations.find(
             query(where("active").is(true).and("measureMetaData.draft").is(true)), Measure.class);
     for (Measure measure : draftActiveMeasures) {
-      Measure msr = measure.deepCopy(); // TODO replace with deepCopy
+      originalMeasures.add(measure);
+      Measure msr = measure.deepCopy();
       // MetaData fields
       htlmifyMeasureMetaData(msr);
       // Population criteria
@@ -237,9 +236,9 @@
   @RollbackExecution
   public void rollbackExecution(MeasureRepository measureRepository) {
     log.info("Rolling back htmlify text data changelog");
-    if (CollectionUtils.isNotEmpty(draftActiveMeasures)) {
-      measureRepository.saveAll(draftActiveMeasures);
+    if (CollectionUtils.isNotEmpty(originalMeasures)) {
+      measureRepository.saveAll(originalMeasures);
     }
     log.info("Rollback htmlify text data changelog complete");
   }
- }
+}

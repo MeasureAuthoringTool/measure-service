@@ -1,26 +1,27 @@
- package cms.gov.madie.measure.config.mongock;
+package cms.gov.madie.measure.config.mongock;
 
- import cms.gov.madie.measure.repositories.MeasureRepository;
- import gov.cms.madie.models.measure.*;
- import lombok.extern.slf4j.Slf4j;
- import org.junit.jupiter.api.BeforeEach;
- import org.junit.jupiter.api.Disabled;
- import org.junit.jupiter.api.Test;
- import org.junit.jupiter.api.extension.ExtendWith;
- import org.mockito.*;
- import org.mockito.junit.jupiter.MockitoExtension;
- import org.springframework.data.mongodb.core.MongoOperations;
- import org.springframework.data.mongodb.core.query.Query;
+import cms.gov.madie.measure.repositories.MeasureRepository;
+import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.measure.*;
+import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.*;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.mongodb.core.MongoOperations;
+import org.springframework.data.mongodb.core.query.Query;
 
- import java.io.IOException;
- import java.util.List;
+import java.io.IOException;
+import java.util.List;
 
- import static org.assertj.core.api.Assertions.assertThat;
- import static org.mockito.Mockito.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.*;
 
- @Slf4j
- @ExtendWith(MockitoExtension.class)
- class HtmlifyTextDataTest {
+@Slf4j
+@ExtendWith(MockitoExtension.class)
+class HtmlifyTextDataTest {
 
   HtmlifyTextData htmlifyTextData = new HtmlifyTextData();
 
@@ -58,6 +59,7 @@
                                     .term("term")
                                     .build()))
                         .copyright("measure Copyright")
+                        .disclaimer("disclaimer")
                         .build())
                 .groups(
                     List.of(
@@ -123,6 +125,8 @@
         .isEqualTo("<p>" + measure.getMeasureMetaData().getClinicalRecommendation() + "</p>");
     assertThat(metaData.getCopyright())
         .isEqualTo("<p>" + measure.getMeasureMetaData().getCopyright() + "</p>");
+    assertThat(metaData.getDisclaimer())
+        .isEqualTo("<p>" + measure.getMeasureMetaData().getDisclaimer() + "</p>");
   }
 
   @Test
@@ -169,8 +173,7 @@
     assertThat(htmlifiedMeasure.getGroups().get(0).getRateAggregation())
         .isEqualTo("<p>" + measure.getGroups().get(0).getRateAggregation() + "</p>");
     assertThat(htmlifiedMeasure.getGroups().get(0).getImprovementNotationDescription())
-        .isEqualTo("<p>" + measure.getGroups().get(0).getImprovementNotationDescription() +
- "</p>");
+        .isEqualTo("<p>" + measure.getGroups().get(0).getImprovementNotationDescription() + "</p>");
   }
 
   @Test
@@ -192,6 +195,49 @@
   }
 
   @Test
+  void testHtmlifyQdmMeasure() {
+    QdmMeasure qdmMeasure = new QdmMeasure();
+    qdmMeasure.setId("qdm-id");
+    qdmMeasure.setActive(true);
+    qdmMeasure.setModel(ModelType.QDM_5_6.toString());
+    qdmMeasure.setRateAggregation("QDM Rate Aggregation");
+    qdmMeasure.setImprovementNotationDescription("QDM Improvement Notation Description");
+    qdmMeasure.setMeasureMetaData(
+        MeasureMetaData.builder()
+            .draft(true)
+            .transmissionFormat("QDM Transmission Format")
+            .definition("QDM Definition")
+            .measureSetTitle("QDM Measure Set Title")
+            .build());
+
+    when(mongoOperations.find(any(Query.class), any())).thenReturn(List.of(qdmMeasure));
+    htmlifyTextData.htmlfiyText(measureRepository, mongoOperations);
+    verify(measureRepository).findAndModify(measureCaptor.capture(), anyList());
+
+    Measure capturedMeasure = measureCaptor.getValue();
+    assertThat(capturedMeasure).isNotNull();
+    assertThat(capturedMeasure).isInstanceOf(QdmMeasure.class);
+    assertThat(capturedMeasure.getId()).isEqualTo(qdmMeasure.getId());
+    assertThat(capturedMeasure.getModel()).isEqualTo(ModelType.QDM_5_6.toString());
+
+    if (capturedMeasure instanceof QdmMeasure capturedQdmMeasure) {
+      assertThat(capturedQdmMeasure.getRateAggregation())
+          .isEqualTo("<p>" + qdmMeasure.getRateAggregation() + "</p>");
+      assertThat(capturedQdmMeasure.getImprovementNotationDescription())
+          .isEqualTo("<p>" + qdmMeasure.getImprovementNotationDescription() + "</p>");
+    }
+
+    assertThat(capturedMeasure.getMeasureMetaData()).isNotNull();
+    MeasureMetaData metaData = capturedMeasure.getMeasureMetaData();
+    assertThat(metaData.getTransmissionFormat())
+        .isEqualTo("<p>" + qdmMeasure.getMeasureMetaData().getTransmissionFormat() + "</p>");
+    assertThat(metaData.getDefinition())
+        .isEqualTo("<p>" + qdmMeasure.getMeasureMetaData().getDefinition() + "</p>");
+    assertThat(metaData.getMeasureSetTitle())
+        .isEqualTo("<p>" + qdmMeasure.getMeasureMetaData().getMeasureSetTitle() + "</p>");
+  }
+
+  @Test
   @Disabled
   void rollbackExecutionTest() {}
- }
+}
