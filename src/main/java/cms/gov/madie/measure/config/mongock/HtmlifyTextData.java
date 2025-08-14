@@ -46,8 +46,6 @@ public class HtmlifyTextData {
 
   @Execution
   public void htmlfiyText(MeasureRepository measureRepository, MongoOperations mongoOperations) {
-    // TODO: Bonus - Figure out unnumbered lists
-
     // Convert text fields to HTML
     List<Measure> draftActiveMeasures =
         mongoOperations.find(
@@ -56,7 +54,7 @@ public class HtmlifyTextData {
       originalMeasures.add(measure);
       Measure msr = measure.deepCopy();
       // MetaData fields
-      htlmifyMeasureMetaData(msr);
+      htmlifyMeasureMetaData(msr);
       // Population criteria
       htmlifyPopulationCriteria(msr);
       // Risk Adjustment and Supplemental Data
@@ -156,7 +154,7 @@ public class HtmlifyTextData {
     }
   }
 
-  private void htlmifyMeasureMetaData(Measure msr) {
+  private void htmlifyMeasureMetaData(Measure msr) {
     if (msr == null || msr.getMeasureMetaData() == null) {
       return;
     }
@@ -207,8 +205,7 @@ public class HtmlifyTextData {
       if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getTransmissionFormat())) {
         qdmMeasure
             .getMeasureMetaData()
-            .setTransmissionFormat(
-                toHtml(qdmMeasure.getMeasureMetaData().getTransmissionFormat()));
+            .setTransmissionFormat(toHtml(qdmMeasure.getMeasureMetaData().getTransmissionFormat()));
       }
       if (StringUtils.isNotBlank(qdmMeasure.getMeasureMetaData().getDefinition())) {
         qdmMeasure
