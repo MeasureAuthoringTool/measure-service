@@ -771,21 +771,6 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  void getMeasuresByMeasureSetSuccess() {
-    String measureSetId = "validMeasureSetId";
-    List<MeasureListDTO> expectedMeasures = List.of(new MeasureListDTO());
-
-    when(measureSetService.getMeasuresByMeasureSetId(measureSetId, false))
-        .thenReturn(expectedMeasures);
-
-    List<MeasureListDTO> result = measureSetService.getMeasuresByMeasureSetId(measureSetId, false);
-
-    assertNotNull(result);
-    assertEquals(expectedMeasures.size(), result.size());
-    verify(measureSetService, times(1)).getMeasuresByMeasureSetId(measureSetId, false);
-  }
-
-  @Test
   public void testCreateMeasureToHaveUpdatedMeasurementPeriods() {
     Instant startInstant = Instant.now();
     Instant endInstant = startInstant.plus(2, ChronoUnit.DAYS);

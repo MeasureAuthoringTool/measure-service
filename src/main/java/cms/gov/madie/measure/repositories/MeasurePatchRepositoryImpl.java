@@ -27,7 +27,8 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
 
   @Override
   public Measure findAndModify(Measure updatedMeasure) {
-    List<String> excludedFields = Arrays.asList("testCases", "testCaseConfiguration", "measureSet", "elmXml");
+    List<String> excludedFields =
+        Arrays.asList("testCases", "testCaseConfiguration", "measureSet", "elmXml");
     return findAndModify(updatedMeasure, excludedFields);
   }
 
@@ -50,12 +51,13 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
       addFieldToUpdate(updatedMeasure, excludedFields, field, patchUpdate);
     }
 
-    Measure savedMeasure = mongoOperations
-      .update(Measure.class)
-      .matching(query(where("_id").is(updatedMeasure.getId())))
-      .apply(patchUpdate)
-      .withOptions(FindAndModifyOptions.options().returnNew(true))
-      .findAndModifyValue();
+    Measure savedMeasure =
+        mongoOperations
+            .update(Measure.class)
+            .matching(query(where("_id").is(updatedMeasure.getId())))
+            .apply(patchUpdate)
+            .withOptions(FindAndModifyOptions.options().returnNew(true))
+            .findAndModifyValue();
     // Set measureSet field since it is transient and not included in the save.
     assert savedMeasure != null;
     savedMeasure.setMeasureSet(updatedMeasure.getMeasureSet());
@@ -63,14 +65,14 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
   }
 
   private void addFieldToUpdate(
-    Measure updatedMeasure, List<String> excludedFields, Field field, Update patchUpdate) {
+      Measure updatedMeasure, List<String> excludedFields, Field field, Update patchUpdate) {
     if (!excludedFields.contains(field.getName())) {
       field.setAccessible(true); // Allow access to private fields
       try {
         patchUpdate.set(field.getName(), field.get(updatedMeasure));
       } catch (IllegalAccessException e) {
         throw new InternalServerException(
-          "Failed to access Measure field during findAndModify Set: " + field.getName());
+            "Failed to access Measure field during findAndModify Set: " + field.getName());
       }
     }
   }
