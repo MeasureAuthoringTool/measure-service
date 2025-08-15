@@ -78,8 +78,7 @@ public class SearchUtils {
           break;
         default:
           if (!StringUtils.isBlank(property)) {
-            orConditions.add(
-                Criteria.where(property).regex(measureSearchCriteria.getSearchField(), "i"));
+            orConditions.add(Criteria.where(property).regex(searchField, "i"));
           }
       }
     }
