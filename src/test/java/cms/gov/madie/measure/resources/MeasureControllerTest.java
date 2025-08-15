@@ -216,12 +216,15 @@ class MeasureControllerTest {
   @Test
   void getMeasuresByMeasureSetId() {
     measure1.setId("testId");
+    MeasureSearchCriteria searchCriteria = MeasureSearchCriteria.builder().build();
     List<MeasureListDTO> measures = Arrays.asList(measureList);
-    when(measureSetService.getMeasuresByMeasureSetId(anyString(), anyBoolean()))
+    when(measureSetService.getMeasuresByMeasureSetId(
+            anyString(), anyBoolean(), any(MeasureSearchCriteria.class)))
         .thenReturn(measures);
     ResponseEntity<List<MeasureListDTO>> response =
-        controller.getMeasuresByMeasureSetId("test", false);
-    verify(measureSetService, times(1)).getMeasuresByMeasureSetId(anyString(), anyBoolean());
+        controller.getMeasuresByMeasureSetId("test", false, searchCriteria);
+    verify(measureSetService, times(1))
+        .getMeasuresByMeasureSetId(anyString(), anyBoolean(), any(MeasureSearchCriteria.class));
     assertNotNull(response.getBody());
   }
 

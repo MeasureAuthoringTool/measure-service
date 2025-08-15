@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.HarpIdMismatchException;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
@@ -38,6 +40,8 @@ public class MeasureSetServiceTest {
   @Mock GeneratorRepository generatorRepository;
   @Mock private ActionLogService actionLogService;
   MeasureSet measureSet;
+
+  private final String MEASURE_SET_ID = "measureSet1";
 
   @BeforeEach
   public void setUp() {
@@ -578,5 +582,95 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureRepository, times(1)).findAllByMeasureSetIdAndActive(anyString(), anyBoolean());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
+  }
+
+  @Test
+  public void testFindByMeasureSetId() {
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    assertEquals(measureSet, measureSetService.findByMeasureSetId("set-id-123"));
+  }
+
+  @Test
+  void testGetMeasuresByMeasureSetIdDelegatesToRepository() {
+    MeasureSearchCriteria criteria = new MeasureSearchCriteria();
+    criteria.setSearchField("test");
+    MeasureListDTO mockedMeasureListDTO =
+        MeasureListDTO.builder().id("m1").measureName("Test Measure").build();
+    List<MeasureListDTO> expectedList = List.of(mockedMeasureListDTO);
+
+    when(measureSetRepository.findMeasuresByMeasureSetId(MEASURE_SET_ID, true, criteria))
+        .thenReturn(expectedList);
+
+    List<MeasureListDTO> actualList =
+        measureSetService.getMeasuresByMeasureSetId(MEASURE_SET_ID, true, criteria);
+
+    assertNotNull(actualList);
+    assertEquals(1, actualList.size());
+    assertEquals("Test Measure", actualList.get(0).getMeasureName());
+
+    verify(measureSetRepository).findMeasuresByMeasureSetId(MEASURE_SET_ID, true, criteria);
+  }
+
+  @Test
+  void testGetRecentMeasuresByMeasureSetIdReturnsMeasuresInOrder() {
+    List<String> measureSetIds = List.of("set1", "set2");
+
+    Measure measure1B = Measure.builder().id("m1b").measureName("Measure 1B").build();
+    Measure measure2A = Measure.builder().id("m2a").measureName("Measure 2A").build();
+
+    MeasureListDTO mockedMeasureListDTO1 =
+        MeasureListDTO.builder().id("m1a").measureName("Measure 1A").build();
+    MeasureListDTO mockedMeasureListDTO2 =
+        MeasureListDTO.builder().id("m1b").measureName("Measure 1B").build();
+    MeasureListDTO mockedMeasureListDTO3 =
+        MeasureListDTO.builder().id("m2a").measureName("Measure 2A").build();
+
+    List<MeasureListDTO> set1Measures = new ArrayList<>();
+    set1Measures.add(mockedMeasureListDTO1);
+    set1Measures.add(mockedMeasureListDTO2);
+
+    List<MeasureListDTO> set2Measures = new ArrayList<>();
+    set2Measures.add(mockedMeasureListDTO3);
+
+    when(measureSetRepository.findMeasuresByMeasureSetId("set1", false, null))
+        .thenReturn(set1Measures);
+    when(measureSetRepository.findMeasuresByMeasureSetId("set2", false, null))
+        .thenReturn(set2Measures);
+
+    when(measureRepository.findById("m1b")).thenReturn(Optional.of(measure1B));
+    when(measureRepository.findById("m2a")).thenReturn(Optional.of(measure2A));
+
+    List<Measure> recentMeasures = measureSetService.getRecentMeasuresByMeasureSetId(measureSetIds);
+
+    assertNotNull(recentMeasures);
+    assertEquals(2, recentMeasures.size());
+
+    assertTrue(
+        recentMeasures.stream()
+            .anyMatch(m -> "m1b".equals(m.getId()) && "Measure 1B".equals(m.getMeasureName())));
+    assertTrue(
+        recentMeasures.stream()
+            .anyMatch(m -> "m2a".equals(m.getId()) && "Measure 2A".equals(m.getMeasureName())));
+
+    verify(measureSetRepository).findMeasuresByMeasureSetId("set1", false, null);
+    verify(measureSetRepository).findMeasuresByMeasureSetId("set2", false, null);
+    verify(measureRepository).findById("m1b");
+    verify(measureRepository).findById("m2a");
+  }
+
+  @Test
+  void testGetRecentMeasuresByMeasureSetIdHandlesEmptyMeasureLists() {
+    List<String> measureSetIds = List.of("set1");
+
+    when(measureSetRepository.findMeasuresByMeasureSetId("set1", false, null))
+        .thenReturn(List.of());
+
+    List<Measure> recentMeasures = measureSetService.getRecentMeasuresByMeasureSetId(measureSetIds);
+
+    assertNotNull(recentMeasures);
+    assertTrue(recentMeasures.isEmpty());
+
+    verify(measureSetRepository).findMeasuresByMeasureSetId("set1", false, null);
+    verifyNoInteractions(measureRepository);
   }
 }
