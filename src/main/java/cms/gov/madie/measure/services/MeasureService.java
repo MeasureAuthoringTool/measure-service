@@ -302,7 +302,7 @@ public class MeasureService {
       QdmMeasure qdmExistingMeasure = (QdmMeasure) existingMeasure;
       QdmMeasure qdmUpdatingMeasure = (QdmMeasure) updatingMeasure;
 
-      //TODO MAT-8920: Move elsewhere, findAndModify will ignore changes to test cases.
+      // TODO MAT-8920: Move elsewhere, findAndModify will ignore changes to test cases.
       if (!StringUtils.equals(qdmExistingMeasure.getScoring(), qdmUpdatingMeasure.getScoring())
           || (qdmExistingMeasure.isPatientBasis() != qdmUpdatingMeasure.isPatientBasis())) {
         List<TestCase> updatedTestCases =
