@@ -19,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 public class TestCaseLockController {
   private final TestCaseLockService testCaseLockService;
 
-  @PostMapping("/measures/{measureId}/test-cases/{testCaseId}/testcase-lock")
+  @PostMapping("/measures/{measureId}/test-cases/{testCaseId}/lock")
   public ResponseEntity<LockInfo> addTestCaseLock(
       @PathVariable String measureId, @PathVariable String testCaseId, Principal principal) {
     return ResponseEntity.ok(
