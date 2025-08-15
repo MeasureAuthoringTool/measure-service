@@ -11,7 +11,6 @@ import gov.cms.madie.models.measure.Measure;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import org.bson.Document;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -101,6 +100,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         // if feature flag is ON, then we need to search for searchField only in the provided
         // filters
         if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+          if (CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())
+              || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
+            aggregationOperations.add(SearchUtils.addCmsIdDisplayField());
+          }
           SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
         }
       }
@@ -140,21 +143,15 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             .as("queryResults");
 
     if (nestedFlag) {
+      aggregationOperations.add(matchOperation);
+      List<AggregationOperation> initialPipeline = new ArrayList<>(aggregationOperations);
+      initialPipeline.add(
+          group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
       // Find all the measures that matches the given Criteria and fetch unique measureSetIds
       List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
           mongoTemplate
               .aggregate(
-                  newAggregation(
-                      lookupOperation,
-                      unwindOperation,
-                      matchOperation,
-                      group("measureSetId")
-                          .count()
-                          .as("matchCount")
-                          .first("_id")
-                          .as("matchedMeasureId")),
-                  Measure.class,
-                  MeasureSetMatchCountDTO.class)
+                  newAggregation(initialPipeline), Measure.class, MeasureSetMatchCountDTO.class)
               .getMappedResults();
 
       Map<String, MeasureSetMatchCountDTO> matchInfoMap =
@@ -182,14 +179,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       GroupOperation groupByMeasureSet = group("measureSetId").first("$$ROOT").as("selectedDoc");
 
       ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
-
-      // We are missing to search from CMS ID when the field is not provided altogether
-      if (measureSearchCriteria != null
-          && StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
-          && measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
-        aggregationOperations.add(addCmsIdDisplayField());
-        aggregationOperations.add(matchCmsIdDisplay(measureSearchCriteria.getSearchField()));
-      }
 
       aggregationOperations.add(matchMeasureSetIds);
       aggregationOperations.add(sortByVersionAndDraft);
@@ -261,34 +250,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     return ownershipCriterias.isEmpty()
         ? null
         : new Criteria().orOperator(ownershipCriterias.toArray(Criteria[]::new));
-  }
-
-  // Add string field called cmsIdDisplay. If model is QI-Core, append "FHIR" to measureSet
-  // .cmsId, else only convert measureSet.cmsId to a string
-  private AggregationOperation addCmsIdDisplayField() {
-    return context ->
-        new Document(
-            "$addFields",
-            new Document(
-                "cmsIdDisplay",
-                new Document(
-                    "$cond",
-                    List.of(
-                        new Document(
-                            "$regexMatch",
-                            new Document("input", "$model").append("regex", "QI-Core")),
-                        new Document(
-                            "$concat",
-                            List.of(new Document("$toString", "$measureSet.cmsId"), "FHIR")),
-                        new Document("$toString", "$measureSet.cmsId")))));
-  }
-
-  // Case-insensitive contains search
-  private AggregationOperation matchCmsIdDisplay(String input) {
-    return context ->
-        new Document(
-            "$match",
-            new Document("cmsIdDisplay", new Document("$regex", input).append("$options", "i")));
   }
 
   @Override

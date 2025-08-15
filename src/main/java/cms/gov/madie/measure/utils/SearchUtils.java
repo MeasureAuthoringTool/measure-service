@@ -1,9 +1,10 @@
 package cms.gov.madie.measure.utils;
 
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
-import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.Version;
 import org.apache.commons.lang3.StringUtils;
+import org.bson.Document;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 import java.util.ArrayList;
@@ -64,6 +65,8 @@ public class SearchUtils {
           }
           break;
         case "cmsId":
+          orConditions.add(
+              Criteria.where("cmsIdDisplay").regex(".*" + Pattern.quote(searchField) + ".*", "i"));
           break;
         case "measure":
           orConditions.add(
@@ -85,13 +88,23 @@ public class SearchUtils {
     }
   }
 
-  public static Criteria getAclCriteria(String userId) {
-    return new Criteria()
-        .orOperator(
-            Criteria.where("measureSet.owner").regex("^\\Q" + userId + "\\E$", "i"),
-            Criteria.where("measureSet.acls.userId")
-                .regex("^\\Q" + userId + "\\E$", "i")
-                .and("measureSet.acls.roles")
-                .in(RoleEnum.SHARED_WITH));
+  // Add string field called cmsIdDisplay. If model is QI-Core, append "FHIR" to measureSet
+  // .cmsId, else only convert measureSet.cmsId to a string
+  public static AggregationOperation addCmsIdDisplayField() {
+    return context ->
+        new Document(
+            "$addFields",
+            new Document(
+                "cmsIdDisplay",
+                new Document(
+                    "$cond",
+                    List.of(
+                        new Document(
+                            "$regexMatch",
+                            new Document("input", "$model").append("regex", "QI-Core")),
+                        new Document(
+                            "$concat",
+                            List.of(new Document("$toString", "$measureSet.cmsId"), "FHIR")),
+                        new Document("$toString", "$measureSet.cmsId")))));
   }
 }

@@ -76,6 +76,22 @@ class SearchUtilsTest {
   }
 
   @Test
+  void testAppendCmsIdSearchCriteria() {
+    Criteria base = new Criteria();
+
+    MeasureSearchCriteria input =
+        MeasureSearchCriteria.builder()
+            .searchField("1028FHIR")
+            .optionalSearchProperties(List.of("cmsId"))
+            .build();
+    SearchUtils.appendAdditionalSearchCriteria(base, input);
+
+    String json = base.getCriteriaObject().toString();
+    assertThat(json).contains("cmsId");
+    assertThat(json).contains("1028FHIR");
+  }
+
+  @Test
   void testAppendModelSearchCriteria() {
     Criteria base = new Criteria();
 

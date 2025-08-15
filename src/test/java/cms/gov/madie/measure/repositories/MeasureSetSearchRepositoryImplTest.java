@@ -69,18 +69,16 @@ class MeasureSetSearchRepositoryImplTest {
   @Test
   void shouldApplySearchCriteriaWhenPresent() {
     MeasureSearchCriteria criteria = new MeasureSearchCriteria();
-    criteria.setSearchField("CMS123");
-    criteria.setOptionalSearchProperties(List.of("cmsId"));
+    criteria.setSearchField("1.2.3");
+    criteria.setOptionalSearchProperties(List.of("version"));
 
     List<MeasureListDTO> mockResults = List.of(createDTO("CMS123 Measure"));
     when(mongoTemplate.aggregate(any(Aggregation.class), eq("measure"), eq(MeasureListDTO.class)))
         .thenReturn(new AggregationResults<>(mockResults, new Document()));
 
-    // Act
     List<MeasureListDTO> result =
         repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
 
-    // Assert
     assertEquals("CMS123 Measure", result.get(0).getMeasureName());
 
     ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
@@ -88,6 +86,36 @@ class MeasureSetSearchRepositoryImplTest {
 
     Aggregation aggregation = captor.getValue();
     assertEquals(3, aggregation.getPipeline().getOperations().size());
+  }
+
+  @Test
+  void shouldApplyCmsIdSearchCriteriaAndReturnMatchingMeasures() {
+    MeasureSearchCriteria criteria = new MeasureSearchCriteria();
+    criteria.setSearchField("117");
+    criteria.setOptionalSearchProperties(List.of("cmsId"));
+
+    List<MeasureListDTO> mockResults =
+        List.of(createDTO("Measure with CMS 117"), createDTO("Measure with CMS 117FHIR"));
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq("measure"), eq(MeasureListDTO.class)))
+        .thenReturn(new AggregationResults<>(mockResults, new Document()));
+
+    List<MeasureListDTO> result =
+        repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
+
+    assertEquals(2, result.size());
+    assertEquals("Measure with CMS 117", result.get(0).getMeasureName());
+    assertEquals("Measure with CMS 117FHIR", result.get(1).getMeasureName());
+
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
+
+    Aggregation aggregation = captor.getValue();
+
+    assertEquals(4, aggregation.getPipeline().getOperations().size());
+    String pipelineString = aggregation.toString();
+
+    org.assertj.core.api.Assertions.assertThat(pipelineString).contains("cmsIdDisplay");
   }
 
   private MeasureListDTO createDTO(String name) {
