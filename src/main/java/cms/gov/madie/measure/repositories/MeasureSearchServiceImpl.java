@@ -73,39 +73,39 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     aggregationOperations.add(unwindOperation);
 
     if (measureSearchCriteria != null) {
-      // If searchField is given and no filter is applied, then search for the searchField in
-      // measureName and ecqmTitle
-      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
-          && CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())) {
-        aggregationOperations.add(addCmsIdDisplayField());
+      if (!nestedFlag) {
+        // If feature flag is OFF, then we need to search for the searchField in
+        // measureName or ecqmTitle or CMDId
+        if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+          String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
+          List<Criteria> wordCriteria = new ArrayList<>();
 
-        String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
-        List<Criteria> wordCriteria = new ArrayList<>();
+          for (String word : searchWords) {
+            word = word.replaceAll("[^a-zA-Z0-9]", ""); // Remove special characters
+            if (StringUtils.isNotBlank(word)) {
+              wordCriteria.add(
+                  new Criteria()
+                      .orOperator(
+                          Criteria.where("measureName").regex(".*" + word + ".*", "i"),
+                          Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i"),
+                          Criteria.where("cmsIdDisplay").regex(".*" + word + ".*", "i")));
+            }
+          }
 
-        for (String word : searchWords) {
-          word = word.replaceAll("[^a-zA-Z0-9]", ""); // Remove special characters
-          if (StringUtils.isNotBlank(word)) {
-            wordCriteria.add(
-                new Criteria()
-                    .orOperator(
-                        Criteria.where("measureName").regex(".*" + word + ".*", "i"),
-                        Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i"),
-                        Criteria.where("cmsIdDisplay").regex(".*" + word + ".*", "i")));
+          if (!wordCriteria.isEmpty()) {
+            measureCriteria = measureCriteria.andOperator(wordCriteria.toArray(new Criteria[0]));
+          } else {
+            return new PageImpl<>(new ArrayList<>(), pageable, 0);
           }
         }
-
-        if (!wordCriteria.isEmpty()) {
-          measureCriteria = measureCriteria.andOperator(wordCriteria.toArray(new Criteria[0]));
-        } else {
-          return new PageImpl<>(new ArrayList<>(), pageable, 0);
+      } else {
+        // if feature flag is ON, then we need to search for searchField only in the provided
+        // filters
+        if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+          SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
         }
       }
 
-      // if searchField and optional filters are provided, then search for searchField only in the
-      // provided filters
-      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
-        SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
-      }
       // If model is provided, filter out those measures with that model
       if (StringUtils.isNotBlank(measureSearchCriteria.getModel())) {
         measureCriteria.and("model").is(measureSearchCriteria.getModel());
