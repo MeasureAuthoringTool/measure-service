@@ -87,8 +87,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                   new Criteria()
                       .orOperator(
                           Criteria.where("measureName").regex(".*" + word + ".*", "i"),
-                          Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i"),
-                          Criteria.where("cmsIdDisplay").regex(".*" + word + ".*", "i")));
+                          Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i")));
             }
           }
 
@@ -184,6 +183,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
       ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
 
+      // We are missing to search from CMS ID when the field is not provided altogether
       if (measureSearchCriteria != null
           && StringUtils.isNotBlank(measureSearchCriteria.getSearchField())
           && measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
