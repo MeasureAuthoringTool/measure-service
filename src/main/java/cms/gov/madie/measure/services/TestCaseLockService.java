@@ -16,9 +16,8 @@ import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
-import cms.gov.madie.measure.dto.TestCaseLock;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.dto.LockInfo;
 
 @Slf4j
@@ -57,7 +56,6 @@ public class TestCaseLockService {
                 .lockedBy(existingLock.get().getLockedBy())
                 .build();
       }
-      lockInfo = LockInfo.builder().isLocked(true).build();
     }
     return lockInfo;
   }

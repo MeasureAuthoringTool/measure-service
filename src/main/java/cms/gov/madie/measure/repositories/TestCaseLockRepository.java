@@ -1,10 +1,10 @@
 package cms.gov.madie.measure.repositories;
 
-import cms.gov.madie.measure.dto.TestCaseLock;
-
 import java.util.Optional;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
+
+import cms.gov.madie.measure.locks.TestCaseLock;
 
 public interface TestCaseLockRepository extends MongoRepository<TestCaseLock, String> {
 

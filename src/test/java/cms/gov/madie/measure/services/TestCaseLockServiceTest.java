@@ -22,8 +22,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import cms.gov.madie.measure.dto.LockInfo;
-import cms.gov.madie.measure.dto.TestCaseLock;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.TestCaseLockRepository;
 import cms.gov.madie.measure.resources.DuplicateKeyException;
