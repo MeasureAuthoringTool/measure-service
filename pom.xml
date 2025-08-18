@@ -150,7 +150,7 @@
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-java-models</artifactId>
-      <version>0.6.103-SNAPSHOT</version>
+      <version>0.6.105-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>gov.cms.madie</groupId>
@@ -206,10 +206,14 @@
       <artifactId>commons-lang3</artifactId>
       <version>3.17.0</version>
     </dependency>
-
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>
       <artifactId>jackson-datatype-jsr310</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.commonmark</groupId>
+      <artifactId>commonmark</artifactId>
+      <version>0.25.1</version>
     </dependency>
     <dependency>
       <groupId>io.mongock</groupId>
