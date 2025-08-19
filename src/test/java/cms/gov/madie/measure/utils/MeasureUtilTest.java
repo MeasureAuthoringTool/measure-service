@@ -319,6 +319,37 @@ class MeasureUtilTest {
   }
 
   @Test
+  public void
+      testValidateAllMeasureGroupReturnTypesReturnsForQiCore6MeasureWithErrorAddedForPopulation()
+          throws Exception {
+    Measure measure =
+        Measure.builder()
+            .elmJson("{}")
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .groups(
+                List.of(
+                    Group.builder().id("Group1").populations(null).build(),
+                    Group.builder()
+                        .id("Group2")
+                        .populations(
+                            List.of(
+                                Population.builder().definition("").build(),
+                                Population.builder().definition("GOOD DEFINE HERE").build()))
+                        .build()))
+            .build();
+    doThrow(new InvalidReturnTypeException("DEFINITIONS"))
+        .when(cqlDefinitionReturnTypeService)
+        .validateCqlDefinitionReturnTypes(any(Group.class), anyString());
+
+    Measure output = measureUtil.validateAllMeasureDependencies(measure);
+    assertThat(output, is(notNullValue()));
+    assertThat(output.getErrors(), is(notNullValue()));
+    assertThat(
+        output.getErrors().contains(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES),
+        is(true));
+  }
+
+  @Test
   public void testValidateAllMeasureGroupReturnTypesReturnsMeasureWithErrorForGroupsExistButNoElm()
       throws JsonProcessingException {
     Measure measure =
