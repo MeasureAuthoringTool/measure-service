@@ -55,11 +55,14 @@ public class MeasureController {
     return ResponseEntity.status(HttpStatus.CREATED).body(results);
   }
 
-  @GetMapping("/measures/byMeasureSetId")
+  @PutMapping("/measures/byMeasureSetId")
   public ResponseEntity<List<MeasureListDTO>> getMeasuresByMeasureSetId(
-      @RequestParam(name = "measureSetId") String measureSetId, boolean sortByLatestVersion) {
+      @RequestParam(name = "measureSetId") String measureSetId,
+      boolean sortByLatestVersion,
+      @RequestBody(required = false) MeasureSearchCriteria searchCriteria) {
     List<MeasureListDTO> results =
-        measureSetService.getMeasuresByMeasureSetId(measureSetId, sortByLatestVersion);
+        measureSetService.getMeasuresByMeasureSetId(
+            measureSetId, sortByLatestVersion, searchCriteria);
     return ResponseEntity.status(HttpStatus.OK).body(results);
   }
 

@@ -27,6 +27,7 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
 
   @Override
   public Measure findAndModify(Measure updatedMeasure) {
+    Objects.requireNonNull(updatedMeasure.getMeasureSet(), "MeasureSet cannot be null on save.");
     List<String> excludedFields =
         Arrays.asList("testCases", "testCaseConfiguration", "measureSet", "elmXml");
     return findAndModify(updatedMeasure, excludedFields);
@@ -34,7 +35,6 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
 
   @Override
   public Measure findAndModify(Measure updatedMeasure, List<String> excludedFields) {
-    Objects.requireNonNull(updatedMeasure.getMeasureSet(), "MeasureSet cannot be null on save.");
     Update patchUpdate = new Update();
 
     if (updatedMeasure instanceof QdmMeasure) {
