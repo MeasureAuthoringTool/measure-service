@@ -28,7 +28,7 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
   @Override
   public Measure findAndModify(Measure updatedMeasure) {
     // not required for measure deletion
-    if(updatedMeasure.isActive()){
+    if (updatedMeasure.isActive()) {
       Objects.requireNonNull(updatedMeasure.getMeasureSet(), "MeasureSet cannot be null on save.");
     }
 
@@ -64,7 +64,7 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
             .findAndModifyValue();
 
     // not required for measure deletion
-    if(savedMeasure.isActive()){
+    if (savedMeasure.isActive()) {
       // Set measureSet field since it is transient and not included in the save.
       assert savedMeasure != null;
       savedMeasure.setMeasureSet(updatedMeasure.getMeasureSet());
