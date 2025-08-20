@@ -211,6 +211,10 @@ public class HtmlifyTextData {
   }
 
   private String toHtml(String text) {
+    if (text.startsWith("<p>")) {
+      return text; // Already HTML formatted, return as is
+    }
+
     Node document = parser.parse(text);
     // Sanitize HTML content
     return sanitizeText(htmlRenderer.render(document)).replace("\n", "");
