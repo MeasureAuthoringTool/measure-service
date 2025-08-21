@@ -8,15 +8,10 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
-import cms.gov.madie.measure.services.ActionLogService;
-import cms.gov.madie.measure.services.GroupService;
-import cms.gov.madie.measure.services.MeasureService;
-import cms.gov.madie.measure.services.MeasureSetService;
+import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.OwnershipType;
-import gov.cms.madie.models.common.Version;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,6 +53,7 @@ class MeasureControllerTest {
   @Mock private GroupService groupService;
   @Mock private ActionLogService actionLogService;
   @Mock private MeasureSetRepository measureSetRepository;
+  @Mock private TestCaseService testCaseService;
   @InjectMocks private MeasureController controller;
 
   private Measure measure1;
@@ -72,6 +68,7 @@ class MeasureControllerTest {
   public void setUp() {
     measure1 =
         Measure.builder()
+            .model(ModelType.QI_CORE.toString())
             .active(true)
             .measureSetId("IDIDID")
             .measureName("MSR01")
@@ -975,5 +972,63 @@ class MeasureControllerTest {
     assertThat(result.get("ownedMeasures"), is(equalTo(5)));
     assertThat(result.get("sharedMeasures"), is(equalTo(3)));
     assertThat(result.get("allMeasures"), is(equalTo(10)));
+  }
+
+  @Test
+  public void testClearingTestCaseGroupPopulationValuesWhenScoringIsChangedForQDMMeasures() {
+    TestCaseGroupPopulation testCaseGroupPopulation =
+        TestCaseGroupPopulation.builder().groupId("groupId1").scoring("Cohort").build();
+
+    TestCase testCase =
+        TestCase.builder().id("testId1").groupPopulations(List.of(testCaseGroupPopulation)).build();
+
+    QdmMeasure original =
+        QdmMeasure.builder()
+            .cql("original cql here")
+            .model(ModelType.QDM_5_6.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .errors(List.of(MeasureErrorType.ERRORS_ELM_JSON))
+            .id("testId")
+            .createdBy("test.user")
+            .scoring(MeasureScoring.COHORT.toString())
+            .groups(null)
+            .testCases(List.of(testCase))
+            .patientBasis(false)
+            .build();
+
+    QdmMeasure updated =
+        original.toBuilder()
+            .cql("changed cql here")
+            .scoring(MeasureScoring.PROPORTION.toString())
+            .build();
+
+    Measure expected =
+        updated.toBuilder().error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES).build();
+
+    ArgumentCaptor<TestCase> saveTestCaseCaptor = ArgumentCaptor.forClass(TestCase.class);
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(expected);
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(
+            original.toBuilder()
+                .measureSet(MeasureSet.builder().owner("test.user").build())
+                .build());
+    doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
+
+    Measure output =
+        controller.updateMeasure(updated.getId(), updated, principal, "Bearer TOKEN").getBody();
+    assertThat(output, is(notNullValue()));
+    assertThat(output, is(equalTo(expected)));
+    assertThat(output.getTestCases().get(0).getGroupPopulations(), is(equalTo(new ArrayList<>())));
+
+    verify(testCaseService, times(1))
+        .updateTestCase(saveTestCaseCaptor.capture(), anyString(), anyString(), anyString());
+    TestCase persisted = saveTestCaseCaptor.getValue();
+    assertThat(persisted, is(equalTo(expected.getTestCases().get(0))));
   }
 }

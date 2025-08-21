@@ -27,7 +27,11 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
 
   @Override
   public Measure findAndModify(Measure updatedMeasure) {
-    Objects.requireNonNull(updatedMeasure.getMeasureSet(), "MeasureSet cannot be null on save.");
+    // not required for measure deletion
+    if (updatedMeasure.isActive()) {
+      Objects.requireNonNull(updatedMeasure.getMeasureSet(), "MeasureSet cannot be null on save.");
+    }
+
     List<String> excludedFields =
         Arrays.asList("testCases", "testCaseConfiguration", "measureSet", "elmXml");
     return findAndModify(updatedMeasure, excludedFields);
@@ -58,9 +62,13 @@ public class MeasurePatchRepositoryImpl implements MeasurePatchRepository {
             .apply(patchUpdate)
             .withOptions(FindAndModifyOptions.options().returnNew(true))
             .findAndModifyValue();
-    // Set measureSet field since it is transient and not included in the save.
-    assert savedMeasure != null;
-    savedMeasure.setMeasureSet(updatedMeasure.getMeasureSet());
+
+    // not required for measure deletion
+    if (savedMeasure.isActive()) {
+      // Set measureSet field since it is transient and not included in the save.
+      assert savedMeasure != null;
+      savedMeasure.setMeasureSet(updatedMeasure.getMeasureSet());
+    }
     return savedMeasure;
   }
 
