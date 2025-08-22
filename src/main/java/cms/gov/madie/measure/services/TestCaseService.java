@@ -341,8 +341,18 @@ public class TestCaseService {
 
       if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)
           && ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
-        measure.getTestCases().add(testCase);
-        measureRepository.save(measure);
+        Measure updatedMeasure = measureRepository.addOrUpdateTestCase(measureId, testCase);
+
+        if (updatedMeasure == null) {
+          log.error(
+              "Failed to add or update test case [{}] for measure [{}]",
+              testCase.getId(),
+              measureId);
+          throw new ResourceNotFoundException(
+              String.format(
+                  "Unable to add or update test case [%s] for measure [%s]",
+                  testCase.getId(), measureId));
+        }
         log.info(
             "User [{}] successfully updated the test case with ID [{}] for the measure with ID[{}] ",
             username,

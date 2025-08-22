@@ -216,7 +216,11 @@ public class TestCaseValidationService {
           .validateBundle(testCase.getJson(), modelType, accessToken)
           .getBody();
     } catch (HttpClientErrorException ex) {
-      log.warn("HAPI FHIR returned response code [{}]", ex.getRawStatusCode(), ex);
+      log.warn(
+          "HAPI FHIR returned response code [{}] for testCaseId : {}",
+          ex.getRawStatusCode(),
+          testCase.getId(),
+          ex);
       try {
         return HapiOperationOutcome.builder()
             .code(ex.getRawStatusCode())
