@@ -81,6 +81,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Captor private ArgumentCaptor<String> targetIdArgumentCaptor;
   @Captor private ArgumentCaptor<Class> targetClassArgumentCaptor;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
+  @Captor private ArgumentCaptor<TestCase> testCaseCaptor;
 
   private TestCase testCase;
   private Measure measure;
@@ -486,7 +487,8 @@ public class TestCaseServiceTest implements ResourceUtil {
         .build();
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
-
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(measure);
     // Mocks a validation request awaiting execution.
     when(testCaseValidationService.validateResourceAsynchronously(
             any(), any(TestCase.class), eq(TestCaseServiceUtil.SAVE), anyString()))
@@ -500,8 +502,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     TestCase output =
         testCaseService.updateTestCase(
             testCase, measure.getId(), "test-user", accessToken, TestCaseServiceUtil.SAVE);
-    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
-    saveValidationOrder.verify(measureRepository).save(measure);
+    verify(measureRepository, times(1))
+        .addOrUpdateTestCase(targetIdArgumentCaptor.capture(), testCaseCaptor.capture());
+    saveValidationOrder.verify(measureRepository).addOrUpdateTestCase(measure.getId(), testCase);
     saveValidationOrder
         .verify(testCaseValidationService)
         .validateResourceAsynchronously(
@@ -547,6 +550,8 @@ public class TestCaseServiceTest implements ResourceUtil {
         .build();
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(measure);
     when(testCaseValidationService.validateResourceAsynchronously(
             any(Measure.class), any(TestCase.class), anyString(), anyString()))
         .thenAnswer(
@@ -1220,6 +1225,34 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertEquals(2, savedMeasure.getTestCases().size());
     assertEquals(otherExistingTC, savedMeasure.getTestCases().get(0));
     assertEquals(upsertingTestCase, savedMeasure.getTestCases().get(1));
+  }
+
+  @Test
+  public void testUpdateTestCaseThrowsResourceNotFoundExceptionForUnknownMeasureId() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
+        .thenReturn(true);
+    measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
+    TestCase testCase =
+        TestCase.builder()
+            .id("TestID")
+            .title("test-title")
+            .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
+            .build();
+
+    measure.toBuilder()
+        .model(ModelType.QI_CORE_6_0_0.getValue())
+        .testCases(List.of(testCase))
+        .build();
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
+    doReturn(null).when(measureRepository).addOrUpdateTestCase(anyString(), any(TestCase.class));
+    assertThrows(
+        ResourceNotFoundException.class,
+        () ->
+            testCaseService.updateTestCase(
+                testCase, measure.getId(), "test-user", "TOKEN", TestCaseServiceUtil.IMPORT));
   }
 
   @Test
@@ -3317,7 +3350,8 @@ public class TestCaseServiceTest implements ResourceUtil {
         .build();
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
-
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(measure);
     // Mocks a validation request awaiting execution.
     when(testCaseValidationService.validateResourceAsynchronously(
             measureArgumentCaptor.capture(),
@@ -3334,8 +3368,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     TestCase output =
         testCaseService.updateTestCase(
             testCase, measure.getId(), "test-user", accessToken, TestCaseServiceUtil.IMPORT);
-    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
-    saveValidationOrder.verify(measureRepository).save(measure);
+    verify(measureRepository, times(1))
+        .addOrUpdateTestCase(targetIdArgumentCaptor.capture(), testCaseCaptor.capture());
+    saveValidationOrder.verify(measureRepository).addOrUpdateTestCase(measure.getId(), testCase);
     saveValidationOrder
         .verify(testCaseValidationService)
         .validateResourceAsynchronously(
