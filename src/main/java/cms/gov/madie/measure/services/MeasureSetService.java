@@ -282,6 +282,13 @@ public class MeasureSetService {
           measureSetId,
           cmsId);
 
+      actionLogService.logMeasureSetAction(
+          measureSetId,
+          MeasureSet.class,
+          ActionType.DELETE_CMSID,
+          "admin",
+          String.format("Deleted CMS ID %s", cmsId));
+
       return String.format(
           "CMS id of %s was deleted successfully from " + "measure set with measure set id of %s",
           cmsId, measureSetId);
