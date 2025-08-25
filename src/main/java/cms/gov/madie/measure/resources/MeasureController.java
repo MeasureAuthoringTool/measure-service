@@ -4,19 +4,18 @@ import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
-import cms.gov.madie.measure.services.ActionLogService;
-import cms.gov.madie.measure.services.GroupService;
-import cms.gov.madie.measure.services.MeasureService;
-import cms.gov.madie.measure.services.MeasureSetService;
+import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,15 +25,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.util.CollectionUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.security.Principal;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @RestController
@@ -47,6 +44,7 @@ public class MeasureController {
   private final ActionLogService actionLogService;
   private final MeasureSetRepository measureSetRepository;
   private final MeasureSetService measureSetService;
+  private final TestCaseService testCaseService;
 
   @PostMapping("/measures/draftstatus")
   public ResponseEntity<Map<String, Boolean>> getDraftStatuses(
@@ -174,6 +172,26 @@ public class MeasureController {
         // delete
         if (!measure.isActive()) {
           measureService.verifyAuthorization(username, measure, null);
+        }
+
+        // clear testcase groups for qdm when scoring or patient basis is changed.
+        // for QDM, scoring and patient basis are present outside the group
+        // therefor we need to clear testcase groups while updating measure
+        if (existingMeasure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
+            && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
+          QdmMeasure qdmExistingMeasure = (QdmMeasure) existingMeasure;
+          QdmMeasure qdmUpdatingMeasure = (QdmMeasure) measure;
+
+          if (!StringUtils.equals(qdmExistingMeasure.getScoring(), qdmUpdatingMeasure.getScoring())
+              || (qdmExistingMeasure.isPatientBasis() != qdmUpdatingMeasure.isPatientBasis())) {
+            existingMeasure
+                .getTestCases()
+                .forEach(
+                    testcase -> {
+                      testcase.setGroupPopulations(new ArrayList<>());
+                      testCaseService.updateTestCase(testcase, id, username, accessToken);
+                    });
+          }
         }
       }
 

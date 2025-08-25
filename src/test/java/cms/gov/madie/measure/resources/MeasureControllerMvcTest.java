@@ -1,40 +1,24 @@
 package cms.gov.madie.measure.resources;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.Map;
-import java.util.HashMap;
-
+import cms.gov.madie.measure.SecurityConfig;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
-import cms.gov.madie.measure.services.MeasureSetService;
+import cms.gov.madie.measure.exceptions.InvalidReturnTypeException;
+import cms.gov.madie.measure.exceptions.InvalidVersionIdException;
+import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.services.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.Organization;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
@@ -43,7 +27,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -52,38 +35,40 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.*;
 
-import cms.gov.madie.measure.SecurityConfig;
-import cms.gov.madie.measure.exceptions.InvalidReturnTypeException;
-import cms.gov.madie.measure.exceptions.InvalidVersionIdException;
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.repositories.MeasureSetRepository;
-import cms.gov.madie.measure.services.ActionLogService;
-import cms.gov.madie.measure.services.GroupService;
-import cms.gov.madie.measure.services.MeasureService;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.Organization;
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest({MeasureController.class})
 @ActiveProfiles("test")
 @Import(SecurityConfig.class)
 public class MeasureControllerMvcTest {
 
-  @MockBean private MeasureRepository measureRepository;
-  @MockBean private MeasureService measureService;
-  @MockBean private GroupService groupService;
-  @MockBean private ActionLogService actionLogService;
-  @MockBean private MeasureSetService measureSetService;
+  @MockitoBean private MeasureRepository measureRepository;
+  @MockitoBean private MeasureService measureService;
+  @MockitoBean private GroupService groupService;
+  @MockitoBean private ActionLogService actionLogService;
+  @MockitoBean private MeasureSetService measureSetService;
   @Autowired private MockMvc mockMvc;
-  @MockBean private MeasureSetRepository measureSetRepository;
+  @MockitoBean private MeasureSetRepository measureSetRepository;
+  @MockitoBean private TestCaseService testCaseService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor2;
 
