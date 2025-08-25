@@ -15,7 +15,6 @@ import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
@@ -25,8 +24,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
-
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Slf4j
 @Service
@@ -224,7 +221,7 @@ public class MeasureSetService {
     return updatedMeasureSet;
   }
 
-  public String deleteCmsId(String measureId, Integer cmsId, String harpId) {
+  public String deleteCmsId(String measureId, Integer cmsId, String harpId, String userName) {
     Optional<Measure> optionalMeasure = measureRepository.findById(measureId);
 
     if (optionalMeasure.isPresent()) {
@@ -286,7 +283,7 @@ public class MeasureSetService {
           measureSetId,
           MeasureSet.class,
           ActionType.DELETE_CMSID,
-          "admin",
+          userName,
           String.format("Deleted CMS ID %s", cmsId));
 
       return String.format(

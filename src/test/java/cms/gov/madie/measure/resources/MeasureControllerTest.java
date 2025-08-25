@@ -352,7 +352,8 @@ class MeasureControllerTest {
             "CMS Id of %s was deleted successfully from measure set with measure set id of %s",
             measureSet.getCmsId(), measureSet.getMeasureSetId());
 
-    when(measureSetService.deleteCmsId(anyString(), anyInt(), anyString()))
+    when(principal.getName()).thenReturn("testUser");
+    when(measureSetService.deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testUser"))
         .thenReturn(expectedBody);
 
     ResponseEntity<String> response =
@@ -361,7 +362,8 @@ class MeasureControllerTest {
 
     assertThat(response.getBody(), is(notNullValue()));
     assertEquals(expectedBody, response.getBody());
-    verify(measureSetService, times(1)).deleteCmsId(anyString(), anyInt(), anyString());
+    verify(measureSetService, times(1))
+        .deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testUser");
   }
 
   @Test

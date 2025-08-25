@@ -23,6 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.security.Principal;
 import java.util.*;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -387,6 +388,7 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testDeleteCmsId() {
+    Principal principal = mock(Principal.class);
     Integer cmsId = 1;
     Measure measure =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId1").build();
@@ -401,7 +403,7 @@ public class MeasureSetServiceTest {
         .thenReturn(measures);
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(measureSet);
 
-    String responseBody = measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner());
+    String responseBody = measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName());
 
     assertEquals(
         responseBody,
@@ -417,26 +419,27 @@ public class MeasureSetServiceTest {
             measure.getMeasureSetId(),
             MeasureSet.class,
             ActionType.DELETE_CMSID,
-            "admin",
+            principal.getName(),
             "Deleted CMS ID 1");
   }
 
   @Test
   public void testDeleteCmsIdWhenMeasureWithMeasureIdIsNotFound() {
+    Principal principal = mock(Principal.class);
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
 
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.deleteCmsId(measureId, 1, anyString()));
+            () -> measureSetService.deleteCmsId(measureId, 1, "harpId", principal.getName()));
 
     assertTrue(
         ex.getMessage()
             .contains(String.format("No measure exists with measure id of %s", measureId)));
     verify(measureRepository, times(1)).findById(anyString());
-    verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, never())
         .logMeasureSetAction(
@@ -449,6 +452,7 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testDeleteCmsIdHarpIdMismatchException() {
+    Principal principal = mock(Principal.class);
     String harpId = "owner2";
     Measure measure =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId").build();
@@ -456,13 +460,14 @@ public class MeasureSetServiceTest {
     MeasureSet measureSet = MeasureSet.builder().measureSetId("1").cmsId(2).owner("owner1").build();
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
 
     Exception ex =
         assertThrows(
             HarpIdMismatchException.class,
-            () -> measureSetService.deleteCmsId(measureId, anyInt(), harpId));
+            () -> measureSetService.deleteCmsId(measureId, 2, harpId, principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -484,6 +489,7 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testDeleteCmsIdWhenMeasureSetIsNotFound() {
+    Principal principal = mock(Principal.class);
     Measure measure =
         Measure.builder()
             .model(ModelType.QI_CORE.getValue())
@@ -493,13 +499,14 @@ public class MeasureSetServiceTest {
 
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.empty());
 
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.deleteCmsId(measureId, 1, measure.getMeasureSet().getOwner()));
+            () -> measureSetService.deleteCmsId(measureId, 1, measure.getMeasureSet().getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -521,6 +528,7 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testDeleteCmsIdWhenCmsIdIsNotFoundInMeasureSet() {
+    Principal principal = mock(Principal.class);
     Integer cmsId = 1;
     Measure measure =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId").build();
@@ -528,13 +536,14 @@ public class MeasureSetServiceTest {
     MeasureSet measureSet = MeasureSet.builder().measureSetId("1").owner("owner1").build();
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
 
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner()));
+            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -556,6 +565,7 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testDeleteCmsIdWhenCmsIdToDeleteDoesNotMatchCmsIdInMeasureSet() {
+    Principal principal = mock(Principal.class);
     Integer cmsId = 1;
     Measure measure =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId").build();
@@ -563,13 +573,14 @@ public class MeasureSetServiceTest {
     MeasureSet measureSet = MeasureSet.builder().measureSetId("1").cmsId(2).owner("owner1").build();
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
 
     Exception ex =
         assertThrows(
             InvalidIdException.class,
-            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner()));
+            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -591,6 +602,7 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testDeleteCmsIdWhenMeasureHasMultipleVersions() {
+    Principal principal = mock(Principal.class);
     Integer cmsId = 1;
     Measure measure1 =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId1").build();
@@ -611,7 +623,7 @@ public class MeasureSetServiceTest {
     Exception ex =
         assertThrows(
             InvalidRequestException.class,
-            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner()));
+            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()

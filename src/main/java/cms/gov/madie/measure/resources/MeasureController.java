@@ -405,7 +405,7 @@ public class MeasureController {
         cmsId,
         measureId);
     return ResponseEntity.status(HttpStatus.OK)
-        .body(measureSetService.deleteCmsId(measureId, cmsId, harpId));
+        .body(measureSetService.deleteCmsId(measureId, cmsId, harpId, principal.getName()));
   }
 
   @PutMapping("/measures/cms-id-association")
