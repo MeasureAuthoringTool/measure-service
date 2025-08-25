@@ -414,7 +414,10 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).save(any(MeasureSet.class));
     verify(actionLogService, times(1))
         .logMeasureSetAction(
-            measure.getMeasureSetId(), MeasureSet.class, ActionType.DELETE_CMSID, "admin",
+            measure.getMeasureSetId(),
+            MeasureSet.class,
+            ActionType.DELETE_CMSID,
+            "admin",
             "Deleted CMS ID 1");
   }
 
@@ -436,8 +439,12 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, never())
-        .logMeasureSetAction(anyString(), eq(MeasureSet.class), eq(ActionType.DELETE_CMSID),
-            anyString(), anyString());
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
@@ -467,8 +474,12 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, never())
-        .logMeasureSetAction(anyString(), eq(MeasureSet.class), eq(ActionType.DELETE_CMSID),
-            anyString(), anyString());
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
@@ -500,8 +511,12 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, never())
-        .logMeasureSetAction(anyString(), eq(MeasureSet.class), eq(ActionType.DELETE_CMSID),
-            anyString(), anyString());
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
@@ -531,8 +546,12 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, never())
-        .logMeasureSetAction(anyString(), eq(MeasureSet.class), eq(ActionType.DELETE_CMSID),
-            anyString(), anyString());
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
@@ -562,8 +581,12 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, never())
-        .logMeasureSetAction(anyString(), eq(MeasureSet.class), eq(ActionType.DELETE_CMSID),
-            anyString(), anyString());
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
@@ -602,8 +625,12 @@ public class MeasureSetServiceTest {
     verify(measureRepository, times(1)).findAllByMeasureSetIdAndActive(anyString(), anyBoolean());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, never())
-        .logMeasureSetAction(anyString(), eq(MeasureSet.class), eq(ActionType.DELETE_CMSID),
-            anyString(), anyString());
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
