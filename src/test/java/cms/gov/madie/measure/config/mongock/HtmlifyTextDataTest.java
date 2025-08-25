@@ -44,7 +44,8 @@ class HtmlifyTextDataTest {
                         .rationale("rationale")
                         .purpose("purpose")
                         .guidance("guidance")
-                        .clinicalRecommendation("clinicalRecommendation")
+                        .clinicalRecommendation(
+                            "<p>The American Heart Association, the American College of Cardiology, and the Heart Failure Society of America (2022):  This guideline provides patient-centric recommendations for clinicians to prevent, diagnose, and manage patients with heart failure and specifically recommends assessing patient-reported health status using a validated questionnaire to provide incremental information for patient functional status, symptom burden, and prognosis. Tools specifically recommended in the guideline are as follows:   </p><ul><li><p>The Kansas City Cardiomyopathy Questionnaire or,  </p></li><li><p>The Minnesota Living with Heart Failure Questionnaire   </p></li><li><p>PROMIS-Plus-HF [Patient Reported Outcomes Measurement Information System Plus-Heart Failure]</p></li></ul>")
                         .references(
                             List.of(
                                 Reference.builder()
@@ -84,7 +85,7 @@ class HtmlifyTextDataTest {
                             .description("sde desc")
                             .definition("sdeDefName")
                             .build()))
-                .riskAdjustmentDescription("risk adjustment description")
+                .riskAdjustmentDescription("<p>risk adjustment description<p>")
                 .riskAdjustments(
                     List.of(
                         DefDescPair.builder()
@@ -120,8 +121,11 @@ class HtmlifyTextDataTest {
         .isEqualTo("<p>" + measure.getMeasureMetaData().getPurpose() + "</p>");
     assertThat(metaData.getGuidance())
         .isEqualTo("<p>" + measure.getMeasureMetaData().getGuidance() + "</p>");
+
+    // Clinical recommendation is already HTMLified in the measure data
     assertThat(metaData.getClinicalRecommendation())
-        .isEqualTo("<p>" + measure.getMeasureMetaData().getClinicalRecommendation() + "</p>");
+        .isEqualTo(measure.getMeasureMetaData().getClinicalRecommendation());
+
     assertThat(metaData.getCopyright())
         .isEqualTo("<p>" + measure.getMeasureMetaData().getCopyright() + "</p>");
     assertThat(metaData.getDisclaimer())

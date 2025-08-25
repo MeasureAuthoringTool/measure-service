@@ -66,7 +66,8 @@ public class MeasureUtil {
       errors.add(MeasureErrorType.INVALID_LIBRARY_NAME);
     }
 
-    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())) {
+    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())
+        || ModelType.QI_CORE_6_0_0.getValue().equals(measure.getModel())) {
       if (groupsExistWithPopulations
           && measure.getGroups().stream()
               .anyMatch(group -> !isGroupReturnTypesValid(group, elmJson))) {
