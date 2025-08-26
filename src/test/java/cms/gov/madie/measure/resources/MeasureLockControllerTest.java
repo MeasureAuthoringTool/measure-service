@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.dto.LockResponse;
+import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.services.MeasureLockService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,7 +49,7 @@ class MeasureLockControllerTest {
 
   @Test
   void testUpdateMeasureLockReturns200AndLockResponse() throws Exception {
-    LockResponse mockResponse = new LockResponse(true, harpId);
+    LockInfo mockResponse = new LockInfo(true, harpId, measureId);
     when(measureLockService.lockMeasure(eq(measureId), eq(harpId))).thenReturn(mockResponse);
 
     String jsonResponse =
@@ -62,7 +62,7 @@ class MeasureLockControllerTest {
             .andReturn()
             .getResponse()
             .getContentAsString();
-    LockResponse actualResponse = objectMapper.readValue(jsonResponse, LockResponse.class);
+    LockInfo actualResponse = objectMapper.readValue(jsonResponse, LockInfo.class);
 
     assertThat(actualResponse).isNotNull();
     assertThat(actualResponse.isLocked()).isTrue();
@@ -71,7 +71,7 @@ class MeasureLockControllerTest {
 
   @Test
   void testUnlockMeasureReturns200AndLockResponse() throws Exception {
-    LockResponse mockResponse = new LockResponse(false, harpId);
+    LockInfo mockResponse = new LockInfo(false, harpId, measureId);
     when(measureLockService.unlockMeasure(eq(measureId), eq(harpId))).thenReturn(mockResponse);
 
     String jsonResponse =
@@ -83,7 +83,7 @@ class MeasureLockControllerTest {
             .getResponse()
             .getContentAsString();
 
-    LockResponse actualResponse = objectMapper.readValue(jsonResponse, LockResponse.class);
+    LockInfo actualResponse = objectMapper.readValue(jsonResponse, LockInfo.class);
 
     assertThat(actualResponse).isNotNull();
     assertThat(actualResponse.isLocked()).isFalse();
