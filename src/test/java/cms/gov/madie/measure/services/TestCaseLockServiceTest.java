@@ -183,7 +183,7 @@ public class TestCaseLockServiceTest {
     List<String> results = service.unlockByUser("test.user");
 
     String msg1 = "Delete test case locks for harpId: test.user";
-    String msg2 = "Deleted test case lock: testCaseId";
+    String msg2 = "Deleted test case lock for Id: testCaseId";
     List<String> expected = List.of(msg1, msg2);
     assertEquals(expected, results);
   }
