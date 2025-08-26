@@ -63,9 +63,9 @@ public class MeasureLockService {
     deleteMesssages.add("Delete measure locks for harpId: " + userName);
     List<MeasureLock> existingLocks = measureLockRepository.findAllByLockedBy(userName);
     log.info(
-        "locks found by harpId: "
-            + userName
-            + (CollectionUtils.isNotEmpty(existingLocks) ? existingLocks.size() : " none"));
+        (CollectionUtils.isNotEmpty(existingLocks) ? existingLocks.size() : "No")
+            + " measure locks found for harpId: "
+            + userName);
     if (CollectionUtils.isNotEmpty(existingLocks)) {
       existingLocks.stream()
           .forEach(

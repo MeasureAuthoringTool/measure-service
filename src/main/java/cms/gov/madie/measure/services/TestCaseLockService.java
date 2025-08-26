@@ -99,12 +99,9 @@ public class TestCaseLockService {
     deleteMessages.add("Delete test case locks for harpId: " + userName);
     List<TestCaseLock> existingLocks = testCaseLockRepository.findAllByLockedBy(userName);
     log.info(
-        "locks found by harpId: "
-            + userName
-            + " "
-            + (CollectionUtils.isNotEmpty(existingLocks)
-                ? existingLocks.size()
-                : " No locks found for harpId: " + userName));
+        (CollectionUtils.isNotEmpty(existingLocks) ? existingLocks.size() : "No")
+            + " test case locks found for harpId: "
+            + userName);
     if (CollectionUtils.isNotEmpty(existingLocks)) {
       existingLocks.stream()
           .forEach(
