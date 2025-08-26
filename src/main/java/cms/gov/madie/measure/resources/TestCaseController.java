@@ -8,7 +8,6 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.MeasureService;
 import cms.gov.madie.measure.services.QdmTestCaseShiftDatesService;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import gov.cms.madie.models.common.ModelType;
 import cms.gov.madie.measure.services.TestCaseService;
 import cms.gov.madie.measure.utils.ControllerUtil;
@@ -149,40 +148,6 @@ public class TestCaseController {
     var testCaseImportOutcomes =
         testCaseService.importTestCases(
             testCaseImportRequests, measureId, userName, accessToken, ModelType.QI_CORE.getValue());
-    return ResponseEntity.ok().body(testCaseImportOutcomes);
-  }
-
-  @PutMapping(ControllerUtil.TEST_CASES + "/imports/qdm")
-  public ResponseEntity<List<TestCaseImportOutcome>> importTestCasesQdm(
-      @RequestBody List<TestCaseImportRequest> testCaseImportRequests,
-      @PathVariable String measureId,
-      @RequestHeader("Authorization") String accessToken,
-      Principal principal) {
-    final String userName = principal.getName();
-
-    for (TestCaseImportRequest request : testCaseImportRequests) {
-      request.setPatientId(UUID.randomUUID());
-      // append given and family name to the import object to report to outcome
-      try {
-        String familyName =
-            testCaseService.getPatientFamilyName(ModelType.QDM_5_6.getValue(), request.getJson());
-        request.setFamilyName(familyName);
-        String givenName =
-            testCaseService.getPatientGivenName(ModelType.QDM_5_6.getValue(), request.getJson());
-        request.setGivenNames(Collections.singletonList(givenName));
-      } catch (JsonProcessingException ex) {
-        log.error(
-            "User {} is unable to import test case with patient id : "
-                + "{} because of JsonProcessingException: "
-                + ex,
-            userName,
-            request.getPatientId());
-        throw new InvalidRequestException(ex.getMessage());
-      }
-    }
-    var testCaseImportOutcomes =
-        testCaseService.importTestCases(
-            testCaseImportRequests, measureId, userName, accessToken, ModelType.QDM_5_6.getValue());
     return ResponseEntity.ok().body(testCaseImportOutcomes);
   }
 
