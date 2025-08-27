@@ -60,7 +60,7 @@ public class TestCaseLockService {
     return lockInfo;
   }
 
-  public synchronized LockInfo unlockTestCase(String testCaseId, String userName) {
+  public LockInfo unlockTestCase(String testCaseId, String userName) {
     Optional<TestCaseLock> existingLock = testCaseLockRepository.findByTestCaseId(testCaseId);
     if (existingLock.isPresent()) {
       if (existingLock.get().getLockedBy().equals(userName)) {
@@ -94,7 +94,7 @@ public class TestCaseLockService {
     return testCase;
   }
 
-  public synchronized List<String> unlockByUser(String userName) {
+  public List<String> unlockByUser(String userName) {
     List<String> deleteMessages = new ArrayList<>();
     deleteMessages.add("Delete test case locks for harpId: " + userName);
     List<TestCaseLock> existingLocks = testCaseLockRepository.findAllByLockedBy(userName);
@@ -103,13 +103,11 @@ public class TestCaseLockService {
             + " test case locks found for harpId: "
             + userName);
     if (CollectionUtils.isNotEmpty(existingLocks)) {
-      existingLocks.stream()
-          .forEach(
-              existingLock -> {
-                testCaseLockRepository.deleteByTestCaseId(existingLock.getTestCaseId());
-                deleteMessages.add(
-                    "Deleted test case lock for Id: " + existingLock.getTestCaseId());
-              });
+      existingLocks.forEach(
+          existingLock -> {
+            testCaseLockRepository.deleteByTestCaseId(existingLock.getTestCaseId());
+            deleteMessages.add("Deleted test case lock for Id: " + existingLock.getTestCaseId());
+          });
     } else {
       deleteMessages.add("No test case locks found for harpId: " + userName);
     }

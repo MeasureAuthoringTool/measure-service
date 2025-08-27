@@ -47,7 +47,7 @@ public class MeasureLockService {
     }
   }
 
-  public synchronized LockInfo unlockMeasure(String measureId, String userName) {
+  public LockInfo unlockMeasure(String measureId, String userName) {
     Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
     // it's our lock. We delete it.
     if (existingLock.isPresent() && existingLock.get().getLockedBy().equals(userName)) {
@@ -58,7 +58,7 @@ public class MeasureLockService {
     return new LockInfo(true, existingLock.map(MeasureLock::getLockedBy).orElse(null), measureId);
   }
 
-  public synchronized List<String> unlockByUser(String userName) {
+  public List<String> unlockByUser(String userName) {
     List<String> deleteMesssages = new ArrayList<>();
     deleteMesssages.add("Delete measure locks for harpId: " + userName);
     List<MeasureLock> existingLocks = measureLockRepository.findAllByLockedBy(userName);
@@ -67,12 +67,11 @@ public class MeasureLockService {
             + " measure locks found for harpId: "
             + userName);
     if (CollectionUtils.isNotEmpty(existingLocks)) {
-      existingLocks.stream()
-          .forEach(
-              existingLock -> {
-                measureLockRepository.deleteByMeasureId(existingLock.getMeasureId());
-                deleteMesssages.add("Deleted measure lock: " + existingLock.getMeasureId());
-              });
+      existingLocks.forEach(
+          existingLock -> {
+            measureLockRepository.deleteByMeasureId(existingLock.getMeasureId());
+            deleteMesssages.add("Deleted measure lock: " + existingLock.getMeasureId());
+          });
     } else {
       deleteMesssages.add("No measure locks found for harpId: " + userName);
     }
