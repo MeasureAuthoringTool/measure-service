@@ -631,12 +631,12 @@ public class MeasureService {
         .toList();
   }
 
-  public boolean changeOwnership(String measureId, String userid) {
+  public boolean changeOwnership(String measureId, String userid, String username) {
     boolean result = false;
     Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
     if (persistedMeasure.isPresent()) {
       Measure measure = persistedMeasure.get();
-      measureSetService.updateOwnership(measure.getMeasureSetId(), userid);
+      measureSetService.updateOwnership(measure.getMeasureSetId(), userid, username);
       result = true;
     }
     return result;

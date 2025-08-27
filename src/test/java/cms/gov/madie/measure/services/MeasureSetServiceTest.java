@@ -23,6 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.security.Principal;
 import java.util.*;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -307,31 +308,58 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testUpdateOwnership() {
-    MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
-    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    String measureSetId = "1";
+    String oldOwner = "currentUserId";
+    String newOwner = "updatedUserId";
+    String currentUser = "testUser";
+
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn(currentUser);
+
+    MeasureSet originalMeasureSet = MeasureSet.builder().id(measureSetId).owner(oldOwner).build();
+
+    MeasureSet updatedMeasureSet = MeasureSet.builder().id(measureSetId).owner(newOwner).build();
+
+    when(measureSetRepository.findByMeasureSetId(measureSetId))
+        .thenReturn(Optional.of(originalMeasureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet result = measureSetService.updateOwnership("1", "testUser");
-    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
-    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
+    MeasureSet result =
+        measureSetService.updateOwnership(measureSetId, newOwner, principal.getName());
+
+    assertThat(result.getId(), equalTo(measureSetId));
+    assertThat(result.getOwner(), equalTo(newOwner));
+
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "apiKey");
+        .logMeasureSetAction(
+            measureSetId,
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            currentUser,
+            "Transferred from " + oldOwner + " to " + newOwner);
   }
 
   @Test
   public void testUpdateOwnershipWhenMeasureSetNotFound() {
-    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.empty());
+    String measureSetId = "1";
+    Principal principal = mock(Principal.class);
+    String currentUser = "testUser";
+
+    when(principal.getName()).thenReturn(currentUser);
+    when(measureSetRepository.findByMeasureSetId(eq(measureSetId))).thenReturn(Optional.empty());
 
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.updateOwnership("1", "testUser"));
+            () ->
+                measureSetService.updateOwnership(measureSetId, currentUser, principal.getName()));
+
     assertTrue(ex.getMessage().contains("measure set may not exist."));
-    verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
+
+    verify(measureSetRepository, times(1)).findByMeasureSetId(eq(measureSetId));
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, times(0))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "apiKey");
+        .logMeasureSetAction(anyString(), any(), any(), anyString(), anyString());
   }
 
   @Test

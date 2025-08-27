@@ -15,7 +15,6 @@ import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
@@ -25,8 +24,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Map;
 import java.util.HashMap;
-
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Slf4j
 @Service
@@ -184,21 +181,28 @@ public class MeasureSetService {
     }
   }
 
-  public MeasureSet updateOwnership(String measureSetId, String userId) {
+  public MeasureSet updateOwnership(String measureSetId, String updatedUserId, String username) {
     Optional<MeasureSet> OptionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (OptionalMeasureSet.isPresent()) {
       MeasureSet measureSet = OptionalMeasureSet.get();
-      measureSet.setOwner(userId);
+      String currentUserId = measureSet.getOwner();
+      measureSet.setOwner(updatedUserId);
       MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
       log.info("Owner changed in Measure set [{}]", updatedMeasureSet.getId());
+
       actionLogService.logMeasureSetAction(
-          measureSetId, MeasureSet.class, ActionType.UPDATED, "apiKey");
+          measureSetId,
+          MeasureSet.class,
+          ActionType.OWNERSHIP_TRANSFER,
+          username,
+          String.format("Transferred from %s to %s", currentUserId, updatedUserId));
+
       return updatedMeasureSet;
     } else {
       String error =
           String.format(
               "Measure with set id `%s` can not change ownership `%s`, measure set may not exist.",
-              measureSetId, userId);
+              measureSetId, updatedUserId);
       log.error(error);
       throw new ResourceNotFoundException(error);
     }
