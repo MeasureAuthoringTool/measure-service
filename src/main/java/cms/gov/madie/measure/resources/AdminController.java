@@ -55,6 +55,9 @@ public class AdminController {
   private final ExportRepository exportRepository;
   private final CqmMeasureRepository cqmMeasureRepository;
 
+  private final MeasureLockService measureLockService;
+  private final TestCaseLockService testCaseLockService;
+
   @Value("${madie.admin.concurrency-limit}")
   private int concurrencyLimit;
 
@@ -472,5 +475,19 @@ public class AdminController {
   private Callable<MeasureTestCaseValidationReport> buildCallableForMeasureId(
       final String measureId, final String accessToken) {
     return () -> testCaseService.updateTestCaseValidResourcesWithReport(measureId, accessToken);
+  }
+
+  @PutMapping("/unlock")
+  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  public ResponseEntity<List<String>> unlockAllByUser(
+      HttpServletRequest request,
+      @Value("${admin-api-key}") String apiKey,
+      @RequestHeader(name = "harpId") String harpId,
+      Principal principal) {
+    log.info("Unlock measures, test cases for user: " + harpId);
+    List<String> messages = new ArrayList<>();
+    messages.addAll(measureLockService.unlockByUser(harpId));
+    messages.addAll(testCaseLockService.unlockByUser(harpId));
+    return ResponseEntity.ok(messages);
   }
 }
