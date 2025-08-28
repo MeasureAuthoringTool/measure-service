@@ -219,6 +219,11 @@ public class MeasureService {
     if (measureId == null || measureId.isEmpty()) {
       throw new InvalidIdException("Measure", "Update (PUT)", "(PUT [base]/[resource]/[id])");
     }
+
+    if (testCaseConfig == null) {
+      throw new InvalidRequestException("TestCaseConfiguration cannot be null");
+    }
+
     final Measure existingMeasure = findActiveMeasureById(measureId);
 
     verifyAuthorization(username, existingMeasure);
