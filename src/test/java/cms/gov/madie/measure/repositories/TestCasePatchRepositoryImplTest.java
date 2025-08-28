@@ -60,7 +60,7 @@ class TestCasePatchRepositoryImplTest {
   }
 
   @Test
-  void testFindAndModifyTestCaseConfig_ShouldReturnNullWhenNoDocumentFound() {
+  void testFindAndModifyTestCaseConfigShouldReturnNullWhenNoDocumentFound() {
     String measureId = "123";
     TestCaseConfiguration testCaseConfiguration =
         TestCaseConfiguration.builder().sdeIncluded(true).build();
