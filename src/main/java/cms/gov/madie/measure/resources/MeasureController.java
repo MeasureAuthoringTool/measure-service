@@ -4,6 +4,7 @@ import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
@@ -45,6 +46,7 @@ public class MeasureController {
   private final MeasureSetRepository measureSetRepository;
   private final MeasureSetService measureSetService;
   private final TestCaseService testCaseService;
+  private final TestCasePatchRepository testCasePatchRepository;
 
   @PostMapping("/measures/draftstatus")
   public ResponseEntity<Map<String, Boolean>> getDraftStatuses(
@@ -133,6 +135,37 @@ public class MeasureController {
     Measure savedMeasure =
         measureService.createMeasure(measure, username, accessToken, addDefaultCQL);
     return ResponseEntity.status(HttpStatus.CREATED).body(savedMeasure);
+  }
+
+  @PutMapping("/measures/{id}/test-case-config")
+  public ResponseEntity<Measure> updateMeasureTestCaseConfiguration(
+      @PathVariable("id") String id,
+      @RequestBody TestCaseConfiguration testCaseConfig,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
+
+    final String username = principal.getName();
+    if (id == null || id.isEmpty()) {
+      throw new InvalidIdException("Measure", "Update (PUT)", "(PUT [base]/[resource]/[id])");
+    }
+
+    final Measure existingMeasure = measureService.findActiveMeasureById(id);
+
+    measureService.verifyAuthorization(username, existingMeasure);
+
+    if (!existingMeasure.getMeasureMetaData().isDraft()) {
+      throw new InvalidDraftStatusException(existingMeasure.getId());
+    }
+
+    Measure updatedMeasure =
+        testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, id);
+    log.info(
+        "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
+        existingMeasure.getId(),
+        testCaseConfig,
+        username);
+
+    return ResponseEntity.ok(updatedMeasure);
   }
 
   @PutMapping("/measures/{id}")
