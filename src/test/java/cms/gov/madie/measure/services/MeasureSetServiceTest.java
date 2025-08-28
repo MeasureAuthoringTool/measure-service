@@ -305,34 +305,35 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
   }
 
-  @Test
-  public void testUpdateOwnership() {
-    MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
-    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+  //  @Test
+  //  public void testUpdateOwnership() {
+  //    MeasureSet updatedMeasureSet = measureSet;
+  //    updatedMeasureSet.setOwner("testUser");
+  //
+  // when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+  //    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+  //
+  //    MeasureSet result = measureSetService.updateOwnership("1", "testUser");
+  //    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
+  //    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
+  //    verify(actionLogService, times(1))
+  //        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "apiKey");
+  //  }
 
-    MeasureSet result = measureSetService.updateOwnership("1", "testUser");
-    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
-    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
-    verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "apiKey");
-  }
-
-  @Test
-  public void testUpdateOwnershipWhenMeasureSetNotFound() {
-    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.empty());
-
-    Exception ex =
-        assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureSetService.updateOwnership("1", "testUser"));
-    assertTrue(ex.getMessage().contains("measure set may not exist."));
-    verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
-    verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
-    verify(actionLogService, times(0))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "apiKey");
-  }
+  //  @Test
+  //  public void testUpdateOwnershipWhenMeasureSetNotFound() {
+  //    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.empty());
+  //
+  //    Exception ex =
+  //        assertThrows(
+  //            ResourceNotFoundException.class,
+  //            () -> measureSetService.updateOwnership("1", "testUser"));
+  //    assertTrue(ex.getMessage().contains("measure set may not exist."));
+  //    verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
+  //    verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
+  //    verify(actionLogService, times(0))
+  //        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "apiKey");
+  //  }
 
   @Test
   public void testCreateCmsId() {
@@ -681,13 +682,55 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet result = measureSetService.changeOwnership("1", "testUser", true, "anotherUser");
+    MeasureSet result = measureSetService.changeOwnership("1", "testUser", false, "apiKey");
     assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
     assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
     assertThat(result.getAcls().size(), is(equalTo(1)));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "anotherUser");
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "apiKey");
+  }
+
+  @Test
+  public void testChangeOwnershipForTransferMeasures() {
+    measureSet.setAcls(Collections.emptyList());
+    MeasureSet updatedMeasureSet = measureSet;
+    updatedMeasureSet.setOwner("testUser");
+    updatedMeasureSet.setAcls(null);
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result = measureSetService.changeOwnership("1", "testUser", true, "anotherUser");
+    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
+    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
+    assertThat(result.getAcls().size(), is(equalTo(1)));
+    assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
+    assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
+    assertThat(
+        result.getAcls().get(0).getUserId(),
+        is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
+    verify(actionLogService, times(1))
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
+  }
+
+  @Test
+  public void testChangeOwnershipRetainAccess() {
+    MeasureSet updatedMeasureSet = measureSet;
+    updatedMeasureSet.setOwner("testUser");
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result = measureSetService.changeOwnership("1", "testUser", true, "anotherUser");
+    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
+    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
+    assertThat(result.getAcls().size(), is(equalTo(2)));
+    assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
+    assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
+    assertThat(
+        result.getAcls().get(0).getUserId(),
+        is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
+    verify(actionLogService, times(1))
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
   }
 
   @Test
@@ -700,9 +743,16 @@ public class MeasureSetServiceTest {
     MeasureSet result = measureSetService.changeOwnership("1", "testUser", false, "anotherUser");
     assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
     assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
-    assertNull(result.getAcls());
+    assertNotNull(result.getAcls());
+    assertThat(result.getAcls().size(), is(1));
+    assertThat(
+        result.getAcls().get(0).getUserId(),
+        is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
+    assertThat(
+        result.getAcls().get(0).getRoles(),
+        is(equalTo(updatedMeasureSet.getAcls().get(0).getRoles())));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "anotherUser");
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
   }
 
   @Test

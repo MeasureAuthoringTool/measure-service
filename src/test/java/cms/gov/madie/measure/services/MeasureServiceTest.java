@@ -1360,10 +1360,19 @@ public class MeasureServiceTest implements ResourceUtil {
         Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
     Optional<Measure> persistedMeasure = Optional.of(measure);
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
-    when(measureSetService.updateOwnership(anyString(), anyString())).thenReturn(new MeasureSet());
+    when(measureSetService.changeOwnership(
+            anyString(), anyString(), any(Boolean.class), anyString()))
+        .thenReturn(new MeasureSet());
 
     boolean result = measureService.changeOwnership(measure.getId(), "user123");
     assertTrue(result);
+  }
+
+  @Test
+  public void testChangeOwnershipPersistedMeasureDoesNotExist() {
+    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+    boolean result = measureService.changeOwnership("testMeasureId", "user123");
+    assertFalse(result);
   }
 
   @Test
