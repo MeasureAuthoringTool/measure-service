@@ -214,23 +214,32 @@ public class MeasureService {
     return savedMeasure;
   }
 
+  /**
+   * Only Measure owner or shared with users can update TestcaseConfig These updates are not
+   * restricted to draft measures
+   *
+   * @param username username
+   * @param measureId measureId
+   * @param testCaseConfig testCaseConfig
+   * @return Updated measure
+   */
   public Measure updateMeasureTestCaseConfiguration(
       String username, String measureId, TestCaseConfiguration testCaseConfig) {
     if (measureId == null || measureId.isEmpty()) {
+      log.error("updateMeasureTestCaseConfiguration:: Measure ID is null or empty");
       throw new InvalidIdException("Measure", "Update (PUT)", "(PUT [base]/[resource]/[id])");
     }
 
     if (testCaseConfig == null) {
+      log.error(
+          "updateMeasureTestCaseConfiguration:: Test Case Configuration is null for Measure ID [{}]",
+          measureId);
       throw new InvalidRequestException("TestCaseConfiguration cannot be null");
     }
 
     final Measure existingMeasure = findActiveMeasureById(measureId);
 
     verifyAuthorization(username, existingMeasure);
-
-    if (!existingMeasure.getMeasureMetaData().isDraft()) {
-      throw new InvalidDraftStatusException(existingMeasure.getId());
-    }
 
     Measure updatedMeasure =
         testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId);

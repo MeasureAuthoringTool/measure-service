@@ -5,7 +5,6 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
-import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.common.ActionType;
@@ -175,9 +174,7 @@ public class MeasureController {
         measureService.verifyAuthorization(username, existingMeasure);
 
         if (!existingMeasure.getMeasureMetaData().isDraft()) {
-          if (!MeasureUtil.isTestCaseConfigurationChanged(existingMeasure, measure)) {
-            throw new InvalidDraftStatusException(measure.getId());
-          }
+          throw new InvalidDraftStatusException(measure.getId());
         }
 
         // no user can update a soft-deleted measure

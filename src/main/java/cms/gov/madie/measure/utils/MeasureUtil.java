@@ -186,7 +186,8 @@ public class MeasureUtil {
     return !Objects.equals(persistedMeasure.getCqlLibraryName(), measure.getCqlLibraryName());
   }
 
-  public static boolean isTestCaseConfigurationChanged(Measure updatingMeasure, Measure existingMeasure) {
+  public static boolean isTestCaseConfigurationChanged(
+      Measure updatingMeasure, Measure existingMeasure) {
     return !Objects.deepEquals(
         updatingMeasure.getTestCaseConfiguration(), existingMeasure.getTestCaseConfiguration());
   }

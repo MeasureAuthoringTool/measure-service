@@ -2291,27 +2291,6 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  void updateMeasureTestCaseConfigurationThrowsInvalidDraftStatusExceptionForNonDraftMeasure() {
-    String username = "testUser";
-    String measureId = "testMeasureId";
-    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
-    Measure existingMeasure =
-        Measure.builder()
-            .id(measureId)
-            .measureMetaData(MeasureMetaData.builder().draft(false).build())
-            .build();
-
-    when(measureRepository.findByIdAndActive(measureId, true))
-        .thenReturn(Optional.of(existingMeasure));
-    doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
-
-    assertThrows(
-        InvalidDraftStatusException.class,
-        () ->
-            measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig));
-  }
-
-  @Test
   void findActiveMeasureByIdReturnsMeasureWhenIdExists() {
     String measureId = "existingMeasureId";
     Measure measure = Measure.builder().id(measureId).active(true).build();
