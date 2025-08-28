@@ -6,6 +6,7 @@ import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import cms.gov.madie.measure.resources.DuplicateKeyException;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.access.AclOperation;
@@ -41,6 +42,7 @@ import java.util.stream.Collectors;
 public class MeasureService {
   private final MeasureRepository measureRepository;
   private final MeasureSetRepository measureSetRepository;
+  private final TestCasePatchRepository testCasePatchRepository;
   private final ElmTranslatorClient elmTranslatorClient;
   private final MeasureUtil measureUtil;
   private final ActionLogService actionLogService;
@@ -210,6 +212,31 @@ public class MeasureService {
     measureSetService.createMeasureSet(
         username, savedMeasure.getId(), savedMeasure.getMeasureSetId(), null);
     return savedMeasure;
+  }
+
+  public Measure updateMeasureTestCaseConfiguration(
+      String username, String measureId, TestCaseConfiguration testCaseConfig) {
+    if (measureId == null || measureId.isEmpty()) {
+      throw new InvalidIdException("Measure", "Update (PUT)", "(PUT [base]/[resource]/[id])");
+    }
+    final Measure existingMeasure = findActiveMeasureById(measureId);
+
+    verifyAuthorization(username, existingMeasure);
+
+    if (!existingMeasure.getMeasureMetaData().isDraft()) {
+      throw new InvalidDraftStatusException(existingMeasure.getId());
+    }
+
+    Measure updatedMeasure =
+        testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId);
+
+    log.info(
+        "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
+        updatedMeasure.getId(),
+        testCaseConfig,
+        username);
+
+    return updatedMeasure;
   }
 
   public Measure updateMeasure(

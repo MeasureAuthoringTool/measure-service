@@ -8,7 +8,6 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
-import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
@@ -56,7 +55,6 @@ class MeasureControllerTest {
   @Mock private MeasureSetRepository measureSetRepository;
   @Mock private TestCaseService testCaseService;
   @InjectMocks private MeasureController controller;
-  @Mock TestCasePatchRepository testCasePatchRepository;
 
   private Measure measure1;
   private MeasureListDTO measureList;
@@ -1035,83 +1033,27 @@ class MeasureControllerTest {
   }
 
   @Test
-  void updateMeasureTestCaseConfigurationSuccessfully() {
+  void updateMeasureTestCaseConfigurationReturnsUpdatedMeasure() {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
-    Measure existingMeasure =
-        Measure.builder()
-            .id("measureId")
-            .measureMetaData(MeasureMetaData.builder().draft(true).build())
-            .build();
-
+    Measure updatedMeasure = Measure.builder().id("measureId").build();
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
 
-    when(measureService.findActiveMeasureById("measureId")).thenReturn(existingMeasure);
-    doNothing().when(measureService).verifyAuthorization("test.user", existingMeasure);
-    when(testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, "measureId"))
-        .thenReturn(existingMeasure);
+    when(measureService.updateMeasureTestCaseConfiguration(
+            "test.user", "measureId", testCaseConfig))
+        .thenReturn(updatedMeasure);
 
     ResponseEntity<Measure> response =
         controller.updateMeasureTestCaseConfiguration(
             "measureId", testCaseConfig, principal, "Bearer TOKEN");
 
     assertNotNull(response.getBody());
-    assertEquals(existingMeasure, response.getBody());
-    verify(measureService, times(1)).verifyAuthorization("test.user", existingMeasure);
-    verify(testCasePatchRepository, times(1))
-        .findAndModifyTestCaseConfig(testCaseConfig, "measureId");
-  }
-
-  @Test
-  void updateMeasureTestCaseConfigurationThrowsInvalidIdExceptionForNullId() {
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-
-    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
-
-    assertThrows(
-        InvalidIdException.class,
-        () ->
-            controller.updateMeasureTestCaseConfiguration(
-                null, testCaseConfig, principal, "Bearer TOKEN"));
-  }
-
-  @Test
-  void updateMeasureTestCaseConfigurationThrowsInvalidIdExceptionForEmptyId() {
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-
-    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
-
-    assertThrows(
-        InvalidIdException.class,
-        () ->
-            controller.updateMeasureTestCaseConfiguration(
-                "", testCaseConfig, principal, "Bearer TOKEN"));
-  }
-
-  @Test
-  void updateMeasureTestCaseConfigurationThrowsInvalidDraftStatusExceptionForNonDraftMeasure() {
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-
-    Measure existingMeasure =
-        Measure.builder()
-            .id("measureId")
-            .measureMetaData(MeasureMetaData.builder().draft(false).build())
-            .build();
-
-    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
-
-    when(measureService.findActiveMeasureById("measureId")).thenReturn(existingMeasure);
-    doNothing().when(measureService).verifyAuthorization("test.user", existingMeasure);
-
-    assertThrows(
-        InvalidDraftStatusException.class,
-        () ->
-            controller.updateMeasureTestCaseConfiguration(
-                "measureId", testCaseConfig, principal, "Bearer TOKEN"));
+    assertEquals(updatedMeasure, response.getBody());
+    verify(measureService, times(1))
+        .updateMeasureTestCaseConfiguration("test.user", "measureId", testCaseConfig);
+    verify(actionLogService, times(1))
+        .logAction("measureId", Measure.class, ActionType.UPDATED, "test.user");
   }
 
   @Test
@@ -1119,18 +1061,11 @@ class MeasureControllerTest {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("invalid.user");
 
-    Measure existingMeasure =
-        Measure.builder()
-            .id("measureId")
-            .measureMetaData(MeasureMetaData.builder().draft(true).build())
-            .build();
-
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
 
-    when(measureService.findActiveMeasureById("measureId")).thenReturn(existingMeasure);
     doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
         .when(measureService)
-        .verifyAuthorization("invalid.user", existingMeasure);
+        .updateMeasureTestCaseConfiguration("invalid.user", "measureId", testCaseConfig);
 
     assertThrows(
         UnauthorizedException.class,
