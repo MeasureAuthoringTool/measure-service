@@ -13,6 +13,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.google.gson.Gson;
+
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
@@ -101,6 +103,8 @@ public class MeasureControllerMvcTest {
     mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     return mapper.writeValueAsString(obj);
   }
+
+  Gson gson = new Gson();
 
   @Test
   public void testUpdateAccessControl() throws Exception {
@@ -2264,5 +2268,53 @@ public class MeasureControllerMvcTest {
         .countMeasuresByOwnership(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.ALL)));
 
     verifyNoMoreInteractions(measureService);
+  }
+
+  @Test
+  public void testTransferMeasures() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+
+    doReturn(true)
+        .when(measureService)
+        .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(false), eq("testUser"));
+
+    mockMvc
+        .perform(
+            put("/measures/transfer")
+                .with(user(TEST_USER_ID))
+                .with(csrf())
+                .header("harpId", "testUser")
+                .header("Authorization", "test-okta")
+                .queryParam("retainShareAccess", "true")
+                .content(gson.toJson(List.of(measureId)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON))
+        .andDo(print())
+        .andExpect(status().isOk());
+
+    verify(measureService, times(1))
+        .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID));
+  }
+
+  @Test
+  public void testTransferMeasuresNullMeasureIds() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+
+    mockMvc
+        .perform(
+            put("/measures/transfer")
+                .with(user(TEST_USER_ID))
+                .with(csrf())
+                .header("harpId", "testUser")
+                .header("Authorization", "test-okta")
+                .queryParam("retainShareAccess", "true")
+                .content(gson.toJson(Collections.emptyList()))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON))
+        .andDo(print())
+        .andExpect(status().isBadRequest());
+
+    verify(measureService, times(0))
+        .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID));
   }
 }

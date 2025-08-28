@@ -323,4 +323,37 @@ public class MeasureSetService {
     }
     return mostRecentMeasures;
   }
+
+  /**
+   * Change ownership in MeasureSet
+   *
+   * @param measureSetId - the MeasureSet that needs change of ownership
+   * @param userId - new owner
+   * @param retainShareAccess - keep SHARED_WITH if true, otherwise remove
+   * @param conductedBy - the user that performs the ownership change
+   * @return
+   */
+  public MeasureSet changeOwnership(
+      String measureSetId, String userId, boolean retainShareAccess, String conductedBy) {
+    Optional<MeasureSet> OptionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
+    if (OptionalMeasureSet.isPresent()) {
+      MeasureSet measureSet = OptionalMeasureSet.get();
+      measureSet.setOwner(userId);
+      if (!retainShareAccess) {
+        measureSet.setAcls(null);
+      }
+      MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
+      log.info("Owner changed in Measure set [{}]", updatedMeasureSet.getId());
+      actionLogService.logMeasureSetAction(
+          measureSetId, MeasureSet.class, ActionType.UPDATED, conductedBy);
+      return updatedMeasureSet;
+    } else {
+      String error =
+          String.format(
+              "Measure with set id `%s` can not change ownership `%s`, measure set may not exist.",
+              measureSetId, userId);
+      log.error(error);
+      throw new ResourceNotFoundException(error);
+    }
+  }
 }

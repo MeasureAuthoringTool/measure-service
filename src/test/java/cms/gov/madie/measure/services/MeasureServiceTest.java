@@ -2239,4 +2239,29 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertTrue(group.getStratifications().isEmpty());
   }
+
+  @Test
+  public void testTransferMeasures() {
+    MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("testUser").build();
+    Measure measure =
+        Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
+    Optional<Measure> persistedMeasure = Optional.of(measure);
+    when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
+    when(measureSetService.changeOwnership(
+            anyString(), anyString(), any(Boolean.class), anyString()))
+        .thenReturn(new MeasureSet());
+
+    boolean result =
+        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
+    assertTrue(result);
+  }
+
+  @Test
+  public void testTransferMeasuresNotFound() {
+    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+
+    boolean result =
+        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
+    assertFalse(result);
+  }
 }

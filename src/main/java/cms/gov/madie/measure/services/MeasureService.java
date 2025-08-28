@@ -955,4 +955,29 @@ public class MeasureService {
       boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
     return measureRepository.countMeasuresByOwnership(isActive, userId, ownershipTypes);
   }
+
+  /**
+   * Transfer ownership for all the measure ids passed in
+   *
+   * @param measureIds - measures that need transfer ownership
+   * @param harpId - new owner
+   * @param retainShareAccess - if true, retain SHARED_WITH, if false, remove it
+   * @param conductedBy - user who performs the transfer
+   * @return - true for all successful transfer, false if any of the transfer is not successful,
+   *     e.g. measure not found
+   */
+  public boolean transferMeasures(
+      List<String> measureIds, String harpId, boolean retainShareAccess, String conductedBy) {
+    boolean result = true;
+    for (String measureId : measureIds) {
+      Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
+      if (persistedMeasure.isPresent()) {
+        measureSetService.changeOwnership(
+            persistedMeasure.get().getMeasureSetId(), harpId, retainShareAccess, conductedBy);
+      } else {
+        result = false;
+      }
+    }
+    return result;
+  }
 }

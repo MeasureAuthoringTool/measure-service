@@ -35,9 +35,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -1030,5 +1032,31 @@ class MeasureControllerTest {
         .updateTestCase(saveTestCaseCaptor.capture(), anyString(), anyString(), anyString());
     TestCase persisted = saveTestCaseCaptor.getValue();
     assertThat(persisted, is(equalTo(expected.getTestCases().get(0))));
+  }
+
+  @Test
+  public void testTransferMeasures() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    when(measureService.transferMeasures(
+            any(List.class), anyString(), any(Boolean.class), anyString()))
+        .thenReturn(true);
+    ResponseEntity<Boolean> result =
+        controller.transferMeasures(
+            List.of("testMeasureId"), "testHarpId", true, principal, "testToken");
+    assertTrue(result.getBody());
+    assertEquals(HttpStatus.OK, result.getStatusCode());
+  }
+
+  @Test
+  public void testTransferMeasuresNullMeasureIds() {
+    Principal principal = mock(Principal.class);
+
+    ResponseEntity<Boolean> result =
+        controller.transferMeasures(
+            Collections.emptyList(), "testHarpId", true, principal, "testToken");
+    assertFalse(result.getBody());
+    assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
   }
 }

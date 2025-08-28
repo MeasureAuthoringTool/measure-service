@@ -673,4 +673,50 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository).findMeasuresByMeasureSetId("set1", false, null);
     verifyNoInteractions(measureRepository);
   }
+
+  @Test
+  public void testChangeOwnership() {
+    MeasureSet updatedMeasureSet = measureSet;
+    updatedMeasureSet.setOwner("testUser");
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result = measureSetService.changeOwnership("1", "testUser", true, "anotherUser");
+    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
+    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
+    assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
+    assertThat(result.getAcls().size(), is(equalTo(1)));
+    verify(actionLogService, times(1))
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "anotherUser");
+  }
+
+  @Test
+  public void testChangeOwnershipDoNotRetainAccess() {
+    MeasureSet updatedMeasureSet = measureSet;
+    updatedMeasureSet.setOwner("testUser");
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result = measureSetService.changeOwnership("1", "testUser", false, "anotherUser");
+    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
+    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
+    assertNull(result.getAcls());
+    verify(actionLogService, times(1))
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "anotherUser");
+  }
+
+  @Test
+  public void testChangeOwnershipWhenMeasureSetNotFound() {
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.empty());
+
+    Exception ex =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> measureSetService.changeOwnership("1", "testUser", true, "anotherUser"));
+    assertTrue(ex.getMessage().contains("measure set may not exist."));
+    verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
+    verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
+    verify(actionLogService, times(0))
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "anotherUser");
+  }
 }
