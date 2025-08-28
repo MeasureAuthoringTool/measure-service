@@ -185,28 +185,6 @@ public class MeasureSetService {
     }
   }
 
-  //  public MeasureSet updateOwnership(String measureSetId, String userId) {
-  //    Optional<MeasureSet> OptionalMeasureSet =
-  // measureSetRepository.findByMeasureSetId(measureSetId);
-  //    if (OptionalMeasureSet.isPresent()) {
-  //      MeasureSet measureSet = OptionalMeasureSet.get();
-  //      measureSet.setOwner(userId);
-  //      MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
-  //      log.info("Owner changed in Measure set [{}]", updatedMeasureSet.getId());
-  //      actionLogService.logMeasureSetAction(
-  //          measureSetId, MeasureSet.class, ActionType.UPDATED, "apiKey");
-  //      return updatedMeasureSet;
-  //    } else {
-  //      String error =
-  //          String.format(
-  //              "Measure with set id `%s` can not change ownership `%s`, measure set may not
-  // exist.",
-  //              measureSetId, userId);
-  //      log.error(error);
-  //      throw new ResourceNotFoundException(error);
-  //    }
-  //  }
-
   public MeasureSet createAndUpdateCmsId(String measureSetId, String username) {
     Optional<MeasureSet> measureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (!measureSet.isPresent()) {
