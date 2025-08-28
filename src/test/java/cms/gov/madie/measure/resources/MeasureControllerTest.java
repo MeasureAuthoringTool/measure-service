@@ -1035,6 +1035,48 @@ class MeasureControllerTest {
   }
 
   @Test
+  void updateMeasureTestCaseConfigurationReturnsUpdatedMeasure() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    Measure updatedMeasure = Measure.builder().id("measureId").build();
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+
+    when(measureService.updateMeasureTestCaseConfiguration(
+            "test.user", "measureId", testCaseConfig))
+        .thenReturn(updatedMeasure);
+
+    ResponseEntity<Measure> response =
+        controller.updateMeasureTestCaseConfiguration(
+            "measureId", testCaseConfig, principal, "Bearer TOKEN");
+
+    assertNotNull(response.getBody());
+    assertEquals(updatedMeasure, response.getBody());
+    verify(measureService, times(1))
+        .updateMeasureTestCaseConfiguration("test.user", "measureId", testCaseConfig);
+    verify(actionLogService, times(1))
+        .logAction("measureId", Measure.class, ActionType.UPDATED, "test.user");
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationThrowsUnauthorizedExceptionForInvalidUser() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("invalid.user");
+
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+
+    doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
+        .when(measureService)
+        .updateMeasureTestCaseConfiguration("invalid.user", "measureId", testCaseConfig);
+
+    assertThrows(
+        UnauthorizedException.class,
+        () ->
+            controller.updateMeasureTestCaseConfiguration(
+                "measureId", testCaseConfig, principal, "Bearer TOKEN"));
+  }
+
+  @Test
   public void testTransferMeasures() {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");

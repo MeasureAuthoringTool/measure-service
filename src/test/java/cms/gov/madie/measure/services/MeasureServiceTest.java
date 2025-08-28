@@ -36,6 +36,7 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.ActionType;
@@ -72,6 +73,7 @@ import gov.cms.madie.models.common.Version;
 public class MeasureServiceTest implements ResourceUtil {
   @Mock private MeasureRepository measureRepository;
   @Mock private MeasureSetRepository measureSetRepository;
+  @Mock private TestCasePatchRepository testCasePatchRepository;
   @Mock private OrganizationRepository organizationRepository;
   @Mock private ElmTranslatorClient elmTranslatorClient;
   @Mock private MeasureUtil measureUtil;
@@ -2247,6 +2249,113 @@ public class MeasureServiceTest implements ResourceUtil {
     measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
 
     assertTrue(group.getStratifications().isEmpty());
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationSuccessfullyUpdatesMeasure() {
+    String username = "testUser";
+    String measureId = "testMeasureId";
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+    Measure existingMeasure =
+        Measure.builder()
+            .id(measureId)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .build();
+    Measure updatedMeasure = Measure.builder().id(measureId).build();
+
+    when(measureRepository.findByIdAndActive(measureId, true))
+        .thenReturn(Optional.of(existingMeasure));
+    doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
+    when(testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId))
+        .thenReturn(updatedMeasure);
+
+    Measure result =
+        measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig);
+
+    assertNotNull(result);
+    assertEquals(updatedMeasure, result);
+    verify(measureService, times(1)).verifyAuthorization(username, existingMeasure);
+    verify(testCasePatchRepository, times(1))
+        .findAndModifyTestCaseConfig(testCaseConfig, measureId);
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationThrowsInvalidIdExceptionForNullId() {
+    String username = "testUser";
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+
+    assertThrows(
+        InvalidIdException.class,
+        () -> measureService.updateMeasureTestCaseConfiguration(username, null, testCaseConfig));
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationThrowsInvalidIdExceptionForEmptyId() {
+    String username = "testUser";
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+
+    assertThrows(
+        InvalidIdException.class,
+        () -> measureService.updateMeasureTestCaseConfiguration(username, "", testCaseConfig));
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationThrowsInvalidDraftStatusExceptionForNonDraftMeasure() {
+    String username = "testUser";
+    String measureId = "testMeasureId";
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+    Measure existingMeasure =
+        Measure.builder()
+            .id(measureId)
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .build();
+
+    when(measureRepository.findByIdAndActive(measureId, true))
+        .thenReturn(Optional.of(existingMeasure));
+    doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
+
+    assertThrows(
+        InvalidDraftStatusException.class,
+        () ->
+            measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig));
+  }
+
+  @Test
+  void findActiveMeasureByIdReturnsMeasureWhenIdExists() {
+    String measureId = "existingMeasureId";
+    Measure measure = Measure.builder().id(measureId).active(true).build();
+
+    when(measureRepository.findByIdAndActive(measureId, true)).thenReturn(Optional.of(measure));
+
+    Measure result = measureService.findActiveMeasureById(measureId);
+
+    assertNotNull(result);
+    assertEquals(measureId, result.getId());
+    verify(measureRepository, times(1)).findByIdAndActive(measureId, true);
+  }
+
+  @Test
+  void findActiveMeasureByIdThrowsResourceNotFoundExceptionWhenIdDoesNotExist() {
+    String measureId = "nonExistingMeasureId";
+
+    when(measureRepository.findByIdAndActive(measureId, true)).thenReturn(Optional.empty());
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> measureService.findActiveMeasureById(measureId),
+        "Expected ResourceNotFoundException for non-existing measureId");
+    verify(measureRepository, times(1)).findByIdAndActive(measureId, true);
+  }
+
+  @Test
+  void findActiveMeasureByIdThrowsResourceNotFoundExceptionForNullId() {
+    when(measureRepository.findByIdAndActive(null, true)).thenReturn(Optional.empty());
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> measureService.findActiveMeasureById(null),
+        "Expected ResourceNotFoundException for null measureId");
+    verify(measureRepository, times(1)).findByIdAndActive(null, true);
   }
 
   @Test

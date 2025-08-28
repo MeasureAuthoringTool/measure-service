@@ -6,6 +6,7 @@ import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import cms.gov.madie.measure.resources.DuplicateKeyException;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.access.AclOperation;
@@ -19,6 +20,7 @@ import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
+import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -40,6 +42,7 @@ import java.util.stream.Collectors;
 public class MeasureService {
   private final MeasureRepository measureRepository;
   private final MeasureSetRepository measureSetRepository;
+  private final TestCasePatchRepository testCasePatchRepository;
   private final ElmTranslatorClient elmTranslatorClient;
   private final MeasureUtil measureUtil;
   private final ActionLogService actionLogService;
@@ -128,6 +131,13 @@ public class MeasureService {
         .orElse(null);
   }
 
+  public Measure findActiveMeasureById(@Nullable String measureId) {
+    // also returns the exception when id is not found
+    return measureRepository
+        .findByIdAndActive(measureId, true)
+        .orElseThrow(() -> new ResourceNotFoundException("Measure", measureId));
+  }
+
   public Measure createMeasure(
       Measure measure, final String username, String accessToken, boolean addDefaultCQL) {
     log.info("User [{}] is attempting to create a new measure", username);
@@ -152,8 +162,7 @@ public class MeasureService {
       measureCopy.setErrors(errorTypes);
     }
     Instant now = Instant.now();
-    // Clear ID so that the unique GUID from MongoDB will be applied
-    measureCopy.setId(null);
+    measureCopy.setId(null); // Clear ID so that the unique GUID from MongoDB will be applied
     measureCopy.setCreatedBy(username);
     measureCopy.setCreatedAt(now);
     measureCopy.setLastModifiedBy(username);
@@ -168,7 +177,6 @@ public class MeasureService {
       metaData.setDraft(true);
       measureCopy.setMeasureMetaData(metaData);
     }
-
     if (addDefaultCQL) {
       if (ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())) {
         measureCopy.setCql(
@@ -193,7 +201,6 @@ public class MeasureService {
                 : "");
       }
     }
-
     Measure savedMeasure = measureRepository.save(measureCopy);
     log.info(
         "User [{}] successfully created new measure with ID [{}]", username, savedMeasure.getId());
@@ -204,6 +211,33 @@ public class MeasureService {
     return savedMeasure;
   }
 
+  public Measure updateMeasureTestCaseConfiguration(
+      String username, String measureId, TestCaseConfiguration testCaseConfig) {
+    if (measureId == null || measureId.isEmpty()) {
+      throw new InvalidIdException("Measure", "Update (PUT)", "(PUT [base]/[resource]/[id])");
+    }
+    if (testCaseConfig == null) {
+      throw new InvalidRequestException("TestCaseConfiguration cannot be null");
+    }
+    final Measure existingMeasure = findActiveMeasureById(measureId);
+
+    verifyAuthorization(username, existingMeasure);
+
+    if (!existingMeasure.getMeasureMetaData().isDraft()) {
+      throw new InvalidDraftStatusException(existingMeasure.getId());
+    }
+
+    Measure updatedMeasure =
+        testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId);
+    log.info(
+        "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
+        updatedMeasure.getId(),
+        testCaseConfig,
+        username);
+
+    return updatedMeasure;
+  }
+
   public Measure updateMeasure(
       final Measure existingMeasure,
       final String username,
@@ -212,7 +246,6 @@ public class MeasureService {
     if (measureUtil.isCqlLibraryNameChanged(updatingMeasure, existingMeasure)) {
       checkDuplicateCqlLibraryName(updatingMeasure.getCqlLibraryName());
     }
-
     if (StringUtils.isBlank(existingMeasure.getVersionId())) {
       existingMeasure.setVersionId(UUID.randomUUID().toString());
     }
@@ -224,14 +257,6 @@ public class MeasureService {
       updatingMeasure.setIncludedLibraries(
           MeasureUtil.getIncludedLibraries(updatingMeasure.getCql()));
     }
-    if (measureUtil.isTestCaseConfigurationChanged(updatingMeasure, existingMeasure)) {
-      log.info(
-          "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
-          existingMeasure.getId(),
-          updatingMeasure.getTestCaseConfiguration(),
-          username);
-    }
-
     // remove stratifications that do not have associations or cql definitions
     boolean isQiCoreModel =
         ModelType.QI_CORE.getValue().equalsIgnoreCase(updatingMeasure.getModel())
@@ -956,16 +981,6 @@ public class MeasureService {
     return measureRepository.countMeasuresByOwnership(isActive, userId, ownershipTypes);
   }
 
-  /**
-   * Transfer ownership for all the measure ids passed in
-   *
-   * @param measureIds - measures that need transfer ownership
-   * @param harpId - new owner
-   * @param retainShareAccess - if true, retain SHARED_WITH, if false, remove it
-   * @param conductedBy - user who performs the transfer
-   * @return - true for all successful transfer, false if any of the transfer is not successful,
-   *     e.g. measure not found
-   */
   public boolean transferMeasures(
       List<String> measureIds, String harpId, boolean retainShareAccess, String conductedBy) {
     boolean result = true;

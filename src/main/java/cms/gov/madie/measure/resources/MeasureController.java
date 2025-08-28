@@ -135,6 +135,19 @@ public class MeasureController {
     return ResponseEntity.status(HttpStatus.CREATED).body(savedMeasure);
   }
 
+  @PutMapping("/measures/{id}/test-case-config")
+  public ResponseEntity<Measure> updateMeasureTestCaseConfiguration(
+      @PathVariable("id") String id,
+      @RequestBody TestCaseConfiguration testCaseConfig,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
+    final String username = principal.getName();
+    Measure updatedMeasure =
+        measureService.updateMeasureTestCaseConfiguration(username, id, testCaseConfig);
+    actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
+    return ResponseEntity.ok().body(updatedMeasure);
+  }
+
   @PutMapping("/measures/{id}")
   public ResponseEntity<Measure> updateMeasure(
       @PathVariable("id") String id,
