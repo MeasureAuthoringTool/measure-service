@@ -93,7 +93,7 @@ public class MeasureControllerMvcTest {
 
   ObjectMapper objectMapper = new ObjectMapper();
   private static final String MODEL = ModelType.QI_CORE.toString();
-
+  Gson gson = new Gson();
   private static final String LIBRARY_NAME_VALIDATION_ERROR =
       "Library name must start with an upper case letter, followed by alpha-numeric character(s) and must not contain spaces or other special characters except of underscore for QDM.";
 
@@ -103,8 +103,6 @@ public class MeasureControllerMvcTest {
     mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     return mapper.writeValueAsString(obj);
   }
-
-  Gson gson = new Gson();
 
   @Test
   public void testUpdateAccessControl() throws Exception {
