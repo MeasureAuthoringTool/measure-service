@@ -19,6 +19,7 @@ import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
+import jakarta.annotation.Nullable;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -128,6 +129,13 @@ public class MeasureService {
         .orElse(null);
   }
 
+  public Measure findActiveMeasureById(@Nullable String measureId) {
+    // also returns the exception when id is not found
+    return measureRepository
+        .findByIdAndActive(measureId, true)
+        .orElseThrow(() -> new ResourceNotFoundException("Measure", measureId));
+  }
+
   public Measure createMeasure(
       Measure measure, final String username, String accessToken, boolean addDefaultCQL) {
     log.info("User [{}] is attempting to create a new measure", username);
@@ -223,13 +231,6 @@ public class MeasureService {
     if (!StringUtils.equals(updatingMeasure.getCql(), existingMeasure.getCql())) {
       updatingMeasure.setIncludedLibraries(
           MeasureUtil.getIncludedLibraries(updatingMeasure.getCql()));
-    }
-    if (measureUtil.isTestCaseConfigurationChanged(updatingMeasure, existingMeasure)) {
-      log.info(
-          "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
-          existingMeasure.getId(),
-          updatingMeasure.getTestCaseConfiguration(),
-          username);
     }
 
     // remove stratifications that do not have associations or cql definitions
