@@ -20,6 +20,7 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.Collections;
@@ -29,6 +30,7 @@ import java.util.Set;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -56,6 +58,9 @@ public class AdminControllerMvcTest {
   @MockitoBean private MeasureRepository measureRepository;
   @MockitoBean private ExportRepository exportRepository;
   @MockitoBean private CqmMeasureRepository cqmMeasureRepository;
+
+  @MockitoBean private MeasureLockService measureLockService;
+  @MockitoBean private TestCaseLockService testCaseLockService;
 
   @Autowired private MockMvc mockMvc;
 
@@ -953,5 +958,34 @@ public class AdminControllerMvcTest {
     assertEquals(
         TestCaseValidationStatus.INVALID.toString(),
         measure.getTestCases().get(2).getValidationStatus());
+  }
+
+  @Test
+  public void unlockAll() throws Exception {
+    String msg1 = "Delete measure locks for harpId: " + TEST_USER_ID;
+    String msg2 = "Deleted measure lock: measureId";
+    String msg3 = "Delete test case locks for harpId: " + TEST_USER_ID;
+    String msg4 = "Deleted test case lock: testCaseId";
+    List<String> deleteMeasureLocksMsg = List.of(msg1, msg2);
+    List<String> deleteTestCaseLocksMsg = List.of(msg3, msg4);
+
+    when(measureLockService.unlockByUser(anyString())).thenReturn(deleteMeasureLocksMsg);
+    when(testCaseLockService.unlockByUser(anyString())).thenReturn(deleteTestCaseLocksMsg);
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                MockMvcRequestBuilders.put("/admin/unlock")
+                    .with(csrf())
+                    .with(user(TEST_USER_ID))
+                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .header("Authorization", "test-okta")
+                    .header("harpId", TEST_USER_ID))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertTrue(result.getResponse().getContentAsString().contains(msg1));
+    assertTrue(result.getResponse().getContentAsString().contains(msg2));
+    assertTrue(result.getResponse().getContentAsString().contains(msg3));
+    assertTrue(result.getResponse().getContentAsString().contains(msg4));
   }
 }

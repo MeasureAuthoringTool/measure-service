@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.dto.LockResponse;
+import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.services.MeasureLockService;
 
 import lombok.RequiredArgsConstructor;
@@ -17,15 +17,15 @@ public class MeasureLockController {
   private final MeasureLockService measureLockService;
 
   @PutMapping("/measures/{measureId}/measure-lock")
-  public ResponseEntity<LockResponse> updateMeasureLock(
+  public ResponseEntity<LockInfo> updateMeasureLock(
       @PathVariable String measureId, Principal principal) {
     return ResponseEntity.ok(measureLockService.lockMeasure(measureId, principal.getName()));
   }
 
   @DeleteMapping("/measures/{measureId}/measure-lock")
-  public ResponseEntity<LockResponse> unlockMeasure(
+  public ResponseEntity<LockInfo> unlockMeasure(
       @PathVariable String measureId, Principal principal) {
-    LockResponse response = measureLockService.unlockMeasure(measureId, principal.getName());
+    LockInfo response = measureLockService.unlockMeasure(measureId, principal.getName());
     return ResponseEntity.ok(response);
   }
 }
