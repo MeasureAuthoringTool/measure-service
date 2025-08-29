@@ -335,12 +335,14 @@ public class MeasureSetService {
         measureSet.setAcls(acls);
       }
       MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
-      ActionType actionType =
-          "apiKey".equalsIgnoreCase(conductedBy)
-              ? ActionType.UPDATED
-              : ActionType.OWNERSHIP_TRANSFER;
-      log.info("Measure set: [{}] for measure set id: [{}]", actionType, updatedMeasureSet.getId());
-      actionLogService.logMeasureSetAction(measureSetId, MeasureSet.class, actionType, conductedBy);
+      log.info(
+          "Measure set: [{}] has been transferred ownership from original owner: [{}] to new owner: [{}] by user: [{}]",
+          updatedMeasureSet.getId(),
+          originalOwner,
+          userId,
+          conductedBy);
+      actionLogService.logMeasureSetAction(
+          measureSetId, MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, conductedBy);
       return updatedMeasureSet;
     } else {
       String error =

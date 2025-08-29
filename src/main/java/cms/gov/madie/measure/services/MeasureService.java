@@ -661,7 +661,7 @@ public class MeasureService {
     Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
     if (persistedMeasure.isPresent()) {
       Measure measure = persistedMeasure.get();
-      measureSetService.changeOwnership(measure.getMeasureSetId(), userid, false, "apiKey");
+      measureSetService.changeOwnership(measure.getMeasureSetId(), userid, false, "Admin");
       result = true;
     }
     return result;

@@ -652,13 +652,13 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet result = measureSetService.changeOwnership("1", "testUser", false, "apiKey");
+    MeasureSet result = measureSetService.changeOwnership("1", "testUser", false, "Admin");
     assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
     assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
     assertThat(result.getAcls().size(), is(equalTo(1)));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "apiKey");
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "Admin");
   }
 
   @Test
