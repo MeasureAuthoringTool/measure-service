@@ -162,8 +162,7 @@ public class MeasureService {
       measureCopy.setErrors(errorTypes);
     }
     Instant now = Instant.now();
-    // Clear ID so that the unique GUID from MongoDB will be applied
-    measureCopy.setId(null);
+    measureCopy.setId(null); // Clear ID so that the unique GUID from MongoDB will be applied
     measureCopy.setCreatedBy(username);
     measureCopy.setCreatedAt(now);
     measureCopy.setLastModifiedBy(username);
@@ -178,7 +177,6 @@ public class MeasureService {
       metaData.setDraft(true);
       measureCopy.setMeasureMetaData(metaData);
     }
-
     if (addDefaultCQL) {
       if (ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())) {
         measureCopy.setCql(
@@ -203,7 +201,6 @@ public class MeasureService {
                 : "");
       }
     }
-
     Measure savedMeasure = measureRepository.save(measureCopy);
     log.info(
         "User [{}] successfully created new measure with ID [{}]", username, savedMeasure.getId());
@@ -229,21 +226,18 @@ public class MeasureService {
       log.error("updateMeasureTestCaseConfiguration:: Measure ID is null or empty");
       throw new InvalidIdException("Measure", "Update (PUT)", "(PUT [base]/[resource]/[id])");
     }
-
     if (testCaseConfig == null) {
       log.error(
           "updateMeasureTestCaseConfiguration:: Test Case Configuration is null for Measure ID [{}]",
           measureId);
       throw new InvalidRequestException("TestCaseConfiguration cannot be null");
     }
-
     final Measure existingMeasure = findActiveMeasureById(measureId);
 
     verifyAuthorization(username, existingMeasure);
 
     Measure updatedMeasure =
         testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId);
-
     log.info(
         "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
         updatedMeasure.getId(),
@@ -261,7 +255,6 @@ public class MeasureService {
     if (measureUtil.isCqlLibraryNameChanged(updatingMeasure, existingMeasure)) {
       checkDuplicateCqlLibraryName(updatingMeasure.getCqlLibraryName());
     }
-
     if (StringUtils.isBlank(existingMeasure.getVersionId())) {
       existingMeasure.setVersionId(UUID.randomUUID().toString());
     }
@@ -273,7 +266,6 @@ public class MeasureService {
       updatingMeasure.setIncludedLibraries(
           MeasureUtil.getIncludedLibraries(updatingMeasure.getCql()));
     }
-
     // remove stratifications that do not have associations or cql definitions
     boolean isQiCoreModel =
         ModelType.QI_CORE.getValue().equalsIgnoreCase(updatingMeasure.getModel())
@@ -678,7 +670,7 @@ public class MeasureService {
     Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
     if (persistedMeasure.isPresent()) {
       Measure measure = persistedMeasure.get();
-      measureSetService.updateOwnership(measure.getMeasureSetId(), userid);
+      measureSetService.changeOwnership(measure.getMeasureSetId(), userid, false, "Admin");
       result = true;
     }
     return result;
@@ -996,5 +988,20 @@ public class MeasureService {
   public int countMeasuresByOwnership(
       boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
     return measureRepository.countMeasuresByOwnership(isActive, userId, ownershipTypes);
+  }
+
+  public boolean transferMeasures(
+      List<String> measureIds, String harpId, boolean retainShareAccess, String conductedBy) {
+    boolean result = true;
+    for (String measureId : measureIds) {
+      Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
+      if (persistedMeasure.isPresent()) {
+        measureSetService.changeOwnership(
+            persistedMeasure.get().getMeasureSetId(), harpId, retainShareAccess, conductedBy);
+      } else {
+        result = false;
+      }
+    }
+    return result;
   }
 }

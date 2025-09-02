@@ -1362,10 +1362,19 @@ public class MeasureServiceTest implements ResourceUtil {
         Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
     Optional<Measure> persistedMeasure = Optional.of(measure);
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
-    when(measureSetService.updateOwnership(anyString(), anyString())).thenReturn(new MeasureSet());
+    when(measureSetService.changeOwnership(
+            anyString(), anyString(), any(Boolean.class), anyString()))
+        .thenReturn(new MeasureSet());
 
     boolean result = measureService.changeOwnership(measure.getId(), "user123");
     assertTrue(result);
+  }
+
+  @Test
+  public void testChangeOwnershipPersistedMeasureDoesNotExist() {
+    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+    boolean result = measureService.changeOwnership("testMeasureId", "user123");
+    assertFalse(result);
   }
 
   @Test
@@ -2326,5 +2335,30 @@ public class MeasureServiceTest implements ResourceUtil {
         () -> measureService.findActiveMeasureById(null),
         "Expected ResourceNotFoundException for null measureId");
     verify(measureRepository, times(1)).findByIdAndActive(null, true);
+  }
+
+  @Test
+  public void testTransferMeasures() {
+    MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("testUser").build();
+    Measure measure =
+        Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
+    Optional<Measure> persistedMeasure = Optional.of(measure);
+    when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
+    when(measureSetService.changeOwnership(
+            anyString(), anyString(), any(Boolean.class), anyString()))
+        .thenReturn(new MeasureSet());
+
+    boolean result =
+        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
+    assertTrue(result);
+  }
+
+  @Test
+  public void testTransferMeasuresNotFound() {
+    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+
+    boolean result =
+        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
+    assertFalse(result);
   }
 }
