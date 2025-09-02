@@ -34,7 +34,12 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -64,29 +69,29 @@ class MeasureControllerTest {
   @BeforeEach
   public void setUp() {
     measure1 =
-        Measure.builder()
-            .model(ModelType.QI_CORE.toString())
-            .active(true)
-            .measureSetId("IDIDID")
-            .measureName("MSR01")
-            .version(new Version(0, 0, 1))
-            .build();
+            Measure.builder()
+                    .model(ModelType.QI_CORE.toString())
+                    .active(true)
+                    .measureSetId("IDIDID")
+                    .measureName("MSR01")
+                    .version(new Version(0, 0, 1))
+                    .build();
 
     measureList =
-        MeasureListDTO.builder()
-            .active(true)
-            .measureSetId("IDIDID")
-            .measureName("MSR01")
-            .version(new Version(0, 0, 1))
-            .build();
+            MeasureListDTO.builder()
+                    .active(true)
+                    .measureSetId("IDIDID")
+                    .measureName("MSR01")
+                    .version(new Version(0, 0, 1))
+                    .build();
   }
 
   @Test
   void saveMeasure() {
     measure1.setId("testId");
     doReturn(measure1)
-        .when(measureService)
-        .createMeasure(any(Measure.class), anyString(), anyString(), any(Boolean.class));
+            .when(measureService)
+            .createMeasure(any(Measure.class), anyString(), anyString(), any(Boolean.class));
     Measure measures = new Measure();
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -109,20 +114,20 @@ class MeasureControllerTest {
             any(Pageable.class),
             eq("test.user"),
             eq("measures")))
-        .thenReturn(measures);
+            .thenReturn(measures);
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.getMeasures(
-            principal, List.of(OwnershipType.OWNED), 10, 0, "lastModifiedAt", "DESC");
+            controller.getMeasures(
+                    principal, List.of(OwnershipType.OWNED), 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
-        .getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.OWNED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            .getMeasuresByCriteria(
+                    eq(null),
+                    eq(List.of(OwnershipType.OWNED)),
+                    any(Pageable.class),
+                    eq("test.user"),
+                    eq("measures"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
@@ -139,20 +144,20 @@ class MeasureControllerTest {
             any(Pageable.class),
             eq("test.user"),
             eq("measures")))
-        .thenReturn(measures);
+            .thenReturn(measures);
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.getMeasures(
-            principal, List.of(OwnershipType.SHARED), 10, 0, "lastModifiedAt", "DESC");
+            controller.getMeasures(
+                    principal, List.of(OwnershipType.SHARED), 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
-        .getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.SHARED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            .getMeasuresByCriteria(
+                    eq(null),
+                    eq(List.of(OwnershipType.SHARED)),
+                    any(Pageable.class),
+                    eq("test.user"),
+                    eq("measures"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
@@ -172,17 +177,17 @@ class MeasureControllerTest {
             any(Pageable.class),
             eq("test.user"),
             eq("measures")))
-        .thenReturn(measures);
+            .thenReturn(measures);
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.getMeasures(
-            principal, List.of(OwnershipType.ALL), 10, 0, "lastModifiedAt", "DESC");
+            controller.getMeasures(
+                    principal, List.of(OwnershipType.ALL), 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
-        .getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.ALL)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            .getMeasuresByCriteria(
+                    eq(null),
+                    eq(List.of(OwnershipType.ALL)),
+                    any(Pageable.class),
+                    eq("test.user"),
+                    eq("measures"));
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody());
     assertNotNull(response.getBody().getContent());
@@ -214,11 +219,11 @@ class MeasureControllerTest {
     List<MeasureListDTO> measures = Arrays.asList(measureList);
     when(measureSetService.getMeasuresByMeasureSetId(
             anyString(), anyBoolean(), any(MeasureSearchCriteria.class)))
-        .thenReturn(measures);
+            .thenReturn(measures);
     ResponseEntity<List<MeasureListDTO>> response =
-        controller.getMeasuresByMeasureSetId("test", false, searchCriteria);
+            controller.getMeasuresByMeasureSetId("test", false, searchCriteria);
     verify(measureSetService, times(1))
-        .getMeasuresByMeasureSetId(anyString(), anyBoolean(), any(MeasureSearchCriteria.class));
+            .getMeasuresByMeasureSetId(anyString(), anyBoolean(), any(MeasureSearchCriteria.class));
     assertNotNull(response.getBody());
   }
 
@@ -230,7 +235,7 @@ class MeasureControllerTest {
     // measure found
     ResponseEntity<Measure> response = controller.getMeasure(id);
     assertEquals(
-        measure1.getMeasureName(), Objects.requireNonNull(response.getBody()).getMeasureName());
+            measure1.getMeasureName(), Objects.requireNonNull(response.getBody()).getMeasureName());
 
     // if measure not found
     Optional<Measure> empty = Optional.empty();
@@ -257,49 +262,49 @@ class MeasureControllerTest {
     measure1.setMeasurementPeriodStart(new Date("12/02/2020"));
     measure1.setMeasurementPeriodEnd(new Date("12/02/2021"));
     Measure originalMeasure =
-        measure1.toBuilder()
-            .id("5399aba6e4b0ae375bfdca88")
-            .createdAt(createdAt)
-            .createdBy("test.user2")
-            .build();
+            measure1.toBuilder()
+                    .id("5399aba6e4b0ae375bfdca88")
+                    .createdAt(createdAt)
+                    .createdBy("test.user2")
+                    .build();
 
     Instant original = Instant.now().minus(140, ChronoUnit.HOURS);
 
     Measure m1 =
-        originalMeasure.toBuilder()
-            .createdBy("test.user")
-            .createdAt(original)
-            .measurementPeriodStart(new Date("12/02/2021"))
-            .measurementPeriodEnd(new Date("12/02/2022"))
-            .lastModifiedBy("test.user")
-            .lastModifiedAt(original)
-            .build();
+            originalMeasure.toBuilder()
+                    .createdBy("test.user")
+                    .createdAt(original)
+                    .measurementPeriodStart(new Date("12/02/2021"))
+                    .measurementPeriodEnd(new Date("12/02/2022"))
+                    .lastModifiedBy("test.user")
+                    .lastModifiedAt(original)
+                    .build();
 
     when(measureService.updateMeasure(
             any(Measure.class), anyString(), any(Measure.class), anyString()))
-        .thenReturn(m1);
+            .thenReturn(m1);
     when(measureService.findMeasureById(anyString()))
-        .thenReturn(
-            originalMeasure.toBuilder()
-                .measureSet(MeasureSet.builder().owner("test.user").build())
-                .build());
+            .thenReturn(
+                    originalMeasure.toBuilder()
+                            .measureSet(MeasureSet.builder().owner("test.user").build())
+                            .build());
 
     ResponseEntity<Measure> response =
-        controller.updateMeasure(m1.getId(), m1, principal, "Bearer TOKEN");
+            controller.updateMeasure(m1.getId(), m1, principal, "Bearer TOKEN");
     assertThat(response.getBody(), is(notNullValue()));
     assertThat(response.getBody(), is(equalTo(m1)));
     assertEquals(m1, response.getBody());
     verify(measureService, times(1))
-        .updateMeasure(
-            any(Measure.class), anyString(), saveMeasureArgCaptor.capture(), anyString());
+            .updateMeasure(
+                    any(Measure.class), anyString(), saveMeasureArgCaptor.capture(), anyString());
     assertThat(saveMeasureArgCaptor.getValue(), is(equalTo(m1)));
 
     verify(actionLogService, times(1))
-        .logAction(
-            targetIdArgumentCaptor.capture(),
-            targetClassArgumentCaptor.capture(),
-            actionTypeArgumentCaptor.capture(),
-            performedByArgumentCaptor.capture());
+            .logAction(
+                    targetIdArgumentCaptor.capture(),
+                    targetClassArgumentCaptor.capture(),
+                    actionTypeArgumentCaptor.capture(),
+                    performedByArgumentCaptor.capture());
     assertNotNull(targetIdArgumentCaptor.getValue());
     assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.UPDATED)));
     assertThat(performedByArgumentCaptor.getValue(), is(equalTo("test.user2")));
@@ -311,13 +316,13 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user2");
 
     final MeasureSet measureSet =
-        MeasureSet.builder()
-            .id("f225481c-921e-4015-9e14-e5046bfac9ff")
-            .cmsId(6)
-            .measureSetId("measureSetId")
-            .owner("test.com")
-            .acls(null)
-            .build();
+            MeasureSet.builder()
+                    .id("f225481c-921e-4015-9e14-e5046bfac9ff")
+                    .cmsId(6)
+                    .measureSetId("measureSetId")
+                    .owner("test.com")
+                    .acls(null)
+                    .build();
 
     when(measureSetService.createAndUpdateCmsId(anyString(), anyString())).thenReturn(measureSet);
     ResponseEntity<MeasureSet> response = controller.createCmsId(measureSet.getId(), principal);
@@ -336,25 +341,25 @@ class MeasureControllerTest {
     String measureId = "measureId";
 
     final MeasureSet measureSet =
-        MeasureSet.builder()
-            .id("f225481c-921e-4015-9e14-e5046bfac9ff")
-            .cmsId(6)
-            .measureSetId("measureSetId")
-            .owner("owner")
-            .acls(null)
-            .build();
+            MeasureSet.builder()
+                    .id("f225481c-921e-4015-9e14-e5046bfac9ff")
+                    .cmsId(6)
+                    .measureSetId("measureSetId")
+                    .owner("owner")
+                    .acls(null)
+                    .build();
 
     String expectedBody =
-        String.format(
-            "CMS Id of %s was deleted successfully from measure set with measure set id of %s",
-            measureSet.getCmsId(), measureSet.getMeasureSetId());
+            String.format(
+                    "CMS Id of %s was deleted successfully from measure set with measure set id of %s",
+                    measureSet.getCmsId(), measureSet.getMeasureSetId());
 
     when(measureSetService.deleteCmsId(anyString(), anyInt(), anyString()))
-        .thenReturn(expectedBody);
+            .thenReturn(expectedBody);
 
     ResponseEntity<String> response =
-        controller.deleteCmsId(
-            mockHttpServletRequest, measureId, measureSet.getCmsId(), "apiKey", "owner", principal);
+            controller.deleteCmsId(
+                    mockHttpServletRequest, measureId, measureSet.getCmsId(), "apiKey", "owner", principal);
 
     assertThat(response.getBody(), is(notNullValue()));
     assertEquals(expectedBody, response.getBody());
@@ -378,52 +383,52 @@ class MeasureControllerTest {
     measure1.setMeasurementPeriodStart(new Date("12/02/2020"));
     measure1.setMeasurementPeriodEnd(new Date("12/02/2021"));
     Measure originalMeasure =
-        measure1.toBuilder()
-            .id("5399aba6e4b0ae375bfdca88")
-            .active(true)
-            .createdAt(createdAt)
-            .createdBy("test.user2")
-            .build();
+            measure1.toBuilder()
+                    .id("5399aba6e4b0ae375bfdca88")
+                    .active(true)
+                    .createdAt(createdAt)
+                    .createdBy("test.user2")
+                    .build();
 
     Instant original = Instant.now().minus(140, ChronoUnit.HOURS);
 
     Measure m1 =
-        originalMeasure.toBuilder()
-            .createdBy("test.user")
-            .createdAt(original)
-            .measurementPeriodStart(new Date("12/02/2021"))
-            .measurementPeriodEnd(new Date("12/02/2022"))
-            .lastModifiedBy("test.user")
-            .lastModifiedAt(original)
-            .active(false)
-            .build();
+            originalMeasure.toBuilder()
+                    .createdBy("test.user")
+                    .createdAt(original)
+                    .measurementPeriodStart(new Date("12/02/2021"))
+                    .measurementPeriodEnd(new Date("12/02/2022"))
+                    .lastModifiedBy("test.user")
+                    .lastModifiedAt(original)
+                    .active(false)
+                    .build();
 
     when(measureService.findMeasureById(anyString()))
-        .thenReturn(
-            originalMeasure.toBuilder()
-                .measureSet(MeasureSet.builder().owner("test.user2").build())
-                .build());
+            .thenReturn(
+                    originalMeasure.toBuilder()
+                            .measureSet(MeasureSet.builder().owner("test.user2").build())
+                            .build());
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
     when(measureService.updateMeasure(
             any(Measure.class), anyString(), any(Measure.class), anyString()))
-        .thenReturn(m1);
+            .thenReturn(m1);
 
     ResponseEntity<Measure> response =
-        controller.updateMeasure(m1.getId(), m1, principal, "Bearer TOKEN");
+            controller.updateMeasure(m1.getId(), m1, principal, "Bearer TOKEN");
 
     assertEquals(m1, response.getBody());
     verify(measureService, times(1))
-        .updateMeasure(
-            any(Measure.class), anyString(), saveMeasureArgCaptor.capture(), anyString());
+            .updateMeasure(
+                    any(Measure.class), anyString(), saveMeasureArgCaptor.capture(), anyString());
     assertThat(saveMeasureArgCaptor.getValue(), is(equalTo(m1)));
 
     verify(actionLogService, times(1))
-        .logAction(
-            targetIdArgumentCaptor.capture(),
-            targetClassArgumentCaptor.capture(),
-            actionTypeArgumentCaptor.capture(),
-            performedByArgumentCaptor.capture());
+            .logAction(
+                    targetIdArgumentCaptor.capture(),
+                    targetClassArgumentCaptor.capture(),
+                    actionTypeArgumentCaptor.capture(),
+                    performedByArgumentCaptor.capture());
     assertNotNull(targetIdArgumentCaptor.getValue());
     assertThat(targetClassArgumentCaptor.getValue(), is(equalTo(Measure.class)));
     assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.DELETED)));
@@ -436,8 +441,8 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user2");
 
     assertThrows(
-        InvalidIdException.class,
-        () -> controller.updateMeasure(null, measure1, principal, "Bearer TOKEN"));
+            InvalidIdException.class,
+            () -> controller.updateMeasure(null, measure1, principal, "Bearer TOKEN"));
   }
 
   @Test
@@ -447,11 +452,11 @@ class MeasureControllerTest {
     measure1.setCreatedBy("MSR01");
     measure1.setActive(true);
     when(measureService.findMeasureById(anyString()))
-        .thenReturn(
-            measure1.toBuilder().measureSet(MeasureSet.builder().owner("MSR01").build()).build());
+            .thenReturn(
+                    measure1.toBuilder().measureSet(MeasureSet.builder().owner("MSR01").build()).build());
     doThrow(new UnauthorizedException("Measure", measure1.getId(), "aninvalidUser@gmail.com"))
-        .when(measureService)
-        .verifyAuthorization(anyString(), any(Measure.class));
+            .when(measureService)
+            .verifyAuthorization(anyString(), any(Measure.class));
 
     var testMeasure = new Measure();
     testMeasure.setActive(false);
@@ -461,8 +466,8 @@ class MeasureControllerTest {
     testMeasure.setVersion(new Version(0, 0, 1));
 
     assertThrows(
-        UnauthorizedException.class,
-        () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
+            UnauthorizedException.class,
+            () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
   }
 
   @Test
@@ -473,10 +478,10 @@ class MeasureControllerTest {
     measure1.setActive(false);
     measure1.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
     when(measureService.findMeasureById(anyString()))
-        .thenReturn(
-            measure1.toBuilder()
-                .measureSet(MeasureSet.builder().owner("validuser@gmail.com").build())
-                .build());
+            .thenReturn(
+                    measure1.toBuilder()
+                            .measureSet(MeasureSet.builder().owner("validuser@gmail.com").build())
+                            .build());
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
     var testMeasure = new Measure();
@@ -487,8 +492,8 @@ class MeasureControllerTest {
     testMeasure.setVersion(new Version(0, 0, 1));
 
     assertThrows(
-        UnauthorizedException.class,
-        () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
+            UnauthorizedException.class,
+            () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
   }
 
   @Test
@@ -498,12 +503,12 @@ class MeasureControllerTest {
     measure1.setCreatedBy("MSR01");
     measure1.setActive(false);
     when(measureService.findMeasureById(anyString()))
-        .thenReturn(
-            measure1.toBuilder().measureSet(MeasureSet.builder().owner("MSR01").build()).build());
+            .thenReturn(
+                    measure1.toBuilder().measureSet(MeasureSet.builder().owner("MSR01").build()).build());
 
     doThrow(new UnauthorizedException("Measure", measure1.getId(), "validUser@gmail.com"))
-        .when(measureService)
-        .verifyAuthorization(anyString(), any(Measure.class));
+            .when(measureService)
+            .verifyAuthorization(anyString(), any(Measure.class));
 
     var testMeasure = new Measure();
     testMeasure.setActive(true);
@@ -513,8 +518,8 @@ class MeasureControllerTest {
     testMeasure.setVersion(new Version(0, 0, 1));
 
     assertThrows(
-        UnauthorizedException.class,
-        () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
+            UnauthorizedException.class,
+            () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
   }
 
   @Test
@@ -528,10 +533,10 @@ class MeasureControllerTest {
     acl.setUserId("sharedUser@gmail.com");
     acl.setRoles(Set.of(RoleEnum.SHARED_WITH));
     when(measureService.findMeasureById(anyString()))
-        .thenReturn(
-            measure1.toBuilder()
-                .measureSet(MeasureSet.builder().owner("MSR01").acls(List.of(acl)).build())
-                .build());
+            .thenReturn(
+                    measure1.toBuilder()
+                            .measureSet(MeasureSet.builder().owner("MSR01").acls(List.of(acl)).build())
+                            .build());
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
     var testMeasure = new Measure();
@@ -542,11 +547,11 @@ class MeasureControllerTest {
     testMeasure.setVersion(new Version(0, 0, 1));
     testMeasure.setActive(false);
     doThrow(new UnauthorizedException("Measure", measure1.getId(), "invalidUser@gmail.com"))
-        .when(measureService)
-        .verifyAuthorization(anyString(), any(Measure.class), isNull());
+            .when(measureService)
+            .verifyAuthorization(anyString(), any(Measure.class), isNull());
     assertThrows(
-        UnauthorizedException.class,
-        () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
+            UnauthorizedException.class,
+            () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
   }
 
   @Test
@@ -560,10 +565,10 @@ class MeasureControllerTest {
     acl.setUserId("sharedUser@gmail.com");
     acl.setRoles(Set.of(RoleEnum.SHARED_WITH));
     when(measureService.findMeasureById(anyString()))
-        .thenReturn(
-            measure1.toBuilder()
-                .measureSet(MeasureSet.builder().owner("test.user").acls(List.of(acl)).build())
-                .build());
+            .thenReturn(
+                    measure1.toBuilder()
+                            .measureSet(MeasureSet.builder().owner("test.user").acls(List.of(acl)).build())
+                            .build());
 
     var testMeasure = new Measure();
     testMeasure.setActive(false);
@@ -573,8 +578,8 @@ class MeasureControllerTest {
     testMeasure.setVersion(new Version(0, 0, 1));
     testMeasure.setActive(false);
     assertThrows(
-        InvalidDraftStatusException.class,
-        () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
+            InvalidDraftStatusException.class,
+            () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
   }
 
   @Test
@@ -583,8 +588,8 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user2");
 
     assertThrows(
-        InvalidIdException.class,
-        () -> controller.updateMeasure("", measure1, principal, "Bearer TOKEN"));
+            InvalidIdException.class,
+            () -> controller.updateMeasure("", measure1, principal, "Bearer TOKEN"));
   }
 
   @Test
@@ -594,8 +599,8 @@ class MeasureControllerTest {
     Measure m1234 = measure1.toBuilder().id("ID1234").build();
 
     assertThrows(
-        InvalidIdException.class,
-        () -> controller.updateMeasure("ID5678", m1234, principal, "Bearer TOKEN"));
+            InvalidIdException.class,
+            () -> controller.updateMeasure("ID5678", m1234, principal, "Bearer TOKEN"));
   }
 
   @Test
@@ -605,16 +610,16 @@ class MeasureControllerTest {
 
     // no measure id specified
     assertThrows(
-        InvalidIdException.class,
-        () -> controller.updateMeasure(measure1.getId(), measure1, principal, "Bearer TOKEN"));
+            InvalidIdException.class,
+            () -> controller.updateMeasure(measure1.getId(), measure1, principal, "Bearer TOKEN"));
     // non-existing measure or measure with fake id
     measure1.setId("5399aba6e4b0ae375bfdca88");
 
     when(measureService.findMeasureById(anyString())).thenReturn(null);
 
     assertThrows(
-        ResourceNotFoundException.class,
-        () -> controller.updateMeasure(measure1.getId(), measure1, principal, "Bearer TOKEN"));
+            ResourceNotFoundException.class,
+            () -> controller.updateMeasure(measure1.getId(), measure1, principal, "Bearer TOKEN"));
   }
 
   @Test
@@ -626,43 +631,43 @@ class MeasureControllerTest {
     measure1.setMeasurementPeriodStart(new Date());
     measure1.setId("testid");
     when(measureService.findMeasureById(anyString()))
-        .thenReturn(
-            measure1.toBuilder()
-                .measureSet(MeasureSet.builder().owner("test.user").build())
-                .build());
+            .thenReturn(
+                    measure1.toBuilder()
+                            .measureSet(MeasureSet.builder().owner("test.user").build())
+                            .build());
     doThrow(new UnauthorizedException("Measure", "testid", "unAuthorized user"))
-        .when(measureService)
-        .verifyAuthorization(anyString(), any(Measure.class));
+            .when(measureService)
+            .verifyAuthorization(anyString(), any(Measure.class));
 
     var testMeasure = new Measure();
     testMeasure.setActive(true);
     testMeasure.setId("testid");
     assertThrows(
-        UnauthorizedException.class,
-        () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
+            UnauthorizedException.class,
+            () -> controller.updateMeasure("testid", testMeasure, principal, "Bearer TOKEN"));
   }
 
   @Test
   void createGroup() {
     Group group =
-        Group.builder()
-            .scoring("Cohort")
-            .populations(
-                List.of(
-                    new Population(
-                        "id-1",
-                        PopulationType.INITIAL_POPULATION,
-                        "Initial Population",
-                        null,
-                        null,
-                        "IntialPopulation_1")))
-            .build();
+            Group.builder()
+                    .scoring("Cohort")
+                    .populations(
+                            List.of(
+                                    new Population(
+                                            "id-1",
+                                            PopulationType.INITIAL_POPULATION,
+                                            "Initial Population",
+                                            null,
+                                            null,
+                                            "IntialPopulation_1")))
+                    .build();
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(group)
-        .when(groupService)
-        .createOrUpdateGroup(any(Group.class), any(String.class), any(String.class));
+            .when(groupService)
+            .createOrUpdateGroup(any(Group.class), any(String.class), any(String.class));
 
     Group newGroup = new Group();
 
@@ -679,13 +684,13 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     Measure updatedMeasure =
-        Measure.builder().id("measure-id").createdBy("test.user").groups(null).build();
+            Measure.builder().id("measure-id").createdBy("test.user").groups(null).build();
     doReturn(updatedMeasure)
-        .when(groupService)
-        .deleteMeasureGroup(any(String.class), any(String.class), any(String.class));
+            .when(groupService)
+            .deleteMeasureGroup(any(String.class), any(String.class), any(String.class));
 
     ResponseEntity<Measure> output =
-        controller.deleteMeasureGroup("measure-id", "testgroupid", principal);
+            controller.deleteMeasureGroup("measure-id", "testgroupid", principal);
 
     assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
     assertNull(output.getBody().getGroups());
@@ -694,24 +699,24 @@ class MeasureControllerTest {
   @Test
   void updateGroup() {
     Group group =
-        Group.builder()
-            .scoring("Cohort")
-            .populations(
-                List.of(
-                    new Population(
-                        "id-2",
-                        PopulationType.INITIAL_POPULATION,
-                        "Initial Population",
-                        null,
-                        null,
-                        "IntialPopulation_1")))
-            .build();
+            Group.builder()
+                    .scoring("Cohort")
+                    .populations(
+                            List.of(
+                                    new Population(
+                                            "id-2",
+                                            PopulationType.INITIAL_POPULATION,
+                                            "Initial Population",
+                                            null,
+                                            null,
+                                            "IntialPopulation_1")))
+                    .build();
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(group)
-        .when(groupService)
-        .createOrUpdateGroup(any(Group.class), any(String.class), any(String.class));
+            .when(groupService)
+            .createOrUpdateGroup(any(Group.class), any(String.class), any(String.class));
 
     Group newGroup = new Group();
 
@@ -730,33 +735,33 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(measures)
-        .when(measureService)
-        .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.OWNED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            .when(measureService)
+            .getMeasuresByCriteria(
+                    any(MeasureSearchCriteria.class),
+                    eq(List.of(OwnershipType.OWNED)),
+                    any(Pageable.class),
+                    eq("test.user"),
+                    eq("measures"));
 
     MeasureSearchCriteria measureSearchCriteria =
-        MeasureSearchCriteria.builder().searchField("test criteria").build();
+            MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.measureSearchByCriteria(
-            principal,
-            List.of(OwnershipType.OWNED),
-            measureSearchCriteria,
-            10,
-            0,
-            "lastModifiedAt",
-            "DESC",
-            "measures");
+            controller.measureSearchByCriteria(
+                    principal,
+                    List.of(OwnershipType.OWNED),
+                    measureSearchCriteria,
+                    10,
+                    0,
+                    "lastModifiedAt",
+                    "DESC",
+                    "measures");
     verify(measureService, times(1))
-        .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.OWNED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            .getMeasuresByCriteria(
+                    any(MeasureSearchCriteria.class),
+                    eq(List.of(OwnershipType.OWNED)),
+                    any(Pageable.class),
+                    eq("test.user"),
+                    eq("measures"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
@@ -772,33 +777,33 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(measures)
-        .when(measureService)
-        .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.SHARED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            .when(measureService)
+            .getMeasuresByCriteria(
+                    any(MeasureSearchCriteria.class),
+                    eq(List.of(OwnershipType.SHARED)),
+                    any(Pageable.class),
+                    eq("test.user"),
+                    eq("measures"));
 
     MeasureSearchCriteria measureSearchCriteria =
-        MeasureSearchCriteria.builder().searchField("test criteria").build();
+            MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.measureSearchByCriteria(
-            principal,
-            List.of(OwnershipType.SHARED),
-            measureSearchCriteria,
-            10,
-            0,
-            "lastModifiedAt",
-            "DESC",
-            "measures");
+            controller.measureSearchByCriteria(
+                    principal,
+                    List.of(OwnershipType.SHARED),
+                    measureSearchCriteria,
+                    10,
+                    0,
+                    "lastModifiedAt",
+                    "DESC",
+                    "measures");
     verify(measureService, times(1))
-        .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.SHARED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            .getMeasuresByCriteria(
+                    any(MeasureSearchCriteria.class),
+                    eq(List.of(OwnershipType.SHARED)),
+                    any(Pageable.class),
+                    eq("test.user"),
+                    eq("measures"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
@@ -814,33 +819,33 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(measures)
-        .when(measureService)
-        .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.ALL)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            .when(measureService)
+            .getMeasuresByCriteria(
+                    any(MeasureSearchCriteria.class),
+                    eq(List.of(OwnershipType.ALL)),
+                    any(Pageable.class),
+                    eq("test.user"),
+                    eq("measures"));
 
     MeasureSearchCriteria measureSearchCriteria =
-        MeasureSearchCriteria.builder().searchField("test criteria").build();
+            MeasureSearchCriteria.builder().searchField("test criteria").build();
     ResponseEntity<Page<MeasureListDTO>> response =
-        controller.measureSearchByCriteria(
-            principal,
-            List.of(OwnershipType.ALL),
-            measureSearchCriteria,
-            10,
-            0,
-            "lastModifiedAt",
-            "DESC",
-            "measures");
+            controller.measureSearchByCriteria(
+                    principal,
+                    List.of(OwnershipType.ALL),
+                    measureSearchCriteria,
+                    10,
+                    0,
+                    "lastModifiedAt",
+                    "DESC",
+                    "measures");
     verify(measureService, times(1))
-        .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.ALL)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            .getMeasuresByCriteria(
+                    any(MeasureSearchCriteria.class),
+                    eq(List.of(OwnershipType.ALL)),
+                    any(Pageable.class),
+                    eq("test.user"),
+                    eq("measures"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody());
@@ -852,21 +857,21 @@ class MeasureControllerTest {
   @Test
   void createStratification() {
     Stratification stratification =
-        Stratification.builder()
-            .cqlDefinition("Initial Population")
-            .association(PopulationType.INITIAL_POPULATION)
-            .associations(List.of(PopulationType.INITIAL_POPULATION, PopulationType.NUMERATOR))
-            .build();
+            Stratification.builder()
+                    .cqlDefinition("Initial Population")
+                    .association(PopulationType.INITIAL_POPULATION)
+                    .associations(List.of(PopulationType.INITIAL_POPULATION, PopulationType.NUMERATOR))
+                    .build();
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(stratification)
-        .when(groupService)
-        .createOrUpdateStratification(
-            any(String.class), any(String.class), any(Stratification.class), any(String.class));
+            .when(groupService)
+            .createOrUpdateStratification(
+                    any(String.class), any(String.class), any(Stratification.class), any(String.class));
 
     ResponseEntity<Stratification> response =
-        controller.createStratification(new Stratification(), "measure-id", "group-id", principal);
+            controller.createStratification(new Stratification(), "measure-id", "group-id", principal);
     assertNotNull(response.getBody());
     assertEquals(stratification.getCqlDefinition(), response.getBody().getCqlDefinition());
     assertEquals(stratification.getAssociation(), response.getBody().getAssociation());
@@ -879,18 +884,18 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     Measure updatedMeasure =
-        Measure.builder()
-            .id("measure-id")
-            .createdBy("test.user")
-            .groups(List.of(Group.builder().stratifications(null).build()))
-            .build();
+            Measure.builder()
+                    .id("measure-id")
+                    .createdBy("test.user")
+                    .groups(List.of(Group.builder().stratifications(null).build()))
+                    .build();
     doReturn(updatedMeasure)
-        .when(groupService)
-        .deleteStratification(
-            any(String.class), any(String.class), any(String.class), any(String.class));
+            .when(groupService)
+            .deleteStratification(
+                    any(String.class), any(String.class), any(String.class), any(String.class));
 
     ResponseEntity<Measure> output =
-        controller.deleteStratification("measure-id", "testgroupid", "stratifactionid", principal);
+            controller.deleteStratification("measure-id", "testgroupid", "stratifactionid", principal);
 
     assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
     assertNull(output.getBody().getGroups().get(0).getStratifications());
@@ -899,21 +904,21 @@ class MeasureControllerTest {
   @Test
   void updateStratification() {
     Stratification stratification =
-        Stratification.builder()
-            .cqlDefinition("Initial Population")
-            .association(PopulationType.INITIAL_POPULATION)
-            .associations(List.of(PopulationType.INITIAL_POPULATION, PopulationType.NUMERATOR))
-            .build();
+            Stratification.builder()
+                    .cqlDefinition("Initial Population")
+                    .association(PopulationType.INITIAL_POPULATION)
+                    .associations(List.of(PopulationType.INITIAL_POPULATION, PopulationType.NUMERATOR))
+                    .build();
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(stratification)
-        .when(groupService)
-        .createOrUpdateStratification(
-            any(String.class), any(String.class), any(Stratification.class), any(String.class));
+            .when(groupService)
+            .createOrUpdateStratification(
+                    any(String.class), any(String.class), any(Stratification.class), any(String.class));
 
     ResponseEntity<Stratification> response =
-        controller.updateStratification(new Stratification(), "measure-id", "group-id", principal);
+            controller.updateStratification(new Stratification(), "measure-id", "group-id", principal);
     assertNotNull(response.getBody());
     assertEquals(stratification.getCqlDefinition(), response.getBody().getCqlDefinition());
     assertEquals(stratification.getAssociation(), response.getBody().getAssociation());
@@ -923,16 +928,16 @@ class MeasureControllerTest {
   @Test
   public void testValidateCmsAssociationSuccessfully() {
     MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
+            MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     when(measureService.associateCmsId(
             any(String.class), any(String.class), any(String.class), any(Boolean.class)))
-        .thenReturn(qiCoreMeasureSet);
+            .thenReturn(qiCoreMeasureSet);
 
     ResponseEntity<MeasureSet> result =
-        controller.associateCmsId(principal, "qiCoreMeasureId", "qdmMeasureId", false);
+            controller.associateCmsId(principal, "qiCoreMeasureId", "qdmMeasureId", false);
     assertThat(result.getStatusCode(), is(equalTo(HttpStatus.OK)));
   }
 
@@ -955,11 +960,11 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     when(measureService.countMeasuresByOwnership(true, "test.user", List.of(OwnershipType.OWNED)))
-        .thenReturn(5);
+            .thenReturn(5);
     when(measureService.countMeasuresByOwnership(true, "test.user", List.of(OwnershipType.SHARED)))
-        .thenReturn(3);
+            .thenReturn(3);
     when(measureService.countMeasuresByOwnership(true, "test.user", List.of(OwnershipType.ALL)))
-        .thenReturn(10);
+            .thenReturn(10);
 
     // when(measureService.countMyMeasures(anyString())).thenReturn(5);
     ResponseEntity<Map<String, Integer>> response = controller.getCounts(principal);
@@ -974,34 +979,34 @@ class MeasureControllerTest {
   @Test
   public void testClearingTestCaseGroupPopulationValuesWhenScoringIsChangedForQDMMeasures() {
     TestCaseGroupPopulation testCaseGroupPopulation =
-        TestCaseGroupPopulation.builder().groupId("groupId1").scoring("Cohort").build();
+            TestCaseGroupPopulation.builder().groupId("groupId1").scoring("Cohort").build();
 
     TestCase testCase =
-        TestCase.builder().id("testId1").groupPopulations(List.of(testCaseGroupPopulation)).build();
+            TestCase.builder().id("testId1").groupPopulations(List.of(testCaseGroupPopulation)).build();
 
     QdmMeasure original =
-        QdmMeasure.builder()
-            .cql("original cql here")
-            .model(ModelType.QDM_5_6.getValue())
-            .active(true)
-            .measureMetaData(MeasureMetaData.builder().draft(true).build())
-            .errors(List.of(MeasureErrorType.ERRORS_ELM_JSON))
-            .id("testId")
-            .createdBy("test.user")
-            .scoring(MeasureScoring.COHORT.toString())
-            .groups(null)
-            .testCases(List.of(testCase))
-            .patientBasis(false)
-            .build();
+            QdmMeasure.builder()
+                    .cql("original cql here")
+                    .model(ModelType.QDM_5_6.getValue())
+                    .active(true)
+                    .measureMetaData(MeasureMetaData.builder().draft(true).build())
+                    .errors(List.of(MeasureErrorType.ERRORS_ELM_JSON))
+                    .id("testId")
+                    .createdBy("test.user")
+                    .scoring(MeasureScoring.COHORT.toString())
+                    .groups(null)
+                    .testCases(List.of(testCase))
+                    .patientBasis(false)
+                    .build();
 
     QdmMeasure updated =
-        original.toBuilder()
-            .cql("changed cql here")
-            .scoring(MeasureScoring.PROPORTION.toString())
-            .build();
+            original.toBuilder()
+                    .cql("changed cql here")
+                    .scoring(MeasureScoring.PROPORTION.toString())
+                    .build();
 
     Measure expected =
-        updated.toBuilder().error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES).build();
+            updated.toBuilder().error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES).build();
 
     ArgumentCaptor<TestCase> saveTestCaseCaptor = ArgumentCaptor.forClass(TestCase.class);
     Principal principal = mock(Principal.class);
@@ -1009,22 +1014,22 @@ class MeasureControllerTest {
 
     when(measureService.updateMeasure(
             any(Measure.class), anyString(), any(Measure.class), anyString()))
-        .thenReturn(expected);
+            .thenReturn(expected);
     when(measureService.findMeasureById(anyString()))
-        .thenReturn(
-            original.toBuilder()
-                .measureSet(MeasureSet.builder().owner("test.user").build())
-                .build());
+            .thenReturn(
+                    original.toBuilder()
+                            .measureSet(MeasureSet.builder().owner("test.user").build())
+                            .build());
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
     Measure output =
-        controller.updateMeasure(updated.getId(), updated, principal, "Bearer TOKEN").getBody();
+            controller.updateMeasure(updated.getId(), updated, principal, "Bearer TOKEN").getBody();
     assertThat(output, is(notNullValue()));
     assertThat(output, is(equalTo(expected)));
     assertThat(output.getTestCases().get(0).getGroupPopulations(), is(equalTo(new ArrayList<>())));
 
     verify(testCaseService, times(1))
-        .updateTestCase(saveTestCaseCaptor.capture(), anyString(), anyString(), anyString());
+            .updateTestCase(saveTestCaseCaptor.capture(), anyString(), anyString(), anyString());
     TestCase persisted = saveTestCaseCaptor.getValue();
     assertThat(persisted, is(equalTo(expected.getTestCases().get(0))));
   }
@@ -1039,18 +1044,18 @@ class MeasureControllerTest {
 
     when(measureService.updateMeasureTestCaseConfiguration(
             "test.user", "measureId", testCaseConfig))
-        .thenReturn(updatedMeasure);
+            .thenReturn(updatedMeasure);
 
     ResponseEntity<Measure> response =
-        controller.updateMeasureTestCaseConfiguration(
-            "measureId", testCaseConfig, principal, "Bearer TOKEN");
+            controller.updateMeasureTestCaseConfiguration(
+                    "measureId", testCaseConfig, principal, "Bearer TOKEN");
 
     assertNotNull(response.getBody());
     assertEquals(updatedMeasure, response.getBody());
     verify(measureService, times(1))
-        .updateMeasureTestCaseConfiguration("test.user", "measureId", testCaseConfig);
+            .updateMeasureTestCaseConfiguration("test.user", "measureId", testCaseConfig);
     verify(actionLogService, times(1))
-        .logAction("measureId", Measure.class, ActionType.UPDATED, "test.user");
+            .logAction("measureId", Measure.class, ActionType.UPDATED, "test.user");
   }
 
   @Test
@@ -1061,14 +1066,40 @@ class MeasureControllerTest {
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
 
     doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
-        .when(measureService)
-        .updateMeasureTestCaseConfiguration("invalid.user", "measureId", testCaseConfig);
+            .when(measureService)
+            .updateMeasureTestCaseConfiguration("invalid.user", "measureId", testCaseConfig);
 
     assertThrows(
-        UnauthorizedException.class,
-        () ->
-            controller.updateMeasureTestCaseConfiguration(
-                "measureId", testCaseConfig, principal, "Bearer TOKEN"));
+            UnauthorizedException.class,
+            () ->
+                    controller.updateMeasureTestCaseConfiguration(
+                            "measureId", testCaseConfig, principal, "Bearer TOKEN"));
+  }
+
+  @Test
+  public void testTransferMeasures() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    when(measureService.transferMeasures(
+            any(List.class), anyString(), any(Boolean.class), anyString()))
+            .thenReturn(true);
+    ResponseEntity<Boolean> result =
+            controller.transferMeasures(
+                    List.of("testMeasureId"), "testHarpId", true, principal, "testToken");
+    assertTrue(result.getBody());
+    assertEquals(HttpStatus.OK, result.getStatusCode());
+  }
+
+  @Test
+  public void testTransferMeasuresNullMeasureIds() {
+    Principal principal = mock(Principal.class);
+
+    ResponseEntity<Boolean> result =
+            controller.transferMeasures(
+                    Collections.emptyList(), "testHarpId", true, principal, "testToken");
+    assertFalse(result.getBody());
+    assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
   }
 
   @Test
@@ -1077,9 +1108,9 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     List<Action> actions =
-        List.of(
-            Action.builder().actionType(ActionType.CREATED).performedBy("test.user").build(),
-            Action.builder().actionType(ActionType.UPDATED).performedBy("test.user").build());
+            List.of(
+                    Action.builder().actionType(ActionType.CREATED).performedBy("test.user").build(),
+                    Action.builder().actionType(ActionType.UPDATED).performedBy("test.user").build());
 
     when(measureService.getMeasureHistory("measureId", "test.user")).thenReturn(actions);
 
@@ -1099,7 +1130,7 @@ class MeasureControllerTest {
     when(measureService.getMeasureHistory("nonExistentId", "test.user")).thenReturn(List.of());
 
     ResponseEntity<List<Action>> response =
-        controller.getMeasureHistory("nonExistentId", principal);
+            controller.getMeasureHistory("nonExistentId", principal);
 
     assertNotNull(response.getBody());
     assertTrue(response.getBody().isEmpty());
@@ -1111,10 +1142,10 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("invalid.user");
 
     doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
-        .when(measureService)
-        .getMeasureHistory("measureId", "invalid.user");
+            .when(measureService)
+            .getMeasureHistory("measureId", "invalid.user");
 
     assertThrows(
-        UnauthorizedException.class, () -> controller.getMeasureHistory("measureId", principal));
+            UnauthorizedException.class, () -> controller.getMeasureHistory("measureId", principal));
   }
 }

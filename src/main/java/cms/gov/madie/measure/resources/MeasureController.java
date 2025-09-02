@@ -7,7 +7,10 @@ import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
-import gov.cms.madie.models.common.*;
+import gov.cms.madie.models.common.Action;
+import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import lombok.RequiredArgsConstructor;
@@ -46,45 +49,45 @@ public class MeasureController {
 
   @PostMapping("/measures/draftstatus")
   public ResponseEntity<Map<String, Boolean>> getDraftStatuses(
-      @RequestBody List<String> measureSetIds) {
+          @RequestBody List<String> measureSetIds) {
     Map<String, Boolean> results = measureService.getMeasureDrafts(measureSetIds);
     return ResponseEntity.status(HttpStatus.CREATED).body(results);
   }
 
   @PutMapping("/measures/byMeasureSetId")
   public ResponseEntity<List<MeasureListDTO>> getMeasuresByMeasureSetId(
-      @RequestParam(name = "measureSetId") String measureSetId,
-      boolean sortByLatestVersion,
-      @RequestBody(required = false) MeasureSearchCriteria searchCriteria) {
+          @RequestParam(name = "measureSetId") String measureSetId,
+          boolean sortByLatestVersion,
+          @RequestBody(required = false) MeasureSearchCriteria searchCriteria) {
     List<MeasureListDTO> results =
-        measureSetService.getMeasuresByMeasureSetId(
-            measureSetId, sortByLatestVersion, searchCriteria);
+            measureSetService.getMeasuresByMeasureSetId(
+                    measureSetId, sortByLatestVersion, searchCriteria);
     return ResponseEntity.status(HttpStatus.OK).body(results);
   }
 
   @GetMapping("/measures/recentsByMeasureSetId")
   public ResponseEntity<List<Measure>> getRecentMeasuresByMeasureSetId(
-      @RequestParam(name = "measureSetIds") List<String> measureSetIds) {
+          @RequestParam(name = "measureSetIds") List<String> measureSetIds) {
     List<Measure> results = measureSetService.getRecentMeasuresByMeasureSetId(measureSetIds);
     return ResponseEntity.status(HttpStatus.OK).body(results);
   }
 
   @GetMapping("/measures")
   public ResponseEntity<Page<MeasureListDTO>> getMeasures(
-      Principal principal,
-      @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
-      @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
-      @RequestParam(required = false, defaultValue = "0", name = "page") int page,
-      @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
-      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
+          Principal principal,
+          @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
+          @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
+          @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+          @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
+          @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
     final String username = principal.getName();
     Page<MeasureListDTO> measures;
     final Pageable pageReq =
-        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
+            PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
     // TODO Remove parameter "measures" when either measureSearch or EditTestsOnVersionedMeasure is
     // removed.
     measures =
-        measureService.getMeasuresByCriteria(null, ownershipTypes, pageReq, username, "measures");
+            measureService.getMeasuresByCriteria(null, ownershipTypes, pageReq, username, "measures");
     return ResponseEntity.ok(measures);
   }
 
@@ -92,17 +95,17 @@ public class MeasureController {
   public ResponseEntity<Map<String, Integer>> getCounts(Principal principal) {
     Map<String, Integer> results = new HashMap<>();
     results.put(
-        "ownedMeasures",
-        measureService.countMeasuresByOwnership(
-            true, principal.getName(), List.of(OwnershipType.OWNED)));
+            "ownedMeasures",
+            measureService.countMeasuresByOwnership(
+                    true, principal.getName(), List.of(OwnershipType.OWNED)));
     results.put(
-        "sharedMeasures",
-        measureService.countMeasuresByOwnership(
-            true, principal.getName(), List.of(OwnershipType.SHARED)));
+            "sharedMeasures",
+            measureService.countMeasuresByOwnership(
+                    true, principal.getName(), List.of(OwnershipType.SHARED)));
     results.put(
-        "allMeasures",
-        measureService.countMeasuresByOwnership(
-            true, principal.getName(), List.of(OwnershipType.ALL)));
+            "allMeasures",
+            measureService.countMeasuresByOwnership(
+                    true, principal.getName(), List.of(OwnershipType.ALL)));
 
     return ResponseEntity.ok(results);
   }
@@ -113,7 +116,7 @@ public class MeasureController {
     if (measureOptional.isPresent()) {
       Measure measure = measureOptional.get();
       MeasureSet measureSet =
-          measureSetRepository.findByMeasureSetId(measure.getMeasureSetId()).orElse(null);
+              measureSetRepository.findByMeasureSetId(measure.getMeasureSetId()).orElse(null);
       measure.setMeasureSet(measureSet);
       return ResponseEntity.status(HttpStatus.OK).body(measure);
     }
@@ -122,36 +125,36 @@ public class MeasureController {
 
   @PostMapping("/measure")
   public ResponseEntity<Measure> addMeasure(
-      @RequestBody @Validated(Measure.ValidationSequence.class) Measure measure,
-      @RequestParam(required = false, defaultValue = "true", name = "addDefaultCQL")
+          @RequestBody @Validated(Measure.ValidationSequence.class) Measure measure,
+          @RequestParam(required = false, defaultValue = "true", name = "addDefaultCQL")
           boolean addDefaultCQL,
-      Principal principal,
-      @RequestHeader("Authorization") String accessToken) {
+          Principal principal,
+          @RequestHeader("Authorization") String accessToken) {
     final String username = principal.getName();
     Measure savedMeasure =
-        measureService.createMeasure(measure, username, accessToken, addDefaultCQL);
+            measureService.createMeasure(measure, username, accessToken, addDefaultCQL);
     return ResponseEntity.status(HttpStatus.CREATED).body(savedMeasure);
   }
 
   @PutMapping("/measures/{id}/test-case-config")
   public ResponseEntity<Measure> updateMeasureTestCaseConfiguration(
-      @PathVariable("id") String id,
-      @RequestBody TestCaseConfiguration testCaseConfig,
-      Principal principal,
-      @RequestHeader("Authorization") String accessToken) {
+          @PathVariable("id") String id,
+          @RequestBody TestCaseConfiguration testCaseConfig,
+          Principal principal,
+          @RequestHeader("Authorization") String accessToken) {
     final String username = principal.getName();
     Measure updatedMeasure =
-        measureService.updateMeasureTestCaseConfiguration(username, id, testCaseConfig);
+            measureService.updateMeasureTestCaseConfiguration(username, id, testCaseConfig);
     actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
     return ResponseEntity.ok().body(updatedMeasure);
   }
 
   @PutMapping("/measures/{id}")
   public ResponseEntity<Measure> updateMeasure(
-      @PathVariable("id") String id,
-      @RequestBody @Validated(Measure.ValidationSequence.class) Measure measure,
-      Principal principal,
-      @RequestHeader("Authorization") String accessToken) {
+          @PathVariable("id") String id,
+          @RequestBody @Validated(Measure.ValidationSequence.class) Measure measure,
+          Principal principal,
+          @RequestHeader("Authorization") String accessToken) {
     ResponseEntity<Measure> response;
     final String username = principal.getName();
     if (id == null || id.isEmpty() || !id.equals(measure.getId())) {
@@ -189,26 +192,26 @@ public class MeasureController {
         // for QDM, scoring and patient basis are present outside the group
         // therefor we need to clear testcase groups while updating measure
         if (existingMeasure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
-            && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
+                && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
           QdmMeasure qdmExistingMeasure = (QdmMeasure) existingMeasure;
           QdmMeasure qdmUpdatingMeasure = (QdmMeasure) measure;
 
           if (!StringUtils.equals(qdmExistingMeasure.getScoring(), qdmUpdatingMeasure.getScoring())
-              || (qdmExistingMeasure.isPatientBasis() != qdmUpdatingMeasure.isPatientBasis())) {
+                  || (qdmExistingMeasure.isPatientBasis() != qdmUpdatingMeasure.isPatientBasis())) {
             existingMeasure
-                .getTestCases()
-                .forEach(
-                    testcase -> {
-                      testcase.setGroupPopulations(new ArrayList<>());
-                      testCaseService.updateTestCase(testcase, id, username, accessToken);
-                    });
+                    .getTestCases()
+                    .forEach(
+                            testcase -> {
+                              testcase.setGroupPopulations(new ArrayList<>());
+                              testCaseService.updateTestCase(testcase, id, username, accessToken);
+                            });
           }
         }
       }
 
       response =
-          ResponseEntity.ok()
-              .body(measureService.updateMeasure(existingMeasure, username, measure, accessToken));
+              ResponseEntity.ok()
+                      .body(measureService.updateMeasure(existingMeasure, username, measure, accessToken));
       if (!measure.isActive()) {
         actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
       } else {
@@ -223,7 +226,7 @@ public class MeasureController {
 
   @DeleteMapping("/measures/{id}/delete")
   public ResponseEntity<Measure> deactivateMeasure(
-      @PathVariable("id") String id, Principal principal) {
+          @PathVariable("id") String id, Principal principal) {
 
     return ResponseEntity.ok().body(measureService.deactivateMeasure(id, principal.getName()));
   }
@@ -231,51 +234,51 @@ public class MeasureController {
   @PutMapping("/measures/{id}/acls")
   @PreAuthorize("#request.getHeader('api-key') == #apiKey")
   public ResponseEntity<List<AclSpecification>> updateAccessControl(
-      HttpServletRequest request,
-      @PathVariable String id,
-      @RequestBody @Validated AclOperation aclOperation,
-      @Value("${admin-api-key}") String apiKey) {
+          HttpServletRequest request,
+          @PathVariable String id,
+          @RequestBody @Validated AclOperation aclOperation,
+          @Value("${admin-api-key}") String apiKey) {
     List<AclSpecification> aclSpecifications =
-        measureService.updateAccessControlList(id, aclOperation, "admin");
+            measureService.updateAccessControlList(id, aclOperation, "admin");
     return ResponseEntity.ok().body(aclSpecifications);
   }
 
   @GetMapping("/measures/shared")
   public ResponseEntity<Map<String, List<SharedUser>>> getSharedMeasures(
-      HttpServletRequest request,
-      @RequestParam(name = "measureIds") List<String> measureIds,
-      Principal principal) {
+          HttpServletRequest request,
+          @RequestParam(name = "measureIds") List<String> measureIds,
+          Principal principal) {
     return ResponseEntity.ok()
-        .body(measureService.getSharedMeasures(measureIds, principal.getName()));
+            .body(measureService.getSharedMeasures(measureIds, principal.getName()));
   }
 
   @PutMapping("/measures/shared")
   public ResponseEntity<Map<String, List<AclSpecification>>> shareMeasures(
-      @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
+          @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
     return ResponseEntity.ok(measureService.shareMeasures(measureUserIdMap, principal.getName()));
   }
 
   @PutMapping("/measures/unshared")
   public ResponseEntity<Map<String, List<AclSpecification>>> unshareMeasures(
-      @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
+          @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
     return ResponseEntity.ok(measureService.unshareMeasures(measureUserIdMap, principal.getName()));
   }
 
   @PutMapping("/measures/{id}/ownership")
   @PreAuthorize("#request.getHeader('api-key') == #apiKey")
   public ResponseEntity<String> changeOwnership(
-      HttpServletRequest request,
-      @PathVariable("id") String id,
-      @RequestParam(required = true, name = "userid") String userid,
-      @Value("${admin-api-key}") String apiKey) {
+          HttpServletRequest request,
+          @PathVariable("id") String id,
+          @RequestParam(required = true, name = "userid") String userid,
+          @Value("${admin-api-key}") String apiKey) {
     ResponseEntity<String> response = ResponseEntity.badRequest().body("Measure does not exist.");
 
     log.info("getMeasureId [{}] using apiKey ", id, "apikey");
 
     if (measureService.changeOwnership(id, userid)) {
       response =
-          ResponseEntity.ok()
-              .body(String.format("%s granted ownership to Measure successfully.", userid));
+              ResponseEntity.ok()
+                      .body(String.format("%s granted ownership to Measure successfully.", userid));
     }
 
     return response;
@@ -284,163 +287,181 @@ public class MeasureController {
   @GetMapping("/measures/{measureId}/groups")
   public ResponseEntity<List<Group>> getGroups(@PathVariable String measureId) {
     return repository
-        .findById(measureId)
-        .map(
-            measure -> {
-              List<Group> groups = measure.getGroups() == null ? List.of() : measure.getGroups();
-              return ResponseEntity.ok(groups);
-            })
-        .orElseThrow(() -> new ResourceNotFoundException("Measure", measureId));
+            .findById(measureId)
+            .map(
+                    measure -> {
+                      List<Group> groups = measure.getGroups() == null ? List.of() : measure.getGroups();
+                      return ResponseEntity.ok(groups);
+                    })
+            .orElseThrow(() -> new ResourceNotFoundException("Measure", measureId));
   }
 
   @PostMapping("/measures/{measureId}/groups")
   public ResponseEntity<Group> createGroup(
-      @RequestBody @Validated(Measure.ValidationSequence.class) Group group,
-      @PathVariable String measureId,
-      Principal principal) {
+          @RequestBody @Validated(Measure.ValidationSequence.class) Group group,
+          @PathVariable String measureId,
+          Principal principal) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(groupService.createOrUpdateGroup(group, measureId, principal.getName()));
+            .body(groupService.createOrUpdateGroup(group, measureId, principal.getName()));
   }
 
   @PutMapping("/measures/{measureId}/groups")
   public ResponseEntity<Group> updateGroup(
-      @RequestBody @Validated(Measure.ValidationSequence.class) Group group,
-      @PathVariable String measureId,
-      Principal principal) {
+          @RequestBody @Validated(Measure.ValidationSequence.class) Group group,
+          @PathVariable String measureId,
+          Principal principal) {
     return ResponseEntity.ok(
-        groupService.createOrUpdateGroup(group, measureId, principal.getName()));
+            groupService.createOrUpdateGroup(group, measureId, principal.getName()));
   }
 
   @DeleteMapping("/measures/{measureId}/groups/{groupId}")
   public ResponseEntity<Measure> deleteMeasureGroup(
-      @RequestBody @PathVariable String measureId,
-      @PathVariable String groupId,
-      Principal principal) {
+          @RequestBody @PathVariable String measureId,
+          @PathVariable String groupId,
+          Principal principal) {
 
     log.info(
-        "User [{}] is attempting to delete a group with Id [{}] from measure [{}]",
-        principal.getName(),
-        groupId,
-        measureId);
+            "User [{}] is attempting to delete a group with Id [{}] from measure [{}]",
+            principal.getName(),
+            groupId,
+            measureId);
     return ResponseEntity.ok(
-        groupService.deleteMeasureGroup(measureId, groupId, principal.getName()));
+            groupService.deleteMeasureGroup(measureId, groupId, principal.getName()));
   }
 
   @PostMapping("/measures/{measureId}/groups/{groupId}/stratification")
   public ResponseEntity<Stratification> createStratification(
-      @RequestBody Stratification stratification,
-      @PathVariable String measureId,
-      @PathVariable String groupId,
-      Principal principal) {
+          @RequestBody Stratification stratification,
+          @PathVariable String measureId,
+          @PathVariable String groupId,
+          Principal principal) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(
-            groupService.createOrUpdateStratification(
-                groupId, measureId, stratification, principal.getName()));
+            .body(
+                    groupService.createOrUpdateStratification(
+                            groupId, measureId, stratification, principal.getName()));
   }
 
   @PutMapping("/measures/{measureId}/groups/{groupId}/stratification")
   public ResponseEntity<Stratification> updateStratification(
-      @RequestBody Stratification stratification,
-      @PathVariable String measureId,
-      @PathVariable String groupId,
-      Principal principal) {
+          @RequestBody Stratification stratification,
+          @PathVariable String measureId,
+          @PathVariable String groupId,
+          Principal principal) {
     return ResponseEntity.ok(
-        groupService.createOrUpdateStratification(
-            groupId, measureId, stratification, principal.getName()));
+            groupService.createOrUpdateStratification(
+                    groupId, measureId, stratification, principal.getName()));
   }
 
   @DeleteMapping("/measures/{measureId}/groups/{groupId}/stratification/{stratificationId}")
   public ResponseEntity<Measure> deleteStratification(
-      @RequestBody @PathVariable String measureId,
-      @PathVariable String groupId,
-      @PathVariable String stratificationId,
-      Principal principal) {
+          @RequestBody @PathVariable String measureId,
+          @PathVariable String groupId,
+          @PathVariable String stratificationId,
+          Principal principal) {
 
     log.info(
-        "User [{}] is attempting to delete a group with Id [{}] from measure [{}]",
-        principal.getName(),
-        groupId,
-        measureId);
+            "User [{}] is attempting to delete a group with Id [{}] from measure [{}]",
+            principal.getName(),
+            groupId,
+            measureId);
     return ResponseEntity.ok(
-        groupService.deleteStratification(
-            measureId, groupId, stratificationId, principal.getName()));
+            groupService.deleteStratification(
+                    measureId, groupId, stratificationId, principal.getName()));
   }
 
   @PutMapping("/measures/searches")
   public ResponseEntity<Page<MeasureListDTO>> measureSearchByCriteria(
-      Principal principal,
-      @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
-      @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
-      @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
-      @RequestParam(required = false, defaultValue = "0", name = "page") int page,
-      @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
-      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction,
-      // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
-      // Determines the source of the nested measures invocation (i.e., measures page or testcase
-      // copy page) as both measureSearch or EditTestsOnVersionedMeasures flags are used in this API
-      // call.
-      @RequestParam(required = false, defaultValue = "measures") String invocationSource) {
+          Principal principal,
+          @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
+          @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
+          @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
+          @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+          @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
+          @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction,
+          // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
+          // Determines the source of the nested measures invocation (i.e., measures page or testcase
+          // copy page) as both measureSearch or EditTestsOnVersionedMeasures flags are used in this API
+          // call.
+          @RequestParam(required = false, defaultValue = "measures") String invocationSource) {
 
     final String username = principal.getName();
     final Pageable pageReq =
-        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
+            PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
 
     Page<MeasureListDTO> measures =
-        measureService.getMeasuresByCriteria(
-            searchCriteria, ownershipTypes, pageReq, username, invocationSource);
+            measureService.getMeasuresByCriteria(
+                    searchCriteria, ownershipTypes, pageReq, username, invocationSource);
 
     return ResponseEntity.ok(measures);
   }
 
   @PutMapping("/measures/{measureSetId}/create-cms-id")
   public ResponseEntity<MeasureSet> createCmsId(
-      @PathVariable String measureSetId, Principal principal) {
+          @PathVariable String measureSetId, Principal principal) {
     measureService.verifyAuthorizationByMeasureSetId(principal.getName(), measureSetId, true);
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(measureSetService.createAndUpdateCmsId(measureSetId, principal.getName()));
+            .body(measureSetService.createAndUpdateCmsId(measureSetId, principal.getName()));
   }
 
   @DeleteMapping("/measures/{measureId}/delete-cms-id")
   @PreAuthorize("#request.getHeader('api-key') == #apiKey")
   public ResponseEntity<String> deleteCmsId(
-      HttpServletRequest request,
-      @PathVariable String measureId,
-      @RequestParam(name = "cmsId") Integer cmsId,
-      @Value("${admin-api-key}") String apiKey,
-      @RequestHeader(name = "harpId") String harpId,
-      Principal principal) {
+          HttpServletRequest request,
+          @PathVariable String measureId,
+          @RequestParam(name = "cmsId") Integer cmsId,
+          @Value("${admin-api-key}") String apiKey,
+          @RequestHeader(name = "harpId") String harpId,
+          Principal principal) {
     log.info(
-        "User [{}] - Started admin task [deleteCmsId] and is attempting to delete "
-            + "CMS id [{}] from measure with measure id [{}]",
-        principal.getName(),
-        cmsId,
-        measureId);
+            "User [{}] - Started admin task [deleteCmsId] and is attempting to delete "
+                    + "CMS id [{}] from measure with measure id [{}]",
+            principal.getName(),
+            cmsId,
+            measureId);
     return ResponseEntity.status(HttpStatus.OK)
-        .body(measureSetService.deleteCmsId(measureId, cmsId, harpId));
+            .body(measureSetService.deleteCmsId(measureId, cmsId, harpId));
   }
 
   @PutMapping("/measures/cms-id-association")
   public ResponseEntity<MeasureSet> associateCmsId(
-      Principal principal,
-      @RequestParam String qiCoreMeasureId,
-      @RequestParam String qdmMeasureId,
-      @RequestParam(defaultValue = "false") boolean copyMetaData) {
+          Principal principal,
+          @RequestParam String qiCoreMeasureId,
+          @RequestParam String qdmMeasureId,
+          @RequestParam(defaultValue = "false") boolean copyMetaData) {
     return ResponseEntity.ok(
-        measureService.associateCmsId(
-            principal.getName(), qiCoreMeasureId, qdmMeasureId, copyMetaData));
+            measureService.associateCmsId(
+                    principal.getName(), qiCoreMeasureId, qdmMeasureId, copyMetaData));
   }
 
   @GetMapping(
-      value = "/measures/library/usage",
-      produces = {MediaType.APPLICATION_JSON_VALUE})
+          value = "/measures/library/usage",
+          produces = {MediaType.APPLICATION_JSON_VALUE})
   public ResponseEntity<List<LibraryUsage>> getLibraryUsage(@RequestParam String libraryName) {
     return ResponseEntity.ok().body(measureService.findLibraryUsage(libraryName));
   }
 
+  @PutMapping("/measures/transfer")
+  public ResponseEntity<Boolean> transferMeasures(
+          @RequestBody List<String> measureIds,
+          @RequestHeader(name = "harpId") String harpId,
+          @RequestParam(defaultValue = "false") boolean retainShareAccess,
+          Principal principal,
+          @RequestHeader("Authorization") String accessToken) {
+    log.info("transferMeasures to [{}] ", harpId);
+    if (CollectionUtils.isEmpty(measureIds)) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(false);
+    }
+    return ResponseEntity.ok(
+            measureService.transferMeasures(
+                    measureIds, harpId, retainShareAccess, principal.getName()));
+  }
+
   @GetMapping(value = "/measures/measure-history/{id}")
   public ResponseEntity<List<Action>> getMeasureHistory(
-      @PathVariable("id") String measureId, Principal principal) {
+          @PathVariable("id") String measureId, Principal principal) {
     return ResponseEntity.ok()
-        .body(measureService.getMeasureHistory(measureId, principal.getName()));
+            .body(measureService.getMeasureHistory(measureId, principal.getName()));
   }
+
+
 }
