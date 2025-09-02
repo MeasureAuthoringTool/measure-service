@@ -438,4 +438,20 @@ public class MeasureController {
   public ResponseEntity<List<LibraryUsage>> getLibraryUsage(@RequestParam String libraryName) {
     return ResponseEntity.ok().body(measureService.findLibraryUsage(libraryName));
   }
+
+  @PutMapping("/measures/transfer")
+  public ResponseEntity<Boolean> transferMeasures(
+      @RequestBody List<String> measureIds,
+      @RequestHeader(name = "harpId") String harpId,
+      @RequestParam(defaultValue = "false") boolean retainShareAccess,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
+    log.info("transferMeasures to [{}] ", harpId);
+    if (CollectionUtils.isEmpty(measureIds)) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(false);
+    }
+    return ResponseEntity.ok(
+        measureService.transferMeasures(
+            measureIds, harpId, retainShareAccess, principal.getName()));
+  }
 }
