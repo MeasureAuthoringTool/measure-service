@@ -34,10 +34,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -1072,5 +1069,52 @@ class MeasureControllerTest {
         () ->
             controller.updateMeasureTestCaseConfiguration(
                 "measureId", testCaseConfig, principal, "Bearer TOKEN"));
+  }
+
+  @Test
+  void getMeasureHistoryReturnsActionsForValidMeasureId() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    List<Action> actions =
+        List.of(
+            Action.builder().actionType(ActionType.CREATED).performedBy("test.user").build(),
+            Action.builder().actionType(ActionType.UPDATED).performedBy("test.user").build());
+
+    when(measureService.getMeasureHistory("measureId", "test.user")).thenReturn(actions);
+
+    ResponseEntity<List<Action>> response = controller.getMeasureHistory("measureId", principal);
+
+    assertNotNull(response.getBody());
+    assertEquals(2, response.getBody().size());
+    assertEquals(ActionType.CREATED, response.getBody().get(0).getActionType());
+    assertEquals(ActionType.UPDATED, response.getBody().get(1).getActionType());
+  }
+
+  @Test
+  void getMeasureHistoryReturnsEmptyListForNonExistentMeasureId() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    when(measureService.getMeasureHistory("nonExistentId", "test.user")).thenReturn(List.of());
+
+    ResponseEntity<List<Action>> response =
+        controller.getMeasureHistory("nonExistentId", principal);
+
+    assertNotNull(response.getBody());
+    assertTrue(response.getBody().isEmpty());
+  }
+
+  @Test
+  void getMeasureHistoryThrowsUnauthorizedExceptionForInvalidUser() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("invalid.user");
+
+    doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
+        .when(measureService)
+        .getMeasureHistory("measureId", "invalid.user");
+
+    assertThrows(
+        UnauthorizedException.class, () -> controller.getMeasureHistory("measureId", principal));
   }
 }

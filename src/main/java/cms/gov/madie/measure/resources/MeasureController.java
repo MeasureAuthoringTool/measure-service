@@ -7,9 +7,7 @@ import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import lombok.RequiredArgsConstructor;
@@ -437,5 +435,12 @@ public class MeasureController {
       produces = {MediaType.APPLICATION_JSON_VALUE})
   public ResponseEntity<List<LibraryUsage>> getLibraryUsage(@RequestParam String libraryName) {
     return ResponseEntity.ok().body(measureService.findLibraryUsage(libraryName));
+  }
+
+  @GetMapping(value = "/measures/measure-history/{id}")
+  public ResponseEntity<List<Action>> getMeasureHistory(
+      @PathVariable("id") String measureId, Principal principal) {
+    return ResponseEntity.ok()
+        .body(measureService.getMeasureHistory(measureId, principal.getName()));
   }
 }

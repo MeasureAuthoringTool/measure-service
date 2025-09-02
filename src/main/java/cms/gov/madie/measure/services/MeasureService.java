@@ -12,12 +12,7 @@ import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.AccessControlAction;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.MeasureSetActionLog;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.OwnershipType;
-import gov.cms.madie.models.common.Version;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import jakarta.annotation.Nullable;
@@ -546,7 +541,6 @@ public class MeasureService {
         }
       }
     }
-
     return sharedMeasures;
   }
 
@@ -574,7 +568,6 @@ public class MeasureService {
         username,
         measureUserIdMap,
         measureIdToAclSpecification);
-
     return measureIdToAclSpecification;
   }
 
@@ -602,7 +595,6 @@ public class MeasureService {
         username,
         measureUserIdMap,
         measureIdToAclSpecification);
-
     return measureIdToAclSpecification;
   }
 
@@ -691,7 +683,6 @@ public class MeasureService {
         });
     // For measureSetIds that were searched, but not returned put the id & true ( is
     // draftable )
-
     return measureSetMap;
   }
 
@@ -762,7 +753,6 @@ public class MeasureService {
   }
 
   public void deleteVersionedMeasures(List<Measure> measures) {
-
     List<Measure> versionedMeasures =
         measures.stream()
             .filter(
@@ -899,7 +889,6 @@ public class MeasureService {
     if (qiCoreMeasure == null || qdmMeasure == null) {
       throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
     }
-
     verifyOneQiCoreAndOneQdmMeasure(qiCoreMeasure, qdmMeasure);
     verifyOwner(username, qiCoreMeasure, qdmMeasure);
     verifyQdmHasCmsId(qdmMeasure);
@@ -987,5 +976,24 @@ public class MeasureService {
   public int countMeasuresByOwnership(
       boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
     return measureRepository.countMeasuresByOwnership(isActive, userId, ownershipTypes);
+  }
+
+  public List<Action> getMeasureHistory(String measureId, String userName) {
+    if (StringUtils.isBlank(measureId)) {
+      throw new InvalidRequestException("Measure ID cannot be null or empty.");
+    }
+
+    Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
+    if (persistedMeasure.isEmpty()) {
+      throw new ResourceNotFoundException("Measure does not exist: " + measureId);
+    }
+
+    List<Action> measureHistory =
+        actionLogService.findMeasureHistory(measureId, persistedMeasure.get().getMeasureSetId());
+    log.info(
+        "User [{}] successfully retrieved the history of the measure with ID [{}]",
+        userName,
+        measureId);
+    return measureHistory;
   }
 }

@@ -3,16 +3,17 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.repositories.MeasureActionLogRepository;
 import cms.gov.madie.measure.repositories.MeasureSetActionLogRepository;
 import cms.gov.madie.measure.utils.ActionLogCollectionType;
-import gov.cms.madie.models.common.Action;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.AccessControlAction;
-import gov.cms.madie.models.common.MeasureSetActionLog;
+import gov.cms.madie.models.common.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -83,5 +84,31 @@ public class ActionLogService {
             .additionalActionMessage(Arrays.toString(additionalActionMessage))
             .build(),
         collection);
+  }
+
+  public List<Action> findMeasureHistory(String targetId, String measureSetId) {
+    List<ActionLog> measureActionLogs = measureActionLogRepository.findByTargetId(targetId);
+    Optional<MeasureSetActionLog> measureSetActionLogs =
+        measureSetActionLogRepository.findByTargetId(measureSetId);
+
+    List<Action> combinedActionLog = new ArrayList<>();
+
+    if (!CollectionUtils.isEmpty(measureActionLogs)) {
+      measureActionLogs.forEach(
+          log -> {
+            if (!CollectionUtils.isEmpty(log.getActions())) {
+              combinedActionLog.addAll(log.getActions());
+            }
+          });
+    }
+
+    measureSetActionLogs.ifPresent(
+        log -> {
+          if (!CollectionUtils.isEmpty(log.getActions())) {
+            combinedActionLog.addAll(log.getActions());
+          }
+        });
+
+    return combinedActionLog;
   }
 }

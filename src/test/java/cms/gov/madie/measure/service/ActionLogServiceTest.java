@@ -2,10 +2,7 @@ package cms.gov.madie.measure.service;
 
 import cms.gov.madie.measure.repositories.MeasureActionLogRepository;
 import cms.gov.madie.measure.repositories.MeasureSetActionLogRepository;
-import gov.cms.madie.models.common.AccessControlAction;
-import gov.cms.madie.models.common.Action;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.MeasureSetActionLog;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
 import org.junit.jupiter.api.Test;
@@ -177,5 +174,80 @@ public class ActionLogServiceTest {
 
     assertThat(targetIdArgumentCaptor.getValue(), is(equalTo("TARGET_ID")));
     assertThat(result, is(equalTo(null)));
+  }
+
+  @Test
+  void findMeasureHistoryReturnsCombinedActionsForValidTargetIds() {
+    List<ActionLog> measureActionLogs =
+        List.of(
+            ActionLog.builder()
+                .actions(
+                    List.of(
+                        Action.builder()
+                            .actionType(ActionType.CREATED)
+                            .performedBy("user1")
+                            .build()))
+                .build());
+
+    MeasureSetActionLog measureSetActionLog =
+        MeasureSetActionLog.builder()
+            .actions(
+                List.of(
+                    AccessControlAction.builder()
+                        .actionType(ActionType.UPDATED)
+                        .performedBy("user2")
+                        .build()))
+            .build();
+
+    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(measureActionLogs);
+    when(measureSetActionLogRepository.findByTargetId("measureSetId"))
+        .thenReturn(Optional.of(measureSetActionLog));
+
+    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
+
+    assertThat(result.size(), is(2));
+    assertThat(result.get(0).getActionType(), is(ActionType.CREATED));
+    assertThat(result.get(1).getActionType(), is(ActionType.UPDATED));
+  }
+
+  @Test
+  void findMeasureHistoryReturnsEmptyListWhenNoLogsExist() {
+    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(List.of());
+    when(measureSetActionLogRepository.findByTargetId("measureSetId")).thenReturn(Optional.empty());
+
+    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
+
+    assertThat(result.isEmpty(), is(true));
+  }
+
+  @Test
+  void findMeasureHistoryIgnoresNullActionsInLogs() {
+    List<ActionLog> measureActionLogs = List.of(ActionLog.builder().actions(null).build());
+
+    MeasureSetActionLog measureSetActionLog = MeasureSetActionLog.builder().actions(null).build();
+
+    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(measureActionLogs);
+    when(measureSetActionLogRepository.findByTargetId("measureSetId"))
+        .thenReturn(Optional.of(measureSetActionLog));
+
+    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
+
+    assertThat(result.isEmpty(), is(true));
+  }
+
+  @Test
+  void findMeasureHistoryHandlesEmptyActionsInLogs() {
+    List<ActionLog> measureActionLogs = List.of(ActionLog.builder().actions(List.of()).build());
+
+    MeasureSetActionLog measureSetActionLog =
+        MeasureSetActionLog.builder().actions(List.of()).build();
+
+    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(measureActionLogs);
+    when(measureSetActionLogRepository.findByTargetId("measureSetId"))
+        .thenReturn(Optional.of(measureSetActionLog));
+
+    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
+
+    assertThat(result.isEmpty(), is(true));
   }
 }
