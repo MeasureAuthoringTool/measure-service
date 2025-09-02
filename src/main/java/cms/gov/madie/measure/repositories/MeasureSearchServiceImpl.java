@@ -65,7 +65,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     boolean nestedFlag =
         invocationSource.equals("testCase")
-            ? appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
+            ? true // Always allow nested search for test case copy page
             : appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH);
 
     aggregationOperations.add(lookupOperation);

@@ -6,7 +6,6 @@ public enum MadieFeatureFlag {
   QDM_TEST_CASES("qdmTestCases"),
   IMPORT_TEST_CASES("importTestCases"),
   MEASURE_SEARCH("MeasureSearch"),
-  EDIT_TESTS_ON_VERSIONED_MEASURES("EditTestsOnVersionedMeasures"),
   STU_6_TEST_CASE_VALIDATION("stu6TestCaseValidation");
 
   private final String flag;

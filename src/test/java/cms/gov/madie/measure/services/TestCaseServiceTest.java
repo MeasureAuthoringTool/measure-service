@@ -5,7 +5,6 @@ import cms.gov.madie.measure.dto.JobStatus;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
-import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
@@ -121,8 +120,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
-        .thenReturn(true);
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     Optional<Measure> optional = Optional.of(measure);
@@ -468,8 +465,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateResourceAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
-        .thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
@@ -531,8 +526,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCasesThrowsNoExceptionForNonDraftMeasure() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
-        .thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
@@ -570,17 +563,26 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testPersistTestCasesThrowsInvalidDraftStatusExceptionForNonDraftMeasure() {
+  public void testPersistTestCasesSucceedsForNonDraftMeasure() {
     List<TestCase> newTestCases = List.of(TestCase.builder().title("Test1").build());
     String measureId = measure.getId();
     String username = "user01";
     String accessToken = "Bearer Token";
     measure.getMeasureMetaData().setDraft(false);
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    Mockito.doAnswer((args) -> args.getArgument(0))
+        .when(measureRepository)
+        .save(measureCaptor.capture());
 
-    assertThrows(
-        InvalidDraftStatusException.class,
-        () -> testCaseService.persistTestCases(newTestCases, measureId, username, accessToken));
+    // Should not throw exception - editing versioned measures is now always allowed
+    testCaseService.persistTestCases(newTestCases, measureId, username, accessToken);
+
+    // Verify the measure was saved
+    verify(measureRepository).save(any(Measure.class));
   }
 
   @Test
@@ -703,8 +705,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCasesHandlesListToMeasureWithJson() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
-        .thenReturn(true);
 
     List<TestCase> newTestCases =
         List.of(
@@ -772,14 +772,23 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testPersistTestCaseReturnsInvalidDraftStatusException() {
+  public void testPersistTestCaseSucceedsForNonDraftMeasure() {
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     Optional<Measure> optional = Optional.of(measure);
     Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    Mockito.doAnswer((args) -> args.getArgument(0))
+        .when(measureRepository)
+        .save(measureCaptor.capture());
 
-    assertThrows(
-        InvalidDraftStatusException.class,
-        () -> testCaseService.persistTestCase(testCase, measure.getId(), "test.user", "TOKEN"));
+    // Should not throw exception - editing versioned measures is now always allowed
+    testCaseService.persistTestCase(testCase, measure.getId(), "test.user", "TOKEN");
+
+    // Verify the measure was saved
+    verify(measureRepository).save(any(Measure.class));
   }
 
   @Test
@@ -1089,16 +1098,23 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testUpdateTestCaseReturnsInvalidDraftStatusException() {
+  public void testUpdateTestCaseSucceedsForNonDraftMeasure() {
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
-    Optional<Measure> optional = Optional.of(measure);
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    Mockito.doAnswer((args) -> args.getArgument(0))
+        .when(measureRepository)
+        .save(measureCaptor.capture());
 
-    assertThrows(
-        InvalidDraftStatusException.class,
-        () ->
-            testCaseService.updateTestCase(
-                testCase, measure.getId(), "test.user", "TOKEN", TestCaseServiceUtil.SAVE));
+    // Should not throw exception - editing versioned measures is now always allowed
+    testCaseService.updateTestCase(
+        testCase, measure.getId(), "test.user", "TOKEN", TestCaseServiceUtil.SAVE);
+
+    // Verify the measure was saved
+    verify(measureRepository).save(any(Measure.class));
   }
 
   @Test
@@ -1229,8 +1245,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testUpdateTestCaseThrowsResourceNotFoundExceptionForUnknownMeasureId() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
-        .thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
@@ -2886,8 +2900,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   void testCopyToAnotherMeasure() {
     // Set-up
     MeasureMetaData metaData = MeasureMetaData.builder().draft(false).build();
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
-        .thenReturn(true);
     TestCase source =
         testCase.deepCopy().toBuilder()
             .json(testCaseImportWithMeasureReport)
@@ -3331,8 +3343,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateTestCaseAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
-        .thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
