@@ -38,10 +38,7 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import gov.cms.madie.models.access.AclOperation;
-import gov.cms.madie.models.common.AccessControlAction;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.MeasureSetActionLog;
-import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import org.apache.commons.io.IOUtils;
@@ -65,9 +62,6 @@ import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.Organization;
-import gov.cms.madie.models.common.Version;
 
 @ExtendWith(MockitoExtension.class)
 public class MeasureServiceTest implements ResourceUtil {
@@ -105,127 +99,127 @@ public class MeasureServiceTest implements ResourceUtil {
     // new group, not in DB, so no ID
 
     List<Reference> references =
-            List.of(
-                    Reference.builder()
-                            .id("test reference id")
-                            .referenceText("test reference text")
-                            .referenceType("DOCUMENT")
-                            .build());
+        List.of(
+            Reference.builder()
+                .id("test reference id")
+                .referenceText("test reference text")
+                .referenceType("DOCUMENT")
+                .build());
     List<Endorsement> endorsements =
-            List.of(
-                    Endorsement.builder()
-                            .endorserSystemId("test endorsement system id")
-                            .endorser("NQF")
-                            .endorsementId("testEndorsementId")
-                            .build());
+        List.of(
+            Endorsement.builder()
+                .endorserSystemId("test endorsement system id")
+                .endorser("NQF")
+                .endorsementId("testEndorsementId")
+                .build());
     List<MeasureDefinition> definitions =
-            List.of(
-                    MeasureDefinition.builder()
-                            .id("test definition id")
-                            .term("test term")
-                            .definition("test definition")
-                            .build());
+        List.of(
+            MeasureDefinition.builder()
+                .id("test definition id")
+                .term("test term")
+                .definition("test definition")
+                .build());
 
     List<Organization> developersList = new ArrayList<>();
     developersList.add(Organization.builder().name("SB 2").build());
     developersList.add(Organization.builder().name("SB 3").build());
 
     draftMeasureMetaData =
-            MeasureMetaData.builder()
-                    .steward(Organization.builder().name("SB").build())
-                    .developers(developersList)
-                    .copyright("Copyright@SB")
-                    .references(references)
-                    .draft(true)
-                    .endorsements(endorsements)
-                    .definition("test definition")
-                    .experimental(false)
-                    .transmissionFormat("test transmission format")
-                    .measureDefinitions(definitions)
-                    .build();
+        MeasureMetaData.builder()
+            .steward(Organization.builder().name("SB").build())
+            .developers(developersList)
+            .copyright("Copyright@SB")
+            .references(references)
+            .draft(true)
+            .endorsements(endorsements)
+            .definition("test definition")
+            .experimental(false)
+            .transmissionFormat("test transmission format")
+            .measureDefinitions(definitions)
+            .build();
 
     finalMeasureMetaData =
-            MeasureMetaData.builder()
-                    .steward(Organization.builder().name("SB").build())
-                    .developers(developersList)
-                    .copyright("Copyright@SB")
-                    .references(references)
-                    .draft(false)
-                    .endorsements(endorsements)
-                    .definition("test definition")
-                    .experimental(false)
-                    .transmissionFormat("test transmission format")
-                    .build();
+        MeasureMetaData.builder()
+            .steward(Organization.builder().name("SB").build())
+            .developers(developersList)
+            .copyright("Copyright@SB")
+            .references(references)
+            .draft(false)
+            .endorsements(endorsements)
+            .definition("test definition")
+            .experimental(false)
+            .transmissionFormat("test transmission format")
+            .build();
 
     // Present in DB and has ID
     group2 =
-            Group.builder()
-                    .id("xyz-p12r-12ert")
-                    .populationBasis("Encounter")
-                    .populations(
-                            List.of(
-                                    new Population(
-                                            "id-1",
-                                            PopulationType.INITIAL_POPULATION,
-                                            "FactorialOfFive",
-                                            null,
-                                            null,
-                                            "IntialPopulation_1")))
-                    .stratifications(List.of(strat1, emptyStrat))
-                    .groupDescription("Description")
-                    .scoringUnit("test-scoring-unit")
-                    .build();
+        Group.builder()
+            .id("xyz-p12r-12ert")
+            .populationBasis("Encounter")
+            .populations(
+                List.of(
+                    new Population(
+                        "id-1",
+                        PopulationType.INITIAL_POPULATION,
+                        "FactorialOfFive",
+                        null,
+                        null,
+                        "IntialPopulation_1")))
+            .stratifications(List.of(strat1, emptyStrat))
+            .groupDescription("Description")
+            .scoringUnit("test-scoring-unit")
+            .build();
 
     List<Group> groups = new ArrayList<>();
     groups.add(group2);
     elmJson = getData("/test_elm.json");
     measure1 =
-            Measure.builder()
-                    .active(true)
-                    .id("xyz-p13r-13ert")
-                    .model(ModelType.QI_CORE.getValue())
-                    .cql("test cql")
-                    .elmJson(elmJson)
-                    .measureSetId("IDIDID")
-                    .cqlLibraryName("MSR01Library")
-                    .measureName("MSR01")
-                    .measureMetaData(draftMeasureMetaData)
-                    .version(new Version(0, 0, 1))
-                    .groups(groups)
-                    .createdAt(Instant.now())
-                    .createdBy("test user")
-                    .lastModifiedAt(Instant.now())
-                    .lastModifiedBy("test user")
-                    .build();
+        Measure.builder()
+            .active(true)
+            .id("xyz-p13r-13ert")
+            .model(ModelType.QI_CORE.getValue())
+            .cql("test cql")
+            .elmJson(elmJson)
+            .measureSetId("IDIDID")
+            .cqlLibraryName("MSR01Library")
+            .measureName("MSR01")
+            .measureMetaData(draftMeasureMetaData)
+            .version(new Version(0, 0, 1))
+            .groups(groups)
+            .createdAt(Instant.now())
+            .createdBy("test user")
+            .lastModifiedAt(Instant.now())
+            .lastModifiedBy("test user")
+            .build();
 
     measure2 =
-            Measure.builder()
-                    .active(true)
-                    .id("xyz-p13r-13ert")
-                    .cql("test cql")
-                    .model(ModelType.QDM_5_6.getValue())
-                    .elmJson(elmJson)
-                    .measureSetId("2D2D2D")
-                    .measureName("MSR02")
-                    .version(new Version(0, 0, 1))
-                    .groups(groups)
-                    .createdAt(Instant.now())
-                    .createdBy("test user")
-                    .lastModifiedAt(Instant.now())
-                    .lastModifiedBy("test user")
-                    .measureMetaData(draftMeasureMetaData)
-                    .build();
+        Measure.builder()
+            .active(true)
+            .id("xyz-p13r-13ert")
+            .cql("test cql")
+            .model(ModelType.QDM_5_6.getValue())
+            .elmJson(elmJson)
+            .measureSetId("2D2D2D")
+            .measureName("MSR02")
+            .version(new Version(0, 0, 1))
+            .groups(groups)
+            .createdAt(Instant.now())
+            .createdBy("test user")
+            .lastModifiedAt(Instant.now())
+            .lastModifiedBy("test user")
+            .measureMetaData(draftMeasureMetaData)
+            .build();
 
     measureList =
-            MeasureListDTO.builder()
-                    .active(true)
-                    .id("xyz-p13r-13ert")
-                    .model(ModelType.QI_CORE.getValue())
-                    .measureSetId("IDIDID")
-                    .measureName("MSR01")
-                    .measureMetaData(draftMeasureMetaData)
-                    .version(new Version(0, 0, 1))
-                    .build();
+        MeasureListDTO.builder()
+            .active(true)
+            .id("xyz-p13r-13ert")
+            .model(ModelType.QI_CORE.getValue())
+            .measureSetId("IDIDID")
+            .measureName("MSR01")
+            .measureMetaData(draftMeasureMetaData)
+            .version(new Version(0, 0, 1))
+            .build();
 
     organizationList = new ArrayList<>();
     organizationList.add(Organization.builder().name("SB").url("SB Url").build());
@@ -237,8 +231,8 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testVerifyAuthorizationByMeasureSetIdThrowsExceptionForMissingMeasureSet() {
     assertThrows(
-            InvalidMeasureStateException.class,
-            () -> measureService.verifyAuthorizationByMeasureSetId("THEUSER", "MS123", true));
+        InvalidMeasureStateException.class,
+        () -> measureService.verifyAuthorizationByMeasureSetId("THEUSER", "MS123", true));
   }
 
   @Test
@@ -246,8 +240,8 @@ public class MeasureServiceTest implements ResourceUtil {
     MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
     assertThrows(
-            UnauthorizedException.class,
-            () -> measureService.verifyAuthorizationByMeasureSetId("THEUSER", "MS123", true));
+        UnauthorizedException.class,
+        () -> measureService.verifyAuthorizationByMeasureSetId("THEUSER", "MS123", true));
   }
 
   @Test
@@ -277,15 +271,15 @@ public class MeasureServiceTest implements ResourceUtil {
     MeasureSet measureSet = MeasureSet.builder().owner("OWNER").acls(List.of(acl1)).build();
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
     assertThrows(
-            UnauthorizedException.class,
-            () -> measureService.verifyAuthorizationByMeasureSetId("THEUSER", "MS123", true));
+        UnauthorizedException.class,
+        () -> measureService.verifyAuthorizationByMeasureSetId("THEUSER", "MS123", true));
   }
 
   @Test
   public void testVerifyAuthorizationThrowsExceptionForMissingMeasureSet() {
     assertThrows(
-            InvalidMeasureStateException.class,
-            () -> measureService.verifyAuthorization("THEUSER", new Measure()));
+        InvalidMeasureStateException.class,
+        () -> measureService.verifyAuthorization("THEUSER", new Measure()));
   }
 
   @Test
@@ -293,7 +287,7 @@ public class MeasureServiceTest implements ResourceUtil {
     MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
     Measure measure = Measure.builder().measureSet(measureSet).build();
     assertThrows(
-            UnauthorizedException.class, () -> measureService.verifyAuthorization("THEUSER", measure));
+        UnauthorizedException.class, () -> measureService.verifyAuthorization("THEUSER", measure));
   }
 
   @Test
@@ -307,7 +301,7 @@ public class MeasureServiceTest implements ResourceUtil {
     MeasureSet measureSet = MeasureSet.builder().owner("OWNER").acls(List.of(acl1, acl2)).build();
     Measure measure = Measure.builder().measureSet(measureSet).build();
     assertThrows(
-            UnauthorizedException.class, () -> measureService.verifyAuthorization("THEUSER", measure));
+        UnauthorizedException.class, () -> measureService.verifyAuthorization("THEUSER", measure));
   }
 
   @Test
@@ -379,22 +373,22 @@ public class MeasureServiceTest implements ResourceUtil {
     Page<Measure> activeMeasures = new PageImpl<>(List.of(measure1));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder().searchField("test criteria").build();
+        MeasureSearchCriteria.builder().searchField("test criteria").build();
     doReturn(activeMeasures)
-            .when(measureRepository)
-            .searchMeasuresByCriteria(
-                    eq("test.user"),
-                    any(PageRequest.class),
-                    any(MeasureSearchCriteria.class),
-                    eq(List.of(OwnershipType.OWNED)),
-                    eq("testCase"));
+        .when(measureRepository)
+        .searchMeasuresByCriteria(
+            eq("test.user"),
+            any(PageRequest.class),
+            any(MeasureSearchCriteria.class),
+            eq(List.of(OwnershipType.OWNED)),
+            eq("testCase"));
     Object measures =
-            measureService.getMeasuresByCriteria(
-                    measureSearchCriteria,
-                    List.of(OwnershipType.OWNED),
-                    initialPage,
-                    "test.user",
-                    "testCase");
+        measureService.getMeasuresByCriteria(
+            measureSearchCriteria,
+            List.of(OwnershipType.OWNED),
+            initialPage,
+            "test.user",
+            "testCase");
     assertNotNull(measures);
   }
 
@@ -405,22 +399,22 @@ public class MeasureServiceTest implements ResourceUtil {
     Page<Measure> activeMeasures = new PageImpl<>(List.of(measure1));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder().searchField("test criteria").build();
+        MeasureSearchCriteria.builder().searchField("test criteria").build();
     doReturn(activeMeasures)
-            .when(measureRepository)
-            .searchMeasuresByCriteria(
-                    eq("test.user"),
-                    any(PageRequest.class),
-                    any(MeasureSearchCriteria.class),
-                    eq(List.of(OwnershipType.SHARED)),
-                    eq("testCase"));
+        .when(measureRepository)
+        .searchMeasuresByCriteria(
+            eq("test.user"),
+            any(PageRequest.class),
+            any(MeasureSearchCriteria.class),
+            eq(List.of(OwnershipType.SHARED)),
+            eq("testCase"));
     Object measures =
-            measureService.getMeasuresByCriteria(
-                    measureSearchCriteria,
-                    List.of(OwnershipType.SHARED),
-                    initialPage,
-                    "test.user",
-                    "testCase");
+        measureService.getMeasuresByCriteria(
+            measureSearchCriteria,
+            List.of(OwnershipType.SHARED),
+            initialPage,
+            "test.user",
+            "testCase");
     assertNotNull(measures);
   }
 
@@ -431,22 +425,22 @@ public class MeasureServiceTest implements ResourceUtil {
     Page<Measure> activeMeasures = new PageImpl<>(List.of(measure1));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder().searchField("test criteria").build();
+        MeasureSearchCriteria.builder().searchField("test criteria").build();
     doReturn(activeMeasures)
-            .when(measureRepository)
-            .searchMeasuresByCriteria(
-                    eq("test.user"),
-                    any(PageRequest.class),
-                    any(MeasureSearchCriteria.class),
-                    eq(List.of(OwnershipType.ALL)),
-                    eq("measures"));
+        .when(measureRepository)
+        .searchMeasuresByCriteria(
+            eq("test.user"),
+            any(PageRequest.class),
+            any(MeasureSearchCriteria.class),
+            eq(List.of(OwnershipType.ALL)),
+            eq("measures"));
     Object measures =
-            measureService.getMeasuresByCriteria(
-                    measureSearchCriteria,
-                    List.of(OwnershipType.ALL),
-                    initialPage,
-                    "test.user",
-                    "measures");
+        measureService.getMeasuresByCriteria(
+            measureSearchCriteria,
+            List.of(OwnershipType.ALL),
+            initialPage,
+            "test.user",
+            "measures");
     assertNotNull(measures);
   }
 
@@ -457,8 +451,8 @@ public class MeasureServiceTest implements ResourceUtil {
     List<String> measureSetIds = List.of("IDIDID", "2D2D2D");
 
     doReturn(activeMeasures)
-            .when(measureRepository)
-            .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(anyList(), eq(true), eq(true));
+        .when(measureRepository)
+        .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(anyList(), eq(true), eq(true));
     Map<String, Boolean> measures = measureService.getMeasureDrafts(measureSetIds);
     assertNotNull(measures);
     assertEquals(2, measures.size());
@@ -469,27 +463,27 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testCreateMeasureSuccessfullyWithDefaultCqlQDM() throws Exception {
     String cqlTemplate =
-            IOUtils.toString(this.getClass().getResourceAsStream("/QDM56_CQLTemplate.txt"), "UTF-8");
+        IOUtils.toString(this.getClass().getResourceAsStream("/QDM56_CQLTemplate.txt"), "UTF-8");
     String usr = "john rao";
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .measureSetId("msid-1")
-                    .cqlLibraryName("VTE")
-                    .cql("")
-                    .elmJson(null)
-                    .measureMetaData(null)
-                    .cql(cqlTemplate)
-                    .createdBy(usr)
-                    .model(ModelType.QDM_5_6.getValue())
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .cql(cqlTemplate)
+            .createdBy(usr)
+            .model(ModelType.QDM_5_6.getValue())
+            .build();
     doNothing()
-            .when(measureSetService)
-            .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
@@ -509,20 +503,20 @@ public class MeasureServiceTest implements ResourceUtil {
   public void testCreateMeasureSuccessfullyWithNoCqlQDM() throws Exception {
     String usr = "john rao";
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .measureSetId("msid-1")
-                    .cqlLibraryName("VTE")
-                    .cql("")
-                    .elmJson(null)
-                    .measureMetaData(null)
-                    .createdBy(usr)
-                    .model(ModelType.QDM_5_6.getValue())
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .createdBy(usr)
+            .model(ModelType.QDM_5_6.getValue())
+            .build();
     doNothing()
-            .when(measureSetService)
-            .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
@@ -541,28 +535,28 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testCreateMeasureSuccessfullyWithDefaultCqlQICore() throws Exception {
     String cqlTemplate =
-            IOUtils.toString(
-                    this.getClass().getResourceAsStream("/QICore411_CQLTemplate.txt"), "UTF-8");
+        IOUtils.toString(
+            this.getClass().getResourceAsStream("/QICore411_CQLTemplate.txt"), "UTF-8");
     String usr = "john rao";
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .measureSetId("msid-1")
-                    .cqlLibraryName("VTE")
-                    .cql("")
-                    .elmJson(null)
-                    .measureMetaData(null)
-                    .cql(cqlTemplate)
-                    .createdBy(usr)
-                    .model(ModelType.QI_CORE.getValue())
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .cql(cqlTemplate)
+            .createdBy(usr)
+            .model(ModelType.QI_CORE.getValue())
+            .build();
     doNothing()
-            .when(measureSetService)
-            .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
@@ -582,20 +576,20 @@ public class MeasureServiceTest implements ResourceUtil {
   public void testCreateMeasureSuccessfullyWithNoCqlQICore() throws Exception {
     String usr = "john rao";
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .measureSetId("msid-1")
-                    .cqlLibraryName("VTE")
-                    .cql("")
-                    .elmJson(null)
-                    .measureMetaData(null)
-                    .createdBy(usr)
-                    .model(ModelType.QI_CORE.getValue())
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .createdBy(usr)
+            .model(ModelType.QI_CORE.getValue())
+            .build();
     doNothing()
-            .when(measureSetService)
-            .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
@@ -614,28 +608,28 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testCreateMeasureSuccessfullyWithDefaultCqlQICore600() throws Exception {
     String cqlTemplate =
-            IOUtils.toString(
-                    this.getClass().getResourceAsStream("/QICore600_CQLTemplate.txt"), "UTF-8");
+        IOUtils.toString(
+            this.getClass().getResourceAsStream("/QICore600_CQLTemplate.txt"), "UTF-8");
     String usr = "john rao";
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .measureSetId("msid-1")
-                    .cqlLibraryName("VTE")
-                    .cql("")
-                    .elmJson(null)
-                    .measureMetaData(null)
-                    .cql(cqlTemplate)
-                    .createdBy(usr)
-                    .model(ModelType.QI_CORE_6_0_0.getValue())
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .cql(cqlTemplate)
+            .createdBy(usr)
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .build();
     doNothing()
-            .when(measureSetService)
-            .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
@@ -655,20 +649,20 @@ public class MeasureServiceTest implements ResourceUtil {
   public void testCreateMeasureSuccessfullyWithNoCqlQICore600() throws Exception {
     String usr = "john rao";
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .measureSetId("msid-1")
-                    .cqlLibraryName("VTE")
-                    .cql("")
-                    .elmJson(null)
-                    .measureMetaData(null)
-                    .createdBy(usr)
-                    .model(ModelType.QI_CORE_6_0_0.getValue())
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .createdBy(usr)
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .build();
     doNothing()
-            .when(measureSetService)
-            .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
@@ -687,21 +681,21 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testCreateMeasureSuccessfullyWithValidCql() {
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .measureSetId("msid-1")
-                    .cqlLibraryName("VTE")
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .build();
 
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json(elmJson).build());
+        .thenReturn(ElmJson.builder().json(elmJson).build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
     doNothing().when(terminologyValidationService).validateTerminology(anyString(), anyString());
     doNothing()
-            .when(measureSetService)
-            .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
 
@@ -716,28 +710,28 @@ public class MeasureServiceTest implements ResourceUtil {
   public void testCreateMeasureSuccessfullyWithInvalidCqlAndTerminology() {
     String usr = "john rao";
     Set<MeasureErrorType> errors =
-            Set.of(MeasureErrorType.ERRORS_ELM_JSON, MeasureErrorType.INVALID_TERMINOLOGY);
+        Set.of(MeasureErrorType.ERRORS_ELM_JSON, MeasureErrorType.INVALID_TERMINOLOGY);
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .cqlLibraryName("VTE")
-                    .measureSetId("msid-1")
-                    .cqlErrors(true)
-                    .errors(errors)
-                    .createdBy(usr)
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .cqlLibraryName("VTE")
+            .measureSetId("msid-1")
+            .cqlErrors(true)
+            .errors(errors)
+            .createdBy(usr)
+            .build();
 
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json(elmJson).build());
+        .thenReturn(ElmJson.builder().json(elmJson).build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(true);
     doThrow(InvalidTerminologyException.class)
-            .when(terminologyValidationService)
-            .validateTerminology(anyString(), anyString());
+        .when(terminologyValidationService)
+        .validateTerminology(anyString(), anyString());
     doNothing()
-            .when(measureSetService)
-            .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
 
@@ -754,21 +748,21 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testCreateMeasureWhenLibraryNameDuplicate() {
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .active(true)
-                    .cqlLibraryName("VTE")
-                    .cql("")
-                    .elmJson(null)
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .active(true)
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .build();
     List<Measure> measureList = Collections.singletonList(measure1);
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(measureList);
 
     assertThrows(
-            DuplicateKeyException.class,
-            () -> measureService.createMeasure(measureToSave, "john rao", "token", false),
-            "CQL library with given name already exists");
+        DuplicateKeyException.class,
+        () -> measureService.createMeasure(measureToSave, "john rao", "token", false),
+        "CQL library with given name already exists");
   }
 
   @Test
@@ -776,20 +770,20 @@ public class MeasureServiceTest implements ResourceUtil {
     Instant startInstant = Instant.now();
     Instant endInstant = startInstant.plus(2, ChronoUnit.DAYS);
     Measure measureToSave =
-            measure1.toBuilder()
-                    .measurementPeriodStart(Date.from(startInstant))
-                    .measurementPeriodEnd(Date.from(endInstant))
-                    .cqlLibraryName("VTE")
-                    .build();
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(startInstant))
+            .measurementPeriodEnd(Date.from(endInstant))
+            .cqlLibraryName("VTE")
+            .build();
 
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json(elmJson).build());
+        .thenReturn(ElmJson.builder().json(elmJson).build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
     doNothing().when(terminologyValidationService).validateTerminology(anyString(), anyString());
     doNothing()
-            .when(measureSetService)
-            .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
 
@@ -808,45 +802,45 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testUpdateMeasureThrowsExceptionForDuplicateLibraryName() {
     Measure original =
-            Measure.builder()
-                    .cqlLibraryName("OriginalLibName")
-                    .measureName("Measure1")
-                    .active(true)
-                    .build();
+        Measure.builder()
+            .cqlLibraryName("OriginalLibName")
+            .measureName("Measure1")
+            .active(true)
+            .build();
 
     Measure updated = original.toBuilder().cqlLibraryName("Changed_Name").active(true).build();
 
     List<Measure> measureList = Collections.singletonList(Measure.builder().build());
 
     when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(true);
+        .thenReturn(true);
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(measureList);
 
     assertThrows(
-            DuplicateKeyException.class,
-            () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+        DuplicateKeyException.class,
+        () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
   }
 
   @Test
   public void testUpdateMeasureThrowsExceptionForInvalidMeasurementPeriod() {
     Measure original =
-            Measure.builder()
-                    .cqlLibraryName("OriginalLibName")
-                    .measureName("Measure1")
-                    .versionId("VersionId")
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .build();
+        Measure.builder()
+            .cqlLibraryName("OriginalLibName")
+            .measureName("Measure1")
+            .versionId("VersionId")
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .build();
 
     Measure updated = original.toBuilder().measurementPeriodEnd(null).build();
     when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(false);
+        .thenReturn(false);
     when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(true);
+        .thenReturn(true);
 
     assertThrows(
-            InvalidMeasurementPeriodException.class,
-            () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+        InvalidMeasurementPeriodException.class,
+        () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
   }
 
   @Test
@@ -855,44 +849,44 @@ public class MeasureServiceTest implements ResourceUtil {
     final String createdBy = "UserABC";
 
     Measure original =
-            Measure.builder()
-                    .cqlLibraryName("OriginalLibName")
-                    .measureName("Measure1")
-                    .measureSetId("MeasureSetId")
-                    .model(ModelType.QI_CORE.getValue())
-                    .cqlLibraryName("CqlLibraryName")
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .createdAt(createdAt)
-                    .createdBy(createdBy)
-                    .measureMetaData(draftMeasureMetaData)
-                    .lastModifiedAt(createdAt)
-                    .lastModifiedBy(createdBy)
-                    .testCaseConfiguration(null)
-                    .build();
+        Measure.builder()
+            .cqlLibraryName("OriginalLibName")
+            .measureName("Measure1")
+            .measureSetId("MeasureSetId")
+            .model(ModelType.QI_CORE.getValue())
+            .cqlLibraryName("CqlLibraryName")
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .createdAt(createdAt)
+            .createdBy(createdBy)
+            .measureMetaData(draftMeasureMetaData)
+            .lastModifiedAt(createdAt)
+            .lastModifiedBy(createdBy)
+            .testCaseConfiguration(null)
+            .build();
 
     TestCaseConfiguration newTestCaseConfiguration =
-            TestCaseConfiguration.builder()
-                    .id("test-case-config")
-                    .sdeIncluded(true)
-                    .manifestExpansion(
-                            ManifestExpansion.builder().id("manifest-456").fullUrl("manifest-456-url").build())
-                    .build();
+        TestCaseConfiguration.builder()
+            .id("test-case-config")
+            .sdeIncluded(true)
+            .manifestExpansion(
+                ManifestExpansion.builder().id("manifest-456").fullUrl("manifest-456-url").build())
+            .build();
     Measure updated =
-            original.toBuilder()
-                    .createdAt(Instant.now())
-                    .createdBy("SomebodyElse")
-                    .lastModifiedAt(null)
-                    .lastModifiedBy("Nobody")
-                    .versionId("VersionId")
-                    .testCaseConfiguration(newTestCaseConfiguration)
-                    .measureMetaData(draftMeasureMetaData)
-                    .build();
+        original.toBuilder()
+            .createdAt(Instant.now())
+            .createdBy("SomebodyElse")
+            .lastModifiedAt(null)
+            .lastModifiedBy("Nobody")
+            .versionId("VersionId")
+            .testCaseConfiguration(newTestCaseConfiguration)
+            .measureMetaData(draftMeasureMetaData)
+            .build();
     when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(true);
+        .thenReturn(true);
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
     when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(true);
+        .thenReturn(true);
     when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(false);
     when(measureRepository.findAndModify(any(Measure.class))).thenReturn(updated);
 
@@ -906,7 +900,7 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(persisted.getCreatedAt(), is(equalTo(createdAt)));
     assertThat(persisted.getCreatedBy(), is(equalTo(createdBy)));
     final boolean isLastModifiedUpdated =
-            Instant.now().minus(1, ChronoUnit.MINUTES).isBefore(persisted.getLastModifiedAt());
+        Instant.now().minus(1, ChronoUnit.MINUTES).isBefore(persisted.getLastModifiedAt());
     assertThat(isLastModifiedUpdated, is(true));
     assertThat(persisted.getLastModifiedBy(), is(equalTo("User1")));
     assertNotEquals(persisted.getVersionId(), "VersionId");
@@ -917,30 +911,30 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testUpdateMeasureSavesMeasureWithUpdatedCql() {
     Measure original =
-            Measure.builder()
-                    .cqlLibraryName("OriginalLibName")
-                    .measureName("Measure1")
-                    .versionId("VersionId")
-                    .cql("original cql here")
-                    .model(ModelType.QI_CORE.getValue())
-                    .measureMetaData(draftMeasureMetaData)
-                    .errors(List.of(MeasureErrorType.ERRORS_ELM_JSON))
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .build();
+        Measure.builder()
+            .cqlLibraryName("OriginalLibName")
+            .measureName("Measure1")
+            .versionId("VersionId")
+            .cql("original cql here")
+            .model(ModelType.QI_CORE.getValue())
+            .measureMetaData(draftMeasureMetaData)
+            .errors(List.of(MeasureErrorType.ERRORS_ELM_JSON))
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .build();
 
     Measure updated = original.toBuilder().cql("changed cql here").build();
     when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(false);
+        .thenReturn(false);
     when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(false);
+        .thenReturn(false);
     when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(true);
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
     Measure expected =
-            updated.toBuilder().error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES).build();
+        updated.toBuilder().error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES).build();
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class))).thenReturn(expected);
     when(measureRepository.findAndModify(any(Measure.class))).thenReturn(expected);
 
@@ -956,33 +950,33 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testUpdateMeasureSavesMeasureWithUpdatedCqlAndErrors() {
     Measure original =
-            Measure.builder()
-                    .cqlLibraryName("OriginalLibName")
-                    .measureName("Measure1")
-                    .versionId("VersionId")
-                    .cql("original cql here")
-                    .model(ModelType.QI_CORE.getValue())
-                    .measureMetaData(draftMeasureMetaData)
-                    .errors(List.of(MeasureErrorType.ERRORS_ELM_JSON))
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .build();
+        Measure.builder()
+            .cqlLibraryName("OriginalLibName")
+            .measureName("Measure1")
+            .versionId("VersionId")
+            .cql("original cql here")
+            .model(ModelType.QI_CORE.getValue())
+            .measureMetaData(draftMeasureMetaData)
+            .errors(List.of(MeasureErrorType.ERRORS_ELM_JSON))
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .build();
 
     Measure updated = original.toBuilder().cql("changed cql here").build();
     when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(false);
+        .thenReturn(false);
     when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(false);
+        .thenReturn(false);
     when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(true);
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
     Measure expected =
-            updated.toBuilder()
-                    .cqlErrors(true)
-                    .error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES)
-                    .build();
+        updated.toBuilder()
+            .cqlErrors(true)
+            .error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES)
+            .build();
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class))).thenReturn(expected);
     when(measureRepository.findAndModify(any(Measure.class))).thenReturn(expected);
 
@@ -998,29 +992,29 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testUpdateMeasureSavesMeasureWithUpdatedCqlAndErrorsGettingElm() {
     Measure original =
-            Measure.builder()
-                    .cqlLibraryName("OriginalLibName")
-                    .measureName("Measure1")
-                    .versionId("VersionId")
-                    .model(ModelType.QI_CORE.getValue())
-                    .cql("original cql here")
-                    .measureMetaData(draftMeasureMetaData)
-                    .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
-                    .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
-                    .build();
+        Measure.builder()
+            .cqlLibraryName("OriginalLibName")
+            .measureName("Measure1")
+            .versionId("VersionId")
+            .model(ModelType.QI_CORE.getValue())
+            .cql("original cql here")
+            .measureMetaData(draftMeasureMetaData)
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .build();
 
     Measure updated = original.toBuilder().cql("changed cql here").build();
     when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(false);
+        .thenReturn(false);
     when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
-            .thenReturn(false);
+        .thenReturn(false);
     when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(true);
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(true);
 
     when(measureRepository.findAndModify(any(Measure.class)))
-            .thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
+        .thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
 
     Measure output = measureService.updateMeasure(original, "User1", updated, "Access Token");
     assertThat(output, is(notNullValue()));
@@ -1054,27 +1048,27 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testUpdateElmThrowsExceptionIfElmHasErrors() {
     final Measure measure =
-            Measure.builder()
-                    .cql("some really good cql here")
-                    .model(ModelType.QDM_5_6.getValue())
-                    .build();
+        Measure.builder()
+            .cql("some really good cql here")
+            .model(ModelType.QDM_5_6.getValue())
+            .build();
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(true);
     assertThrows(
-            CqlElmTranslationErrorException.class,
-            () -> measureService.updateElm(measure, "Access Token"));
+        CqlElmTranslationErrorException.class,
+        () -> measureService.updateElm(measure, "Access Token"));
   }
 
   @Test
   public void testUpdateElmReturnsElmJson() {
     final Measure measure =
-            Measure.builder()
-                    .cql("some really good cql here")
-                    .model(ModelType.QDM_5_6.getValue())
-                    .build();
+        Measure.builder()
+            .cql("some really good cql here")
+            .model(ModelType.QDM_5_6.getValue())
+            .build();
     when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
-            .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     Measure output = measureService.updateElm(measure, "Access Token");
     assertThat(output, is(notNullValue()));
     assertThat(output.getElmJson(), is(equalTo("{\"library\": {}}")));
@@ -1084,28 +1078,28 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testFindAllByActiveOmitsAndRetrievesCorrectly() {
     MeasureListDTO m1 =
-            MeasureListDTO.builder()
-                    .active(true)
-                    .id("xyz-p13r-459b")
-                    .measureName("Measure1")
-                    .model("QI-Core")
-                    .build();
+        MeasureListDTO.builder()
+            .active(true)
+            .id("xyz-p13r-459b")
+            .measureName("Measure1")
+            .model("QI-Core")
+            .build();
     MeasureListDTO m2 =
-            MeasureListDTO.builder()
-                    .id("xyz-p13r-459a")
-                    .active(false)
-                    .measureName("Measure2")
-                    .model("QI-Core")
-                    .active(true)
-                    .build();
+        MeasureListDTO.builder()
+            .id("xyz-p13r-459a")
+            .active(false)
+            .measureName("Measure2")
+            .model("QI-Core")
+            .active(true)
+            .build();
     Page<MeasureListDTO> activeMeasures = new PageImpl<>(List.of(measureList, m1));
     Page<MeasureListDTO> inactiveMeasures = new PageImpl<>(List.of(m2));
     PageRequest initialPage = PageRequest.of(0, 10);
 
     when(measureRepository.findAllByActive(eq(true), any(PageRequest.class)))
-            .thenReturn(activeMeasures);
+        .thenReturn(activeMeasures);
     when(measureRepository.findAllByActive(eq(false), any(PageRequest.class)))
-            .thenReturn(inactiveMeasures);
+        .thenReturn(inactiveMeasures);
 
     assertEquals(measureRepository.findAllByActive(true, initialPage), activeMeasures);
     assertEquals(measureRepository.findAllByActive(false, initialPage), inactiveMeasures);
@@ -1118,8 +1112,8 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testInvalidDeletionCredentialsThrowsExceptionForDifferentUsers() {
     assertThrows(
-            InvalidDeletionCredentialsException.class,
-            () -> measureService.checkDeletionCredentials("user1", "user2"));
+        InvalidDeletionCredentialsException.class,
+        () -> measureService.checkDeletionCredentials("user1", "user2"));
   }
 
   @Test
@@ -1136,10 +1130,10 @@ public class MeasureServiceTest implements ResourceUtil {
     LocalDate endDate = LocalDate.parse("2022-12-31");
 
     assertThrows(
-            InvalidMeasurementPeriodException.class,
-            () ->
-                    measureService.validateMeasurementPeriod(
-                            null, Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
+        InvalidMeasurementPeriodException.class,
+        () ->
+            measureService.validateMeasurementPeriod(
+                null, Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
   }
 
   @Test
@@ -1147,11 +1141,11 @@ public class MeasureServiceTest implements ResourceUtil {
     LocalDate startDate = LocalDate.parse("2022-01-01");
 
     assertThrows(
-            InvalidMeasurementPeriodException.class,
-            () ->
-                    measureService.validateMeasurementPeriod(
-                            Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                            null));
+        InvalidMeasurementPeriodException.class,
+        () ->
+            measureService.validateMeasurementPeriod(
+                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
+                null));
   }
 
   @Test
@@ -1160,11 +1154,11 @@ public class MeasureServiceTest implements ResourceUtil {
     LocalDate endDate = LocalDate.parse("2022-12-31");
 
     assertThrows(
-            InvalidMeasurementPeriodException.class,
-            () ->
-                    measureService.validateMeasurementPeriod(
-                            Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                            Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
+        InvalidMeasurementPeriodException.class,
+        () ->
+            measureService.validateMeasurementPeriod(
+                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
+                Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
   }
 
   @Test
@@ -1173,11 +1167,11 @@ public class MeasureServiceTest implements ResourceUtil {
     LocalDate endDate = LocalDate.parse("2022-12-31");
 
     assertThrows(
-            InvalidMeasurementPeriodException.class,
-            () ->
-                    measureService.validateMeasurementPeriod(
-                            Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                            Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
+        InvalidMeasurementPeriodException.class,
+        () ->
+            measureService.validateMeasurementPeriod(
+                Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
+                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
   }
 
   @Test
@@ -1186,11 +1180,11 @@ public class MeasureServiceTest implements ResourceUtil {
     LocalDate endDate = LocalDate.parse("2022-12-31");
 
     assertThrows(
-            InvalidMeasurementPeriodException.class,
-            () ->
-                    measureService.validateMeasurementPeriod(
-                            Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                            Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
+        InvalidMeasurementPeriodException.class,
+        () ->
+            measureService.validateMeasurementPeriod(
+                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
+                Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
   }
 
   @Test
@@ -1200,8 +1194,8 @@ public class MeasureServiceTest implements ResourceUtil {
       LocalDate endDate = LocalDate.parse("2023-01-01");
 
       measureService.validateMeasurementPeriod(
-              Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-              Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()));
+          Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
+          Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()));
 
     } catch (Exception e) {
       fail(e.getMessage());
@@ -1305,27 +1299,27 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testCheckDuplicateCqlLibraryNameThrowsExceptionForExistingName() {
     final Measure measure =
-            Measure.builder().cqlLibraryName("testCQLLibraryName").active(true).build();
+        Measure.builder().cqlLibraryName("testCQLLibraryName").active(true).build();
     final List<Measure> measureOpt = Collections.singletonList(measure);
     // Optional<Measure> measureOpt = Optional.of(measure);
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(measureOpt);
     assertThrows(
-            DuplicateKeyException.class,
-            () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName"));
+        DuplicateKeyException.class,
+        () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName"));
   }
 
   @Test
   public void testInvalidVersionIdThrowsExceptionForDifferentVersionIds() {
     assertThrows(
-            InvalidVersionIdException.class,
-            () -> measureService.checkVersionIdChanged("versionId1", "versionId2"));
+        InvalidVersionIdException.class,
+        () -> measureService.checkVersionIdChanged("versionId1", "versionId2"));
   }
 
   @Test
   public void testInvalidVersionThrowsExceptionWhenPassedInVersionIsNull() {
     assertThrows(
-            InvalidVersionIdException.class,
-            () -> measureService.checkVersionIdChanged("", "versionId1"));
+        InvalidVersionIdException.class,
+        () -> measureService.checkVersionIdChanged("", "versionId1"));
   }
 
   @Test
@@ -1359,12 +1353,12 @@ public class MeasureServiceTest implements ResourceUtil {
   public void testChangeOwnership() {
     MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("testUser").build();
     Measure measure =
-            Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
+        Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
     Optional<Measure> persistedMeasure = Optional.of(measure);
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.changeOwnership(
             anyString(), anyString(), any(Boolean.class), anyString()))
-            .thenReturn(new MeasureSet());
+        .thenReturn(new MeasureSet());
 
     boolean result = measureService.changeOwnership(measure.getId(), "user123");
     assertTrue(result);
@@ -1390,7 +1384,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testGetAllMeasureIdsDraftOnly() {
     when(measureRepository.findAllMeasureIdsByActiveAndMeasureMetaDataDraft(anyBoolean()))
-            .thenReturn(List.of(measure1, measure2));
+        .thenReturn(List.of(measure1, measure2));
     List<String> result = measureService.getAllActiveMeasureIds(true);
 
     assertThat(result.size(), is(equalTo(2)));
@@ -1416,7 +1410,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   void testFindAllByMeasureSetId() {
     when(measureRepository.findAllByMeasureSetIdAndActive(anyString(), anyBoolean()))
-            .thenReturn(List.of(measure1, measure2));
+        .thenReturn(List.of(measure1, measure2));
 
     List<Measure> results = measureService.findAllByMeasureSetId("testMeasureSetId1");
 
@@ -1451,23 +1445,23 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testAssociateCmsIdThrowsExceptionForNullQiCoreMeasureId() {
     assertThrows(
-            InvalidIdException.class,
-            () -> measureService.associateCmsId("OWNER", null, "qdmId", false));
+        InvalidIdException.class,
+        () -> measureService.associateCmsId("OWNER", null, "qdmId", false));
   }
 
   @Test
   public void testAssociateCmsIdThrowsExceptionForNullQDMCoreMeasureId() {
     assertThrows(
-            InvalidIdException.class,
-            () -> measureService.associateCmsId("OWNER", "qiCoreId", null, false));
+        InvalidIdException.class,
+        () -> measureService.associateCmsId("OWNER", "qiCoreId", null, false));
   }
 
   @Test
   public void testAssociateCmsIdThrowsExceptionWhenMeasuresWithGivenIdNotFound() {
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
     assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
+        ResourceNotFoundException.class,
+        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
   }
 
   @Test
@@ -1478,8 +1472,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
 
     assertThrows(
-            UnauthorizedException.class,
-            () -> measureService.associateCmsId("newowner", "qiCoreMeasureId", "qdmMeasureId", false));
+        UnauthorizedException.class,
+        () -> measureService.associateCmsId("newowner", "qiCoreMeasureId", "qdmMeasureId", false));
   }
 
   @Test
@@ -1489,8 +1483,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
 
     assertThrows(
-            InvalidRequestException.class,
-            () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qiCoreMeasureId", false));
+        InvalidRequestException.class,
+        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qiCoreMeasureId", false));
   }
 
   @Test
@@ -1500,8 +1494,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
 
     assertThrows(
-            InvalidRequestException.class,
-            () -> measureService.associateCmsId("OWNER", "qdmMeasureId", "qdmMeasureId", false));
+        InvalidRequestException.class,
+        () -> measureService.associateCmsId("OWNER", "qdmMeasureId", "qdmMeasureId", false));
   }
 
   @Test
@@ -1512,8 +1506,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
 
     assertThrows(
-            InvalidRequestException.class,
-            () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
+        InvalidRequestException.class,
+        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
   }
 
   @Test
@@ -1524,76 +1518,76 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
 
     assertThrows(
-            InvalidResourceStateException.class,
-            () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
+        InvalidResourceStateException.class,
+        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
   }
 
   @Test
   public void testAssociateCmsIdThrowsExceptionWhenQICoreMeasureIsVersioned() {
     measure1.setMeasureMetaData(finalMeasureMetaData);
     MeasureSet qiCoreMeasureSet =
-            MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
     MeasureSet qdmMeasureSet =
-            MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
     when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
     when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
     when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
     when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
 
     assertThrows(
-            InvalidResourceStateException.class,
-            () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
+        InvalidResourceStateException.class,
+        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
   }
 
   @Test
   public void testAssociateCmsIdThrowsExceptionWhenAnyQICoreMeasureHasSameCmsId() {
     Measure qiCoreMeasure =
-            Measure.builder()
-                    .model(ModelType.QI_CORE.getValue())
-                    .measureSetId("NewIDIDID")
-                    .measureMetaData(draftMeasureMetaData)
-                    .build();
+        Measure.builder()
+            .model(ModelType.QI_CORE.getValue())
+            .measureSetId("NewIDIDID")
+            .measureMetaData(draftMeasureMetaData)
+            .build();
     MeasureSet qiCoreMeasureSet =
-            MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
     MeasureSet qdmMeasureSet =
-            MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
 
     when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
     when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
     when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
     when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
     when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-            .thenReturn(List.of(qiCoreMeasure));
+        .thenReturn(List.of(qiCoreMeasure));
 
     assertThrows(
-            InvalidResourceStateException.class,
-            () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
+        InvalidResourceStateException.class,
+        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
   }
 
   @Test
   public void testAssociateCmsIdSuccessfullyWithoutCpyingMetaData() {
 
     MeasureSet qiCoreMeasureSet =
-            MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
     MeasureSet updatedQiCoreMeasureSet =
-            MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
+        MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
     MeasureSet qdmMeasureSet =
-            MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
     when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
     when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
     when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
     when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
 
     when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-            .thenReturn(List.of());
+        .thenReturn(List.of());
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedQiCoreMeasureSet);
 
     MeasureSet updatedMeasureSet =
-            measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false);
+        measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false);
     assertThat(updatedMeasureSet.getOwner(), is(equalTo(updatedQiCoreMeasureSet.getOwner())));
     assertThat(
-            updatedMeasureSet.getMeasureSetId(),
-            is(equalTo(updatedQiCoreMeasureSet.getMeasureSetId())));
+        updatedMeasureSet.getMeasureSetId(),
+        is(equalTo(updatedQiCoreMeasureSet.getMeasureSetId())));
     assertThat(updatedMeasureSet.getCmsId(), is(equalTo(updatedQiCoreMeasureSet.getCmsId())));
   }
 
@@ -1601,63 +1595,63 @@ public class MeasureServiceTest implements ResourceUtil {
   public void testAssociateCmsIdSuccessfullyWithCpyingMetaData() {
 
     MeasureSet qiCoreMeasureSet =
-            MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
     MeasureSet updatedQiCoreMeasureSet =
-            MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
+        MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
     MeasureSet qdmMeasureSet =
-            MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
     when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
     when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
     when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
     when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
 
     when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-            .thenReturn(List.of());
+        .thenReturn(List.of());
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedQiCoreMeasureSet);
 
     MeasureSet updatedMeasureSet =
-            measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", true);
+        measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", true);
     assertThat(updatedMeasureSet.getOwner(), is(equalTo(updatedQiCoreMeasureSet.getOwner())));
     assertThat(
-            updatedMeasureSet.getMeasureSetId(),
-            is(equalTo(updatedQiCoreMeasureSet.getMeasureSetId())));
+        updatedMeasureSet.getMeasureSetId(),
+        is(equalTo(updatedQiCoreMeasureSet.getMeasureSetId())));
     assertThat(updatedMeasureSet.getCmsId(), is(equalTo(updatedQiCoreMeasureSet.getCmsId())));
   }
 
   @Test
   public void testValidateCmsIdAssociationThrowsExceptionForNullQiCoreMeasure() {
     assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", null, measure2));
+        ResourceNotFoundException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", null, measure2));
   }
 
   @Test
   public void testValidateCmsIdAssociationThrowsExceptionForNullQdmMeasure() {
     assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, null));
+        ResourceNotFoundException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", measure1, null));
   }
 
   @Test
   public void testValidateCmsIdAssociationThrowsExceptionWhenBothTheMeasureAreQiCore411() {
     assertThrows(
-            InvalidRequestException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
+        InvalidRequestException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
   }
 
   @Test
   public void testValidateCmsIdAssociationThrowsExceptionWhenBothTheMeasureAreQiCore600() {
     measureList.setModel(ModelType.QI_CORE_6_0_0.getValue());
     assertThrows(
-            InvalidRequestException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
+        InvalidRequestException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
   }
 
   @Test
   public void testValidateCmsIdAssociationThrowsExceptionWhenBothTheMeasureAreQDM() {
     assertThrows(
-            InvalidRequestException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
+        InvalidRequestException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
   }
 
   @Test
@@ -1667,8 +1661,8 @@ public class MeasureServiceTest implements ResourceUtil {
     measure2.setMeasureSet(measureSet);
 
     assertThrows(
-            UnauthorizedException.class,
-            () -> measureService.validateCmsIdAssociation("NOT_OWNER", measure1, measure2));
+        UnauthorizedException.class,
+        () -> measureService.validateCmsIdAssociation("NOT_OWNER", measure1, measure2));
   }
 
   @Test
@@ -1678,8 +1672,8 @@ public class MeasureServiceTest implements ResourceUtil {
     measure2.setMeasureSet(measureSet);
 
     assertThrows(
-            InvalidRequestException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
+        InvalidRequestException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
   }
 
   @Test
@@ -1689,59 +1683,59 @@ public class MeasureServiceTest implements ResourceUtil {
     measure2.setMeasureSet(measureSet);
 
     assertThrows(
-            InvalidResourceStateException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
+        InvalidResourceStateException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
   }
 
   @Test
   public void testValidateCmsIdAssociationThrowsExceptionWhenQICoreMeasureIsVersioned() {
     measure1.setMeasureMetaData(finalMeasureMetaData);
     MeasureSet qiCoreMeasureSet =
-            MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
     MeasureSet qdmMeasureSet =
-            MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
 
     measure1.setMeasureSet(qiCoreMeasureSet);
     measure2.setMeasureSet(qdmMeasureSet);
 
     assertThrows(
-            InvalidResourceStateException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
+        InvalidResourceStateException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
   }
 
   @Test
   public void testValidateCmsIdAssociationThrowsExceptionWhenAnyQICoreMeasureHasSameCmsId() {
     Measure qiCoreMeasure =
-            Measure.builder()
-                    .model(ModelType.QI_CORE.getValue())
-                    .measureSetId("NewIDIDID")
-                    .measureMetaData(draftMeasureMetaData)
-                    .build();
+        Measure.builder()
+            .model(ModelType.QI_CORE.getValue())
+            .measureSetId("NewIDIDID")
+            .measureMetaData(draftMeasureMetaData)
+            .build();
     MeasureSet qiCoreMeasureSet =
-            MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
     MeasureSet qdmMeasureSet =
-            MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
 
     when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-            .thenReturn(List.of(qiCoreMeasure));
+        .thenReturn(List.of(qiCoreMeasure));
 
     measure1.setMeasureSet(qiCoreMeasureSet);
     measure2.setMeasureSet(qdmMeasureSet);
 
     assertThrows(
-            InvalidResourceStateException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
+        InvalidResourceStateException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
   }
 
   @Test
   public void testValidateCmsIdAssociation() {
     MeasureSet qiCoreMeasureSet =
-            MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
     MeasureSet qdmMeasureSet =
-            MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
 
     when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-            .thenReturn(Collections.emptyList());
+        .thenReturn(Collections.emptyList());
 
     measure1.setMeasureSet(qiCoreMeasureSet);
     measure2.setMeasureSet(qdmMeasureSet);
@@ -1764,21 +1758,21 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   void testFindLibraryUsageWhenLibraryNameBlank() {
     Exception ex =
-            assertThrows(InvalidRequestException.class, () -> measureService.findLibraryUsage(null));
+        assertThrows(InvalidRequestException.class, () -> measureService.findLibraryUsage(null));
     assertThat(ex.getMessage(), is(equalTo("Please provide library name.")));
   }
 
   @Test
   public void testUpdateMeasureDefinitionIdNewDefinition() {
     MeasureMetaData metaData =
-            MeasureMetaData.builder()
-                    .measureDefinitions(
-                            List.of(
-                                    MeasureDefinition.builder()
-                                            .term("test term")
-                                            .definition("test definition")
-                                            .build()))
-                    .build();
+        MeasureMetaData.builder()
+            .measureDefinitions(
+                List.of(
+                    MeasureDefinition.builder()
+                        .term("test term")
+                        .definition("test definition")
+                        .build()))
+            .build();
     measureService.updateMeasureDefinitionId(metaData);
     assertNotNull(metaData);
     assertNotNull(metaData.getMeasureDefinitions());
@@ -1808,8 +1802,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(null);
 
     assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureService.getSharedMeasures(measureIds, "username"));
+        ResourceNotFoundException.class,
+        () -> measureService.getSharedMeasures(measureIds, "username"));
   }
 
   @Test
@@ -1819,19 +1813,19 @@ public class MeasureServiceTest implements ResourceUtil {
     acl1.setRoles(Set.of(RoleEnum.SHARED_WITH));
 
     MeasureSet measureSet1 =
-            MeasureSet.builder()
-                    .measureSetId("measureSetId1")
-                    .owner("testUser")
-                    .acls(List.of(acl1))
-                    .build();
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl1))
+            .build();
 
     String measureId1 = "measureId1";
     Measure measure1 =
-            Measure.builder()
-                    .id(measureId1)
-                    .measureSetId(measureSet1.getMeasureSetId())
-                    .measureSet(measureSet1)
-                    .build();
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet1)
+            .build();
 
     String measureId2 = "measureId2";
     Measure measure2 = Measure.builder().id(measureId2).build();
@@ -1842,8 +1836,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
 
     assertThrows(
-            InvalidMeasureStateException.class,
-            () -> measureService.getSharedMeasures(measureIds, "username"));
+        InvalidMeasureStateException.class,
+        () -> measureService.getSharedMeasures(measureIds, "username"));
   }
 
   @Test
@@ -1853,67 +1847,67 @@ public class MeasureServiceTest implements ResourceUtil {
     acl1.setRoles(Set.of(RoleEnum.SHARED_WITH));
 
     MeasureSet measureSet1 =
-            MeasureSet.builder()
-                    .measureSetId("measureSetId1")
-                    .owner("testUser")
-                    .acls(List.of(acl1))
-                    .build();
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl1))
+            .build();
 
     String measureId1 = "measureId1";
     Measure measure1 =
-            Measure.builder()
-                    .id(measureId1)
-                    .measureSetId(measureSet1.getMeasureSetId())
-                    .measureSet(measureSet1)
-                    .build();
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet1)
+            .build();
 
     MeasureSet measureSet2 =
-            MeasureSet.builder().measureSetId("measureSetId1").owner("testUser").build();
+        MeasureSet.builder().measureSetId("measureSetId1").owner("testUser").build();
 
     String measureId2 = "measureId2";
     Measure measure2 =
-            Measure.builder()
-                    .id(measureId1)
-                    .measureSetId(measureSet1.getMeasureSetId())
-                    .measureSet(measureSet2)
-                    .build();
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet2)
+            .build();
 
     Instant fixedInstant = Instant.parse("2025-03-17T10:00:00Z");
     ZoneId utc = ZoneId.of("UTC");
     Clock fixedClock = Clock.fixed(fixedInstant, utc);
 
     MeasureSetActionLog measureSetActionLog =
-            MeasureSetActionLog.builder()
-                    .actions(
-                            List.of(
-                                    AccessControlAction.builder()
-                                            .sharedWith(acl1.getUserId())
-                                            .actionType(ActionType.SHARED)
-                                            .performedAt(fixedClock.instant())
-                                            .performedBy("performedByUserId")
-                                            .build()))
-                    .build();
+        MeasureSetActionLog.builder()
+            .actions(
+                List.of(
+                    AccessControlAction.builder()
+                        .sharedWith(acl1.getUserId())
+                        .actionType(ActionType.SHARED)
+                        .performedAt(fixedClock.instant())
+                        .performedBy("performedByUserId")
+                        .build()))
+            .build();
 
     List<String> measureIds = List.of(measureId1, measureId2);
 
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(measure1);
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
     when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
-            .thenReturn(measureSetActionLog);
+        .thenReturn(measureSetActionLog);
 
     Map<String, List<SharedUser>> sharedMeasures =
-            measureService.getSharedMeasures(measureIds, "username");
+        measureService.getSharedMeasures(measureIds, "username");
 
     assertThat(sharedMeasures.size(), is(equalTo(2)));
 
     assertTrue(sharedMeasures.containsKey(measureId1));
     assertThat(sharedMeasures.get(measureId1).size(), is(equalTo(1)));
     assertThat(
-            sharedMeasures.get(measureId1).get(0).getUserId(),
-            is(equalTo(measure1.getMeasureSet().getAcls().get(0).getUserId())));
+        sharedMeasures.get(measureId1).get(0).getUserId(),
+        is(equalTo(measure1.getMeasureSet().getAcls().get(0).getUserId())));
     assertThat(
-            sharedMeasures.get(measureId1).get(0).getPerformedAt(),
-            is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+        sharedMeasures.get(measureId1).get(0).getPerformedAt(),
+        is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
 
     assertTrue(sharedMeasures.containsKey(measureId2));
     assertThat(sharedMeasures.get(measureId2).size(), is(equalTo(0)));
@@ -1930,84 +1924,84 @@ public class MeasureServiceTest implements ResourceUtil {
     acl2.setRoles(Set.of(RoleEnum.SHARED_WITH));
 
     MeasureSet measureSet1 =
-            MeasureSet.builder()
-                    .measureSetId("measureSetId1")
-                    .owner("testUser")
-                    .acls(List.of(acl2, acl1))
-                    .build();
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl2, acl1))
+            .build();
 
     String measureId1 = "measureId1";
     Measure measure1 =
-            Measure.builder()
-                    .id(measureId1)
-                    .measureSetId(measureSet1.getMeasureSetId())
-                    .measureSet(measureSet1)
-                    .build();
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet1)
+            .build();
 
     MeasureSet measureSet2 =
-            MeasureSet.builder()
-                    .measureSetId("measureSetId1")
-                    .owner("testUser")
-                    .acls(List.of(acl1))
-                    .build();
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl1))
+            .build();
 
     String measureId2 = "measureId2";
     Measure measure2 =
-            Measure.builder()
-                    .id(measureId1)
-                    .measureSetId(measureSet1.getMeasureSetId())
-                    .measureSet(measureSet2)
-                    .build();
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet2)
+            .build();
 
     Instant fixedInstant = Instant.parse("2025-03-17T10:00:00Z");
     ZoneId utc = ZoneId.of("UTC");
     Clock fixedClock = Clock.fixed(fixedInstant, utc);
 
     MeasureSetActionLog measureSetActionLog =
-            MeasureSetActionLog.builder()
-                    .actions(
-                            List.of(
-                                    AccessControlAction.builder()
-                                            .sharedWith(acl1.getUserId())
-                                            .actionType(ActionType.SHARED)
-                                            .performedAt(fixedClock.instant())
-                                            .performedBy("performedByUserId")
-                                            .build()))
-                    .build();
+        MeasureSetActionLog.builder()
+            .actions(
+                List.of(
+                    AccessControlAction.builder()
+                        .sharedWith(acl1.getUserId())
+                        .actionType(ActionType.SHARED)
+                        .performedAt(fixedClock.instant())
+                        .performedBy("performedByUserId")
+                        .build()))
+            .build();
 
     List<String> measureIds = List.of(measureId1, measureId2);
 
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(measure1);
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
     when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
-            .thenReturn(measureSetActionLog);
+        .thenReturn(measureSetActionLog);
 
     Map<String, List<SharedUser>> sharedMeasures =
-            measureService.getSharedMeasures(measureIds, "username");
+        measureService.getSharedMeasures(measureIds, "username");
 
     assertThat(sharedMeasures.size(), is(equalTo(2)));
 
     assertTrue(sharedMeasures.containsKey(measureId1));
     assertThat(sharedMeasures.get(measureId1).size(), is(equalTo(2)));
     assertThat(
-            sharedMeasures.get(measureId1).get(0).getUserId(),
-            is(equalTo(measure1.getMeasureSet().getAcls().get(0).getUserId())));
+        sharedMeasures.get(measureId1).get(0).getUserId(),
+        is(equalTo(measure1.getMeasureSet().getAcls().get(0).getUserId())));
     assertThat(sharedMeasures.get(measureId1).get(0).getPerformedAt(), is(equalTo(null)));
     assertThat(
-            sharedMeasures.get(measureId1).get(1).getUserId(),
-            is(equalTo(measure2.getMeasureSet().getAcls().get(0).getUserId())));
+        sharedMeasures.get(measureId1).get(1).getUserId(),
+        is(equalTo(measure2.getMeasureSet().getAcls().get(0).getUserId())));
     assertThat(
-            sharedMeasures.get(measureId1).get(1).getPerformedAt(),
-            is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+        sharedMeasures.get(measureId1).get(1).getPerformedAt(),
+        is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
 
     assertTrue(sharedMeasures.containsKey(measureId2));
     assertThat(sharedMeasures.get(measureId1).size(), is(equalTo(2)));
     assertThat(
-            sharedMeasures.get(measureId2).get(0).getUserId(),
-            is(equalTo(measure2.getMeasureSet().getAcls().get(0).getUserId())));
+        sharedMeasures.get(measureId2).get(0).getUserId(),
+        is(equalTo(measure2.getMeasureSet().getAcls().get(0).getUserId())));
     assertThat(
-            sharedMeasures.get(measureId2).get(0).getPerformedAt(),
-            is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+        sharedMeasures.get(measureId2).get(0).getPerformedAt(),
+        is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
   }
 
   @Test
@@ -2023,8 +2017,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(null);
 
     assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureService.shareMeasures(measureUserIdMap, "userName"));
+        ResourceNotFoundException.class,
+        () -> measureService.shareMeasures(measureUserIdMap, "userName"));
   }
 
   @Test
@@ -2040,34 +2034,34 @@ public class MeasureServiceTest implements ResourceUtil {
     acl2.setRoles(Set.of(RoleEnum.SHARED_WITH));
 
     MeasureSet measureSet1 =
-            MeasureSet.builder()
-                    .measureSetId("measureSetId1")
-                    .owner("testUser")
-                    .acls(List.of(acl1, acl2))
-                    .build();
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl1, acl2))
+            .build();
 
     String measureId1 = "measureId1";
     Measure measure1 =
-            Measure.builder()
-                    .id(measureId1)
-                    .measureSetId(measureSet1.getMeasureSetId())
-                    .measureSet(measureSet1)
-                    .build();
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet1)
+            .build();
 
     MeasureSet measureSet2 =
-            MeasureSet.builder()
-                    .measureSetId("measureSetId1")
-                    .owner("testUser")
-                    .acls(List.of(acl1, acl2))
-                    .build();
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl1, acl2))
+            .build();
 
     String measureId2 = "measureId2";
     Measure measure2 =
-            Measure.builder()
-                    .id(measureId1)
-                    .measureSetId(measureSet1.getMeasureSetId())
-                    .measureSet(measureSet2)
-                    .build();
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet2)
+            .build();
 
     measureUserIdMap.put(measureId1, List.of("userId1", "userId2"));
     measureUserIdMap.put(measureId2, List.of("userId2"));
@@ -2078,28 +2072,28 @@ public class MeasureServiceTest implements ResourceUtil {
     doNothing().when(measureService).verifyAuthorization(anyString(), any(), any());
 
     AclSpecification aclSpecification1 =
-            AclSpecification.builder().userId("userId1").roles(Set.of(RoleEnum.SHARED_WITH)).build();
+        AclSpecification.builder().userId("userId1").roles(Set.of(RoleEnum.SHARED_WITH)).build();
     AclSpecification aclSpecification2 =
-            AclSpecification.builder().userId("userId2").roles(Set.of(RoleEnum.SHARED_WITH)).build();
+        AclSpecification.builder().userId("userId2").roles(Set.of(RoleEnum.SHARED_WITH)).build();
 
     doReturn(List.of(aclSpecification1, aclSpecification2))
-            .when(measureService)
-            .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .when(measureService)
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-            measureService.shareMeasures(measureUserIdMap, "userName");
+        measureService.shareMeasures(measureUserIdMap, "userName");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
     assertTrue(measureIdToAclSpecification.containsKey(measureId2));
 
     assertThat(
-            measureIdToAclSpecification.get(measureId1),
-            is(equalTo(List.of(aclSpecification1, aclSpecification2))));
+        measureIdToAclSpecification.get(measureId1),
+        is(equalTo(List.of(aclSpecification1, aclSpecification2))));
 
     assertThat(
-            measureIdToAclSpecification.get(measureId2),
-            is(equalTo(List.of(aclSpecification1, aclSpecification2))));
+        measureIdToAclSpecification.get(measureId2),
+        is(equalTo(List.of(aclSpecification1, aclSpecification2))));
   }
 
   @Test
@@ -2115,8 +2109,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(null);
 
     assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureService.unshareMeasures(measureUserIdMap, "userName"));
+        ResourceNotFoundException.class,
+        () -> measureService.unshareMeasures(measureUserIdMap, "userName"));
   }
 
   @Test
@@ -2132,34 +2126,34 @@ public class MeasureServiceTest implements ResourceUtil {
     acl2.setRoles(Set.of(RoleEnum.SHARED_WITH));
 
     MeasureSet measureSet1 =
-            MeasureSet.builder()
-                    .measureSetId("measureSetId1")
-                    .owner("testUser")
-                    .acls(List.of(acl1, acl2))
-                    .build();
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl1, acl2))
+            .build();
 
     String measureId1 = "measureId1";
     Measure measure1 =
-            Measure.builder()
-                    .id(measureId1)
-                    .measureSetId(measureSet1.getMeasureSetId())
-                    .measureSet(measureSet1)
-                    .build();
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet1)
+            .build();
 
     MeasureSet measureSet2 =
-            MeasureSet.builder()
-                    .measureSetId("measureSetId1")
-                    .owner("testUser")
-                    .acls(List.of(acl1, acl2))
-                    .build();
+        MeasureSet.builder()
+            .measureSetId("measureSetId1")
+            .owner("testUser")
+            .acls(List.of(acl1, acl2))
+            .build();
 
     String measureId2 = "measureId2";
     Measure measure2 =
-            Measure.builder()
-                    .id(measureId1)
-                    .measureSetId(measureSet1.getMeasureSetId())
-                    .measureSet(measureSet2)
-                    .build();
+        Measure.builder()
+            .id(measureId1)
+            .measureSetId(measureSet1.getMeasureSetId())
+            .measureSet(measureSet2)
+            .build();
 
     measureUserIdMap.put(measureId1, List.of("userId2"));
     measureUserIdMap.put(measureId2, List.of("userId2"));
@@ -2170,24 +2164,24 @@ public class MeasureServiceTest implements ResourceUtil {
     doNothing().when(measureService).verifyAuthorization(anyString(), any(), any());
 
     AclSpecification aclSpecification1 =
-            AclSpecification.builder().userId("userId1").roles(Set.of(RoleEnum.SHARED_WITH)).build();
+        AclSpecification.builder().userId("userId1").roles(Set.of(RoleEnum.SHARED_WITH)).build();
 
     doReturn(List.of(aclSpecification1))
-            .when(measureService)
-            .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .when(measureService)
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-            measureService.unshareMeasures(measureUserIdMap, "userName");
+        measureService.unshareMeasures(measureUserIdMap, "userName");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
     assertTrue(measureIdToAclSpecification.containsKey(measureId2));
 
     assertThat(
-            measureIdToAclSpecification.get(measureId1), is(equalTo(List.of(aclSpecification1))));
+        measureIdToAclSpecification.get(measureId1), is(equalTo(List.of(aclSpecification1))));
 
     assertThat(
-            measureIdToAclSpecification.get(measureId2), is(equalTo(List.of(aclSpecification1))));
+        measureIdToAclSpecification.get(measureId2), is(equalTo(List.of(aclSpecification1))));
   }
 
   @Test
@@ -2257,26 +2251,26 @@ public class MeasureServiceTest implements ResourceUtil {
     String measureId = "testMeasureId";
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
     Measure existingMeasure =
-            Measure.builder()
-                    .id(measureId)
-                    .measureMetaData(MeasureMetaData.builder().draft(true).build())
-                    .build();
+        Measure.builder()
+            .id(measureId)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .build();
     Measure updatedMeasure = Measure.builder().id(measureId).build();
 
     when(measureRepository.findByIdAndActive(measureId, true))
-            .thenReturn(Optional.of(existingMeasure));
+        .thenReturn(Optional.of(existingMeasure));
     doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
     when(testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId))
-            .thenReturn(updatedMeasure);
+        .thenReturn(updatedMeasure);
 
     Measure result =
-            measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig);
+        measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig);
 
     assertNotNull(result);
     assertEquals(updatedMeasure, result);
     verify(measureService, times(1)).verifyAuthorization(username, existingMeasure);
     verify(testCasePatchRepository, times(1))
-            .findAndModifyTestCaseConfig(testCaseConfig, measureId);
+        .findAndModifyTestCaseConfig(testCaseConfig, measureId);
   }
 
   @Test
@@ -2285,8 +2279,8 @@ public class MeasureServiceTest implements ResourceUtil {
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
 
     assertThrows(
-            InvalidIdException.class,
-            () -> measureService.updateMeasureTestCaseConfiguration(username, null, testCaseConfig));
+        InvalidIdException.class,
+        () -> measureService.updateMeasureTestCaseConfiguration(username, null, testCaseConfig));
   }
 
   @Test
@@ -2295,8 +2289,8 @@ public class MeasureServiceTest implements ResourceUtil {
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
 
     assertThrows(
-            InvalidIdException.class,
-            () -> measureService.updateMeasureTestCaseConfiguration(username, "", testCaseConfig));
+        InvalidIdException.class,
+        () -> measureService.updateMeasureTestCaseConfiguration(username, "", testCaseConfig));
   }
 
   @Test
@@ -2305,19 +2299,19 @@ public class MeasureServiceTest implements ResourceUtil {
     String measureId = "testMeasureId";
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
     Measure existingMeasure =
-            Measure.builder()
-                    .id(measureId)
-                    .measureMetaData(MeasureMetaData.builder().draft(false).build())
-                    .build();
+        Measure.builder()
+            .id(measureId)
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .build();
 
     when(measureRepository.findByIdAndActive(measureId, true))
-            .thenReturn(Optional.of(existingMeasure));
+        .thenReturn(Optional.of(existingMeasure));
     doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
 
     assertThrows(
-            InvalidDraftStatusException.class,
-            () ->
-                    measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig));
+        InvalidDraftStatusException.class,
+        () ->
+            measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig));
   }
 
   @Test
@@ -2341,9 +2335,9 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureRepository.findByIdAndActive(measureId, true)).thenReturn(Optional.empty());
 
     assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureService.findActiveMeasureById(measureId),
-            "Expected ResourceNotFoundException for non-existing measureId");
+        ResourceNotFoundException.class,
+        () -> measureService.findActiveMeasureById(measureId),
+        "Expected ResourceNotFoundException for non-existing measureId");
     verify(measureRepository, times(1)).findByIdAndActive(measureId, true);
   }
 
@@ -2352,9 +2346,9 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureRepository.findByIdAndActive(null, true)).thenReturn(Optional.empty());
 
     assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureService.findActiveMeasureById(null),
-            "Expected ResourceNotFoundException for null measureId");
+        ResourceNotFoundException.class,
+        () -> measureService.findActiveMeasureById(null),
+        "Expected ResourceNotFoundException for null measureId");
     verify(measureRepository, times(1)).findByIdAndActive(null, true);
   }
 
@@ -2362,15 +2356,15 @@ public class MeasureServiceTest implements ResourceUtil {
   public void testTransferMeasures() {
     MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("testUser").build();
     Measure measure =
-            Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
+        Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
     Optional<Measure> persistedMeasure = Optional.of(measure);
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.changeOwnership(
             anyString(), anyString(), any(Boolean.class), anyString()))
-            .thenReturn(new MeasureSet());
+        .thenReturn(new MeasureSet());
 
     boolean result =
-            measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
+        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
     assertTrue(result);
   }
 
@@ -2379,7 +2373,7 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
 
     boolean result =
-            measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
+        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
     assertFalse(result);
   }
 
@@ -2413,7 +2407,7 @@ public class MeasureServiceTest implements ResourceUtil {
     String userName = "testUser";
 
     assertThrows(
-            InvalidRequestException.class, () -> measureService.getMeasureHistory(measureId, userName));
+        InvalidRequestException.class, () -> measureService.getMeasureHistory(measureId, userName));
     verifyNoInteractions(measureRepository, actionLogService);
   }
 
@@ -2425,8 +2419,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureRepository.findById(measureId)).thenReturn(Optional.empty());
 
     assertThrows(
-            ResourceNotFoundException.class,
-            () -> measureService.getMeasureHistory(measureId, userName));
+        ResourceNotFoundException.class,
+        () -> measureService.getMeasureHistory(measureId, userName));
     verify(measureRepository, times(1)).findById(measureId);
     verifyNoInteractions(actionLogService);
   }
