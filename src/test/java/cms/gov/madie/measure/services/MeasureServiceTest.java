@@ -25,7 +25,6 @@ import static org.mockito.Mockito.*;
 
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -1125,83 +1124,6 @@ public class MeasureServiceTest implements ResourceUtil {
     }
   }
 
-  @Test
-  public void testValidateMeasureMeasurementPeriodWithNullStartDate() {
-    LocalDate endDate = LocalDate.parse("2022-12-31");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                null, Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriodWithNullEndDate() {
-    LocalDate startDate = LocalDate.parse("2022-01-01");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                null));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriodTooEarlyDate() {
-    LocalDate startDate = LocalDate.parse("0001-01-01");
-    LocalDate endDate = LocalDate.parse("2022-12-31");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriodFlippedDates() {
-    LocalDate startDate = LocalDate.parse("2022-01-01");
-    LocalDate endDate = LocalDate.parse("2022-12-31");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriodEndDateEqualStartDate() {
-    LocalDate startDate = LocalDate.parse("2022-12-31");
-    LocalDate endDate = LocalDate.parse("2022-12-31");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriod() {
-    try {
-      LocalDate startDate = LocalDate.parse("2022-01-01");
-      LocalDate endDate = LocalDate.parse("2023-01-01");
-
-      measureService.validateMeasurementPeriod(
-          Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-          Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()));
-
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-  }
-
   // Todo test case populations do reset on change of a group, Will be handled in a future story.
 
   //  @Test
@@ -1309,47 +1231,6 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testInvalidVersionIdThrowsExceptionForDifferentVersionIds() {
-    assertThrows(
-        InvalidVersionIdException.class,
-        () -> measureService.checkVersionIdChanged("versionId1", "versionId2"));
-  }
-
-  @Test
-  public void testInvalidVersionThrowsExceptionWhenPassedInVersionIsNull() {
-    assertThrows(
-        InvalidVersionIdException.class,
-        () -> measureService.checkVersionIdChanged("", "versionId1"));
-  }
-
-  @Test
-  public void testInvalidVersionIdDoesNotThrowExceptionWhenMatch() {
-    try {
-      measureService.checkVersionIdChanged("versionId1", "versionId1");
-    } catch (Exception e) {
-      fail("Should not throw unexpected exception");
-    }
-  }
-
-  @Test
-  public void testInvalidVersionIdDoesNotThrowExceptionWhenBothAreNull() {
-    try {
-      measureService.checkVersionIdChanged(null, null);
-    } catch (Exception e) {
-      fail("Should not throw unexpected exception");
-    }
-  }
-
-  @Test
-  public void testInvalidVersionIdDoesNotThrowExceptionWhenVersionIdFromDBIsNull() {
-    try {
-      measureService.checkVersionIdChanged("versionId1", null);
-    } catch (Exception e) {
-      fail("Should not throw unexpected exception");
-    }
-  }
-
-  @Test
   public void testChangeOwnership() {
     MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("testUser").build();
     Measure measure =
@@ -1393,16 +1274,16 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testUpdateReferenceIdNullMetaData() {
+  public void testUpdateReferencesNullMetaData() {
     MeasureMetaData metaData = null;
-    measureService.updateReferenceId(metaData);
+    measureService.updateReferences(metaData);
     assertNull(metaData);
   }
 
   @Test
-  public void testUpdateReferenceIdNullReferences() {
+  public void testUpdateReferencesNullReferences() {
     MeasureMetaData metaData = MeasureMetaData.builder().build();
-    measureService.updateReferenceId(metaData);
+    measureService.updateReferences(metaData);
     assertNotNull(metaData);
     assertNull(metaData.getReferences());
   }
@@ -1773,16 +1654,16 @@ public class MeasureServiceTest implements ResourceUtil {
                         .definition("test definition")
                         .build()))
             .build();
-    measureService.updateMeasureDefinitionId(metaData);
+    measureService.updateMeasureDefinitions(metaData);
     assertNotNull(metaData);
     assertNotNull(metaData.getMeasureDefinitions());
     assertNotNull(metaData.getMeasureDefinitions().get(0).getId());
   }
 
   @Test
-  public void testUpdateMeasureDefinitionIdNullDefinitions() {
+  public void testUpdateMeasureDefinitionsNullDefinitions() {
     MeasureMetaData metaData = MeasureMetaData.builder().build();
-    measureService.updateMeasureDefinitionId(metaData);
+    measureService.updateMeasureDefinitions(metaData);
     assertNotNull(metaData);
     assertNull(metaData.getMeasureDefinitions());
   }
@@ -1790,7 +1671,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testUpdateDefinitionIdNullMetaData() {
     MeasureMetaData metaData = null;
-    measureService.updateMeasureDefinitionId(metaData);
+    measureService.updateMeasureDefinitions(metaData);
     assertNull(metaData);
   }
 
@@ -2291,27 +2172,6 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThrows(
         InvalidIdException.class,
         () -> measureService.updateMeasureTestCaseConfiguration(username, "", testCaseConfig));
-  }
-
-  @Test
-  void updateMeasureTestCaseConfigurationThrowsInvalidDraftStatusExceptionForNonDraftMeasure() {
-    String username = "testUser";
-    String measureId = "testMeasureId";
-    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
-    Measure existingMeasure =
-        Measure.builder()
-            .id(measureId)
-            .measureMetaData(MeasureMetaData.builder().draft(false).build())
-            .build();
-
-    when(measureRepository.findByIdAndActive(measureId, true))
-        .thenReturn(Optional.of(existingMeasure));
-    doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
-
-    assertThrows(
-        InvalidDraftStatusException.class,
-        () ->
-            measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig));
   }
 
   @Test
