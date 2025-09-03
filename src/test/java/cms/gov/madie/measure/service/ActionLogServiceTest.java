@@ -196,7 +196,6 @@ public class ActionLogServiceTest {
                     AccessControlAction.builder()
                         .actionType(ActionType.UPDATED)
                         .performedBy("user2")
-                        .performedAt(Instant.now())
                         .build()))
             .build();
 
@@ -204,11 +203,11 @@ public class ActionLogServiceTest {
     when(measureSetActionLogRepository.findByTargetId("measureSetId"))
         .thenReturn(Optional.of(measureSetActionLog));
 
-    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId", "desc");
+    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
 
     assertThat(result.size(), is(2));
-    assertThat(result.get(0).getActionType(), is(ActionType.UPDATED));
-    assertThat(result.get(1).getActionType(), is(ActionType.CREATED));
+    assertThat(result.get(0).getActionType(), is(ActionType.CREATED));
+    assertThat(result.get(1).getActionType(), is(ActionType.UPDATED));
   }
 
   @Test
@@ -216,7 +215,7 @@ public class ActionLogServiceTest {
     when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(List.of());
     when(measureSetActionLogRepository.findByTargetId("measureSetId")).thenReturn(Optional.empty());
 
-    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId", "desc");
+    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
 
     assertThat(result.isEmpty(), is(true));
   }
@@ -231,7 +230,7 @@ public class ActionLogServiceTest {
     when(measureSetActionLogRepository.findByTargetId("measureSetId"))
         .thenReturn(Optional.of(measureSetActionLog));
 
-    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId", "desc");
+    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
 
     assertThat(result.isEmpty(), is(true));
   }
@@ -247,7 +246,7 @@ public class ActionLogServiceTest {
     when(measureSetActionLogRepository.findByTargetId("measureSetId"))
         .thenReturn(Optional.of(measureSetActionLog));
 
-    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId", "desc");
+    List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
 
     assertThat(result.isEmpty(), is(true));
   }

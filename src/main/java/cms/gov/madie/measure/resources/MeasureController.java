@@ -458,14 +458,8 @@ public class MeasureController {
 
   @GetMapping(value = "/measures/measure-history/{id}")
   public ResponseEntity<List<Action>> getMeasureHistory(
-      @PathVariable("id") String measureId,
-      @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
-      @RequestParam(required = false, defaultValue = "0", name = "page") int page,
-      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction,
-      Principal principal) {
+      @PathVariable("id") String measureId, Principal principal) {
     return ResponseEntity.ok()
-        .body(
-            measureService.getMeasureHistory(
-                measureId, principal.getName(), limit, page, direction));
+        .body(measureService.getMeasureHistory(measureId, principal.getName()));
   }
 }

@@ -1112,11 +1112,9 @@ class MeasureControllerTest {
             Action.builder().actionType(ActionType.CREATED).performedBy("test.user").build(),
             Action.builder().actionType(ActionType.UPDATED).performedBy("test.user").build());
 
-    when(measureService.getMeasureHistory("measureId", "test.user", 10, 0, "test.user"))
-        .thenReturn(actions);
+    when(measureService.getMeasureHistory("measureId", "test.user")).thenReturn(actions);
 
-    ResponseEntity<List<Action>> response =
-        controller.getMeasureHistory("measureId", 10, 0, "test.user", principal);
+    ResponseEntity<List<Action>> response = controller.getMeasureHistory("measureId", principal);
 
     assertNotNull(response.getBody());
     assertEquals(2, response.getBody().size());
@@ -1129,11 +1127,10 @@ class MeasureControllerTest {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
-    when(measureService.getMeasureHistory("nonExistentId", "test.user", 10, 0, "test.user"))
-        .thenReturn(List.of());
+    when(measureService.getMeasureHistory("nonExistentId", "test.user")).thenReturn(List.of());
 
     ResponseEntity<List<Action>> response =
-        controller.getMeasureHistory("nonExistentId", 10, 0, "test.user", principal);
+        controller.getMeasureHistory("nonExistentId", principal);
 
     assertNotNull(response.getBody());
     assertTrue(response.getBody().isEmpty());
@@ -1146,10 +1143,9 @@ class MeasureControllerTest {
 
     doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
         .when(measureService)
-        .getMeasureHistory("measureId", "invalid.user", 10, 0, "invalid.user");
+        .getMeasureHistory("measureId", "invalid.user");
 
     assertThrows(
-        UnauthorizedException.class,
-        () -> controller.getMeasureHistory("measureId", 10, 0, "invalid.user", principal));
+        UnauthorizedException.class, () -> controller.getMeasureHistory("measureId", principal));
   }
 }

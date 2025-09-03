@@ -10,7 +10,10 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -83,55 +86,29 @@ public class ActionLogService {
         collection);
   }
 
-  public List<Action> findMeasureHistory(String targetId, String measureSetId, String direction) {
-    List<Action> measureHistory = new ArrayList<>();
-
-    // Get measure specific actions
+  public List<Action> findMeasureHistory(String targetId, String measureSetId) {
     List<ActionLog> measureActionLogs = measureActionLogRepository.findByTargetId(targetId);
+    Optional<MeasureSetActionLog> measureSetActionLogs =
+        measureSetActionLogRepository.findByTargetId(measureSetId);
+
+    List<Action> combinedActionLog = new ArrayList<>();
+
     if (!CollectionUtils.isEmpty(measureActionLogs)) {
       measureActionLogs.forEach(
           log -> {
             if (!CollectionUtils.isEmpty(log.getActions())) {
-              measureHistory.addAll(log.getActions());
+              combinedActionLog.addAll(log.getActions());
             }
           });
     }
 
-    // Get measure-set actions
-    Optional<MeasureSetActionLog> measureSetActionLog =
-        measureSetActionLogRepository.findByTargetId(measureSetId);
-    if (measureSetActionLog.isPresent()
-        && !CollectionUtils.isEmpty(measureSetActionLog.get().getActions())) {
-      measureHistory.addAll(measureSetActionLog.get().getActions());
-    }
+    measureSetActionLogs.ifPresent(
+        log -> {
+          if (!CollectionUtils.isEmpty(log.getActions())) {
+            combinedActionLog.addAll(log.getActions());
+          }
+        });
 
-    // Sort performedAt based on direction
-    if ("desc".equalsIgnoreCase(direction)) {
-      measureHistory.sort(
-          Comparator.comparing(
-              Action::getPerformedAt, Comparator.nullsLast(Comparator.reverseOrder())));
-    } else {
-      measureHistory.sort(
-          Comparator.comparing(
-              Action::getPerformedAt, Comparator.nullsFirst(Comparator.naturalOrder())));
-    }
-
-    log.debug("Found {} total actions for measure ID: {}", measureHistory.size(), targetId);
-    return measureHistory;
-  }
-
-  public List<Action> getPaginatedMeasureHistory(
-      String targetId, String measureSetId, int limit, int page, String direction) {
-    List<Action> measureHistory = findMeasureHistory(targetId, measureSetId, direction);
-
-    // Apply pagination
-    int startIndex = page * limit;
-    int endIndex = Math.min(startIndex + limit, measureHistory.size());
-
-    if (startIndex >= measureHistory.size()) {
-      return new ArrayList<>();
-    }
-
-    return measureHistory.subList(startIndex, endIndex);
+    return combinedActionLog;
   }
 }

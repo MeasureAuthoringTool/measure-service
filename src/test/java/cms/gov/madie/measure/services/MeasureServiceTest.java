@@ -2242,25 +2242,23 @@ public class MeasureServiceTest implements ResourceUtil {
     String measureId = "validMeasureId";
     String userName = "testUser";
     Measure measure = Measure.builder().id(measureId).measureSetId("measureSetId").build();
-    Instant fixedInstant = Instant.parse("2023-01-01T00:00:00Z");
     Action createdAction = new Action();
     createdAction.setActionType(ActionType.CREATED);
-    createdAction.setPerformedAt(fixedInstant);
+    createdAction.setPerformedAt(Instant.now());
     createdAction.setPerformedBy("test.user@gmail.com");
     createdAction.setAdditionalActionMessage("");
     List<Action> actions = List.of(createdAction);
 
     when(measureRepository.findById(measureId)).thenReturn(Optional.of(measure));
-    when(actionLogService.getPaginatedMeasureHistory(measureId, "measureSetId", 10, 0, "desc"))
-        .thenReturn(actions);
+    when(actionLogService.findMeasureHistory(measureId, "measureSetId")).thenReturn(actions);
 
-    List<Action> result = measureService.getMeasureHistory(measureId, userName, 10, 0, "desc");
+    List<Action> result = measureService.getMeasureHistory(measureId, userName);
 
     assertNotNull(result);
     assertEquals(1, result.size());
     assertEquals(ActionType.CREATED, result.get(0).getActionType());
-    assertEquals(fixedInstant, result.get(0).getPerformedAt());
     verify(measureRepository, times(1)).findById(measureId);
+    verify(actionLogService, times(1)).findMeasureHistory(measureId, "measureSetId");
   }
 
   @Test
@@ -2269,8 +2267,7 @@ public class MeasureServiceTest implements ResourceUtil {
     String userName = "testUser";
 
     assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.getMeasureHistory(measureId, userName, 10, 0, "desc"));
+        InvalidRequestException.class, () -> measureService.getMeasureHistory(measureId, userName));
     verifyNoInteractions(measureRepository, actionLogService);
   }
 
@@ -2283,7 +2280,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.getMeasureHistory(measureId, userName, 10, 0, "desc"));
+        () -> measureService.getMeasureHistory(measureId, userName));
     verify(measureRepository, times(1)).findById(measureId);
     verifyNoInteractions(actionLogService);
   }
