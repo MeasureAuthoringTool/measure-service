@@ -959,6 +959,7 @@ public class MeasureService {
         "User [{}] successfully retrieved the history of the measure with ID [{}]",
         userName,
         measureId);
+
     return measureHistory;
   }
 }
