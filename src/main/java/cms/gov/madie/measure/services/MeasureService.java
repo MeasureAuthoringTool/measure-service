@@ -943,7 +943,8 @@ public class MeasureService {
     return result;
   }
 
-  public List<Action> getMeasureHistory(String measureId, String userName) {
+  public List<Action> getMeasureHistory(
+      String measureId, String userName, int limit, int page, String direction) {
     if (StringUtils.isBlank(measureId)) {
       throw new InvalidRequestException("Measure ID cannot be null or empty.");
     }
@@ -954,7 +955,9 @@ public class MeasureService {
     }
 
     List<Action> measureHistory =
-        actionLogService.findMeasureHistory(measureId, persistedMeasure.get().getMeasureSetId());
+        actionLogService.getPaginatedMeasureHistory(
+            measureId, persistedMeasure.get().getMeasureSetId(), limit, page, direction);
+
     log.info(
         "User [{}] successfully retrieved the history of the measure with ID [{}]",
         userName,
