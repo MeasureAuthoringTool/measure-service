@@ -1,17 +1,21 @@
-package cms.gov.madie.measure.service;
+package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.LockResponse;
-import cms.gov.madie.measure.dto.MeasureLock;
+import cms.gov.madie.measure.dto.LockInfo;
+import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.repositories.MeasureLockRepository;
 import cms.gov.madie.measure.resources.DuplicateKeyException;
-import cms.gov.madie.measure.services.MeasureLockService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 class MeasureLockServiceTest {
@@ -31,7 +35,7 @@ class MeasureLockServiceTest {
   @Test
   void testLockMeasureInsertsSuccessfully() {
     // insert succeeds
-    LockResponse response = service.lockMeasure(measureId, userName);
+    LockInfo response = service.lockMeasure(measureId, userName);
 
     verify(repository, times(1)).insert(any(MeasureLock.class));
     assertThat(response.isLocked()).isTrue();
@@ -50,7 +54,7 @@ class MeasureLockServiceTest {
     existing.setLockedBy(userName);
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(existing));
 
-    LockResponse response = service.lockMeasure(measureId, userName);
+    LockInfo response = service.lockMeasure(measureId, userName);
 
     verify(repository).insert((MeasureLock) any());
     verify(repository).findByMeasureId(measureId);
@@ -70,7 +74,7 @@ class MeasureLockServiceTest {
     existing.setLockedBy("other-user");
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(existing));
 
-    LockResponse response = service.lockMeasure(measureId, userName);
+    LockInfo response = service.lockMeasure(measureId, userName);
 
     assertThat(response.isLocked()).isTrue();
     assertThat(response.getLockedBy()).isEqualTo("other-user");
@@ -84,7 +88,7 @@ class MeasureLockServiceTest {
 
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.empty());
 
-    LockResponse response = service.lockMeasure(measureId, userName);
+    LockInfo response = service.lockMeasure(measureId, userName);
 
     assertThat(response.isLocked()).isTrue();
     assertThat(response.getLockedBy()).isNull();
@@ -98,7 +102,7 @@ class MeasureLockServiceTest {
     lock.setLockedAt(Instant.now());
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(lock));
 
-    LockResponse response = service.unlockMeasure(measureId, userName);
+    LockInfo response = service.unlockMeasure(measureId, userName);
 
     verify(repository).deleteByMeasureId(measureId);
     assertThat(response.isLocked()).isFalse();
@@ -112,7 +116,7 @@ class MeasureLockServiceTest {
     lock.setLockedBy("other-user");
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(lock));
 
-    LockResponse response = service.unlockMeasure(measureId, userName);
+    LockInfo response = service.unlockMeasure(measureId, userName);
 
     verify(repository, never()).deleteByMeasureId(any());
     assertThat(response.isLocked()).isTrue();
@@ -123,9 +127,43 @@ class MeasureLockServiceTest {
   void testUnlockMeasureWhenNoLockExists() {
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.empty());
 
-    LockResponse response = service.unlockMeasure(measureId, userName);
+    LockInfo response = service.unlockMeasure(measureId, userName);
 
     assertThat(response.isLocked()).isTrue();
     assertThat(response.getLockedBy()).isNull();
+  }
+
+  @Test
+  public void testUnlockByUser() {
+    MeasureLock measureLock =
+        MeasureLock.builder()
+            .id("measureLockId")
+            .measureId("measureId")
+            .lockedBy("test.user")
+            .build();
+    when(repository.findAllByLockedBy(anyString())).thenReturn(List.of(measureLock));
+
+    List<String> results = service.unlockByUser("test.user");
+
+    String msg1 = "Delete measure locks for harpId: test.user";
+    String msg2 = "Deleted measure lock: measureId";
+    List<String> expected = new ArrayList<>();
+    expected.add(msg1);
+    expected.add(msg2);
+    assertEquals(expected, results);
+  }
+
+  @Test
+  public void testUnlockByUserLocksNotFound() {
+    when(repository.findAllByLockedBy(anyString())).thenReturn(Collections.emptyList());
+
+    List<String> results = service.unlockByUser("test.user");
+
+    String msg1 = "Delete measure locks for harpId: test.user";
+    String msg2 = "No measure locks found for harpId: test.user";
+    List<String> expected = new ArrayList<>();
+    expected.add(msg1);
+    expected.add(msg2);
+    assertEquals(expected, results);
   }
 }

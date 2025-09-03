@@ -22,7 +22,7 @@
     <mvnreports.version>3.1.1</mvnreports.version>
     <mvnsite.version>3.9.1</mvnsite.version>
     <org.fhir.ucum.version>1.0.9</org.fhir.ucum.version>
-    <springdoc.version>2.8.3</springdoc.version>
+    <springdoc.version>2.8.10</springdoc.version>
   </properties>
 
   <!--  https://docs.mongock.io/index.html  -->
@@ -165,7 +165,7 @@
     <dependency>
       <groupId>ca.uhn.hapi.fhir</groupId>
       <artifactId>hapi-fhir-structures-r4</artifactId>
-      <version>7.6.0</version>
+      <version>8.4.0</version>
       <exclusions>
         <exclusion>
           <artifactId>okhttp</artifactId>
@@ -204,7 +204,7 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
-      <version>3.17.0</version>
+      <version>3.18.0</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.jackson.datatype</groupId>

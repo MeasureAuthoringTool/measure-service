@@ -2,12 +2,12 @@ package cms.gov.madie.measure.services;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
-
-import com.nimbusds.oauth2.sdk.util.CollectionUtils;
 
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.TestCaseLockRepository;
@@ -60,7 +60,7 @@ public class TestCaseLockService {
     return lockInfo;
   }
 
-  public synchronized LockInfo unlockTestCase(String testCaseId, String userName) {
+  public LockInfo unlockTestCase(String testCaseId, String userName) {
     Optional<TestCaseLock> existingLock = testCaseLockRepository.findByTestCaseId(testCaseId);
     if (existingLock.isPresent()) {
       if (existingLock.get().getLockedBy().equals(userName)) {
@@ -92,5 +92,25 @@ public class TestCaseLockService {
             .findFirst()
             .orElseThrow(() -> new ResourceNotFoundException("TestCase", testCaseId));
     return testCase;
+  }
+
+  public List<String> unlockByUser(String userName) {
+    List<String> deleteMessages = new ArrayList<>();
+    deleteMessages.add("Delete test case locks for harpId: " + userName);
+    List<TestCaseLock> existingLocks = testCaseLockRepository.findAllByLockedBy(userName);
+    log.info(
+        (CollectionUtils.isNotEmpty(existingLocks) ? existingLocks.size() : "No")
+            + " test case locks found for harpId: "
+            + userName);
+    if (CollectionUtils.isNotEmpty(existingLocks)) {
+      existingLocks.forEach(
+          existingLock -> {
+            testCaseLockRepository.deleteByTestCaseId(existingLock.getTestCaseId());
+            deleteMessages.add("Deleted test case lock for Id: " + existingLock.getTestCaseId());
+          });
+    } else {
+      deleteMessages.add("No test case locks found for harpId: " + userName);
+    }
+    return deleteMessages;
   }
 }

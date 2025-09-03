@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
@@ -11,4 +12,6 @@ public interface TestCaseLockRepository extends MongoRepository<TestCaseLock, St
   Optional<TestCaseLock> findByTestCaseId(String testCaseId);
 
   void deleteByTestCaseId(String testCaseId);
+
+  List<TestCaseLock> findAllByLockedBy(String lockedBy);
 }
