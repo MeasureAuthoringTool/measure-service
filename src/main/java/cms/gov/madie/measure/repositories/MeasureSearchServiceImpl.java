@@ -61,15 +61,18 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
 
+    // Project only needed fields from Measure to improve performance
+    ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
+    aggregationOperations.add(lookupOperation);
+    aggregationOperations.add(unwindOperation);
+    aggregationOperations.add(initialProjection);
+
     Criteria measureCriteria = Criteria.where("active").is(true);
 
     boolean nestedFlag =
         invocationSource.equals("testCase")
             ? appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
             : appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH);
-
-    aggregationOperations.add(lookupOperation);
-    aggregationOperations.add(unwindOperation);
 
     if (measureSearchCriteria != null) {
       if (!nestedFlag) {
