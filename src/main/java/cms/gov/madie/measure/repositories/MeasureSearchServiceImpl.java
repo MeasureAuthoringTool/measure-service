@@ -63,8 +63,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     Criteria measureCriteria = Criteria.where("active").is(true);
 
-boolean nestedFlag =
-      invocationSource.equals("testCase") || appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH);
+    boolean nestedFlag =
+        invocationSource.equals("testCase")
+            || appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH);
 
     aggregationOperations.add(lookupOperation);
     aggregationOperations.add(unwindOperation);
