@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
-import cms.gov.madie.measure.dto.MeasureLock;
+import cms.gov.madie.measure.locks.MeasureLock;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

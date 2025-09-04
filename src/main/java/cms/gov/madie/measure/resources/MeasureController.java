@@ -135,6 +135,19 @@ public class MeasureController {
     return ResponseEntity.status(HttpStatus.CREATED).body(savedMeasure);
   }
 
+  @PutMapping("/measures/{id}/test-case-config")
+  public ResponseEntity<Measure> updateMeasureTestCaseConfiguration(
+      @PathVariable("id") String id,
+      @RequestBody TestCaseConfiguration testCaseConfig,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
+    final String username = principal.getName();
+    Measure updatedMeasure =
+        measureService.updateMeasureTestCaseConfiguration(username, id, testCaseConfig);
+    actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
+    return ResponseEntity.ok().body(updatedMeasure);
+  }
+
   @PutMapping("/measures/{id}")
   public ResponseEntity<Measure> updateMeasure(
       @PathVariable("id") String id,
@@ -424,5 +437,21 @@ public class MeasureController {
       produces = {MediaType.APPLICATION_JSON_VALUE})
   public ResponseEntity<List<LibraryUsage>> getLibraryUsage(@RequestParam String libraryName) {
     return ResponseEntity.ok().body(measureService.findLibraryUsage(libraryName));
+  }
+
+  @PutMapping("/measures/transfer")
+  public ResponseEntity<Boolean> transferMeasures(
+      @RequestBody List<String> measureIds,
+      @RequestHeader(name = "harpId") String harpId,
+      @RequestParam(defaultValue = "false") boolean retainShareAccess,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
+    log.info("transferMeasures to [{}] ", harpId);
+    if (CollectionUtils.isEmpty(measureIds)) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(false);
+    }
+    return ResponseEntity.ok(
+        measureService.transferMeasures(
+            measureIds, harpId, retainShareAccess, principal.getName()));
   }
 }

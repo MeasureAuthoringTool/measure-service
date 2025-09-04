@@ -1,4 +1,4 @@
-package cms.gov.madie.measure.dto;
+package cms.gov.madie.measure.locks;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

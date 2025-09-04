@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -171,5 +172,31 @@ public class TestCaseLockServiceTest {
     assertTrue(lockInfo.isLocked());
     assertEquals(lockInfo.getLockedId(), "testCaseId");
     assertEquals(lockInfo.getLockedBy(), "test.user");
+  }
+
+  @Test
+  public void testUnlockByUser() {
+    TestCaseLock testCaseLock =
+        TestCaseLock.builder().testCaseId("testCaseId").lockedBy("test.user").build();
+    when(testCaseLockRepository.findAllByLockedBy(anyString())).thenReturn(List.of(testCaseLock));
+
+    List<String> results = service.unlockByUser("test.user");
+
+    String msg1 = "Delete test case locks for harpId: test.user";
+    String msg2 = "Deleted test case lock for Id: testCaseId";
+    List<String> expected = List.of(msg1, msg2);
+    assertEquals(expected, results);
+  }
+
+  @Test
+  public void testUnlockByUserLocksNotFound() {
+    when(testCaseLockRepository.findAllByLockedBy(anyString())).thenReturn(Collections.emptyList());
+
+    List<String> results = service.unlockByUser("test.user");
+
+    String msg1 = "Delete test case locks for harpId: test.user";
+    String msg2 = "No test case locks found for harpId: test.user";
+    List<String> expected = List.of(msg1, msg2);
+    assertEquals(expected, results);
   }
 }
