@@ -187,16 +187,12 @@ public class ActionLogServiceTest {
 
   @Test
   void findMeasureHistoryReturnsCombinedActionsForValidTargetIds() {
-    List<ActionLog> measureActionLogs =
-        List.of(
-            ActionLog.builder()
-                .actions(
-                    List.of(
-                        Action.builder()
-                            .actionType(ActionType.CREATED)
-                            .performedBy("user1")
-                            .build()))
-                .build());
+    ActionLog measureActionLogs =
+        ActionLog.builder()
+            .actions(
+                List.of(
+                    Action.builder().actionType(ActionType.CREATED).performedBy("user1").build()))
+            .build();
 
     MeasureSetActionLog measureSetActionLog =
         MeasureSetActionLog.builder()
@@ -221,7 +217,7 @@ public class ActionLogServiceTest {
 
   @Test
   void findMeasureHistoryReturnsEmptyListWhenNoLogsExist() {
-    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(List.of());
+    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(null);
     when(measureSetActionLogRepository.findByTargetId("measureSetId")).thenReturn(Optional.empty());
 
     List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
@@ -231,7 +227,7 @@ public class ActionLogServiceTest {
 
   @Test
   void findMeasureHistoryIgnoresNullActionsInLogs() {
-    List<ActionLog> measureActionLogs = List.of(ActionLog.builder().actions(null).build());
+    ActionLog measureActionLogs = ActionLog.builder().actions(null).build();
 
     MeasureSetActionLog measureSetActionLog = MeasureSetActionLog.builder().actions(null).build();
 
@@ -246,7 +242,7 @@ public class ActionLogServiceTest {
 
   @Test
   void findMeasureHistoryHandlesEmptyActionsInLogs() {
-    List<ActionLog> measureActionLogs = List.of(ActionLog.builder().actions(List.of()).build());
+    ActionLog measureActionLogs = ActionLog.builder().actions(List.of()).build();
 
     MeasureSetActionLog measureSetActionLog =
         MeasureSetActionLog.builder().actions(List.of()).build();
