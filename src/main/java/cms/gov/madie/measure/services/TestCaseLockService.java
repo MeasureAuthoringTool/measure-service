@@ -108,14 +108,11 @@ public class TestCaseLockService {
   public boolean lockTestCases(String measureId, List<String> testCaseIds, String userId) {
     boolean failure = false;
     List<TestCaseLock> locks = new ArrayList<>();
-    testCaseIds.forEach(
-        testCaseId -> {
-          validateMeasureAndTestCase(measureId, testCaseId);
-          TestCaseLock lock = makeNewLock(measureId, testCaseId, userId);
-          locks.add(lock);
-        });
     List<TestCaseLock> insertedLocks = new ArrayList<>();
-    for (TestCaseLock lock : locks) {
+    for (String testCaseId : testCaseIds) {
+      validateMeasureAndTestCase(measureId, testCaseId);
+      TestCaseLock lock = makeNewLock(measureId, testCaseId, userId);
+      locks.add(lock);
       try {
         testCaseLockRepository.insert(lock);
         insertedLocks.add(lock);
