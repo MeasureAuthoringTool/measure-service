@@ -374,7 +374,8 @@ public class MeasureSetServiceTest {
         .thenReturn(measures);
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(measureSet);
 
-    String responseBody = measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName());
+    String responseBody =
+        measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName());
 
     assertEquals(
         responseBody,
@@ -477,7 +478,9 @@ public class MeasureSetServiceTest {
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.deleteCmsId(measureId, 1, measure.getMeasureSet().getOwner(), principal.getName()));
+            () ->
+                measureSetService.deleteCmsId(
+                    measureId, 1, measure.getMeasureSet().getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -514,7 +517,9 @@ public class MeasureSetServiceTest {
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName()));
+            () ->
+                measureSetService.deleteCmsId(
+                    measureId, cmsId, measureSet.getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -551,7 +556,9 @@ public class MeasureSetServiceTest {
     Exception ex =
         assertThrows(
             InvalidIdException.class,
-            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName()));
+            () ->
+                measureSetService.deleteCmsId(
+                    measureId, cmsId, measureSet.getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -594,7 +601,9 @@ public class MeasureSetServiceTest {
     Exception ex =
         assertThrows(
             InvalidRequestException.class,
-            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName()));
+            () ->
+                measureSetService.deleteCmsId(
+                    measureId, cmsId, measureSet.getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()

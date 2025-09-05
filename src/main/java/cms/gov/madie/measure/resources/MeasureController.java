@@ -7,6 +7,7 @@ import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
+import gov.cms.madie.models.common.Action;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.OwnershipType;
@@ -453,5 +454,12 @@ public class MeasureController {
     return ResponseEntity.ok(
         measureService.transferMeasures(
             measureIds, harpId, retainShareAccess, principal.getName()));
+  }
+
+  @GetMapping(value = "/measures/{id}/history")
+  public ResponseEntity<List<Action>> getMeasureHistory(
+      @PathVariable("id") String measureId, Principal principal) {
+    return ResponseEntity.ok()
+        .body(measureService.getMeasureHistory(measureId, principal.getName()));
   }
 }
