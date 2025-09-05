@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,7 +36,9 @@ public class ActionLogService {
             .actionType(actionType)
             .performedBy(userId)
             .performedAt(Instant.now())
-            .additionalActionMessage(Arrays.toString(additionalActionMessage))
+            .additionalActionMessage(String.join(", ", additionalActionMessage))
+            // TODO replace Action's additionalActionMessage with List<String> and remove this join.
+            //  Will require a migration of existing Action logs.
             .build(),
         collection);
   }
@@ -58,7 +59,7 @@ public class ActionLogService {
             .performedBy(userId)
             .performedAt(Instant.now())
             .sharedWith(sharedWith)
-            .additionalActionMessage(Arrays.toString(additionalActionMessage))
+            .additionalActionMessage(String.join(", ", additionalActionMessage))
             .build(),
         collection);
   }
@@ -81,7 +82,7 @@ public class ActionLogService {
             .actionType(actionType)
             .performedBy(userId)
             .performedAt(Instant.now())
-            .additionalActionMessage(Arrays.toString(additionalActionMessage))
+            .additionalActionMessage(String.join(", ", additionalActionMessage))
             .build(),
         collection);
   }

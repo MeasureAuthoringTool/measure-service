@@ -49,7 +49,8 @@ public class ActionLogServiceTest {
     when(measureActionLogRepository.pushEvent(anyString(), any(Action.class), anyString()))
         .thenReturn(true);
     boolean output =
-        actionLogService.logAction("TARGET_ID", Measure.class, ActionType.CREATED, "testUser");
+        actionLogService.logAction(
+            "TARGET_ID", Measure.class, ActionType.CREATED, "testUser", "message1", "message2");
     assertThat(output, is(true));
     verify(measureActionLogRepository, times(1))
         .pushEvent(
@@ -61,6 +62,7 @@ public class ActionLogServiceTest {
     assertThat(value, is(notNullValue()));
     assertThat(value.getActionType(), is(equalTo(ActionType.CREATED)));
     assertThat(value.getPerformedBy(), is(equalTo("testUser")));
+    assertThat(value.getAdditionalActionMessage(), is(equalTo("message1, message2")));
   }
 
   @Test
@@ -112,7 +114,13 @@ public class ActionLogServiceTest {
         .thenReturn(false);
     boolean output =
         actionLogService.logShareAccessControlAction(
-            "TARGET_ID", MeasureSet.class, ActionType.SHARED, "testUser", "sharedWith");
+            "TARGET_ID",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "testUser",
+            "sharedWith",
+            "message1",
+            "message2");
     assertThat(output, is(false));
     verify(measureSetActionLogRepository, times(1))
         .pushEvent(
@@ -126,6 +134,7 @@ public class ActionLogServiceTest {
     assertThat(value.getActionType(), is(equalTo(ActionType.SHARED)));
     assertThat(value.getPerformedBy(), is(equalTo("testUser")));
     assertThat(value.getSharedWith(), is(equalTo("sharedWith")));
+    assertThat(value.getAdditionalActionMessage(), is(equalTo("message1, message2")));
   }
 
   @Test
