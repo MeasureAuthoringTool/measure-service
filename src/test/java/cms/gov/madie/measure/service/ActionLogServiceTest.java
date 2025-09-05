@@ -204,7 +204,8 @@ public class ActionLogServiceTest {
                         .build()))
             .build();
 
-    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(measureActionLogs);
+    when(measureActionLogRepository.findByTargetId("targetId"))
+        .thenReturn(Optional.ofNullable(measureActionLogs));
     when(measureSetActionLogRepository.findByTargetId("measureSetId"))
         .thenReturn(Optional.of(measureSetActionLog));
 
@@ -217,7 +218,7 @@ public class ActionLogServiceTest {
 
   @Test
   void findMeasureHistoryReturnsEmptyListWhenNoLogsExist() {
-    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(null);
+    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(Optional.empty());
     when(measureSetActionLogRepository.findByTargetId("measureSetId")).thenReturn(Optional.empty());
 
     List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
@@ -231,7 +232,8 @@ public class ActionLogServiceTest {
 
     MeasureSetActionLog measureSetActionLog = MeasureSetActionLog.builder().actions(null).build();
 
-    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(measureActionLogs);
+    when(measureActionLogRepository.findByTargetId("targetId"))
+        .thenReturn(Optional.ofNullable(measureActionLogs));
     when(measureSetActionLogRepository.findByTargetId("measureSetId"))
         .thenReturn(Optional.of(measureSetActionLog));
 
@@ -247,7 +249,8 @@ public class ActionLogServiceTest {
     MeasureSetActionLog measureSetActionLog =
         MeasureSetActionLog.builder().actions(List.of()).build();
 
-    when(measureActionLogRepository.findByTargetId("targetId")).thenReturn(measureActionLogs);
+    when(measureActionLogRepository.findByTargetId("targetId"))
+        .thenReturn(Optional.ofNullable(measureActionLogs));
     when(measureSetActionLogRepository.findByTargetId("measureSetId"))
         .thenReturn(Optional.of(measureSetActionLog));
 
