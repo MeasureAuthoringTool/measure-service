@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -48,6 +49,7 @@ public class MeasureService {
   private final ActionLogService actionLogService;
   private final MeasureSetService measureSetService;
   private final CqlTemplateConfigService cqlTemplateConfigService;
+  private AppConfigService appConfigService;
 
   private final TerminologyValidationService terminologyValidationService;
 
@@ -659,8 +661,16 @@ public class MeasureService {
       String username,
       // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource) {
+    boolean nestedFlag =
+        invocationSource.equals("testCase")
+            ? appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
+            : appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH);
+    if (!nestedFlag) {
+      return measureRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+          username, pageReq, searchCriteria, ownershipTypes);
+    }
     return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, ownershipTypes, invocationSource);
+        username, pageReq, searchCriteria, ownershipTypes);
   }
 
   protected void updateReferences(MeasureMetaData metaData) {

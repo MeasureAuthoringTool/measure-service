@@ -1,7 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
 import cms.gov.madie.measure.dto.*;
-import cms.gov.madie.measure.services.AppConfigService;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.OwnershipType;
@@ -32,11 +31,9 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
   private final MongoTemplate mongoTemplate;
-  private AppConfigService appConfigService;
 
-  public MeasureSearchServiceImpl(MongoTemplate mongoTemplate, AppConfigService appConfigService) {
+  public MeasureSearchServiceImpl(MongoTemplate mongoTemplate) {
     this.mongoTemplate = mongoTemplate;
-    this.appConfigService = appConfigService;
   }
 
   private LookupOperation getLookupOperation() {
@@ -48,13 +45,11 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   }
 
   @Override
-  public Page<MeasureListDTO> searchMeasuresByCriteria(
+  public Page<MeasureListDTO> searchMeasuresByCriteriaWhenFeatureFlagIsOff(
       String userId,
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
-      // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
-      List<OwnershipType> ownershipTypes,
-      String invocationSource) {
+      List<OwnershipType> ownershipTypes) {
     List<AggregationOperation> aggregationOperations = new ArrayList<>();
 
     // join measure and measure_set to lookup owner and ACL info
@@ -68,46 +63,28 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     aggregationOperations.add(initialProjection);
 
     Criteria measureCriteria = Criteria.where("active").is(true);
-
-    boolean nestedFlag =
-        invocationSource.equals("testCase")
-            ? appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES)
-            : appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH);
-
     if (measureSearchCriteria != null) {
-      if (!nestedFlag) {
-        // If feature flag is OFF, then we need to search for the searchField in
-        // measureName or ecqmTitle or CMDId
-        if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
-          String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
-          List<Criteria> wordCriteria = new ArrayList<>();
+      // If feature flag is OFF, then we need to search for the searchField in
+      // measureName or ecqmTitle or CMDId
+      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+        String[] searchWords = measureSearchCriteria.getSearchField().split("\\s+");
+        List<Criteria> wordCriteria = new ArrayList<>();
 
-          for (String word : searchWords) {
-            word = word.replaceAll("[^a-zA-Z0-9]", ""); // Remove special characters
-            if (StringUtils.isNotBlank(word)) {
-              wordCriteria.add(
-                  new Criteria()
-                      .orOperator(
-                          Criteria.where("measureName").regex(".*" + word + ".*", "i"),
-                          Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i")));
-            }
-          }
-
-          if (!wordCriteria.isEmpty()) {
-            measureCriteria = measureCriteria.andOperator(wordCriteria.toArray(new Criteria[0]));
-          } else {
-            return new PageImpl<>(new ArrayList<>(), pageable, 0);
+        for (String word : searchWords) {
+          word = word.replaceAll("[^a-zA-Z0-9]", ""); // Remove special characters
+          if (StringUtils.isNotBlank(word)) {
+            wordCriteria.add(
+                new Criteria()
+                    .orOperator(
+                        Criteria.where("measureName").regex(".*" + word + ".*", "i"),
+                        Criteria.where("ecqmTitle").regex(".*" + word + ".*", "i")));
           }
         }
-      } else {
-        // if feature flag is ON, then we need to search for searchField only in the provided
-        // filters
-        if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
-          if (CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())
-              || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
-            aggregationOperations.add(SearchUtils.addCmsIdDisplayField());
-          }
-          SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
+
+        if (!wordCriteria.isEmpty()) {
+          measureCriteria = measureCriteria.andOperator(wordCriteria.toArray(new Criteria[0]));
+        } else {
+          return new PageImpl<>(new ArrayList<>(), pageable, 0);
         }
       }
 
@@ -145,81 +122,143 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                 project(MeasureListDTO.class))
             .as("queryResults");
 
-    if (nestedFlag) {
-      aggregationOperations.add(matchOperation);
-      List<AggregationOperation> initialPipeline = new ArrayList<>(aggregationOperations);
-      initialPipeline.add(
-          group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
-      // Find all the measures that matches the given Criteria and fetch unique measureSetIds
-      List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
-          mongoTemplate
-              .aggregate(
-                  newAggregation(initialPipeline), Measure.class, MeasureSetMatchCountDTO.class)
-              .getMappedResults();
+    Aggregation pipeline = newAggregation(lookupOperation, unwindOperation, matchOperation, facets);
+    List<FacetDTO> results =
+        mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
+    return new PageImpl<>(
+        results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());
+  }
 
-      Map<String, MeasureSetMatchCountDTO> matchInfoMap =
-          matchedMeasureSetCounts.stream()
-              .collect(
-                  Collectors.toMap(MeasureSetMatchCountDTO::getMeasureSetId, Function.identity()));
+  @Override
+  public Page<MeasureListDTO> searchMeasuresByCriteria(
+      String userId,
+      Pageable pageable,
+      MeasureSearchCriteria measureSearchCriteria,
+      List<OwnershipType> ownershipTypes) {
+    List<AggregationOperation> aggregationOperations = new ArrayList<>();
 
-      List<String> matchedMeasureSetIds = new ArrayList<>(matchInfoMap.keySet());
+    // join measure and measure_set to lookup owner and ACL info
+    LookupOperation lookupOperation = getLookupOperation();
+    UnwindOperation unwindOperation = unwind("measureSet");
 
-      if (matchedMeasureSetIds.isEmpty()) {
-        return new PageImpl<>(Collections.emptyList(), pageable, 0);
-      }
+    // Project only needed fields from Measure to improve performance
+    ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
+    aggregationOperations.add(lookupOperation);
+    aggregationOperations.add(unwindOperation);
+    aggregationOperations.add(initialProjection);
 
-      // Fetch all measures associated to each MeasureSetId
-      MatchOperation matchMeasureSetIds =
-          match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
+    Criteria measureCriteria = Criteria.where("active").is(true);
 
-      // Sort those measures based on active status, version and draft status
-      // Active measures should come first, then draft measures, then by version
-      SortOperation sortByVersionAndDraft =
-          sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
-
-      // Group all measures that has same measureSetId and get the count and also first document
-      // which will be the latest measure in the MeasureSet
-      GroupOperation groupByMeasureSet = group("measureSetId").first("$$ROOT").as("selectedDoc");
-
-      ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
-
-      aggregationOperations.add(matchMeasureSetIds);
-      aggregationOperations.add(sortByVersionAndDraft);
-      aggregationOperations.add(groupByMeasureSet);
-      aggregationOperations.add(replaceRoot);
-      aggregationOperations.add(facets);
-
-      Aggregation pipeline = newAggregation(aggregationOperations);
-      List<FacetDTO> results =
-          mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
-      for (MeasureListDTO dto : results.get(0).getQueryResults()) {
-        MeasureSetMatchCountDTO matchInfo = matchInfoMap.get(dto.getMeasureSetId());
-
-        if (matchInfo != null) {
-          boolean hasAssociated;
-          if (matchInfo.getMatchCount() > 1) {
-            hasAssociated = true;
-          } else {
-            String selectedId = dto.getId();
-            String matchedId = matchInfo.getMatchedMeasureId();
-            hasAssociated = matchedId != null && !matchedId.equals(selectedId);
-          }
-          dto.setHasAssociatedMeasures(hasAssociated);
-        } else {
-          dto.setHasAssociatedMeasures(false);
+    if (measureSearchCriteria != null) {
+      // if feature flag is ON, then we need to search for searchField only in the provided
+      // filters
+      if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+        if (CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())
+            || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
+          aggregationOperations.add(SearchUtils.addCmsIdDisplayField());
         }
+        SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
-      long totalSize = matchInfoMap.size();
-      return new PageImpl<>(results.get(0).getQueryResults(), pageable, totalSize);
 
-    } else {
-      Aggregation pipeline =
-          newAggregation(lookupOperation, unwindOperation, matchOperation, facets);
-      List<FacetDTO> results =
-          mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
-      return new PageImpl<>(
-          results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());
+      // If model is provided, filter out those measures with that model
+      if (StringUtils.isNotBlank(measureSearchCriteria.getModel())) {
+        measureCriteria.and("model").is(measureSearchCriteria.getModel());
+      }
+
+      // If draft is provided, filter measures based on MeasureMetaData.draft
+      if (measureSearchCriteria.getDraft() != null) {
+        measureCriteria.and("measureMetaData.draft").is(measureSearchCriteria.getDraft());
+      }
+
+      // If excludeMeasures is not empty, exclude those measures by their IDs
+      if (CollectionUtils.isNotEmpty(measureSearchCriteria.getExcludeByMeasureIds())) {
+        measureCriteria.and("_id").nin(measureSearchCriteria.getExcludeByMeasureIds());
+      }
     }
+
+    // prepare measure set search criteria(user is either owner or shared with)
+    Criteria measureSetCriteria = buildMeasureSetCriteria(userId, ownershipTypes);
+
+    MatchOperation matchOperation =
+        (measureSetCriteria != null)
+            ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria))
+            : match(measureCriteria);
+
+    FacetOperation facets =
+        facet(sortByCount("id"))
+            .as("count")
+            .and(
+                sort(pageable.getSort()),
+                skip(pageable.getOffset()),
+                limit(pageable.getPageSize()),
+                project(MeasureListDTO.class))
+            .as("queryResults");
+
+    aggregationOperations.add(matchOperation);
+    List<AggregationOperation> initialPipeline = new ArrayList<>(aggregationOperations);
+    initialPipeline.add(
+        group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
+    // Find all the measures that matches the given Criteria and fetch unique measureSetIds
+    List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
+        mongoTemplate
+            .aggregate(
+                newAggregation(initialPipeline), Measure.class, MeasureSetMatchCountDTO.class)
+            .getMappedResults();
+
+    Map<String, MeasureSetMatchCountDTO> matchInfoMap =
+        matchedMeasureSetCounts.stream()
+            .collect(
+                Collectors.toMap(MeasureSetMatchCountDTO::getMeasureSetId, Function.identity()));
+
+    List<String> matchedMeasureSetIds = new ArrayList<>(matchInfoMap.keySet());
+
+    if (matchedMeasureSetIds.isEmpty()) {
+      return new PageImpl<>(Collections.emptyList(), pageable, 0);
+    }
+
+    // Fetch all measures associated to each MeasureSetId
+    MatchOperation matchMeasureSetIds =
+        match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
+
+    // Sort those measures based on active status, version and draft status
+    // Active measures should come first, then draft measures, then by version
+    SortOperation sortByVersionAndDraft =
+        sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
+
+    // Group all measures that has same measureSetId and get the count and also first document
+    // which will be the latest measure in the MeasureSet
+    GroupOperation groupByMeasureSet = group("measureSetId").first("$$ROOT").as("selectedDoc");
+
+    ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
+
+    aggregationOperations.add(matchMeasureSetIds);
+    aggregationOperations.add(sortByVersionAndDraft);
+    aggregationOperations.add(groupByMeasureSet);
+    aggregationOperations.add(replaceRoot);
+    aggregationOperations.add(facets);
+
+    Aggregation pipeline = newAggregation(aggregationOperations);
+    List<FacetDTO> results =
+        mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
+    for (MeasureListDTO dto : results.get(0).getQueryResults()) {
+      MeasureSetMatchCountDTO matchInfo = matchInfoMap.get(dto.getMeasureSetId());
+
+      if (matchInfo != null) {
+        boolean hasAssociated;
+        if (matchInfo.getMatchCount() > 1) {
+          hasAssociated = true;
+        } else {
+          String selectedId = dto.getId();
+          String matchedId = matchInfo.getMatchedMeasureId();
+          hasAssociated = matchedId != null && !matchedId.equals(selectedId);
+        }
+        dto.setHasAssociatedMeasures(hasAssociated);
+      } else {
+        dto.setHasAssociatedMeasures(false);
+      }
+    }
+    long totalSize = matchInfoMap.size();
+    return new PageImpl<>(results.get(0).getQueryResults(), pageable, totalSize);
   }
 
   private Criteria buildMeasureSetCriteria(String userId, List<OwnershipType> ownershipTypes) {

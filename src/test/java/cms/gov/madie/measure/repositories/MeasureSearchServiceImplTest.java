@@ -1,7 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
 import cms.gov.madie.measure.dto.*;
-import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
@@ -34,7 +33,6 @@ import static org.mockito.Mockito.when;
 public class MeasureSearchServiceImplTest {
 
   @Mock MongoTemplate mongoTemplate;
-  @Mock AppConfigService appConfigService;
   @InjectMocks MeasureSearchServiceImpl measureAclRepository;
 
   private MeasureListDTO measure1;
@@ -66,7 +64,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasures() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     // page size 3 from 0-2
     PageRequest pageRequest = PageRequest.of(0, 3);
     List<MeasureListDTO> allMeasures = List.of(measure1, measure2, measure3, measure4, measure5);
@@ -83,8 +80,8 @@ public class MeasureSearchServiceImplTest {
         .thenReturn(pagedResults);
 
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+        measureAclRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+            "john", pageRequest, null, List.of(OwnershipType.OWNED));
     assertEquals(page.getTotalElements(), 5);
     assertEquals(page.getTotalPages(), 2);
     assertEquals(page.getContent().size(), 3);
@@ -96,7 +93,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithSearchTerm() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
 
     FacetDTO facetDTO =
@@ -109,8 +105,8 @@ public class MeasureSearchServiceImplTest {
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test measure").build();
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+        measureAclRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -121,7 +117,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithSearchTermAndOneOptional() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -134,8 +129,8 @@ public class MeasureSearchServiceImplTest {
             .optionalSearchProperties(List.of("version"))
             .build();
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+        measureAclRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -146,7 +141,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithVersionParts1() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -159,8 +153,8 @@ public class MeasureSearchServiceImplTest {
             .optionalSearchProperties(List.of("version"))
             .build();
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+        measureAclRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -171,7 +165,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithVersionParts2() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -184,8 +177,8 @@ public class MeasureSearchServiceImplTest {
             .optionalSearchProperties(List.of("version"))
             .build();
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+        measureAclRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -196,7 +189,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithVersionParts3() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -209,8 +201,8 @@ public class MeasureSearchServiceImplTest {
             .optionalSearchProperties(List.of("version"))
             .build();
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+        measureAclRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -221,7 +213,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithSearchTermAndMultipleOptional() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -234,8 +225,8 @@ public class MeasureSearchServiceImplTest {
             .optionalSearchProperties(Arrays.asList("measureName", "cmsId", "version"))
             .build();
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+        measureAclRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -246,7 +237,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithSearchTermAndOnlyCmsId() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
@@ -259,8 +249,8 @@ public class MeasureSearchServiceImplTest {
             .optionalSearchProperties(List.of("cmsId"))
             .build();
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+        measureAclRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 2);
@@ -273,7 +263,6 @@ public class MeasureSearchServiceImplTest {
   public void testFindOwnedActiveMeasuresWithSearchFieldFilteredByMeasureNameAndFeatureFlagIsOn() {
     var measuresList = List.of(measure1);
     FacetDTO mockFacetDto = FacetDTO.builder().queryResults(measuresList).build();
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
@@ -295,7 +284,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
     assertEquals(page.getTotalElements(), 1);
     assertEquals(page.getTotalPages(), 1);
@@ -308,7 +297,6 @@ public class MeasureSearchServiceImplTest {
   public void testFindOwnedActiveMeasuresWithSearchFieldFilteredByCmsIdAndFeatureFlagIsOn() {
     var measuresList = List.of(measure1);
     FacetDTO mockFacetDto = FacetDTO.builder().queryResults(measuresList).build();
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
@@ -330,7 +318,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
     assertEquals(page.getTotalElements(), 1);
     assertEquals(page.getTotalPages(), 1);
@@ -341,7 +329,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testFindOwnedActiveMeasuresWithSearchFieldFilteredByModel() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 3);
     FacetDTO facetDTO =
         FacetDTO.builder().queryResults(List.of(measure3)).count(List.of(1)).build();
@@ -354,8 +341,8 @@ public class MeasureSearchServiceImplTest {
             .optionalSearchProperties(List.of("model"))
             .build();
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+        measureAclRepository.searchMeasuresByCriteriaWhenFeatureFlagIsOff(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(page.getTotalElements(), 1);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 1);

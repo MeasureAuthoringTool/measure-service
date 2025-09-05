@@ -30,6 +30,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -80,6 +81,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private MeasureSetService measureSetService;
   @Mock private CqlTemplateConfigService cqlTemplateConfigService;
   @Mock private TerminologyValidationService terminologyValidationService;
+  @Mock private AppConfigService appConfigService;
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
 
@@ -373,6 +375,8 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetOwnedMeasuresByCriteria() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
     PageRequest initialPage = PageRequest.of(0, 10);
 
     Page<Measure> activeMeasures = new PageImpl<>(List.of(measure1));
@@ -385,8 +389,7 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.OWNED)),
-            eq("testCase"));
+            eq(List.of(OwnershipType.OWNED)));
     Object measures =
         measureService.getMeasuresByCriteria(
             measureSearchCriteria,
@@ -399,6 +402,8 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetSharedMeasuresByCriteria() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES))
+        .thenReturn(true);
     PageRequest initialPage = PageRequest.of(0, 10);
 
     Page<Measure> activeMeasures = new PageImpl<>(List.of(measure1));
@@ -411,8 +416,7 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.SHARED)),
-            eq("testCase"));
+            eq(List.of(OwnershipType.SHARED)));
     Object measures =
         measureService.getMeasuresByCriteria(
             measureSearchCriteria,
@@ -425,6 +429,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetAllMeasuresByCriteria() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
     PageRequest initialPage = PageRequest.of(0, 10);
 
     Page<Measure> activeMeasures = new PageImpl<>(List.of(measure1));
@@ -437,8 +442,7 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.ALL)),
-            eq("measures"));
+            eq(List.of(OwnershipType.ALL)));
     Object measures =
         measureService.getMeasuresByCriteria(
             measureSearchCriteria,

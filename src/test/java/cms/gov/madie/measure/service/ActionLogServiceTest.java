@@ -52,7 +52,8 @@ public class ActionLogServiceTest {
     when(measureActionLogRepository.pushEvent(anyString(), any(Action.class), anyString()))
         .thenReturn(true);
     boolean output =
-        actionLogService.logAction("TARGET_ID", Measure.class, ActionType.CREATED, "testUser", "message1", "message2");
+        actionLogService.logAction(
+            "TARGET_ID", Measure.class, ActionType.CREATED, "testUser", "message1", "message2");
     assertThat(output, is(true));
     verify(measureActionLogRepository, times(1))
         .pushEvent(
@@ -116,7 +117,13 @@ public class ActionLogServiceTest {
         .thenReturn(false);
     boolean output =
         actionLogService.logShareAccessControlAction(
-            "TARGET_ID", MeasureSet.class, ActionType.SHARED, "testUser", "sharedWith", "message1", "message2");
+            "TARGET_ID",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "testUser",
+            "sharedWith",
+            "message1",
+            "message2");
     assertThat(output, is(false));
     verify(measureSetActionLogRepository, times(1))
         .pushEvent(
