@@ -456,7 +456,7 @@ public class MeasureController {
             measureIds, harpId, retainShareAccess, principal.getName()));
   }
 
-  @GetMapping(value = "/measures/measure-history/{id}")
+  @GetMapping(value = "/measures/{id}/history")
   public ResponseEntity<List<Action>> getMeasureHistory(
       @PathVariable("id") String measureId, Principal principal) {
     return ResponseEntity.ok()

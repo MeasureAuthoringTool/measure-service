@@ -86,8 +86,8 @@ public class ActionLogService {
         collection);
   }
 
-  public List<Action> findMeasureHistory(String targetId, String measureSetId) {
-    List<ActionLog> measureActionLogs = measureActionLogRepository.findByTargetId(targetId);
+  public List<Action> findMeasureHistory(String measureId, String measureSetId) {
+    List<ActionLog> measureActionLogs = measureActionLogRepository.findByTargetId(measureId);
     Optional<MeasureSetActionLog> measureSetActionLogs =
         measureSetActionLogRepository.findByTargetId(measureSetId);
 
