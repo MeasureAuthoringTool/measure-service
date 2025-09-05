@@ -26,7 +26,6 @@ import static org.mockito.Mockito.*;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
@@ -37,11 +36,9 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import gov.cms.madie.models.access.AclOperation;
-import gov.cms.madie.models.common.AccessControlAction;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.MeasureSetActionLog;
-import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import org.apache.commons.io.IOUtils;
@@ -65,14 +62,12 @@ import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.Organization;
-import gov.cms.madie.models.common.Version;
 
 @ExtendWith(MockitoExtension.class)
 public class MeasureServiceTest implements ResourceUtil {
   @Mock private MeasureRepository measureRepository;
   @Mock private MeasureSetRepository measureSetRepository;
+  @Mock private TestCasePatchRepository testCasePatchRepository;
   @Mock private OrganizationRepository organizationRepository;
   @Mock private ElmTranslatorClient elmTranslatorClient;
   @Mock private MeasureUtil measureUtil;
@@ -1130,83 +1125,6 @@ public class MeasureServiceTest implements ResourceUtil {
     }
   }
 
-  @Test
-  public void testValidateMeasureMeasurementPeriodWithNullStartDate() {
-    LocalDate endDate = LocalDate.parse("2022-12-31");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                null, Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriodWithNullEndDate() {
-    LocalDate startDate = LocalDate.parse("2022-01-01");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                null));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriodTooEarlyDate() {
-    LocalDate startDate = LocalDate.parse("0001-01-01");
-    LocalDate endDate = LocalDate.parse("2022-12-31");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriodFlippedDates() {
-    LocalDate startDate = LocalDate.parse("2022-01-01");
-    LocalDate endDate = LocalDate.parse("2022-12-31");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriodEndDateEqualStartDate() {
-    LocalDate startDate = LocalDate.parse("2022-12-31");
-    LocalDate endDate = LocalDate.parse("2022-12-31");
-
-    assertThrows(
-        InvalidMeasurementPeriodException.class,
-        () ->
-            measureService.validateMeasurementPeriod(
-                Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-                Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant())));
-  }
-
-  @Test
-  public void testValidateMeasureMeasurementPeriod() {
-    try {
-      LocalDate startDate = LocalDate.parse("2022-01-01");
-      LocalDate endDate = LocalDate.parse("2023-01-01");
-
-      measureService.validateMeasurementPeriod(
-          Date.from(startDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()),
-          Date.from(endDate.atStartOfDay(ZoneId.of("America/Sao_Paulo")).toInstant()));
-
-    } catch (Exception e) {
-      fail(e.getMessage());
-    }
-  }
-
   // Todo test case populations do reset on change of a group, Will be handled in a future story.
 
   //  @Test
@@ -1314,62 +1232,28 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testInvalidVersionIdThrowsExceptionForDifferentVersionIds() {
-    assertThrows(
-        InvalidVersionIdException.class,
-        () -> measureService.checkVersionIdChanged("versionId1", "versionId2"));
-  }
-
-  @Test
-  public void testInvalidVersionThrowsExceptionWhenPassedInVersionIsNull() {
-    assertThrows(
-        InvalidVersionIdException.class,
-        () -> measureService.checkVersionIdChanged("", "versionId1"));
-  }
-
-  @Test
-  public void testInvalidVersionIdDoesNotThrowExceptionWhenMatch() {
-    try {
-      measureService.checkVersionIdChanged("versionId1", "versionId1");
-    } catch (Exception e) {
-      fail("Should not throw unexpected exception");
-    }
-  }
-
-  @Test
-  public void testInvalidVersionIdDoesNotThrowExceptionWhenBothAreNull() {
-    try {
-      measureService.checkVersionIdChanged(null, null);
-    } catch (Exception e) {
-      fail("Should not throw unexpected exception");
-    }
-  }
-
-  @Test
-  public void testInvalidVersionIdDoesNotThrowExceptionWhenVersionIdFromDBIsNull() {
-    try {
-      measureService.checkVersionIdChanged("versionId1", null);
-    } catch (Exception e) {
-      fail("Should not throw unexpected exception");
-    }
-  }
-
-  @Test
   public void testChangeOwnership() {
     Principal principal = mock(Principal.class);
     MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("currentUserId").build();
     Measure measure =
         Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
     Optional<Measure> persistedMeasure = Optional.of(measure);
-
     when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
-    when(measureSetService.updateOwnership(anyString(), anyString(), anyString()))
+    when(measureSetService.changeOwnership(
+            anyString(), anyString(), any(Boolean.class), anyString()))
         .thenReturn(new MeasureSet());
 
     boolean result =
         measureService.changeOwnership(measure.getId(), "updatedUserId", principal.getName());
     assertTrue(result);
+  }
+
+  @Test
+  public void testChangeOwnershipPersistedMeasureDoesNotExist() {
+    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+    boolean result = measureService.changeOwnership("testMeasureId", "user123", "admin");
+    assertFalse(result);
   }
 
   @Test
@@ -1394,16 +1278,16 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testUpdateReferenceIdNullMetaData() {
+  public void testUpdateReferencesNullMetaData() {
     MeasureMetaData metaData = null;
-    measureService.updateReferenceId(metaData);
+    measureService.updateReferences(metaData);
     assertNull(metaData);
   }
 
   @Test
-  public void testUpdateReferenceIdNullReferences() {
+  public void testUpdateReferencesNullReferences() {
     MeasureMetaData metaData = MeasureMetaData.builder().build();
-    measureService.updateReferenceId(metaData);
+    measureService.updateReferences(metaData);
     assertNotNull(metaData);
     assertNull(metaData.getReferences());
   }
@@ -1774,16 +1658,16 @@ public class MeasureServiceTest implements ResourceUtil {
                         .definition("test definition")
                         .build()))
             .build();
-    measureService.updateMeasureDefinitionId(metaData);
+    measureService.updateMeasureDefinitions(metaData);
     assertNotNull(metaData);
     assertNotNull(metaData.getMeasureDefinitions());
     assertNotNull(metaData.getMeasureDefinitions().get(0).getId());
   }
 
   @Test
-  public void testUpdateMeasureDefinitionIdNullDefinitions() {
+  public void testUpdateMeasureDefinitionsNullDefinitions() {
     MeasureMetaData metaData = MeasureMetaData.builder().build();
-    measureService.updateMeasureDefinitionId(metaData);
+    measureService.updateMeasureDefinitions(metaData);
     assertNotNull(metaData);
     assertNull(metaData.getMeasureDefinitions());
   }
@@ -1791,7 +1675,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testUpdateDefinitionIdNullMetaData() {
     MeasureMetaData metaData = null;
-    measureService.updateMeasureDefinitionId(metaData);
+    measureService.updateMeasureDefinitions(metaData);
     assertNull(metaData);
   }
 
@@ -2244,5 +2128,164 @@ public class MeasureServiceTest implements ResourceUtil {
     measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
 
     assertTrue(group.getStratifications().isEmpty());
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationSuccessfullyUpdatesMeasure() {
+    String username = "testUser";
+    String measureId = "testMeasureId";
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+    Measure existingMeasure =
+        Measure.builder()
+            .id(measureId)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .build();
+    Measure updatedMeasure = Measure.builder().id(measureId).build();
+
+    when(measureRepository.findByIdAndActive(measureId, true))
+        .thenReturn(Optional.of(existingMeasure));
+    doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
+    when(testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId))
+        .thenReturn(updatedMeasure);
+
+    Measure result =
+        measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig);
+
+    assertNotNull(result);
+    assertEquals(updatedMeasure, result);
+    verify(measureService, times(1)).verifyAuthorization(username, existingMeasure);
+    verify(testCasePatchRepository, times(1))
+        .findAndModifyTestCaseConfig(testCaseConfig, measureId);
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationThrowsInvalidIdExceptionForNullId() {
+    String username = "testUser";
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+
+    assertThrows(
+        InvalidIdException.class,
+        () -> measureService.updateMeasureTestCaseConfiguration(username, null, testCaseConfig));
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationThrowsInvalidIdExceptionForEmptyId() {
+    String username = "testUser";
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+
+    assertThrows(
+        InvalidIdException.class,
+        () -> measureService.updateMeasureTestCaseConfiguration(username, "", testCaseConfig));
+  }
+
+  @Test
+  void findActiveMeasureByIdReturnsMeasureWhenIdExists() {
+    String measureId = "existingMeasureId";
+    Measure measure = Measure.builder().id(measureId).active(true).build();
+
+    when(measureRepository.findByIdAndActive(measureId, true)).thenReturn(Optional.of(measure));
+
+    Measure result = measureService.findActiveMeasureById(measureId);
+
+    assertNotNull(result);
+    assertEquals(measureId, result.getId());
+    verify(measureRepository, times(1)).findByIdAndActive(measureId, true);
+  }
+
+  @Test
+  void findActiveMeasureByIdThrowsResourceNotFoundExceptionWhenIdDoesNotExist() {
+    String measureId = "nonExistingMeasureId";
+
+    when(measureRepository.findByIdAndActive(measureId, true)).thenReturn(Optional.empty());
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> measureService.findActiveMeasureById(measureId),
+        "Expected ResourceNotFoundException for non-existing measureId");
+    verify(measureRepository, times(1)).findByIdAndActive(measureId, true);
+  }
+
+  @Test
+  void findActiveMeasureByIdThrowsResourceNotFoundExceptionForNullId() {
+    when(measureRepository.findByIdAndActive(null, true)).thenReturn(Optional.empty());
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> measureService.findActiveMeasureById(null),
+        "Expected ResourceNotFoundException for null measureId");
+    verify(measureRepository, times(1)).findByIdAndActive(null, true);
+  }
+
+  @Test
+  public void testTransferMeasures() {
+    MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("testUser").build();
+    Measure measure =
+        Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
+    Optional<Measure> persistedMeasure = Optional.of(measure);
+    when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
+    when(measureSetService.changeOwnership(
+            anyString(), anyString(), any(Boolean.class), anyString()))
+        .thenReturn(new MeasureSet());
+
+    boolean result =
+        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
+    assertTrue(result);
+  }
+
+  @Test
+  public void testTransferMeasuresNotFound() {
+    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+
+    boolean result =
+        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
+    assertFalse(result);
+  }
+
+  @Test
+  void getMeasureHistoryReturnsHistoryForValidMeasureId() {
+    String measureId = "validMeasureId";
+    String userName = "testUser";
+    Measure measure = Measure.builder().id(measureId).measureSetId("measureSetId").build();
+    Action createdAction = new Action();
+    createdAction.setActionType(ActionType.CREATED);
+    createdAction.setPerformedAt(Instant.now());
+    createdAction.setPerformedBy("test.user@gmail.com");
+    createdAction.setAdditionalActionMessage("");
+    List<Action> actions = List.of(createdAction);
+
+    when(measureRepository.findById(measureId)).thenReturn(Optional.of(measure));
+    when(actionLogService.findMeasureHistory(measureId, "measureSetId")).thenReturn(actions);
+
+    List<Action> result = measureService.getMeasureHistory(measureId, userName);
+
+    assertNotNull(result);
+    assertEquals(1, result.size());
+    assertEquals(ActionType.CREATED, result.get(0).getActionType());
+    verify(measureRepository, times(1)).findById(measureId);
+    verify(actionLogService, times(1)).findMeasureHistory(measureId, "measureSetId");
+  }
+
+  @Test
+  void getMeasureHistoryThrowsInvalidRequestExceptionForBlankMeasureId() {
+    String measureId = " ";
+    String userName = "testUser";
+
+    assertThrows(
+        InvalidRequestException.class, () -> measureService.getMeasureHistory(measureId, userName));
+    verifyNoInteractions(measureRepository, actionLogService);
+  }
+
+  @Test
+  void getMeasureHistoryThrowsResourceNotFoundExceptionForNonExistentMeasureId() {
+    String measureId = "nonExistentMeasureId";
+    String userName = "testUser";
+
+    when(measureRepository.findById(measureId)).thenReturn(Optional.empty());
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> measureService.getMeasureHistory(measureId, userName));
+    verify(measureRepository, times(1)).findById(measureId);
+    verifyNoInteractions(actionLogService);
   }
 }

@@ -314,7 +314,14 @@ public class AdminController {
     deleteRelevantPackageData(id, measureToCorrectVersion);
 
     Measure correctedVersionMeasure = measureRepository.save(measureToCorrectVersion);
-    actionLogService.logAction(id, Measure.class, ActionType.UPDATED, principal.getName());
+
+    actionLogService.logAction(
+        measureToCorrectVersion.getId(),
+        Measure.class,
+        ActionType.VERSION_REVERT,
+        principal.getName(),
+        String.format("Reverted from version %s to %s", inCorrectVersion, correctVersion));
+
     return ResponseEntity.ok(correctedVersionMeasure);
   }
 

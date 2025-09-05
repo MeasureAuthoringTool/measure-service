@@ -35,9 +35,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -352,7 +354,8 @@ class MeasureControllerTest {
             "CMS Id of %s was deleted successfully from measure set with measure set id of %s",
             measureSet.getCmsId(), measureSet.getMeasureSetId());
 
-    when(measureSetService.deleteCmsId(anyString(), anyInt(), anyString()))
+    when(principal.getName()).thenReturn("testUser");
+    when(measureSetService.deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testUser"))
         .thenReturn(expectedBody);
 
     ResponseEntity<String> response =
@@ -361,7 +364,8 @@ class MeasureControllerTest {
 
     assertThat(response.getBody(), is(notNullValue()));
     assertEquals(expectedBody, response.getBody());
-    verify(measureSetService, times(1)).deleteCmsId(anyString(), anyInt(), anyString());
+    verify(measureSetService, times(1))
+        .deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testUser");
   }
 
   @Test
@@ -1030,5 +1034,120 @@ class MeasureControllerTest {
         .updateTestCase(saveTestCaseCaptor.capture(), anyString(), anyString(), anyString());
     TestCase persisted = saveTestCaseCaptor.getValue();
     assertThat(persisted, is(equalTo(expected.getTestCases().get(0))));
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationReturnsUpdatedMeasure() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    Measure updatedMeasure = Measure.builder().id("measureId").build();
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+
+    when(measureService.updateMeasureTestCaseConfiguration(
+            "test.user", "measureId", testCaseConfig))
+        .thenReturn(updatedMeasure);
+
+    ResponseEntity<Measure> response =
+        controller.updateMeasureTestCaseConfiguration(
+            "measureId", testCaseConfig, principal, "Bearer TOKEN");
+
+    assertNotNull(response.getBody());
+    assertEquals(updatedMeasure, response.getBody());
+    verify(measureService, times(1))
+        .updateMeasureTestCaseConfiguration("test.user", "measureId", testCaseConfig);
+    verify(actionLogService, times(1))
+        .logAction("measureId", Measure.class, ActionType.UPDATED, "test.user");
+  }
+
+  @Test
+  void updateMeasureTestCaseConfigurationThrowsUnauthorizedExceptionForInvalidUser() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("invalid.user");
+
+    TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
+
+    doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
+        .when(measureService)
+        .updateMeasureTestCaseConfiguration("invalid.user", "measureId", testCaseConfig);
+
+    assertThrows(
+        UnauthorizedException.class,
+        () ->
+            controller.updateMeasureTestCaseConfiguration(
+                "measureId", testCaseConfig, principal, "Bearer TOKEN"));
+  }
+
+  @Test
+  public void testTransferMeasures() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    when(measureService.transferMeasures(
+            any(List.class), anyString(), any(Boolean.class), anyString()))
+        .thenReturn(true);
+    ResponseEntity<Boolean> result =
+        controller.transferMeasures(
+            List.of("testMeasureId"), "testHarpId", true, principal, "testToken");
+    assertTrue(result.getBody());
+    assertEquals(HttpStatus.OK, result.getStatusCode());
+  }
+
+  @Test
+  public void testTransferMeasuresNullMeasureIds() {
+    Principal principal = mock(Principal.class);
+
+    ResponseEntity<Boolean> result =
+        controller.transferMeasures(
+            Collections.emptyList(), "testHarpId", true, principal, "testToken");
+    assertFalse(result.getBody());
+    assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+  }
+
+  @Test
+  void getMeasureHistoryReturnsActionsForValidMeasureId() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    List<Action> actions =
+        List.of(
+            Action.builder().actionType(ActionType.CREATED).performedBy("test.user").build(),
+            Action.builder().actionType(ActionType.UPDATED).performedBy("test.user").build());
+
+    when(measureService.getMeasureHistory("measureId", "test.user")).thenReturn(actions);
+
+    ResponseEntity<List<Action>> response = controller.getMeasureHistory("measureId", principal);
+
+    assertNotNull(response.getBody());
+    assertEquals(2, response.getBody().size());
+    assertEquals(ActionType.CREATED, response.getBody().get(0).getActionType());
+    assertEquals(ActionType.UPDATED, response.getBody().get(1).getActionType());
+  }
+
+  @Test
+  void getMeasureHistoryReturnsEmptyListForNonExistentMeasureId() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    when(measureService.getMeasureHistory("nonExistentId", "test.user")).thenReturn(List.of());
+
+    ResponseEntity<List<Action>> response =
+        controller.getMeasureHistory("nonExistentId", principal);
+
+    assertNotNull(response.getBody());
+    assertTrue(response.getBody().isEmpty());
+  }
+
+  @Test
+  void getMeasureHistoryThrowsUnauthorizedExceptionForInvalidUser() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("invalid.user");
+
+    doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
+        .when(measureService)
+        .getMeasureHistory("measureId", "invalid.user");
+
+    assertThrows(
+        UnauthorizedException.class, () -> controller.getMeasureHistory("measureId", principal));
   }
 }

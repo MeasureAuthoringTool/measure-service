@@ -7,6 +7,7 @@ import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
+import gov.cms.madie.models.common.Action;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.OwnershipType;
@@ -133,6 +134,19 @@ public class MeasureController {
     Measure savedMeasure =
         measureService.createMeasure(measure, username, accessToken, addDefaultCQL);
     return ResponseEntity.status(HttpStatus.CREATED).body(savedMeasure);
+  }
+
+  @PutMapping("/measures/{id}/test-case-config")
+  public ResponseEntity<Measure> updateMeasureTestCaseConfiguration(
+      @PathVariable("id") String id,
+      @RequestBody TestCaseConfiguration testCaseConfig,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
+    final String username = principal.getName();
+    Measure updatedMeasure =
+        measureService.updateMeasureTestCaseConfiguration(username, id, testCaseConfig);
+    actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
+    return ResponseEntity.ok().body(updatedMeasure);
   }
 
   @PutMapping("/measures/{id}")
@@ -406,7 +420,7 @@ public class MeasureController {
         cmsId,
         measureId);
     return ResponseEntity.status(HttpStatus.OK)
-        .body(measureSetService.deleteCmsId(measureId, cmsId, harpId));
+        .body(measureSetService.deleteCmsId(measureId, cmsId, harpId, principal.getName()));
   }
 
   @PutMapping("/measures/cms-id-association")
@@ -425,5 +439,28 @@ public class MeasureController {
       produces = {MediaType.APPLICATION_JSON_VALUE})
   public ResponseEntity<List<LibraryUsage>> getLibraryUsage(@RequestParam String libraryName) {
     return ResponseEntity.ok().body(measureService.findLibraryUsage(libraryName));
+  }
+
+  @PutMapping("/measures/transfer")
+  public ResponseEntity<Boolean> transferMeasures(
+      @RequestBody List<String> measureIds,
+      @RequestHeader(name = "harpId") String harpId,
+      @RequestParam(defaultValue = "false") boolean retainShareAccess,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
+    log.info("transferMeasures to [{}] ", harpId);
+    if (CollectionUtils.isEmpty(measureIds)) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(false);
+    }
+    return ResponseEntity.ok(
+        measureService.transferMeasures(
+            measureIds, harpId, retainShareAccess, principal.getName()));
+  }
+
+  @GetMapping(value = "/measures/{id}/history")
+  public ResponseEntity<List<Action>> getMeasureHistory(
+      @PathVariable("id") String measureId, Principal principal) {
+    return ResponseEntity.ok()
+        .body(measureService.getMeasureHistory(measureId, principal.getName()));
   }
 }

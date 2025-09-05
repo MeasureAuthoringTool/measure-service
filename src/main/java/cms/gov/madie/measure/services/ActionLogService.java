@@ -3,16 +3,16 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.repositories.MeasureActionLogRepository;
 import cms.gov.madie.measure.repositories.MeasureSetActionLogRepository;
 import cms.gov.madie.measure.utils.ActionLogCollectionType;
-import gov.cms.madie.models.common.Action;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.AccessControlAction;
-import gov.cms.madie.models.common.MeasureSetActionLog;
+import gov.cms.madie.models.common.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -36,7 +36,9 @@ public class ActionLogService {
             .actionType(actionType)
             .performedBy(userId)
             .performedAt(Instant.now())
-            .additionalActionMessage(Arrays.toString(additionalActionMessage))
+            .additionalActionMessage(String.join(", ", additionalActionMessage))
+            // TODO replace Action's additionalActionMessage with List<String> and remove this join.
+            //  Will require a migration of existing Action logs.
             .build(),
         collection);
   }
@@ -57,7 +59,7 @@ public class ActionLogService {
             .performedBy(userId)
             .performedAt(Instant.now())
             .sharedWith(sharedWith)
-            .additionalActionMessage(Arrays.toString(additionalActionMessage))
+            .additionalActionMessage(String.join(", ", additionalActionMessage))
             .build(),
         collection);
   }
@@ -80,8 +82,32 @@ public class ActionLogService {
             .actionType(actionType)
             .performedBy(userId)
             .performedAt(Instant.now())
-            .additionalActionMessage(Arrays.toString(additionalActionMessage))
+            .additionalActionMessage(String.join(", ", additionalActionMessage))
             .build(),
         collection);
+  }
+
+  public List<Action> findMeasureHistory(String measureId, String measureSetId) {
+    Optional<ActionLog> measureActionLogs = measureActionLogRepository.findByTargetId(measureId);
+    Optional<MeasureSetActionLog> measureSetActionLogs =
+        measureSetActionLogRepository.findByTargetId(measureSetId);
+
+    List<Action> combinedActionLogs = new ArrayList<>();
+
+    measureActionLogs.ifPresent(
+        log -> {
+          if (CollectionUtils.isNotEmpty(log.getActions())) {
+            combinedActionLogs.addAll(log.getActions());
+          }
+        });
+
+    measureSetActionLogs.ifPresent(
+        log -> {
+          if (CollectionUtils.isNotEmpty(log.getActions())) {
+            combinedActionLogs.addAll(log.getActions());
+          }
+        });
+
+    return combinedActionLogs;
   }
 }

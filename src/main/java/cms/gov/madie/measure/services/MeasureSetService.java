@@ -22,6 +22,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -181,33 +182,6 @@ public class MeasureSetService {
     }
   }
 
-  public MeasureSet updateOwnership(String measureSetId, String updatedUserId, String username) {
-    Optional<MeasureSet> OptionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
-    if (OptionalMeasureSet.isPresent()) {
-      MeasureSet measureSet = OptionalMeasureSet.get();
-      String currentUserId = measureSet.getOwner();
-      measureSet.setOwner(updatedUserId);
-      MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
-      log.info("Owner changed in Measure set [{}]", updatedMeasureSet.getId());
-
-      actionLogService.logMeasureSetAction(
-          measureSetId,
-          MeasureSet.class,
-          ActionType.OWNERSHIP_TRANSFER,
-          username,
-          String.format("Transferred from %s to %s", currentUserId, updatedUserId));
-
-      return updatedMeasureSet;
-    } else {
-      String error =
-          String.format(
-              "Measure with set id `%s` can not change ownership `%s`, measure set may not exist.",
-              measureSetId, updatedUserId);
-      log.error(error);
-      throw new ResourceNotFoundException(error);
-    }
-  }
-
   public MeasureSet createAndUpdateCmsId(String measureSetId, String username) {
     Optional<MeasureSet> measureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (!measureSet.isPresent()) {
@@ -228,7 +202,7 @@ public class MeasureSetService {
     return updatedMeasureSet;
   }
 
-  public String deleteCmsId(String measureId, Integer cmsId, String harpId) {
+  public String deleteCmsId(String measureId, Integer cmsId, String harpId, String userName) {
     Optional<Measure> optionalMeasure = measureRepository.findById(measureId);
 
     if (optionalMeasure.isPresent()) {
@@ -286,6 +260,13 @@ public class MeasureSetService {
           measureSetId,
           cmsId);
 
+      actionLogService.logMeasureSetAction(
+          measureSetId,
+          MeasureSet.class,
+          ActionType.DELETE_CMSID,
+          userName,
+          String.format("Deleted CMS ID %s", cmsId));
+
       return String.format(
           "CMS id of %s was deleted successfully from " + "measure set with measure set id of %s",
           cmsId, measureSetId);
@@ -326,5 +307,58 @@ public class MeasureSetService {
       }
     }
     return mostRecentMeasures;
+  }
+
+  /**
+   * Change ownership in MeasureSet
+   *
+   * @param measureSetId - the MeasureSet that needs change of ownership
+   * @param userId - new owner
+   * @param retainShareAccess - add SHARED_WITH for the original owner if true, otherwise keep the
+   *     current Acls
+   * @param conductedBy - the user that performs the ownership change
+   * @return
+   */
+  public MeasureSet changeOwnership(
+      String measureSetId, String userId, boolean retainShareAccess, String conductedBy) {
+    Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
+    if (optionalMeasureSet.isPresent()) {
+      MeasureSet measureSet = optionalMeasureSet.get();
+      String originalOwner = optionalMeasureSet.get().getOwner();
+      measureSet.setOwner(userId);
+      if (retainShareAccess) {
+        List<AclSpecification> acls =
+            !CollectionUtils.isEmpty(measureSet.getAcls())
+                ? measureSet.getAcls()
+                : new ArrayList<>();
+        acls.add(
+            AclSpecification.builder()
+                .userId(originalOwner)
+                .roles(Set.of(RoleEnum.SHARED_WITH))
+                .build());
+        measureSet.setAcls(acls);
+      }
+      MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
+      log.info(
+          "Measure set: [{}] has been transferred ownership from original owner: [{}] to new owner: [{}] by user: [{}]",
+          updatedMeasureSet.getId(),
+          originalOwner,
+          userId,
+          conductedBy);
+      actionLogService.logMeasureSetAction(
+          measureSetId,
+          MeasureSet.class,
+          ActionType.OWNERSHIP_TRANSFER,
+          conductedBy,
+          String.format("Transferred from %s to %s", originalOwner, userId));
+      return updatedMeasureSet;
+    } else {
+      String error =
+          String.format(
+              "Measure with set id `%s` can not change ownership `%s`, measure set may not exist.",
+              measureSetId, userId);
+      log.error(error);
+      throw new ResourceNotFoundException(error);
+    }
   }
 }
