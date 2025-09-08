@@ -1,26 +1,24 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.LockInfo;
+import cms.gov.madie.measure.exceptions.LockNotObtainedException;
+import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.locks.TestCaseLock;
+import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.TestCaseLockRepository;
+import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.TestCase;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.springframework.dao.DuplicateKeyException;
+import org.springframework.stereotype.Service;
+
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-
-import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.dao.DuplicateKeyException;
-import org.springframework.stereotype.Service;
-
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.repositories.TestCaseLockRepository;
-
-import gov.cms.madie.models.measure.Measure;
-import gov.cms.madie.models.measure.TestCase;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import cms.gov.madie.measure.locks.TestCaseLock;
-import cms.gov.madie.measure.dto.LockInfo;
 
 @Slf4j
 @Service
@@ -28,6 +26,14 @@ import cms.gov.madie.measure.dto.LockInfo;
 public class TestCaseLockService {
   private final MeasureRepository measureRepository;
   private final TestCaseLockRepository testCaseLockRepository;
+
+  public synchronized void lockTestCaseForUser(
+      String measureId, String testCaseId, String userName) {
+    LockInfo lockInfo = lockTestCase(measureId, testCaseId, userName);
+    if (!lockInfo.getLockedBy().equals(userName)) {
+      throw new LockNotObtainedException("", lockInfo.getLockedBy());
+    }
+  }
 
   public synchronized LockInfo lockTestCase(String measureId, String testCaseId, String userName) {
     validateMeasureAndTestCase(measureId, testCaseId);
@@ -57,7 +63,7 @@ public class TestCaseLockService {
     if (existingLock.isPresent()) {
       if (existingLock.get().getLockedBy().equals(userName)) {
         testCaseLockRepository.deleteByTestCaseId(testCaseId);
-        return LockInfo.builder().isLocked(false).build();
+        return LockInfo.builder().lockedId(existingLock.get().getTestCaseId()).isLocked(false).build();
       } else {
         return LockInfo.builder()
             .lockedId((existingLock.get().getTestCaseId()))
@@ -66,7 +72,7 @@ public class TestCaseLockService {
             .build();
       }
     }
-    return null;
+    return LockInfo.builder().lockedId(testCaseId).isLocked(false).build();
   }
 
   TestCase validateMeasureAndTestCase(String measureId, String testCaseId) {
