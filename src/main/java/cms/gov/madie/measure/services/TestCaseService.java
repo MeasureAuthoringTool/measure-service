@@ -371,7 +371,7 @@ public class TestCaseService {
   public List<TestCase> findTestCasesByMeasureId(String measureId) {
     return findActiveMeasureById(measureId).getTestCases();
   }
-  
+
   public String deleteTestCases(String measureId, List<String> testCaseIds, String username) {
     if (isEmpty(testCaseIds) || StringUtils.isBlank(measureId)) {
       log.info("Test case Ids or Measure Id is Empty");
