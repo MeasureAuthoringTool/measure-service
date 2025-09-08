@@ -90,23 +90,23 @@ public class ActionLogService {
   public List<Action> findMeasureHistory(String measureId, String measureSetId) {
     Optional<ActionLog> measureActionLogs = measureActionLogRepository.findByTargetId(measureId);
     Optional<MeasureSetActionLog> measureSetActionLogs =
-            measureSetActionLogRepository.findByTargetId(measureSetId);
+        measureSetActionLogRepository.findByTargetId(measureSetId);
 
     List<Action> combinedActionLogs = new ArrayList<>();
 
     measureActionLogs.ifPresent(
-            log -> {
-              if (CollectionUtils.isNotEmpty(log.getActions())) {
-                combinedActionLogs.addAll(log.getActions());
-              }
-            });
+        log -> {
+          if (CollectionUtils.isNotEmpty(log.getActions())) {
+            combinedActionLogs.addAll(log.getActions());
+          }
+        });
 
     measureSetActionLogs.ifPresent(
-            log -> {
-              if (CollectionUtils.isNotEmpty(log.getActions())) {
-                combinedActionLogs.addAll(log.getActions());
-              }
-            });
+        log -> {
+          if (CollectionUtils.isNotEmpty(log.getActions())) {
+            combinedActionLogs.addAll(log.getActions());
+          }
+        });
 
     return combinedActionLogs;
   }
