@@ -321,7 +321,11 @@ public class MeasureSetServiceTest {
     assertThat(result.getId(), is(equalTo(measureSet1.getId())));
     verify(actionLogService, times(1))
         .logMeasureSetAction(
-            measureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, "testUser");
+            measureSet.getMeasureSetId(),
+            MeasureSet.class,
+            ActionType.CREATED,
+            "testUser",
+            "Created CMS ID 2");
   }
 
   @Test
