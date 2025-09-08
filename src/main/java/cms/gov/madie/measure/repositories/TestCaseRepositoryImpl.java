@@ -55,6 +55,13 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
     return updatedMeasure;
   }
 
+  @Override
+  public Measure removeTestCase(String measureId, String testCaseId) {
+    Query query = new Query(Criteria.where("_id").is(measureId));
+    Update update = new Update().pull("testCases", Query.query(Criteria.where("_id").is(testCaseId)));
+    return mongoOperations.findAndModify(query, update, RETURN_NEW_OPTIONS, Measure.class);
+  }
+
   /**
    * Sets the validation status of a specific TestCase within a Measure to PENDING. This only
    * applies if the current status is not already PENDING.

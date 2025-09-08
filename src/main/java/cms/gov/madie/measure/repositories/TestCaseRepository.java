@@ -10,6 +10,8 @@ import java.util.UUID;
 public interface TestCaseRepository {
   Measure addOrUpdateTestCase(String measureId, TestCase testCase);
 
+  Measure removeTestCase(String measureId, String testCaseId);
+
   Measure setValidationStatusToPending(String testCaseId, String measureId);
 
   Measure setValidationStatusToValidating(String testCaseId, String measureId, UUID taskId);
