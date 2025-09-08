@@ -2,12 +2,14 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.CopyTestCaseResult;
 import cms.gov.madie.measure.dto.JobStatus;
+import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
 import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
+import cms.gov.madie.measure.exceptions.LockNotObtainedException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.SpecialCharacterException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
@@ -74,6 +76,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Mock private TestCaseValidationService testCaseValidationService;
   @Mock private TestCaseServiceUtil testCaseServiceUtil;
   @Mock private TestCaseSequenceService testCaseSequenceService;
+  @Mock private TestCaseLockService testCaseLockService;
 
   @Spy @InjectMocks private TestCaseService testCaseService;
 
@@ -2853,7 +2856,9 @@ public class TestCaseServiceTest implements ResourceUtil {
         .shiftTestCaseDates(anyList(), anyInt(), anyString());
     String accessToken = "Bearer Token";
 
-    TestCase shiftedTestCase = testCaseService.shiftQiCoreTestCaseDates(testCase, 1, accessToken);
+    List<TestCase> shiftedTestCase =
+        testCaseService.shiftQiCoreTestCaseDates(
+            List.of(testCase), 1, accessToken, "measureId", "userName");
     assertNotNull(shiftedTestCase);
   }
 
@@ -2865,8 +2870,10 @@ public class TestCaseServiceTest implements ResourceUtil {
         .shiftTestCaseDates(anyList(), anyInt(), anyString());
     String accessToken = "Bearer Token";
 
-    TestCase shiftedTestCase = testCaseService.shiftQiCoreTestCaseDates(testCase, 1, accessToken);
-    assertNull(shiftedTestCase);
+    List<TestCase> shiftedTestCase =
+        testCaseService.shiftQiCoreTestCaseDates(
+            List.of(testCase), 1, accessToken, "measureId", "userName");
+    assertTrue(CollectionUtils.isEmpty(shiftedTestCase));
   }
 
   @Test
@@ -2877,7 +2884,8 @@ public class TestCaseServiceTest implements ResourceUtil {
         .shiftTestCaseDates(anyList(), anyInt(), anyString());
 
     List<TestCase> shiftedTestCases =
-        testCaseService.shiftQiCoreTestCaseDates(List.of(testCase), 1, "TOKEN");
+        testCaseService.shiftQiCoreTestCaseDates(
+            List.of(testCase), 1, "TOKEN", "measureId", "userName");
     assertThat(shiftedTestCases.size(), equalTo(1));
     assertTrue(shiftedTestCases.contains(testCase));
   }
@@ -3380,5 +3388,46 @@ public class TestCaseServiceTest implements ResourceUtil {
             eq(accessToken));
     assertNotNull(output);
     assertEquals(TestCaseValidationStatus.PENDING.toString(), output.getValidationStatus());
+  }
+
+  @Test
+  void testShiftQiCoreTestCaseDatesTestCasesEmpty() {
+    List<TestCase> shiftedTestCases =
+        testCaseService.shiftQiCoreTestCaseDates(null, 1, "TOKEN", "measureId", "userName");
+    assertTrue(CollectionUtils.isEmpty(shiftedTestCases));
+  }
+
+  @Test
+  void testShiftQiCoreTestCaseDatesWhenFeatureFlagOn() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(testCaseLockService.lockAllTestCases(anyString(), any(List.class), anyString()))
+        .thenReturn(null);
+    ResponseEntity<List<TestCase>> mockClientResponse = ResponseEntity.ok(List.of(testCase));
+    doReturn(mockClientResponse)
+        .when(fhirServicesClient)
+        .shiftTestCaseDates(anyList(), anyInt(), anyString());
+    when(testCaseLockService.unlockAllTestCases(any(List.class), anyString())).thenReturn(true);
+
+    List<TestCase> shiftedTestCases =
+        testCaseService.shiftQiCoreTestCaseDates(
+            List.of(testCase), 1, "TOKEN", "measureId", "userName");
+    assertThat(shiftedTestCases.size(), equalTo(1));
+    assertTrue(shiftedTestCases.contains(testCase));
+  }
+
+  @Test
+  void testShiftQiCoreTestCaseDatesThrowsLockNotObtainedException() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    LockInfo lock = LockInfo.builder().lockedId("TESTID").lockedBy("anotherUser").build();
+    when(testCaseLockService.lockAllTestCases(anyString(), any(List.class), anyString()))
+        .thenReturn(List.of(lock));
+    when(testCaseLockService.unlockAllTestCases(any(List.class), anyString())).thenReturn(true);
+
+    TestCase testCase2 = TestCase.builder().id("TESTID2").build();
+    assertThrows(
+        LockNotObtainedException.class,
+        () ->
+            testCaseService.shiftQiCoreTestCaseDates(
+                List.of(testCase, testCase2), 1, "TOKEN", "measureId", "userName"));
   }
 }

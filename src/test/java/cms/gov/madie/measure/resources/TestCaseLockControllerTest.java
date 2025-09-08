@@ -3,14 +3,11 @@ package cms.gov.madie.measure.resources;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.security.Principal;
-import java.util.List;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -57,29 +54,5 @@ public class TestCaseLockControllerTest {
     assertEquals(response.getBody().getLockedBy(), "test.user");
     assertFalse(response.getBody().isLocked());
     assertEquals(response.getBody().getLockedId(), "testCaseId");
-  }
-
-  @Test
-  public void testLockAllTestCases() {
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-    when(testCaseLockService.lockTestCases(anyString(), any(), anyString())).thenReturn(true);
-
-    ResponseEntity<Boolean> response =
-        controller.lockAllTestCases("meausreId", List.of("testCaseId"), principal);
-    assertNotNull(response);
-    assertTrue(response.getBody());
-  }
-
-  @Test
-  public void testUnlockAllTestCases() {
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-    when(testCaseLockService.unlockTestCases(any(), anyString())).thenReturn(true);
-
-    ResponseEntity<Boolean> response =
-        controller.unlockAllTestCases(List.of("testCaseId"), principal);
-    assertNotNull(response);
-    assertTrue(response.getBody());
   }
 }

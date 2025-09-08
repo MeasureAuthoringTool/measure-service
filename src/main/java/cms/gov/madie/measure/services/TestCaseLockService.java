@@ -105,46 +105,22 @@ public class TestCaseLockService {
     return deleteMessages;
   }
 
-  public boolean lockTestCases(String measureId, List<String> testCaseIds, String userId) {
-    boolean failure = false;
-    List<TestCaseLock> locks = new ArrayList<>();
-    List<TestCaseLock> insertedLocks = new ArrayList<>();
-    for (String testCaseId : testCaseIds) {
-      validateMeasureAndTestCase(measureId, testCaseId);
-      TestCaseLock lock = makeNewLock(measureId, testCaseId, userId);
-      locks.add(lock);
-      try {
-        testCaseLockRepository.insert(lock);
-        insertedLocks.add(lock);
-      } catch (DuplicateKeyException ex) {
-        Optional<TestCaseLock> existingLock =
-            testCaseLockRepository.findByTestCaseId(lock.getTestCaseId());
-        if (existingLock.isPresent()) {
-          if (!existingLock.get().getLockedBy().equalsIgnoreCase(userId)) {
-            log.error(
-                "lockTestCases: DuplicateKeyException for testCaseId: [{}], lockedBy: [{}], new userId: [{}]",
-                existingLock.get().getTestCaseId(),
-                existingLock.get().getLockedBy(),
-                userId);
-            failure = true;
-            break;
-          }
-          log.info(
-              "lockTestCases: DuplicateKeyException for testCaseId: [{}], lockedBy is the same as userId: ",
-              existingLock.get().getTestCaseId(),
-              userId);
+  public List<LockInfo> lockAllTestCases(
+      String measureId, List<String> testCaseIds, String userId) {
+    List<LockInfo> failedLocks = new ArrayList<>();
+    if (CollectionUtils.isNotEmpty(testCaseIds)) {
+      for (String testCaseId : testCaseIds) {
+        log.info("User: [{}} is trying to lock testCaseId: [{}]", userId, testCaseId);
+        LockInfo lockInfo = lockTestCase(measureId, testCaseId, userId);
+        if (lockInfo != null && !userId.equals(lockInfo.getLockedBy())) {
+          failedLocks.add(lockInfo);
+          log.info("Failed locking testCaseId: [{}]", testCaseId);
+        } else {
+          log.info("Locking testCaseId: [{}] is successful", testCaseId);
         }
       }
     }
-    if (failure) {
-      insertedLocks.forEach(
-          lock -> {
-            log.info("lockTestCases: revert lock: delete testCaseId: [{}]", lock.getTestCaseId());
-            testCaseLockRepository.deleteByTestCaseId(lock.getTestCaseId());
-          });
-    }
-    log.info("lockTestCases: " + !failure);
-    return !failure;
+    return failedLocks;
   }
 
   private TestCaseLock makeNewLock(String measureId, String testCaseId, String userName) {
@@ -160,7 +136,7 @@ public class TestCaseLockService {
         .build();
   }
 
-  public boolean unlockTestCases(List<String> testCaseIds, String userId) {
+  public boolean unlockAllTestCases(List<String> testCaseIds, String userId) {
     boolean success = true;
     if (CollectionUtils.isNotEmpty(testCaseIds)) {
       for (String testCaseId : testCaseIds) {
