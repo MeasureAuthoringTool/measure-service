@@ -200,7 +200,7 @@ public class MeasureSetService {
     actionLogService.logMeasureSetAction(
         updatedMeasureSet.getMeasureSetId(),
         MeasureSet.class,
-        ActionType.CREATED,
+        ActionType.CREATE_CMSID,
         username,
         String.format("Created CMS ID %s", updatedMeasureSet.getCmsId()));
     return updatedMeasureSet;

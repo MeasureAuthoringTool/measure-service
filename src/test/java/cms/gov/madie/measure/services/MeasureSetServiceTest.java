@@ -323,7 +323,7 @@ public class MeasureSetServiceTest {
         .logMeasureSetAction(
             measureSet.getMeasureSetId(),
             MeasureSet.class,
-            ActionType.CREATED,
+            ActionType.CREATE_CMSID,
             "testUser",
             "Created CMS ID 2");
   }
