@@ -1438,20 +1438,24 @@ public class TestCaseServiceUtilTest {
 
   @Test
   void testIfDeletableIfMeasureIsDraft() {
-    assertDoesNotThrow(() -> TestCaseServiceUtil.checkIfDeletable(List.of(), List.of(), true));
+    assertDoesNotThrow(() -> TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning(List.of(), List.of(), true));
   }
 
   @Test
   void testIfDeletableIfMeasureIsNotDraftAndTestCaseIsCreatedBeforeVersioning() {
     assertThrows(
         InvalidIdException.class,
-        () -> TestCaseServiceUtil.checkIfDeletable(List.of(testCase), List.of("TESTID"), false));
+        () ->
+            TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning(
+                List.of(testCase), List.of("TESTID"), false));
   }
 
   @Test
   void testIfDeletableIfMeasureIsNotDraftAndTestCaseIsCreatedAfterVersioning() {
     testCase.setCreatedBeforeVersioning(false);
     assertDoesNotThrow(
-        () -> TestCaseServiceUtil.checkIfDeletable(List.of(testCase), List.of("TESTID"), false));
+        () ->
+            TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning(
+                List.of(testCase), List.of("TESTID"), false));
   }
 }

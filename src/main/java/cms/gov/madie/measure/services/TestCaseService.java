@@ -204,7 +204,8 @@ public class TestCaseService {
         List<TestCase> validatedTestCases =
             updateTestCaseValidResourcesForMeasure(measure, accessToken);
         Map<String, TestCase> testCaseMap =
-            validatedTestCases.stream().collect(toMap(TestCase::getId, Function.identity()));
+            validatedTestCases.stream()
+                .collect(toMap(TestCase::getId, Function.identity()));
         reports.forEach(
             report ->
                 report.setCurrentValidResource(
@@ -383,38 +384,42 @@ public class TestCaseService {
       throw new InvalidIdException(
           "Measure {} doesn't have any existing test cases to delete", measureId);
     }
-    TestCaseServiceUtil.checkIfDeletable(
+    TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning(
         measure.getTestCases(), testCaseIds, measure.getMeasureMetaData().isDraft());
-    List<TestCase> deletedTestCases =
+    List<TestCase> testCasesToDelete =
         measure.getTestCases().stream().filter(tc -> testCaseIds.contains(tc.getId())).toList();
-    List<TestCase> remainingTestCases =
-        measure.getTestCases().stream().filter(tc -> !testCaseIds.contains(tc.getId())).toList();
-    measure.setTestCases(remainingTestCases);
-    measureRepository.save(measure);
 
-    if (isEmpty(measure.getTestCases())) {
+    List<String> testCasesLockedByOtherUser = new ArrayList<>();
+    testCasesToDelete.forEach(testCase -> {
+      try {
+        testCaseLockService.lockTestCaseForUser(measureId, testCase.getId(), username);
+        measureRepository.removeTestCase(measureId, testCase.getId());
+        testCaseLockService.unlockTestCase(measureId, testCase.getId());
+      } catch(Exception e) {
+        testCasesLockedByOtherUser.add(testCase.getId());
+      }
+    });
+
+    if (testCasesToDelete.size() == measure.getTestCases().size()) {
       sequenceService.resetSequence(measureId);
     }
 
-    List<String> notDeletedTestCases =
-        testCaseIds.stream()
-            .filter(
-                id -> deletedTestCases.stream().noneMatch(tc -> tc.getId().equalsIgnoreCase(id)))
-            .toList();
-    if (!isEmpty(notDeletedTestCases)) {
+    if (!isEmpty(testCasesLockedByOtherUser)) {
       log.info(
           "User [{}] was unable to delete following test cases with Ids [{}] from measure [{}]",
           username,
-          String.join(", ", notDeletedTestCases),
+          String.join(", ", testCasesLockedByOtherUser),
           measureId);
       return "Successfully deleted provided test cases except [ "
-          + String.join(", ", notDeletedTestCases)
+          + String.join(", ", testCasesLockedByOtherUser)
           + " ]";
     }
     log.info(
-        "User [{}] has successfully deleted following test cases with Ids [{}] from measure [{}]",
+        "User [{}] has successfully deleted following test cases with Ids [{}] from measure [{}]. Test Cases with Ids [{}] were locked by another user and could not be deleted.",
         username,
-        String.join(", ", testCaseIds),
+        testCaseIds.stream().filter(testCaseId ->
+          !testCasesLockedByOtherUser.contains(testCaseId))
+          .collect(joining(",")), String.join(", ", testCasesLockedByOtherUser),
         measureId);
     return "Successfully deleted provided test cases";
   }
