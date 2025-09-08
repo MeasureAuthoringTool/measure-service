@@ -37,10 +37,7 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import gov.cms.madie.models.access.AclOperation;
-import gov.cms.madie.models.common.AccessControlAction;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.MeasureSetActionLog;
-import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import org.apache.commons.io.IOUtils;
@@ -64,9 +61,6 @@ import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.Organization;
-import gov.cms.madie.models.common.Version;
 
 @ExtendWith(MockitoExtension.class)
 public class MeasureServiceTest implements ResourceUtil {
@@ -2241,5 +2235,53 @@ public class MeasureServiceTest implements ResourceUtil {
     boolean result =
         measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
     assertFalse(result);
+  }
+
+  @Test
+  void getMeasureHistoryReturnsHistoryForValidMeasureId() {
+    String measureId = "validMeasureId";
+    String userName = "testUser";
+    Measure measure = Measure.builder().id(measureId).measureSetId("measureSetId").build();
+    Action createdAction = new Action();
+    createdAction.setActionType(ActionType.CREATED);
+    createdAction.setPerformedAt(Instant.now());
+    createdAction.setPerformedBy("test.user@gmail.com");
+    createdAction.setAdditionalActionMessage("");
+    List<Action> actions = List.of(createdAction);
+
+    when(measureRepository.findById(measureId)).thenReturn(Optional.of(measure));
+    when(actionLogService.findMeasureHistory(measureId, "measureSetId")).thenReturn(actions);
+
+    List<Action> result = measureService.getMeasureHistory(measureId, userName);
+
+    assertNotNull(result);
+    assertEquals(1, result.size());
+    assertEquals(ActionType.CREATED, result.get(0).getActionType());
+    verify(measureRepository, times(1)).findById(measureId);
+    verify(actionLogService, times(1)).findMeasureHistory(measureId, "measureSetId");
+  }
+
+  @Test
+  void getMeasureHistoryThrowsInvalidRequestExceptionForBlankMeasureId() {
+    String measureId = " ";
+    String userName = "testUser";
+
+    assertThrows(
+        InvalidRequestException.class, () -> measureService.getMeasureHistory(measureId, userName));
+    verifyNoInteractions(measureRepository, actionLogService);
+  }
+
+  @Test
+  void getMeasureHistoryThrowsResourceNotFoundExceptionForNonExistentMeasureId() {
+    String measureId = "nonExistentMeasureId";
+    String userName = "testUser";
+
+    when(measureRepository.findById(measureId)).thenReturn(Optional.empty());
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> measureService.getMeasureHistory(measureId, userName));
+    verify(measureRepository, times(1)).findById(measureId);
+    verifyNoInteractions(actionLogService);
   }
 }
