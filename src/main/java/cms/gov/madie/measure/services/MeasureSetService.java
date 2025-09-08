@@ -346,7 +346,11 @@ public class MeasureSetService {
           userId,
           conductedBy);
       actionLogService.logMeasureSetAction(
-          measureSetId, MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, conductedBy);
+          measureSetId,
+          MeasureSet.class,
+          ActionType.OWNERSHIP_TRANSFER,
+          conductedBy,
+          String.format("Transferred from %s to %s", originalOwner, userId));
       return updatedMeasureSet;
     } else {
       String error =

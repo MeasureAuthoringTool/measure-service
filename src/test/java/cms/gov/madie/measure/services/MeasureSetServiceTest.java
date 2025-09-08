@@ -718,7 +718,7 @@ public class MeasureSetServiceTest {
   @Test
   public void testChangeOwnership() {
     MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
+    updatedMeasureSet.setOwner("originalOwner");
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
@@ -728,14 +728,19 @@ public class MeasureSetServiceTest {
     assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
     assertThat(result.getAcls().size(), is(equalTo(1)));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "Admin");
+        .logMeasureSetAction(
+            "1",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "Admin",
+            "Transferred from originalOwner to testUser");
   }
 
   @Test
   public void testChangeOwnershipForTransferMeasures() {
     measureSet.setAcls(Collections.emptyList());
     MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
+    updatedMeasureSet.setOwner("originalOwner");
     updatedMeasureSet.setAcls(null);
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
@@ -750,13 +755,18 @@ public class MeasureSetServiceTest {
         result.getAcls().get(0).getUserId(),
         is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
+        .logMeasureSetAction(
+            "1",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "anotherUser",
+            "Transferred from originalOwner to testUser");
   }
 
   @Test
   public void testChangeOwnershipRetainAccess() {
     MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
+    updatedMeasureSet.setOwner("originalOwner");
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
@@ -770,13 +780,18 @@ public class MeasureSetServiceTest {
         result.getAcls().get(0).getUserId(),
         is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
+        .logMeasureSetAction(
+            "1",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "anotherUser",
+            "Transferred from originalOwner to testUser");
   }
 
   @Test
   public void testChangeOwnershipDoNotRetainAccess() {
     MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
+    updatedMeasureSet.setOwner("originalOwner");
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
@@ -792,7 +807,12 @@ public class MeasureSetServiceTest {
         result.getAcls().get(0).getRoles(),
         is(equalTo(updatedMeasureSet.getAcls().get(0).getRoles())));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
+        .logMeasureSetAction(
+            "1",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "anotherUser",
+            "Transferred from originalOwner to testUser");
   }
 
   @Test
@@ -807,6 +827,6 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, times(0))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "anotherUser");
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
   }
 }

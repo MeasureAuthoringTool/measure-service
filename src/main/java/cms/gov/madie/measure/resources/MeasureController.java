@@ -270,12 +270,13 @@ public class MeasureController {
       HttpServletRequest request,
       @PathVariable("id") String id,
       @RequestParam(required = true, name = "userid") String userid,
-      @Value("${admin-api-key}") String apiKey) {
+      @Value("${admin-api-key}") String apiKey,
+      Principal principal) {
     ResponseEntity<String> response = ResponseEntity.badRequest().body("Measure does not exist.");
 
     log.info("getMeasureId [{}] using apiKey ", id, "apikey");
 
-    if (measureService.changeOwnership(id, userid)) {
+    if (measureService.changeOwnership(id, userid, principal.getName())) {
       response =
           ResponseEntity.ok()
               .body(String.format("%s granted ownership to Measure successfully.", userid));
