@@ -198,7 +198,11 @@ public class MeasureSetService {
     MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet.get());
     log.info("cms id for the Measure set [{}] is successfully created", updatedMeasureSet.getId());
     actionLogService.logMeasureSetAction(
-        updatedMeasureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, username);
+        updatedMeasureSet.getMeasureSetId(),
+        MeasureSet.class,
+        ActionType.CREATE_CMSID,
+        username,
+        String.format("Created CMS ID %s", updatedMeasureSet.getCmsId()));
     return updatedMeasureSet;
   }
 
