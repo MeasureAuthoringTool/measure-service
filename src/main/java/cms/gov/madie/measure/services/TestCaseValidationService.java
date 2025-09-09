@@ -78,7 +78,7 @@ public class TestCaseValidationService {
     saveExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
   }
 
-  void submitOnImportValidationTask(
+  public void submitOnImportValidationTask(
       String measureId, TestCase testCase, String accessToken, ModelType modelType) {
     UUID taskId = UUID.randomUUID();
     log.info(

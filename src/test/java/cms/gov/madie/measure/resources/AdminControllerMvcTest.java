@@ -735,6 +735,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -771,7 +773,7 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(0)),
             eq("test-okta"),
@@ -787,6 +789,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -808,7 +812,7 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0));
   }
 
@@ -819,6 +823,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -840,7 +846,7 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, never())
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             anyString(), any(TestCase.class), anyString(), any(ModelType.class));
   }
 
@@ -892,6 +898,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -937,13 +945,13 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(1)),
             eq("test-okta"),
             eq(ModelType.QI_CORE_6_0_0));
     verify(testCaseValidationService, never())
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(2)),
             eq("test-okta"),
