@@ -180,7 +180,8 @@ public class VersionService {
             : (VERSION_TYPE_MINOR.equalsIgnoreCase(versionType)
                 ? ActionType.VERSIONED_MINOR
                 : ActionType.VERSIONED_REVISIONNUMBER),
-        username);
+        username,
+        String.format("Versioned to %s", upversionedMeasure.getVersion()));
     log.info(
         "User [{}] successfully versioned measure with ID [{}]", username, savedMeasure.getId());
     return savedMeasure;
@@ -291,7 +292,12 @@ public class VersionService {
       }
     }
 
-    actionLogService.logAction(savedDraft.getId(), Measure.class, ActionType.DRAFTED, username);
+    actionLogService.logAction(
+        savedDraft.getId(),
+        Measure.class,
+        ActionType.DRAFTED,
+        username,
+        String.format("Draft created from version %s", measure.getVersion()));
 
     return savedDraft;
   }
