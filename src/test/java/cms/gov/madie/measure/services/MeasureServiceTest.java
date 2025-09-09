@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
+import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -1232,23 +1233,26 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testChangeOwnership() {
-    MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("testUser").build();
+    Principal principal = mock(Principal.class);
+    MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("currentUserId").build();
     Measure measure =
         Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
     Optional<Measure> persistedMeasure = Optional.of(measure);
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.changeOwnership(
             anyString(), anyString(), any(Boolean.class), anyString()))
         .thenReturn(new MeasureSet());
 
-    boolean result = measureService.changeOwnership(measure.getId(), "user123");
+    boolean result =
+        measureService.changeOwnership(measure.getId(), "updatedUserId", principal.getName());
     assertTrue(result);
   }
 
   @Test
   public void testChangeOwnershipPersistedMeasureDoesNotExist() {
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
-    boolean result = measureService.changeOwnership("testMeasureId", "user123");
+    boolean result = measureService.changeOwnership("testMeasureId", "user123", "admin");
     assertFalse(result);
   }
 
