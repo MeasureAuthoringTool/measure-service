@@ -167,7 +167,14 @@ public class MeasureSetService {
       actionLogDetails.forEach(
           (userId, actionType) -> {
             actionLogService.logShareAccessControlAction(
-                measureSetId, MeasureSet.class, actionType, userName, userId);
+                measureSetId,
+                MeasureSet.class,
+                actionType,
+                userName,
+                userId,
+                String.format(
+                    actionType == ActionType.UNSHARED ? "Unshared with - %s" : "Shared with - %s",
+                    userId));
           });
 
       return updatedMeasureSet;
@@ -198,7 +205,11 @@ public class MeasureSetService {
     MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet.get());
     log.info("cms id for the Measure set [{}] is successfully created", updatedMeasureSet.getId());
     actionLogService.logMeasureSetAction(
-        updatedMeasureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, username);
+        updatedMeasureSet.getMeasureSetId(),
+        MeasureSet.class,
+        ActionType.CREATE_CMSID,
+        username,
+        String.format("Created CMS ID %s", updatedMeasureSet.getCmsId()));
     return updatedMeasureSet;
   }
 
@@ -346,7 +357,11 @@ public class MeasureSetService {
           userId,
           conductedBy);
       actionLogService.logMeasureSetAction(
-          measureSetId, MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, conductedBy);
+          measureSetId,
+          MeasureSet.class,
+          ActionType.OWNERSHIP_TRANSFER,
+          conductedBy,
+          String.format("Transferred from %s to %s", originalOwner, userId));
       return updatedMeasureSet;
     } else {
       String error =
