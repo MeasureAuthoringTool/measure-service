@@ -111,7 +111,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "userName",
+            aclSpec.getUserId(),
+            "Shared with - john_1");
   }
 
   @Test
@@ -133,7 +138,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "userName",
+            aclSpec.getUserId(),
+            "Shared with - john_1");
   }
 
   @Test
@@ -161,7 +171,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec2.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "userName",
+            aclSpec2.getUserId(),
+            "Shared with - jane");
   }
 
   @Test
@@ -199,7 +214,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "userName",
+            aclSpec.getUserId(),
+            "Shared with - john");
   }
 
   @Test
@@ -256,7 +276,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.UNSHARED, "userName", aclSpec.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.UNSHARED,
+            "userName",
+            aclSpec.getUserId(),
+            "Unshared with - john");
   }
 
   @Test
