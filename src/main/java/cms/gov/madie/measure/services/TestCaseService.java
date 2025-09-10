@@ -913,8 +913,18 @@ public class TestCaseService {
         List<String> successLocks =
             testCaseIds.stream().filter(testCaseId -> !failedIds.contains(testCaseId)).toList();
         log.info("Revert locking test cases for testCaseIds: {}", successLocks);
+        List<String> failedMsgs =
+            failedLocks.stream()
+                .map(
+                    failedLock ->
+                        "Test Case: "
+                            + failedLock.getLockedId()
+                            + " is locked by user: "
+                            + failedLock.getLockedBy()
+                            + ".\n")
+                .toList();
         testCaseLockService.unlockAllTestCases(successLocks, userId);
-        throw new LockNotObtainedException(failedIds.toString());
+        throw new LockNotObtainedException(failedMsgs.toString());
       }
     } else {
       return fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();

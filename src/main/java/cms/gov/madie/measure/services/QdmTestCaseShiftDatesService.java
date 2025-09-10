@@ -208,7 +208,17 @@ public class QdmTestCaseShiftDatesService {
             testCaseIds.stream().filter(testCaseId -> !failedIds.contains(testCaseId)).toList();
         log.info("Revert locking test cases for testCaseIds: {}", successLocks);
         testCaseLockService.unlockAllTestCases(successLocks, username);
-        throw new LockNotObtainedException(failedIds.toString());
+        List<String> failedMsgs =
+            failedLocks.stream()
+                .map(
+                    failedLock ->
+                        "Test Case: "
+                            + failedLock.getLockedId()
+                            + " is locked by user: "
+                            + failedLock.getLockedBy()
+                            + ".\n")
+                .toList();
+        throw new LockNotObtainedException(failedMsgs.toString());
       }
     } else {
       allTestCases = shiftAllTestCase(testCases, shifted, measureId, username, accessToken);
@@ -273,7 +283,17 @@ public class QdmTestCaseShiftDatesService {
           testCaseIds.stream().filter(testCaseId -> !failedIds.contains(testCaseId)).toList();
       log.info("Revert locking test cases for testCaseIds: {}", successLocks);
       testCaseLockService.unlockAllTestCases(successLocks, principal.getName());
-      throw new LockNotObtainedException(failedIds.toString());
+      List<String> failedMsgs =
+          failedLocks.stream()
+              .map(
+                  failedLock ->
+                      "Test Case: "
+                          + failedLock.getLockedId()
+                          + " is locked by user: "
+                          + failedLock.getLockedBy()
+                          + ".\n")
+              .toList();
+      throw new LockNotObtainedException(failedMsgs.toString());
     }
   }
 }
