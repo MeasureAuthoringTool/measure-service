@@ -42,6 +42,7 @@ public class TestCaseService {
   private final TestCaseSequenceService sequenceService;
   private final AppConfigService appConfigService;
   final TestCaseValidationService testCaseValidationService;
+  private final TestCaseLockService testCaseLockService;
 
   @Value("${madie.json.resources.base-uri}")
   @Getter
@@ -58,7 +59,8 @@ public class TestCaseService {
       MeasureService measureService,
       TestCaseSequenceService sequenceService,
       AppConfigService appConfigService,
-      TestCaseValidationService testCaseValidationService) {
+      TestCaseValidationService testCaseValidationService,
+      TestCaseLockService testCaseLockService) {
     this.measureRepository = measureRepository;
     this.actionLogService = actionLogService;
     this.fhirServicesClient = fhirServicesClient;
@@ -66,6 +68,7 @@ public class TestCaseService {
     this.sequenceService = sequenceService;
     this.appConfigService = appConfigService;
     this.testCaseValidationService = testCaseValidationService;
+    this.testCaseLockService = testCaseLockService;
   }
 
   protected TestCase enrichNewTestCase(TestCase testCase, String username, String measureId) {
@@ -758,6 +761,24 @@ public class TestCaseService {
             .patientId(testCaseImportRequest.getPatientId())
             .successful(false)
             .build();
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      LockInfo lock =
+          testCaseLockService.lockTestCase(measureId, existingTestCase.getId(), userName);
+      if (lock != null && !userName.equals(lock.getLockedBy())) {
+        log.info(
+            "User [{}] failed to acquire lock for test case id : [{}]. The test case is locked by another user: [{}]",
+            userName,
+            existingTestCase.getId(),
+            lock.getLockedBy());
+        failureOutcome.setMessage(
+            "Failed to import test case: "
+                + existingTestCase.getId()
+                + ". The test case is locked by another user: "
+                + lock.getLockedBy());
+        return failureOutcome;
+      }
+    }
+
     try {
       existingTestCase.setDescription(
           getDescription(model, testCaseImportRequest.getJson(), testCaseImportRequest));
