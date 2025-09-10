@@ -484,7 +484,7 @@ public class AdminController {
     return () -> testCaseService.updateTestCaseValidResourcesWithReport(measureId, accessToken);
   }
 
-  @PutMapping("/unlock")
+  @PutMapping("/measures/test-cases/unlockAll")
   @PreAuthorize("#request.getHeader('api-key') == #apiKey")
   public ResponseEntity<List<String>> unlockAllByUser(
       HttpServletRequest request,

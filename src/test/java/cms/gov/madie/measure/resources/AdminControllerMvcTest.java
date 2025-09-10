@@ -1056,7 +1056,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.put("/admin/unlock")
+                MockMvcRequestBuilders.put("/admin/measures/test-cases/unlockAll")
                     .with(csrf())
                     .with(user(TEST_USER_ID))
                     .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
