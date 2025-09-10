@@ -857,7 +857,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
 
     Measure draft =
         versionService.createDraft(
@@ -921,7 +922,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
 
     Measure draft =
         versionService.createDraft(
@@ -980,7 +982,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
 
     Measure draft =
         versionService.createDraft(
@@ -1037,7 +1040,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
 
     versionService.createDraft(
         versionedMeasure.getId(), "Test", "QI-Core v6.0.0", "test-user", TEST_ACCESS_TOKEN);
@@ -1093,7 +1097,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
 
     Measure draft =
         versionService.createDraft(
@@ -1220,7 +1225,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
     Measure draft =
         versionService.createDraft(
             versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
@@ -1288,7 +1294,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
     when(sequenceService.generateSequence(anyString())).thenReturn(1);
     Measure draft =
         versionService.createDraft(
@@ -1345,7 +1352,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
     Measure draft =
         versionService.createDraft(
             versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
@@ -1461,7 +1469,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
 
     Measure draft =
         versionService.createDraft(
@@ -1526,7 +1535,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
 
     Measure draft =
         versionService.createDraft(
@@ -1620,7 +1630,8 @@ public class VersionServiceTest {
             anyString(), anyBoolean(), anyBoolean()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
-    when(actionLogService.logAction(anyString(), any(), any(), anyString())).thenReturn(true);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
 
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);

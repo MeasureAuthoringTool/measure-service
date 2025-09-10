@@ -167,7 +167,14 @@ public class MeasureSetService {
       actionLogDetails.forEach(
           (userId, actionType) -> {
             actionLogService.logShareAccessControlAction(
-                measureSetId, MeasureSet.class, actionType, userName, userId);
+                measureSetId,
+                MeasureSet.class,
+                actionType,
+                userName,
+                userId,
+                String.format(
+                    actionType == ActionType.UNSHARED ? "Unshared with - %s" : "Shared with - %s",
+                    userId));
           });
 
       return updatedMeasureSet;
