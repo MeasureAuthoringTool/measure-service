@@ -800,6 +800,34 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testCreateMeasureSetsDefaultTestCaseConfiguration() {
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(40, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(10, ChronoUnit.DAYS)))
+            .cqlLibraryName("UniqueLibNameForTestCaseConfig")
+            .testCaseConfiguration(null)
+            .build();
+
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
+    doNothing().when(terminologyValidationService).validateTerminology(anyString(), anyString());
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    Measure saved = measureService.createMeasure(measureToSave, "author.user", "token", false);
+    assertNotNull(saved.getTestCaseConfiguration(), "TestCaseConfiguration should be initialized");
+    assertTrue(
+        saved.getTestCaseConfiguration().isRavIncluded(),
+        "ravIncluded should default to true when creating a measure");
+  }
+
+  @Test
   public void testUpdateMeasureThrowsExceptionForDuplicateLibraryName() {
     Measure original =
         Measure.builder()
