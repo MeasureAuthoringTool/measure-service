@@ -147,6 +147,7 @@ public class MeasureService {
     measureCopy.setVersion(new Version(0, 0, 0));
     measureCopy.setVersionId(UUID.randomUUID().toString());
     measureCopy.setMeasureSetId(UUID.randomUUID().toString());
+    measureCopy.setTestCaseConfiguration(TestCaseConfiguration.builder().ravIncluded(true).build());
     if (measureCopy.getMeasureMetaData() != null) {
       measureCopy.getMeasureMetaData().setDraft(true);
     } else {
