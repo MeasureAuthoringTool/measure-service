@@ -9,6 +9,12 @@ spring:
       max-file-size: 10MB
       max-request-size: 10MB
 
+logging:
+  level:
+    org:
+      springframework:
+        security: DEBUG
+
 server:
   servlet:
     context-path: /api
