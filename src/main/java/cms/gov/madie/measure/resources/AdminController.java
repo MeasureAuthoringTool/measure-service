@@ -127,61 +127,124 @@ public class AdminController {
             .build());
   }
 
-  // This endpoint is used to reset the validation queue for QI Core v6 measures test cases
-  // that are in validating state
+  /**
+   * Reset/Populate the validation queue for QI Core v6 measures test cases. By default, retrieves
+   * all active draft QI Core v6 measures with test cases and places their test cases back on the
+   * validation queue if their status is PENDING or VALIDATING.
+   *
+   * <p>Optionally, can be forced to place all test cases back on the validation queue regardless of
+   * their current validation status by setting the 'force' parameter to true.
+   *
+   * <p>Validation requests generated via this endpoint will be processed via the import queue to
+   * avoid excessive load on the save queue.
+   *
+   * @param request Spring-ism.
+   * @param apiKey Admin API key value.
+   * @param principal Security principal.
+   * @param draftOnly (Optional, default=true) If true, only draft measures are considered. False
+   *     includes all active measures.
+   * @param force (Optional, default=false) If true, places all test cases from filtered STU6
+   *     Measures back on the validation queue regardless of their current validation status.
+   * @param excludeUsers (Optional) List of harpIds to exclude measures created by those users.
+   * @param measureIds (Optional) List of measureIds to specifically include. If provided, only
+   *     measures with these Ids are considered.
+   * @param accessToken Okta access token.
+   * @return Count of test cases placed back on the validation queue.
+   */
   @PutMapping("/measures/test-cases/restart-validation")
   @PreAuthorize("#request.getHeader('api-key') == #apiKey")
-  public void resetTestCaseValidationQueue(
+  public ResponseEntity<Integer> resetTestCaseValidationQueue(
       HttpServletRequest request,
       @Value("${admin-api-key}") String apiKey,
       Principal principal,
+      @RequestParam(name = "draftOnly", defaultValue = "true") boolean draftOnly,
+      @RequestParam(name = "force", defaultValue = "false") boolean force,
+      @RequestParam(name = "excludeUsers", required = false) List<String> excludeUsers,
+      @RequestParam(name = "measureIds", required = false) List<String> measureIds,
       @RequestHeader("Authorization") String accessToken) {
 
     log.info(
         "User [{}] - Starting admin task to place QI Core v6 testcases back on the validation queue",
         principal.getName());
-    List<Measure> measureList =
+    StopWatch timer = new StopWatch();
+    timer.start("Find All QI Core v6 Measures");
+    List<Measure> allQiCore6Measures =
         measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue());
-
-    if (CollectionUtils.isNotEmpty(measureList)) {
-      measureList.forEach(
-          measure -> {
-            if (CollectionUtils.isNotEmpty(measure.getTestCases())) {
-              measure
-                  .getTestCases()
-                  .forEach(
-                      testCase -> {
-                        if (TestCaseValidationStatus.PENDING
-                            .toString()
-                            .equalsIgnoreCase(testCase.getValidationStatus())) {
-                          // Submit test case already in PENDING status
-                          testCaseValidationService.submitOnSaveValidationTask(
+    timer.stop();
+    timer.start("Filter Measures");
+    List<Measure> targetQiCore6Measures =
+        allQiCore6Measures.stream()
+            .filter(measure -> CollectionUtils.isNotEmpty(measure.getTestCases()))
+            .filter(
+                measure -> {
+                  if (draftOnly) {
+                    return measure.getMeasureMetaData().isDraft();
+                  }
+                  return true;
+                })
+            .filter(Measure::isActive)
+            .filter(
+                measure -> {
+                  if (CollectionUtils.isNotEmpty(excludeUsers)) {
+                    return excludeUsers.contains(measure.getCreatedBy());
+                  }
+                  return true;
+                })
+            .filter(
+                measure -> {
+                  if (CollectionUtils.isNotEmpty(measureIds)) {
+                    return measureIds.contains(measure.getId());
+                  }
+                  return true;
+                })
+            .toList();
+    timer.stop();
+    if (CollectionUtils.isEmpty(targetQiCore6Measures)) {
+      return ResponseEntity.ok(0);
+    }
+    timer.start("Kickoff Test Case Validations");
+    targetQiCore6Measures.forEach(
+        measure -> {
+          if (CollectionUtils.isNotEmpty(measure.getTestCases())) {
+            measure
+                .getTestCases()
+                .forEach(
+                    testCase -> {
+                      if (TestCaseValidationStatus.PENDING
+                          .toString()
+                          .equalsIgnoreCase(testCase.getValidationStatus())) {
+                        // Submit test case already in PENDING status
+                        testCaseValidationService.submitOnImportValidationTask(
+                            measure.getId(),
+                            testCase,
+                            accessToken,
+                            ModelType.valueOfName(measure.getModel()));
+                      } else if (force
+                          || TestCaseValidationStatus.VALIDATING
+                              .toString()
+                              .equalsIgnoreCase(testCase.getValidationStatus())) {
+                        Measure updatedMeasure =
+                            measureRepository.setValidationStatusToPending(
+                                testCase.getId(), measure.getId());
+                        if (updatedMeasure != null) {
+                          // submit the test case after updating its status
+                          testCaseValidationService.submitOnImportValidationTask(
                               measure.getId(),
                               testCase,
                               accessToken,
                               ModelType.valueOfName(measure.getModel()));
-                        } else if (TestCaseValidationStatus.VALIDATING
-                            .toString()
-                            .equalsIgnoreCase(testCase.getValidationStatus())) {
-                          Measure updatedMeasure =
-                              measureRepository.setValidationStatusToPending(
-                                  testCase.getId(), measure.getId());
-                          if (updatedMeasure != null) {
-                            // submit the test case after updating its status
-                            testCaseValidationService.submitOnSaveValidationTask(
-                                measure.getId(),
-                                testCase,
-                                accessToken,
-                                ModelType.valueOfName(measure.getModel()));
-                          }
                         }
-                      });
-            }
-          });
-      log.info(
-          "User [{}] - Successfully placed QI Core v6 test cases back on the validation queue",
-          principal.getName());
-    }
+                      }
+                    });
+          }
+        });
+    timer.stop();
+    log.info(
+        "User [{}] - Successfully placed QI Core v6 test cases back on the validation queue",
+        principal.getName());
+    log.info("Admin::Test Case Validation::{}", timer.prettyPrint());
+    return ResponseEntity.ok(
+        targetQiCore6Measures.stream().map(Measure::getTestCases).mapToInt(Collection::size).sum());
   }
 
   @DeleteMapping("/measures/{id}")
