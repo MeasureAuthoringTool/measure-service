@@ -3,7 +3,7 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.repositories.MeasureLockRepository;
-import cms.gov.madie.measure.resources.DuplicateKeyException;
+import org.springframework.dao.DuplicateKeyException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
