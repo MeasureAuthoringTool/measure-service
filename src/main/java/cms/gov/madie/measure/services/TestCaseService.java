@@ -109,10 +109,6 @@ public class TestCaseService {
   public TestCase persistTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
     final Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
 
     verifyUniqueTestCaseName(testCase, measure);
 
@@ -153,10 +149,6 @@ public class TestCaseService {
       return newTestCases;
     }
     final Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
 
     List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
     for (TestCase testCase : newTestCases) {
@@ -269,10 +261,6 @@ public class TestCaseService {
   // common method 2 for two overloading updateTestCase() method
   private void handleTestCasesForUpdate(
       TestCase testCase, String measureId, String username, Measure measure) {
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
     checkTestCaseSpecialCharacters(testCase);
     if (measure.getTestCases() == null) {
       measure.setTestCases(new ArrayList<>());

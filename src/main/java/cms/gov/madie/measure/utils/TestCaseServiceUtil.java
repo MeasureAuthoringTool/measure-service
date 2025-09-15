@@ -14,7 +14,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
-import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.MeasureObservation;
@@ -605,13 +604,6 @@ public class TestCaseServiceUtil {
       }
     }
     return testCaseGroupPopulations;
-  }
-
-  public static void checkIfEditable(
-      boolean editTestsOnVersionedMeasures, boolean isDraft, String measureId) {
-    if (!editTestsOnVersionedMeasures && !isDraft) {
-      throw new InvalidDraftStatusException(measureId);
-    }
   }
 
   public static boolean checkIfDeletable(

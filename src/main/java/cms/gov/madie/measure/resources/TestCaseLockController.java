@@ -26,7 +26,7 @@ public class TestCaseLockController {
         testCaseLockService.lockTestCase(measureId, testCaseId, principal.getName()));
   }
 
-  @DeleteMapping("/test-cases/{testCaseId}/unlock")
+  @DeleteMapping("/test-cases/{testCaseId}/lock")
   public ResponseEntity<LockInfo> unlockTestCase(
       @PathVariable String testCaseId, Principal principal) {
     return ResponseEntity.ok(testCaseLockService.unlockTestCase(testCaseId, principal.getName()));
