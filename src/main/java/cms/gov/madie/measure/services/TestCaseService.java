@@ -1,8 +1,7 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.*;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.measure.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -16,8 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.*;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -109,10 +107,6 @@ public class TestCaseService {
   public TestCase persistTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
     final Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
 
     verifyUniqueTestCaseName(testCase, measure);
 
@@ -129,7 +123,6 @@ public class TestCaseService {
     if (enrichedTestCase != null && !measure.getMeasureMetaData().isDraft()) {
       enrichedTestCase.setCreatedBeforeVersioning(false);
     }
-
     if (measure.getTestCases() == null) {
       measure.setTestCases(List.of(enrichedTestCase));
     } else {
@@ -154,10 +147,6 @@ public class TestCaseService {
       return newTestCases;
     }
     final Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
 
     List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
     for (TestCase testCase : newTestCases) {
@@ -270,10 +259,6 @@ public class TestCaseService {
   // common method 2 for two overloading updateTestCase() method
   private void handleTestCasesForUpdate(
       TestCase testCase, String measureId, String username, Measure measure) {
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
     checkTestCaseSpecialCharacters(testCase);
     if (measure.getTestCases() == null) {
       measure.setTestCases(new ArrayList<>());
@@ -904,24 +889,50 @@ public class TestCaseService {
   }
 
   public List<TestCase> shiftQiCoreTestCaseDates(
-      List<TestCase> testCases, int shifted, String accessToken) {
+      List<TestCase> testCases, int shifted, String accessToken, String measureId, String userId) {
     if (isEmpty(testCases)) {
       return Collections.emptyList();
     }
-    return fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();
-  }
-
-  public TestCase shiftQiCoreTestCaseDates(TestCase testCase, int shifted, String accessToken) {
-    if (testCase == null) {
-      return null;
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      List<String> testCaseIds = testCases.stream().map(testCase -> testCase.getId()).toList();
+      log.info(
+          "User: [{}} is trying to shift dates for measureId: [{}] - testCaseIds: {}",
+          userId,
+          measureId,
+          testCaseIds);
+      List<LockInfo> failedLocks =
+          testCaseLockService.lockAllTestCases(measureId, testCaseIds, userId);
+      // only when all locks are acquired can test cases' dates be shifted
+      if (isEmpty(failedLocks)) {
+        log.info("Locking all test cases for testCaseIds: {} successful", testCaseIds);
+        List<TestCase> shiftedTestCases =
+            fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();
+        testCaseLockService.unlockAllTestCases(testCaseIds, userId);
+        return shiftedTestCases;
+      } else {
+        // otherwise, unlock previously locked test cases, and shift dates should not happen
+        List<String> failedIds =
+            failedLocks.stream().map(failedLock -> failedLock.getLockedId()).toList();
+        log.info("Failed locking test cases for testCaseIds: {}", failedIds);
+        List<String> successLocks =
+            testCaseIds.stream().filter(testCaseId -> !failedIds.contains(testCaseId)).toList();
+        log.info("Revert locking test cases for testCaseIds: {}", successLocks);
+        List<String> failedMsgs =
+            failedLocks.stream()
+                .map(
+                    failedLock ->
+                        "Test Case: "
+                            + failedLock.getLockedId()
+                            + " is locked by user: "
+                            + failedLock.getLockedBy()
+                            + ".\n")
+                .toList();
+        testCaseLockService.unlockAllTestCases(successLocks, userId);
+        throw new LockNotObtainedException(failedMsgs.toString());
+      }
+    } else {
+      return fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();
     }
-    List<TestCase> shiftedTestCases =
-        fhirServicesClient.shiftTestCaseDates(List.of(testCase), shifted, accessToken).getBody();
-
-    if (isNotEmpty(shiftedTestCases)) {
-      return shiftedTestCases.get(0);
-    }
-    return null;
   }
 
   protected void defaultTestCaseJsonForQdmMeasure(TestCase testCase, Measure measure) {

@@ -141,6 +141,7 @@ public class ErrorHandlingControllerAdvice {
     InvalidMeasureStateException.class,
     DuplicateMeasureException.class,
     UnsupportedTypeException.class,
+    LockNotObtainedException.class,
   })
   @ResponseStatus(HttpStatus.CONFLICT)
   @ResponseBody

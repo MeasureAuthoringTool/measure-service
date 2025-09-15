@@ -3,7 +3,7 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.repositories.MeasureLockRepository;
-import cms.gov.madie.measure.resources.DuplicateKeyException;
+import org.springframework.dao.DuplicateKeyException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +45,7 @@ class MeasureLockServiceTest {
   @Test
   void testLockMeasureWhenDuplicateKeyAndSameUserAlreadyLocked() {
     // insert throws DuplicateKey
-    doThrow(new DuplicateKeyException("duplicate", "someKey"))
+    doThrow(new DuplicateKeyException("duplicate someKey"))
         .when(repository)
         .insert(any(MeasureLock.class));
 
@@ -65,7 +65,7 @@ class MeasureLockServiceTest {
 
   @Test
   void testLockMeasureWhenDuplicateKeyAndLockedByDifferentUser() {
-    doThrow(new DuplicateKeyException("duplicate", "someKey"))
+    doThrow(new DuplicateKeyException("duplicate someKey"))
         .when(repository)
         .insert(any(MeasureLock.class));
 
@@ -82,7 +82,7 @@ class MeasureLockServiceTest {
 
   @Test
   void testLockMeasureWhenDuplicateKeyAndNoExistingLockFound() {
-    doThrow(new DuplicateKeyException("duplicate", "someKey"))
+    doThrow(new DuplicateKeyException("duplicate someKey"))
         .when(repository)
         .insert(any(MeasureLock.class));
 

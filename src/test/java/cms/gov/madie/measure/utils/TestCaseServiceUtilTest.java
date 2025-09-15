@@ -14,7 +14,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.MeasureObservation;
@@ -1435,28 +1434,6 @@ public class TestCaseServiceUtilTest {
     assertNull(results.get(0).getPopulationValues().get(0).getCriteriaReference());
     assertNull(results.get(0).getPopulationValues().get(1).getCriteriaReference());
     assertNull(results.get(0).getPopulationValues().get(2).getCriteriaReference());
-  }
-
-  @Test
-  void testIfEditableIfDraftAndEditTestsOnVersionedMeasuresIsFalse() {
-    assertDoesNotThrow(() -> TestCaseServiceUtil.checkIfEditable(false, true, "measureId"));
-  }
-
-  @Test
-  void testIfEditableIfNotDraftAndEditTestsOnVersionedMeasuresIsTrue() {
-    assertDoesNotThrow(() -> TestCaseServiceUtil.checkIfEditable(true, false, "measureId"));
-  }
-
-  @Test
-  void testIfEditableIfDraftAndEditTestsOnVersionedMeasuresIsTrue() {
-    assertDoesNotThrow(() -> TestCaseServiceUtil.checkIfEditable(true, true, "measureId"));
-  }
-
-  @Test
-  void testIfEditableIfNotDraftAndEditTestsOnVersionedMeasuresIsFalse() {
-    assertThrows(
-        InvalidDraftStatusException.class,
-        () -> TestCaseServiceUtil.checkIfEditable(false, false, "measureId"));
   }
 
   @Test
