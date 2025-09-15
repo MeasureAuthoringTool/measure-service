@@ -166,9 +166,12 @@ public class AdminController {
     log.info(
         "User [{}] - Starting admin task to place QI Core v6 testcases back on the validation queue",
         principal.getName());
+    StopWatch timer = new StopWatch();
+    timer.start("Find All QI Core v6 Measures");
     List<Measure> allQiCore6Measures =
         measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue());
-
+    timer.stop();
+    timer.start("Filter Measures");
     List<Measure> targetQiCore6Measures =
         allQiCore6Measures.stream()
             .filter(measure -> CollectionUtils.isNotEmpty(measure.getTestCases()))
@@ -195,11 +198,11 @@ public class AdminController {
                   return true;
                 })
             .toList();
-
+    timer.stop();
     if (CollectionUtils.isEmpty(targetQiCore6Measures)) {
       return ResponseEntity.ok(0);
     }
-
+    timer.start("Kickoff Test Case Validations");
     targetQiCore6Measures.forEach(
         measure -> {
           if (CollectionUtils.isNotEmpty(measure.getTestCases())) {
@@ -235,9 +238,11 @@ public class AdminController {
                     });
           }
         });
+    timer.stop();
     log.info(
         "User [{}] - Successfully placed QI Core v6 test cases back on the validation queue",
         principal.getName());
+    log.info("Admin::Test Case Validation::{}", timer.prettyPrint());
     return ResponseEntity.ok(
         targetQiCore6Measures.stream().map(Measure::getTestCases).mapToInt(Collection::size).sum());
   }
