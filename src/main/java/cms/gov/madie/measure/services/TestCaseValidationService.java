@@ -126,12 +126,13 @@ public class TestCaseValidationService {
           currentTestCase.getId(), measureId, taskId, validationOutcome);
       Instant stopTime = Instant.now();
       log.info(
-          "TestCase Validation::completed::{}::{}::{}::{}::{}",
+          "TestCase Validation::completed::{}::{}::{}::{}::saveQueue::{}::importQueue::{}",
           currentTestCase.getId(),
           taskId,
           stopTime,
           Duration.between(startTime, stopTime),
-          saveExecutor.getQueueSize());
+          saveExecutor.getQueueSize(),
+          importExecutor.getQueueSize());
     } catch (Exception e) {
       log.error(
           "Error validating Test Case with Id {} from Measure {}",
