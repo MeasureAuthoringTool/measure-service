@@ -210,9 +210,10 @@ public class AdminController {
                 .getTestCases()
                 .forEach(
                     testCase -> {
-                      if (TestCaseValidationStatus.PENDING
-                          .toString()
-                          .equalsIgnoreCase(testCase.getValidationStatus())) {
+                      if (testCase.getValidationStatus() == null
+                          || TestCaseValidationStatus.PENDING
+                              .toString()
+                              .equalsIgnoreCase(testCase.getValidationStatus())) {
                         // Submit test case already in PENDING status
                         testCaseValidationService.submitOnImportValidationTask(
                             measure.getId(),
@@ -243,8 +244,29 @@ public class AdminController {
         "User [{}] - Successfully placed QI Core v6 test cases back on the validation queue",
         principal.getName());
     log.info("Admin::Test Case Validation::{}", timer.prettyPrint());
-    return ResponseEntity.ok(
-        targetQiCore6Measures.stream().map(Measure::getTestCases).mapToInt(Collection::size).sum());
+    int resultCount = 0;
+    if (!force) {
+      for (Measure measure : targetQiCore6Measures) {
+        for (TestCase testCase : measure.getTestCases()) {
+          if (testCase.getValidationStatus() == null
+              || TestCaseValidationStatus.PENDING
+                  .toString()
+                  .equalsIgnoreCase(testCase.getValidationStatus())
+              || TestCaseValidationStatus.VALIDATING
+                  .toString()
+                  .equalsIgnoreCase(testCase.getValidationStatus())) {
+            resultCount++;
+          }
+        }
+      }
+    } else {
+      resultCount =
+          targetQiCore6Measures.stream()
+              .map(Measure::getTestCases)
+              .mapToInt(Collection::size)
+              .sum();
+    }
+    return ResponseEntity.ok(resultCount);
   }
 
   @DeleteMapping("/measures/{id}")

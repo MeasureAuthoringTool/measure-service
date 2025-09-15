@@ -164,10 +164,9 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
         validationResults != null && validationResults.isSuccessful()
             ? TestCaseValidationStatus.VALID.toString()
             : TestCaseValidationStatus.INVALID.toString();
+    update.set("testCases.$.validationStatus", validationResultStatus);
     update.set(
-        "testCases.$.validationStatus", validationResultStatus
-        );
-    update.set("testCases.$.validResource", validationResults != null && validationResults.isSuccessful());
+        "testCases.$.validResource", validationResults != null && validationResults.isSuccessful());
     update.set("testCases.$.hapiOperationOutcome", validationResults);
 
     return mongoOperations.findAndModify(query, update, RETURN_NEW_OPTIONS, Measure.class);
