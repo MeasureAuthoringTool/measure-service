@@ -852,7 +852,7 @@ public class TestCaseService {
   }
 
   public Measure findMeasureById(String measureId) {
-    Measure measure = measureRepository.findById(measureId).orElse(null);
+    Measure measure = measureRepository.findByIdAndActive(measureId, true).orElse(null);
     if (measure == null) {
       log.info("Could not find Measure with id: {}", measureId);
       throw new ResourceNotFoundException("Measure", measureId);

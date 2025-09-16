@@ -119,6 +119,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setMeasureName("MSR01");
     measure.setVersion(new Version(0, 0, 1));
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
+    measure.setActive(true); // ensure active for tests relying on active filter
   }
 
   @Test
@@ -126,7 +127,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     Optional<Measure> optional = Optional.of(measure);
-    Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
+    Mockito.doReturn(optional)
+        .when(measureRepository)
+        .findByIdAndActive(any(String.class), eq(true));
 
     Mockito.doReturn(measure).when(measureRepository).save(any(Measure.class));
     when(testCaseValidationService.validateTestCaseAsResource(
@@ -178,7 +181,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setTestCases(existingTestCases);
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     Optional<Measure> optional = Optional.of(measure);
-    Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
+    Mockito.doReturn(optional)
+        .when(measureRepository)
+        .findByIdAndActive(any(String.class), eq(true));
 
     Mockito.doReturn(measure).when(measureRepository).save(any(Measure.class));
 
@@ -263,7 +268,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .testCases(testCases)
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(existingMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(existingMeasure));
 
     doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
 
@@ -276,6 +282,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testUpdateTestCaseValidResourcesWithReportMeasureNotFound() {
     final String measureId = "M1234";
     final String accessToken = "Bearer Token";
+    // updateTestCaseValidResourcesWithReport still uses findById (no active filter)
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
 
     MeasureTestCaseValidationReport output =
@@ -303,6 +310,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             .testCases(null)
             .model(ModelType.QI_CORE.getValue())
             .build();
+    // Method under test uses findById
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
 
     MeasureTestCaseValidationReport output =
@@ -332,6 +340,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             .testCases(List.of())
             .model(ModelType.QI_CORE.getValue())
             .build();
+    // Method under test uses findById
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
 
     MeasureTestCaseValidationReport output =
@@ -385,6 +394,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             .testCases(prevTestCases)
             .model(ModelType.QI_CORE.getValue())
             .build();
+    // Method under test uses findById
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
 
     // TestCaseService spy = Mockito.spy(testCaseService);
@@ -520,7 +530,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     String measureId = measure.getId();
     String username = "user01";
     String accessToken = "Bearer Token";
-    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+    when(measureRepository.findByIdAndActive(anyString(), eq(true))).thenReturn(Optional.empty());
 
     assertThrows(
         ResourceNotFoundException.class,
@@ -572,7 +582,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     String username = "user01";
     String accessToken = "Bearer Token";
     measure.getMeasureMetaData().setDraft(false);
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(measure));
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
@@ -640,7 +651,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     String measureId = measure.getId();
     String username = "user01";
     String accessToken = "Bearer Token";
-    when(measureRepository.findById(eq(measureId))).thenReturn(Optional.of(measure));
+    when(measureRepository.findByIdAndActive(eq(measureId), eq(true)))
+        .thenReturn(Optional.of(measure));
 
     List<TestCase> output =
         testCaseService.persistTestCases(newTestCases, measureId, username, accessToken);
@@ -677,7 +689,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     String measureId = measure.getId();
     String username = "user01";
     String accessToken = "Bearer Token";
-    when(measureRepository.findById(eq(measureId))).thenReturn(Optional.of(measure));
+    when(measureRepository.findByIdAndActive(eq(measureId), eq(true)))
+        .thenReturn(Optional.of(measure));
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
@@ -725,7 +738,8 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
 
-    when(measureRepository.findById(eq(measureId))).thenReturn(Optional.of(measure));
+    when(measureRepository.findByIdAndActive(eq(measureId), eq(true)))
+        .thenReturn(Optional.of(measure));
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
         .thenAnswer(
@@ -778,7 +792,9 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testPersistTestCaseSucceedsForNonDraftMeasure() {
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     Optional<Measure> optional = Optional.of(measure);
-    Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
+    Mockito.doReturn(optional)
+        .when(measureRepository)
+        .findByIdAndActive(any(String.class), eq(true));
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
@@ -798,7 +814,9 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testFindTestCasesByMeasureId() {
     measure.setTestCases(List.of(testCase));
     Optional<Measure> optional = Optional.of(measure);
-    Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
+    Mockito.doReturn(optional)
+        .when(measureRepository)
+        .findByIdAndActive(any(String.class), eq(true));
     List<TestCase> persistTestCase = testCaseService.findTestCasesByMeasureId(measure.getId());
     assertEquals(1, persistTestCase.size());
     assertEquals(testCase.getId(), persistTestCase.get(0).getId());
@@ -807,7 +825,9 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testFindTestCasesByMeasureIdWhenMeasureDoesNotExist() {
     Optional<Measure> optional = Optional.empty();
-    Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
+    Mockito.doReturn(optional)
+        .when(measureRepository)
+        .findByIdAndActive(any(String.class), eq(true));
     assertThrows(
         ResourceNotFoundException.class,
         () -> testCaseService.findTestCasesByMeasureId(measure.getId()));
@@ -1276,7 +1296,9 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testGetTestCaseReturnsTestCaseById() {
     Optional<Measure> optional =
         Optional.of(measure.toBuilder().testCases(Arrays.asList(testCase)).build());
-    Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
+    Mockito.doReturn(optional)
+        .when(measureRepository)
+        .findByIdAndActive(any(String.class), eq(true));
     TestCase output =
         testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN");
     assertEquals(testCase, output);
@@ -1295,7 +1317,9 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     Optional<Measure> optional =
         Optional.of(measure.toBuilder().testCases(Arrays.asList(testCase)).build());
-    Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
+    Mockito.doReturn(optional)
+        .when(measureRepository)
+        .findByIdAndActive(any(String.class), eq(true));
     TestCase output = testCaseService.getTestCase(measure.getId(), testCase.getId(), true, "TOKEN");
     assertNotNull(output.getHapiOperationOutcome());
     assertEquals(200, output.getHapiOperationOutcome().getCode());
@@ -1305,7 +1329,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testGetTestCaseThrowsNotFoundExceptionForMeasureWithEmptyListTestCases() {
     Mockito.doReturn(Optional.of(measure.toBuilder().testCases(Lists.emptyList()).build()))
         .when(measureRepository)
-        .findById(any(String.class));
+        .findByIdAndActive(any(String.class), eq(true));
     assertThrows(
         ResourceNotFoundException.class,
         () -> testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN"));
@@ -1315,7 +1339,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testGetTestCaseThrowsNotFoundExceptionForMeasureWithNullTestCases() {
     Mockito.doReturn(Optional.of(measure.toBuilder().testCases(null).build()))
         .when(measureRepository)
-        .findById(any(String.class));
+        .findByIdAndActive(any(String.class), eq(true));
     assertThrows(
         ResourceNotFoundException.class,
         () -> testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN"));
@@ -1329,7 +1353,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             TestCase.builder().id("TC2_ID").title("TC2").build());
     Mockito.doReturn(Optional.of(measure.toBuilder().testCases(testCases).build()))
         .when(measureRepository)
-        .findById(any(String.class));
+        .findByIdAndActive(any(String.class), eq(true));
     assertThrows(
         ResourceNotFoundException.class,
         () -> testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN"));
@@ -1349,7 +1373,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .testCases(testCases)
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(existingMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(existingMeasure));
 
     doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
 
@@ -1371,7 +1396,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .testCases(testCases)
             .measureMetaData(MeasureMetaData.builder().draft(false).build())
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(existingMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(existingMeasure));
 
     doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
 
@@ -1393,7 +1419,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .testCases(testCases)
             .measureMetaData(MeasureMetaData.builder().draft(false).build())
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(existingMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(existingMeasure));
     assertThrows(
         InvalidIdException.class,
         () -> testCaseService.deleteTestCase("measure-id", "TC1_ID", "test.user"));
@@ -1433,7 +1460,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .testCases(testCases)
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(measure));
     assertThrows(
         InvalidIdException.class,
         () -> testCaseService.deleteTestCase("measure-id", "testCaseId", "OtherUser"));
@@ -1447,7 +1475,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .createdBy("OtherUser")
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(measure));
     doThrow(new UnauthorizedException("Measure", "measure-id", "user2"))
         .when(measureService)
         .verifyAuthorization(anyString(), any(Measure.class));
@@ -1472,7 +1501,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .testCases(null)
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(existingMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(existingMeasure));
 
     assertThrows(
         InvalidIdException.class,
@@ -1498,7 +1528,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void testDeleteTestCasesShouldThrowResourceNotFoundExceptionWhenMeasureIsNotFound() {
-    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+    when(measureRepository.findByIdAndActive(anyString(), eq(true))).thenReturn(Optional.empty());
 
     assertThrows(
         ResourceNotFoundException.class,
@@ -1510,7 +1540,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void testDeleteTestCasesThrowsInvalidDraftStateException() {
     measure.getMeasureMetaData().setDraft(false);
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     assertThrows(
         InvalidIdException.class,
@@ -1522,7 +1553,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void testDeleteTestCasesThrowsExceptionWhenMeasureDoesNotContainAnyTestCases() {
     measure.setTestCases(List.of());
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     assertThrows(
         InvalidIdException.class,
@@ -1541,7 +1573,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             TestCase.builder().id("TC4_ID").title("TC4").build());
 
     measure.setTestCases(testCases);
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(measure));
     doReturn(measure).when(measureRepository).save(any(Measure.class));
 
     String output =
@@ -1560,7 +1593,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             TestCase.builder().id("TC4_ID").title("TC4").build());
 
     measure.setTestCases(testCases);
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(measure));
     doReturn(measure).when(measureRepository).save(any(Measure.class));
 
     String output =
@@ -1579,7 +1613,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void importTestCasesReturnValidOutcomes() throws JsonProcessingException {
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
@@ -1612,7 +1647,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   void importTestCasesExistingWithExportMetaDataReturnValidOutcomes()
       throws JsonProcessingException {
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
@@ -1651,7 +1687,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void importTestCasesReturnValidOutcomeWithAnyExceptionsWhileUpdatingTestCases() {
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     doThrow(new ResourceNotFoundException("Measure", measure.getId()))
         .when(testCaseService)
@@ -1679,7 +1716,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void importTestCasesReturnValidOutcomeWithAnyDefaultExceptionsWhileUpdatingTestCases() {
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     doThrow(new NullPointerException())
         .when(testCaseService)
@@ -1708,7 +1746,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void importTestCasesReturnInvalidOutcomeWithSpecificExceptionMsgWhileUpdatingTestCases() {
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     doThrow(new DuplicateTestCaseNameException())
         .when(testCaseService)
@@ -1738,7 +1777,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   void importTestCaseReturnValidOutComeWithJsonParseException() {
     var importedJson = "{\n" + "    \"resourceType\": \"Bundle\",\n" + "}";
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     var testCaseImportRequest =
         TestCaseImportRequest.builder()
@@ -1764,7 +1804,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void importTestCaseReturnValidOutComeWithExceptionWhenJsonIsNull() {
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     var testCaseImportRequest =
         TestCaseImportRequest.builder().patientId(testCase.getPatientId()).json(null).build();
@@ -1785,7 +1826,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void importTestCaseReturnInvalidOutComeWithExceptionWhenJsonIsEmpty() {
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     var testCaseImportRequest =
         TestCaseImportRequest.builder().patientId(testCase.getPatientId()).json("").build();
@@ -1806,7 +1848,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   void importTestCasesReturnValidOutcomesWithMultipleFilesPerPatient() {
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
@@ -1863,7 +1906,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setGroups(List.of(group));
 
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
@@ -1920,7 +1964,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     List<TestCase> testCases = new ArrayList<>();
     testCases.add(testCase);
     measure.setTestCases(testCases);
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -2000,7 +2045,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .build();
     measure.setGroups(List.of(group));
 
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
@@ -2042,7 +2088,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setGroups(List.of(group));
 
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    measure.setActive(true);
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
@@ -2085,7 +2133,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setGroups(List.of(group));
 
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    measure.setActive(true);
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
@@ -2109,7 +2159,9 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void importTestCasesDoesNotCreateNewNoGivenName() throws IOException {
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    measure.setActive(true);
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
     String testCaseImportWithoutGivenName =
         removeGivenNameFromJson(testCaseImportWithMeasureReport);
     var testCaseImportRequest =
@@ -2215,7 +2267,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .stratifications(List.of(strat))
             .build();
     qdmMeasure.setGroups(List.of(group));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(qdmMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(qdmMeasure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setDescription(qdmTestCaseDescription);
@@ -2276,7 +2329,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .stratifications(List.of(strat))
             .build();
     qdmMeasure.setGroups(List.of(group));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(qdmMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(qdmMeasure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setDescription(qdmTestCaseDescription);
@@ -2336,7 +2390,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .stratifications(List.of(strat))
             .build();
     qdmMeasure.setGroups(List.of(group));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(qdmMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(qdmMeasure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setDescription(qdmTestCaseDescription);
@@ -2393,7 +2448,8 @@ public class TestCaseServiceTest implements ResourceUtil {
             .build();
     Group group2 = group1.toBuilder().id("2").build();
     qdmMeasure.setGroups(List.of(group1, group2));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(qdmMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(qdmMeasure));
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setDescription(qdmTestCaseDescription);
@@ -2526,7 +2582,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setModel(ModelType.QDM_5_6.getValue());
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     Optional<Measure> optional = Optional.of(measure);
-    Mockito.doReturn(optional).when(measureRepository).findById(any(String.class));
+    Mockito.doReturn(optional)
+        .when(measureRepository)
+        .findByIdAndActive(any(String.class), eq(true));
 
     Mockito.doReturn(measure).when(measureRepository).save(any(Measure.class));
 
@@ -2587,7 +2645,8 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void importTestCasesDoesNotCreateNewTitleOrGroupHasSpecialCharacters() throws IOException {
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
     String patientId = UUID.randomUUID().toString();
     String json =
         "{\"qdmVersion\": \"5.6\",\n"
@@ -2619,7 +2678,8 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void importTestCasesDoesNotCreateNewTitleMissing() throws IOException {
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
     String patientId = UUID.randomUUID().toString();
     String json =
         "{\"qdmVersion\": \"5.6\",\n"
@@ -2957,7 +3017,8 @@ public class TestCaseServiceTest implements ResourceUtil {
                         .build()))
             .measureMetaData(metaData)
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(targetMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(targetMeasure));
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -3058,7 +3119,8 @@ public class TestCaseServiceTest implements ResourceUtil {
                                     .build()))
                         .build()))
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(targetMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(targetMeasure));
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -3111,7 +3173,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     TestCase source = testCase.deepCopy().toBuilder().id(null).build();
     assertThat(targetMeasure.getTestCases().size(), is(1));
 
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(targetMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(targetMeasure));
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -3193,7 +3256,8 @@ public class TestCaseServiceTest implements ResourceUtil {
                             List.of(Stratification.builder().id("target-strat-id").build()))
                         .build()))
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(targetMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(targetMeasure));
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -3291,7 +3355,8 @@ public class TestCaseServiceTest implements ResourceUtil {
                                     .build()))
                         .build()))
             .build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(targetMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(targetMeasure));
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -3331,7 +3396,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     TestCase source = testCase.deepCopy().toBuilder().json(testCaseImportQdm).build();
 
     Measure targetMeasure = measure.toBuilder().model(ModelType.QDM_5_6.getValue()).build();
-    when(measureRepository.findById(anyString())).thenReturn(Optional.of(targetMeasure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(targetMeasure));
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     doReturn(targetMeasure).when(measureRepository).save(any());
 
