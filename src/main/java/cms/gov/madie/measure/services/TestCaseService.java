@@ -778,11 +778,22 @@ public class TestCaseService {
           updatedTestCase.getPatientId());
       if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
         LockInfo lock = testCaseLockService.unlockTestCase(existingTestCase.getId(), userName);
-        log.info(
-            "User [{}] unlocked test case id: [{}] for measureId: [{}]",
-            userName,
-            existingTestCase.getId(),
-            measureId);
+        if (lock != null) {
+          if (!lock.isLocked()) {
+            log.info(
+                "User [{}] unlocked test case id: [{}] for measureId: [{}]",
+                userName,
+                existingTestCase.getId(),
+                measureId);
+          } else {
+            log.info(
+                "User [{}] failed unlocking test case id: [{}] for measureId: [{}], test case locked by: [{}}",
+                userName,
+                existingTestCase.getId(),
+                measureId,
+                lock.getLockedBy());
+          }
+        }
       }
       TestCaseImportOutcome testCaseImportOutcome =
           TestCaseImportOutcome.builder()
