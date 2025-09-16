@@ -23,6 +23,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
+import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -37,10 +38,7 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import gov.cms.madie.models.access.AclOperation;
-import gov.cms.madie.models.common.AccessControlAction;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.MeasureSetActionLog;
-import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
 import org.apache.commons.io.IOUtils;
@@ -64,9 +62,6 @@ import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.Organization;
-import gov.cms.madie.models.common.Version;
 
 @ExtendWith(MockitoExtension.class)
 public class MeasureServiceTest implements ResourceUtil {
@@ -805,6 +800,34 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testCreateMeasureSetsDefaultTestCaseConfiguration() {
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(40, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(10, ChronoUnit.DAYS)))
+            .cqlLibraryName("UniqueLibNameForTestCaseConfig")
+            .testCaseConfiguration(null)
+            .build();
+
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
+    doNothing().when(terminologyValidationService).validateTerminology(anyString(), anyString());
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    Measure saved = measureService.createMeasure(measureToSave, "author.user", "token", false);
+    assertNotNull(saved.getTestCaseConfiguration(), "TestCaseConfiguration should be initialized");
+    assertTrue(
+        saved.getTestCaseConfiguration().isRavIncluded(),
+        "ravIncluded should default to true when creating a measure");
+  }
+
+  @Test
   public void testUpdateMeasureThrowsExceptionForDuplicateLibraryName() {
     Measure original =
         Measure.builder()
@@ -1238,23 +1261,26 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testChangeOwnership() {
-    MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("testUser").build();
+    Principal principal = mock(Principal.class);
+    MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("currentUserId").build();
     Measure measure =
         Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
     Optional<Measure> persistedMeasure = Optional.of(measure);
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.changeOwnership(
             anyString(), anyString(), any(Boolean.class), anyString()))
         .thenReturn(new MeasureSet());
 
-    boolean result = measureService.changeOwnership(measure.getId(), "user123");
+    boolean result =
+        measureService.changeOwnership(measure.getId(), "updatedUserId", principal.getName());
     assertTrue(result);
   }
 
   @Test
   public void testChangeOwnershipPersistedMeasureDoesNotExist() {
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
-    boolean result = measureService.changeOwnership("testMeasureId", "user123");
+    boolean result = measureService.changeOwnership("testMeasureId", "user123", "admin");
     assertFalse(result);
   }
 
@@ -2241,5 +2267,53 @@ public class MeasureServiceTest implements ResourceUtil {
     boolean result =
         measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
     assertFalse(result);
+  }
+
+  @Test
+  void getMeasureHistoryReturnsHistoryForValidMeasureId() {
+    String measureId = "validMeasureId";
+    String userName = "testUser";
+    Measure measure = Measure.builder().id(measureId).measureSetId("measureSetId").build();
+    Action createdAction = new Action();
+    createdAction.setActionType(ActionType.CREATED);
+    createdAction.setPerformedAt(Instant.now());
+    createdAction.setPerformedBy("test.user@gmail.com");
+    createdAction.setAdditionalActionMessage("");
+    List<Action> actions = List.of(createdAction);
+
+    when(measureRepository.findById(measureId)).thenReturn(Optional.of(measure));
+    when(actionLogService.findMeasureHistory(measureId, "measureSetId")).thenReturn(actions);
+
+    List<Action> result = measureService.getMeasureHistory(measureId, userName);
+
+    assertNotNull(result);
+    assertEquals(1, result.size());
+    assertEquals(ActionType.CREATED, result.get(0).getActionType());
+    verify(measureRepository, times(1)).findById(measureId);
+    verify(actionLogService, times(1)).findMeasureHistory(measureId, "measureSetId");
+  }
+
+  @Test
+  void getMeasureHistoryThrowsInvalidRequestExceptionForBlankMeasureId() {
+    String measureId = " ";
+    String userName = "testUser";
+
+    assertThrows(
+        InvalidRequestException.class, () -> measureService.getMeasureHistory(measureId, userName));
+    verifyNoInteractions(measureRepository, actionLogService);
+  }
+
+  @Test
+  void getMeasureHistoryThrowsResourceNotFoundExceptionForNonExistentMeasureId() {
+    String measureId = "nonExistentMeasureId";
+    String userName = "testUser";
+
+    when(measureRepository.findById(measureId)).thenReturn(Optional.empty());
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> measureService.getMeasureHistory(measureId, userName));
+    verify(measureRepository, times(1)).findById(measureId);
+    verifyNoInteractions(actionLogService);
   }
 }

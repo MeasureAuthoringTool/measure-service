@@ -15,7 +15,6 @@ import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
@@ -26,8 +25,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
-
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Slf4j
 @Service
@@ -170,7 +167,14 @@ public class MeasureSetService {
       actionLogDetails.forEach(
           (userId, actionType) -> {
             actionLogService.logShareAccessControlAction(
-                measureSetId, MeasureSet.class, actionType, userName, userId);
+                measureSetId,
+                MeasureSet.class,
+                actionType,
+                userName,
+                userId,
+                String.format(
+                    actionType == ActionType.UNSHARED ? "Unshared with - %s" : "Shared with - %s",
+                    userId));
           });
 
       return updatedMeasureSet;
@@ -201,11 +205,15 @@ public class MeasureSetService {
     MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet.get());
     log.info("cms id for the Measure set [{}] is successfully created", updatedMeasureSet.getId());
     actionLogService.logMeasureSetAction(
-        updatedMeasureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, username);
+        updatedMeasureSet.getMeasureSetId(),
+        MeasureSet.class,
+        ActionType.CREATE_CMSID,
+        username,
+        String.format("Created CMS ID %s", updatedMeasureSet.getCmsId()));
     return updatedMeasureSet;
   }
 
-  public String deleteCmsId(String measureId, Integer cmsId, String harpId) {
+  public String deleteCmsId(String measureId, Integer cmsId, String harpId, String userName) {
     Optional<Measure> optionalMeasure = measureRepository.findById(measureId);
 
     if (optionalMeasure.isPresent()) {
@@ -262,6 +270,13 @@ public class MeasureSetService {
           measureId,
           measureSetId,
           cmsId);
+
+      actionLogService.logMeasureSetAction(
+          measureSetId,
+          MeasureSet.class,
+          ActionType.DELETE_CMSID,
+          userName,
+          String.format("Deleted CMS ID %s", cmsId));
 
       return String.format(
           "CMS id of %s was deleted successfully from " + "measure set with measure set id of %s",
@@ -342,7 +357,11 @@ public class MeasureSetService {
           userId,
           conductedBy);
       actionLogService.logMeasureSetAction(
-          measureSetId, MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, conductedBy);
+          measureSetId,
+          MeasureSet.class,
+          ActionType.OWNERSHIP_TRANSFER,
+          conductedBy,
+          String.format("Transferred from %s to %s", originalOwner, userId));
       return updatedMeasureSet;
     } else {
       String error =

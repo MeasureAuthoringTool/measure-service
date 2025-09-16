@@ -23,6 +23,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.security.Principal;
 import java.util.*;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -110,7 +111,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "userName",
+            aclSpec.getUserId(),
+            "Shared with - john_1");
   }
 
   @Test
@@ -132,7 +138,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "userName",
+            aclSpec.getUserId(),
+            "Shared with - john_1");
   }
 
   @Test
@@ -160,7 +171,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec2.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "userName",
+            aclSpec2.getUserId(),
+            "Shared with - jane");
   }
 
   @Test
@@ -198,7 +214,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.SHARED, "userName", aclSpec.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "userName",
+            aclSpec.getUserId(),
+            "Shared with - john");
   }
 
   @Test
@@ -255,7 +276,12 @@ public class MeasureSetServiceTest {
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            "1", MeasureSet.class, ActionType.UNSHARED, "userName", aclSpec.getUserId());
+            "1",
+            MeasureSet.class,
+            ActionType.UNSHARED,
+            "userName",
+            aclSpec.getUserId(),
+            "Unshared with - john");
   }
 
   @Test
@@ -320,7 +346,11 @@ public class MeasureSetServiceTest {
     assertThat(result.getId(), is(equalTo(measureSet1.getId())));
     verify(actionLogService, times(1))
         .logMeasureSetAction(
-            measureSet.getMeasureSetId(), MeasureSet.class, ActionType.CREATED, "testUser");
+            measureSet.getMeasureSetId(),
+            MeasureSet.class,
+            ActionType.CREATE_CMSID,
+            "testUser",
+            "Created CMS ID 2");
   }
 
   @Test
@@ -358,6 +388,7 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testDeleteCmsId() {
+    Principal principal = mock(Principal.class);
     Integer cmsId = 1;
     Measure measure =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId1").build();
@@ -372,7 +403,8 @@ public class MeasureSetServiceTest {
         .thenReturn(measures);
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(measureSet);
 
-    String responseBody = measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner());
+    String responseBody =
+        measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner(), principal.getName());
 
     assertEquals(
         responseBody,
@@ -383,29 +415,45 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureRepository, times(1)).findAllByMeasureSetIdAndActive(anyString(), anyBoolean());
     verify(measureSetRepository, times(1)).save(any(MeasureSet.class));
+    verify(actionLogService, times(1))
+        .logMeasureSetAction(
+            measure.getMeasureSetId(),
+            MeasureSet.class,
+            ActionType.DELETE_CMSID,
+            principal.getName(),
+            "Deleted CMS ID 1");
   }
 
   @Test
   public void testDeleteCmsIdWhenMeasureWithMeasureIdIsNotFound() {
+    Principal principal = mock(Principal.class);
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
 
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.deleteCmsId(measureId, 1, anyString()));
+            () -> measureSetService.deleteCmsId(measureId, 1, "harpId", principal.getName()));
 
     assertTrue(
         ex.getMessage()
             .contains(String.format("No measure exists with measure id of %s", measureId)));
     verify(measureRepository, times(1)).findById(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
-    verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
+    verify(actionLogService, never())
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
   public void testDeleteCmsIdHarpIdMismatchException() {
+    Principal principal = mock(Principal.class);
     String harpId = "owner2";
     Measure measure =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId").build();
@@ -413,13 +461,14 @@ public class MeasureSetServiceTest {
     MeasureSet measureSet = MeasureSet.builder().measureSetId("1").cmsId(2).owner("owner1").build();
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
 
     Exception ex =
         assertThrows(
             HarpIdMismatchException.class,
-            () -> measureSetService.deleteCmsId(measureId, anyInt(), harpId));
+            () -> measureSetService.deleteCmsId(measureId, 2, harpId, principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -430,10 +479,18 @@ public class MeasureSetServiceTest {
     verify(measureRepository, times(1)).findById(anyString());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
+    verify(actionLogService, never())
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
   public void testDeleteCmsIdWhenMeasureSetIsNotFound() {
+    Principal principal = mock(Principal.class);
     Measure measure =
         Measure.builder()
             .model(ModelType.QI_CORE.getValue())
@@ -443,13 +500,16 @@ public class MeasureSetServiceTest {
 
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.empty());
 
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.deleteCmsId(measureId, 1, measure.getMeasureSet().getOwner()));
+            () ->
+                measureSetService.deleteCmsId(
+                    measureId, 1, measure.getMeasureSet().getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -460,10 +520,18 @@ public class MeasureSetServiceTest {
     verify(measureRepository, times(1)).findById(anyString());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
+    verify(actionLogService, never())
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
   public void testDeleteCmsIdWhenCmsIdIsNotFoundInMeasureSet() {
+    Principal principal = mock(Principal.class);
     Integer cmsId = 1;
     Measure measure =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId").build();
@@ -471,13 +539,16 @@ public class MeasureSetServiceTest {
     MeasureSet measureSet = MeasureSet.builder().measureSetId("1").owner("owner1").build();
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
 
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner()));
+            () ->
+                measureSetService.deleteCmsId(
+                    measureId, cmsId, measureSet.getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -488,10 +559,18 @@ public class MeasureSetServiceTest {
     verify(measureRepository, times(1)).findById(anyString());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
+    verify(actionLogService, never())
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
   public void testDeleteCmsIdWhenCmsIdToDeleteDoesNotMatchCmsIdInMeasureSet() {
+    Principal principal = mock(Principal.class);
     Integer cmsId = 1;
     Measure measure =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId").build();
@@ -499,13 +578,16 @@ public class MeasureSetServiceTest {
     MeasureSet measureSet = MeasureSet.builder().measureSetId("1").cmsId(2).owner("owner1").build();
     String measureId = "measureId";
 
+    when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
 
     Exception ex =
         assertThrows(
             InvalidIdException.class,
-            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner()));
+            () ->
+                measureSetService.deleteCmsId(
+                    measureId, cmsId, measureSet.getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -516,10 +598,18 @@ public class MeasureSetServiceTest {
     verify(measureRepository, times(1)).findById(anyString());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
+    verify(actionLogService, never())
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
   public void testDeleteCmsIdWhenMeasureHasMultipleVersions() {
+    Principal principal = mock(Principal.class);
     Integer cmsId = 1;
     Measure measure1 =
         Measure.builder().model(ModelType.QI_CORE.getValue()).measureSetId("measureSetId1").build();
@@ -540,7 +630,9 @@ public class MeasureSetServiceTest {
     Exception ex =
         assertThrows(
             InvalidRequestException.class,
-            () -> measureSetService.deleteCmsId(measureId, cmsId, measureSet.getOwner()));
+            () ->
+                measureSetService.deleteCmsId(
+                    measureId, cmsId, measureSet.getOwner(), principal.getName()));
 
     assertTrue(
         ex.getMessage()
@@ -553,6 +645,13 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureRepository, times(1)).findAllByMeasureSetIdAndActive(anyString(), anyBoolean());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
+    verify(actionLogService, never())
+        .logMeasureSetAction(
+            anyString(),
+            eq(MeasureSet.class),
+            eq(ActionType.DELETE_CMSID),
+            anyString(),
+            anyString());
   }
 
   @Test
@@ -648,7 +747,7 @@ public class MeasureSetServiceTest {
   @Test
   public void testChangeOwnership() {
     MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
+    updatedMeasureSet.setOwner("originalOwner");
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
@@ -658,14 +757,19 @@ public class MeasureSetServiceTest {
     assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
     assertThat(result.getAcls().size(), is(equalTo(1)));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "Admin");
+        .logMeasureSetAction(
+            "1",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "Admin",
+            "Transferred from originalOwner to testUser");
   }
 
   @Test
   public void testChangeOwnershipForTransferMeasures() {
     measureSet.setAcls(Collections.emptyList());
     MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
+    updatedMeasureSet.setOwner("originalOwner");
     updatedMeasureSet.setAcls(null);
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
@@ -680,13 +784,18 @@ public class MeasureSetServiceTest {
         result.getAcls().get(0).getUserId(),
         is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
+        .logMeasureSetAction(
+            "1",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "anotherUser",
+            "Transferred from originalOwner to testUser");
   }
 
   @Test
   public void testChangeOwnershipRetainAccess() {
     MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
+    updatedMeasureSet.setOwner("originalOwner");
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
@@ -700,13 +809,18 @@ public class MeasureSetServiceTest {
         result.getAcls().get(0).getUserId(),
         is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
+        .logMeasureSetAction(
+            "1",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "anotherUser",
+            "Transferred from originalOwner to testUser");
   }
 
   @Test
   public void testChangeOwnershipDoNotRetainAccess() {
     MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("testUser");
+    updatedMeasureSet.setOwner("originalOwner");
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
@@ -722,7 +836,12 @@ public class MeasureSetServiceTest {
         result.getAcls().get(0).getRoles(),
         is(equalTo(updatedMeasureSet.getAcls().get(0).getRoles())));
     verify(actionLogService, times(1))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
+        .logMeasureSetAction(
+            "1",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "anotherUser",
+            "Transferred from originalOwner to testUser");
   }
 
   @Test
@@ -737,6 +856,6 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, times(0))
-        .logMeasureSetAction("1", MeasureSet.class, ActionType.UPDATED, "anotherUser");
+        .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
   }
 }

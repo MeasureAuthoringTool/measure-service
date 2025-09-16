@@ -7,7 +7,8 @@ public enum MadieFeatureFlag {
   IMPORT_TEST_CASES("importTestCases"),
   MEASURE_SEARCH("MeasureSearch"),
   EDIT_TESTS_ON_VERSIONED_MEASURES("EditTestsOnVersionedMeasures"),
-  STU_6_TEST_CASE_VALIDATION("stu6TestCaseValidation");
+  STU_6_TEST_CASE_VALIDATION("stu6TestCaseValidation"),
+  LOCKING("Locking");
 
   private final String flag;
 

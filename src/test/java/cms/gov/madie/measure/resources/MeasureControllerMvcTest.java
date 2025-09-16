@@ -163,17 +163,21 @@ public class MeasureControllerMvcTest {
   @Test
   public void testChangeOwnership() throws Exception {
     String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+    String newOwner = "updatedUserId";
 
-    doReturn(true).when(measureService).changeOwnership(eq(measureId), eq("testUser"));
+    doReturn(true)
+        .when(measureService)
+        .changeOwnership(eq(measureId), eq(newOwner), eq(TEST_USER_ID));
 
     mockMvc
         .perform(
-            put("/measures/" + measureId + "/ownership?userid=testUser")
+            put("/measures/" + measureId + "/ownership?userid=" + newOwner)
+                .with(user(TEST_USER_ID))
                 .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE))
         .andExpect(status().isOk())
-        .andExpect(content().string("testUser granted ownership to Measure successfully."));
+        .andExpect(content().string(newOwner + " granted ownership to Measure successfully."));
 
-    verify(measureService, times(1)).changeOwnership(eq(measureId), eq("testUser"));
+    verify(measureService, times(1)).changeOwnership(eq(measureId), eq(newOwner), eq(TEST_USER_ID));
   }
 
   @Test

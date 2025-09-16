@@ -200,7 +200,8 @@ public class TestCaseController {
             .toList();
 
     List<TestCase> shiftedTestCases =
-        testCaseService.shiftQiCoreTestCaseDates(testCases, shifted, accessToken);
+        testCaseService.shiftQiCoreTestCaseDates(
+            testCases, shifted, accessToken, measureId, principal.getName());
     List<String> savedTestCaseIds = new ArrayList<>();
 
     for (TestCase shiftedTestCase : shiftedTestCases) {
@@ -256,7 +257,8 @@ public class TestCaseController {
     }
     List<TestCase> testCases = testCaseService.findTestCasesByMeasureId(measureId);
     List<TestCase> shiftedTestCases =
-        testCaseService.shiftQiCoreTestCaseDates(testCases, shifted, accessToken);
+        testCaseService.shiftQiCoreTestCaseDates(
+            testCases, shifted, accessToken, measureId, principal.getName());
     List<String> savedTestCaseIds = new ArrayList<>();
     for (TestCase shiftedTestCase : shiftedTestCases) {
       try {

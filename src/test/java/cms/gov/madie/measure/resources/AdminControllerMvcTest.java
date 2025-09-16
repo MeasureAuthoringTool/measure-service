@@ -10,10 +10,12 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.*;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
@@ -37,6 +39,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -70,7 +73,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/validations")
+            put("/admin/measures/test-cases/validations")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -87,7 +90,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/validations?draftOnly=true")
+            put("/admin/measures/test-cases/validations?draftOnly=true")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -105,7 +108,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/validations?draftOnly=false")
+            put("/admin/measures/test-cases/validations?draftOnly=false")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -163,7 +166,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/validations")
+            put("/admin/measures/test-cases/validations")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -259,7 +262,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/validations")
+            put("/admin/measures/test-cases/validations")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -530,7 +533,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/{id}/correct-version", "12345")
+            put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .queryParam("correctVersion", "2.0.000")
@@ -556,7 +559,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/{id}/correct-version", "12345")
+            put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .queryParam("correctVersion", "2.0.000")
@@ -593,7 +596,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/{id}/correct-version", "12345")
+            put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .queryParam("correctVersion", "2.0.000")
@@ -623,7 +626,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/{id}/correct-version", "12345")
+            put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .queryParam("correctVersion", "2.0.000")
@@ -659,7 +662,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/{id}/correct-version", "12345")
+            put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .queryParam("correctVersion", "2.0.000")
@@ -713,7 +716,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/{id}/correct-version", "12345")
+            put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .queryParam("correctVersion", "2.0.000")
@@ -730,11 +733,91 @@ public class AdminControllerMvcTest {
   }
 
   @Test
+  public void testCorrectMeasureVersionSavesMeasureAndLogsExpectedMessage() throws Exception {
+    String measureId = "123";
+    String inCorrectVersion = "1.0.000";
+    String correctVersion = "0.1.000";
+    String draftVersion = "0.0.000";
+    String harpId = "harpId";
+    String principalName = "testUser";
+
+    MeasureSet measureSet =
+        MeasureSet.builder().id("measureSetId").measureSetId("measureSetId").owner(harpId).build();
+
+    Measure measure =
+        Measure.builder()
+            .id(measureId)
+            .measureSetId(measureSet.getMeasureSetId())
+            .version(Version.parse(inCorrectVersion))
+            .cqlLibraryName("TestLibrary")
+            .cql("library TestLibrary version '1.0.000'")
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .measureSet(measureSet)
+            .build();
+
+    when(measureService.findMeasureById(measureId)).thenReturn(measure);
+    when(measureRepository.findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(
+            anyList(), anyBoolean(), anyBoolean()))
+        .thenReturn(Collections.emptyList());
+    when(versionService.generateLibraryContentLine(anyString(), any(Version.class)))
+        .thenAnswer(
+            invocation -> {
+              String libName = invocation.getArgument(0);
+              Version version = invocation.getArgument(1);
+              return "library " + libName + " version '" + version + "'";
+            });
+
+    // Capture the Measure object passed to save
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    when(measureRepository.save(measureCaptor.capture()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    mockMvc
+        .perform(
+            put("/admin/measures/{id}/correct-version", measureId)
+                .with(csrf())
+                .with(user(principalName))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta")
+                .header("harpId", harpId)
+                .param("inCorrectVersion", inCorrectVersion)
+                .param("correctVersion", correctVersion)
+                .param("draftVersion", draftVersion)
+                .principal(() -> principalName))
+        .andExpect(status().isOk());
+
+    verify(measureService).findMeasureById(measureId);
+    verify(measureRepository)
+        .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(
+            eq(List.of(measure.getMeasureSetId())), eq(true), eq(true));
+    verify(versionService)
+        .generateLibraryContentLine(eq(measure.getCqlLibraryName()), eq(measure.getVersion()));
+    verify(measureRepository).save(any(Measure.class));
+
+    // Assert that the measure was updated correctly
+    Measure savedMeasure = measureCaptor.getValue();
+    assertEquals(Version.parse(draftVersion), savedMeasure.getVersion());
+    assertTrue(savedMeasure.getMeasureMetaData().isDraft());
+    assertTrue(savedMeasure.getCql().contains("version '0.0.000'"));
+
+    // Verify the action was logged
+    verify(actionLogService)
+        .logAction(
+            eq(measureId),
+            eq(Measure.class),
+            eq(ActionType.VERSION_REVERT),
+            eq(principalName),
+            eq(String.format("Reverted from version %s to %s", inCorrectVersion, correctVersion)));
+  }
+
+  @Test
   public void updateTestCaseValidationStatusProcessesValidatingTestCases() throws Exception {
     Measure measure =
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -763,7 +846,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+            put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -771,7 +854,7 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(0)),
             eq("test-okta"),
@@ -787,6 +870,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -800,7 +885,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+            put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -808,7 +893,7 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0));
   }
 
@@ -819,6 +904,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -832,7 +919,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+            put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -840,7 +927,7 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, never())
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             anyString(), any(TestCase.class), anyString(), any(ModelType.class));
   }
 
@@ -851,7 +938,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+            put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -875,7 +962,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+            put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -892,6 +979,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -929,7 +1018,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/test-cases/restart-validation")
+            put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -937,13 +1026,13 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(1)),
             eq("test-okta"),
             eq(ModelType.QI_CORE_6_0_0));
     verify(testCaseValidationService, never())
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(2)),
             eq("test-okta"),
@@ -975,7 +1064,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.put("/admin/unlock")
+                MockMvcRequestBuilders.delete("/admin/measures/test-cases/locks")
                     .with(csrf())
                     .with(user(TEST_USER_ID))
                     .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
