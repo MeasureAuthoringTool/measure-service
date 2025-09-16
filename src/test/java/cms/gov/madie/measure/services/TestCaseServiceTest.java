@@ -104,7 +104,6 @@ public class TestCaseServiceTest implements ResourceUtil {
     testCase = new TestCase();
     testCase.setId("TESTID");
     testCase.setTitle("IPPPass");
-    //    testCase.setSeries("BloodPressure>124");
     testCase.setSeries("BloodPressure bigger than 124");
     testCase.setCreatedBy("TestUser");
     testCase.setLastModifiedBy("TestUser2");
@@ -119,7 +118,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setMeasureName("MSR01");
     measure.setVersion(new Version(0, 0, 1));
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
-    measure.setActive(true); // ensure active for tests relying on active filter
+    measure.setActive(true);
   }
 
   @Test
@@ -136,10 +135,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             any(TestCase.class), any(ModelType.class), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
-    //    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
-    //        .thenReturn(
-    //
-    // ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()));
+    
 
     TestCase persistTestCase =
         testCaseService.persistTestCase(testCase, measure.getId(), "test.user", "TOKEN");
