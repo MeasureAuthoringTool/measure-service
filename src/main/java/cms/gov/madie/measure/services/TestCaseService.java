@@ -7,24 +7,20 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
 import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
@@ -350,7 +346,6 @@ public class TestCaseService {
             measure, testCase, queueType, accessToken);
       }
     }
-
     return validateAndSave(testCase, measure, username, accessToken);
   }
 
@@ -749,6 +744,8 @@ public class TestCaseService {
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
       LockInfo lock =
           testCaseLockService.lockTestCase(measureId, existingTestCase.getId(), userName);
+      log.info(
+          "User [{}] is trying to lock test case id: [{}]", userName, existingTestCase.getId());
       if (lock != null && !userName.equals(lock.getLockedBy())) {
         log.info(
             "User [{}] failed to acquire lock for test case id : [{}]. The test case is locked by another user: [{}]",
@@ -763,7 +760,6 @@ public class TestCaseService {
         return failureOutcome;
       }
     }
-
     try {
       existingTestCase.setDescription(
           getDescription(model, testCaseImportRequest.getJson(), testCaseImportRequest));
@@ -775,6 +771,10 @@ public class TestCaseService {
           "User {} successfully imported test case with patient id : {}",
           userName,
           updatedTestCase.getPatientId());
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+        LockInfo lock = testCaseLockService.unlockTestCase(existingTestCase.getId(), userName);
+        log.info("User [{}] unlocked test case id: [{}]", userName, existingTestCase.getId());
+      }
       TestCaseImportOutcome testCaseImportOutcome =
           TestCaseImportOutcome.builder()
               .familyName(testCaseImportRequest.getFamilyName())

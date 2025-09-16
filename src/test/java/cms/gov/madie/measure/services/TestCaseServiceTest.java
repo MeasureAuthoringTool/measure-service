@@ -3405,7 +3405,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     measure.setTestCases(List.of(testCase));
     when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
-    when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString())).thenReturn(null);
+    LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();
+    when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString())).thenReturn(lock);
+    when(testCaseLockService.unlockTestCase(anyString(), anyString())).thenReturn(lock);
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
@@ -3474,6 +3476,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
     LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();
     when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString())).thenReturn(lock);
+    when(testCaseLockService.unlockTestCase(anyString(), anyString())).thenReturn(lock);
 
     TestCase updatedTestCase = testCase;
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
