@@ -171,6 +171,20 @@ public class AdminController {
     List<Measure> allQiCore6Measures =
         measureRepository.findAllByModel(ModelType.QI_CORE_6_0_0.getValue());
     timer.stop();
+    if (draftOnly) {
+      log.info("Admin::Test Case Validation::Only considering draft measures");
+    }
+    if (CollectionUtils.isNotEmpty(measureIds)) {
+      log.info(
+          "Admin::Test Case Validation::Only considering measures Ids: {}",
+          String.join(", ", measureIds));
+    }
+    if (CollectionUtils.isNotEmpty(excludeUsers)) {
+      log.info(
+          "Admin::Test Case Validation::Excluding measures created by users: {}",
+          String.join(", ", excludeUsers));
+    }
+
     timer.start("Filter Measures");
     List<Measure> targetQiCore6Measures =
         allQiCore6Measures.stream()
@@ -186,7 +200,7 @@ public class AdminController {
             .filter(
                 measure -> {
                   if (CollectionUtils.isNotEmpty(excludeUsers)) {
-                    return excludeUsers.contains(measure.getCreatedBy());
+                    return !excludeUsers.contains(measure.getCreatedBy());
                   }
                   return true;
                 })
@@ -210,10 +224,9 @@ public class AdminController {
                 .getTestCases()
                 .forEach(
                     testCase -> {
-                      if (testCase.getValidationStatus() == null
-                          || TestCaseValidationStatus.PENDING
-                              .toString()
-                              .equalsIgnoreCase(testCase.getValidationStatus())) {
+                      if (TestCaseValidationStatus.PENDING
+                          .toString()
+                          .equalsIgnoreCase(testCase.getValidationStatus())) {
                         // Submit test case already in PENDING status
                         testCaseValidationService.submitOnImportValidationTask(
                             measure.getId(),
@@ -221,6 +234,7 @@ public class AdminController {
                             accessToken,
                             ModelType.valueOfName(measure.getModel()));
                       } else if (force
+                          || testCase.getValidationStatus() == null
                           || TestCaseValidationStatus.VALIDATING
                               .toString()
                               .equalsIgnoreCase(testCase.getValidationStatus())) {
