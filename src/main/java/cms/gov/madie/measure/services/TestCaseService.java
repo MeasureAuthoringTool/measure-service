@@ -745,12 +745,17 @@ public class TestCaseService {
       LockInfo lock =
           testCaseLockService.lockTestCase(measureId, existingTestCase.getId(), userName);
       log.info(
-          "User [{}] is trying to lock test case id: [{}]", userName, existingTestCase.getId());
+          "User [{}] is trying to lock test case id: [{}]  for measureId: [{}]",
+          userName,
+          existingTestCase.getId(),
+          measureId);
       if (lock != null && !userName.equals(lock.getLockedBy())) {
         log.info(
-            "User [{}] failed to acquire lock for test case id : [{}]. The test case is locked by another user: [{}]",
+            "User [{}] failed to acquire lock for test case id : [{}], measureId: [{}]. "
+                + "The test case is locked by another user: [{}]",
             userName,
             existingTestCase.getId(),
+            measureId,
             lock.getLockedBy());
         failureOutcome.setMessage(
             "Failed to import test case: "
@@ -773,7 +778,11 @@ public class TestCaseService {
           updatedTestCase.getPatientId());
       if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
         LockInfo lock = testCaseLockService.unlockTestCase(existingTestCase.getId(), userName);
-        log.info("User [{}] unlocked test case id: [{}]", userName, existingTestCase.getId());
+        log.info(
+            "User [{}] unlocked test case id: [{}] for measureId: [{}]",
+            userName,
+            existingTestCase.getId(),
+            measureId);
       }
       TestCaseImportOutcome testCaseImportOutcome =
           TestCaseImportOutcome.builder()
