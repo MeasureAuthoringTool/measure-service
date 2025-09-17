@@ -135,8 +135,6 @@ public class TestCaseServiceTest implements ResourceUtil {
             any(TestCase.class), any(ModelType.class), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
-    
-
     TestCase persistTestCase =
         testCaseService.persistTestCase(testCase, measure.getId(), "test.user", "TOKEN");
     verify(measureRepository, times(1)).save(measureCaptor.capture());
@@ -3465,7 +3463,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   void importTestCasesReturnValidOutcomesWhenLockingSuccessful() throws JsonProcessingException {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
     LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();
     when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString())).thenReturn(lock);
     when(testCaseLockService.unlockTestCase(anyString(), anyString())).thenReturn(lock);
@@ -3501,7 +3500,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   void importTestCasesReturnInvalidOutcomesWhenLockingFails() throws JsonProcessingException {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
     LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("anotherUser").build();
     when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString())).thenReturn(lock);
 
@@ -3534,7 +3534,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   void importTestCasesReturnValidOutcomesWhenLockedByIsSameUser() throws JsonProcessingException {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     measure.setTestCases(List.of(testCase));
-    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.ofNullable(measure));
     LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();
     when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString())).thenReturn(lock);
     when(testCaseLockService.unlockTestCase(anyString(), anyString())).thenReturn(lock);
