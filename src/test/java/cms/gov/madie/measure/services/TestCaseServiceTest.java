@@ -3463,6 +3463,110 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
+  void importTestCasesReturnValidOutcomesWhenLockingSuccessful() throws JsonProcessingException {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    measure.setTestCases(List.of(testCase));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();
+    when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString())).thenReturn(lock);
+    when(testCaseLockService.unlockTestCase(anyString(), anyString())).thenReturn(lock);
+
+    TestCase updatedTestCase = testCase;
+    updatedTestCase.setJson(testCaseImportWithMeasureReport);
+
+    doReturn(updatedTestCase)
+        .when(testCaseService)
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
+    var testCaseImportRequest =
+        TestCaseImportRequest.builder()
+            .patientId(testCase.getPatientId())
+            .json(testCaseImportWithMeasureReport)
+            .build();
+
+    var response =
+        testCaseService.importTestCases(
+            List.of(testCaseImportRequest),
+            measure.getId(),
+            "test.user",
+            "TOKEN",
+            ModelType.QI_CORE.getValue());
+    assertEquals(1, response.size());
+    assertEquals(testCase.getPatientId(), response.get(0).getPatientId());
+    assertNotNull(testCase.getDescription());
+    assertEquals(
+        testCase.getDescription(), JsonUtil.getTestDescription(testCaseImportWithMeasureReport));
+    assertTrue(response.get(0).isSuccessful());
+  }
+
+  @Test
+  void importTestCasesReturnInvalidOutcomesWhenLockingFails() throws JsonProcessingException {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    measure.setTestCases(List.of(testCase));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("anotherUser").build();
+    when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString())).thenReturn(lock);
+
+    var testCaseImportRequest =
+        TestCaseImportRequest.builder()
+            .patientId(testCase.getPatientId())
+            .json(testCaseImportWithMeasureReport)
+            .build();
+
+    var response =
+        testCaseService.importTestCases(
+            List.of(testCaseImportRequest),
+            measure.getId(),
+            "test.user",
+            "TOKEN",
+            ModelType.QI_CORE.getValue());
+    assertEquals(1, response.size());
+    assertEquals(testCase.getPatientId(), response.get(0).getPatientId());
+    assertNull(testCase.getDescription());
+    assertFalse(response.get(0).isSuccessful());
+    assertEquals(
+        "Failed to import test case: "
+            + testCase.getId()
+            + ". The test case is locked by another user: "
+            + lock.getLockedBy(),
+        response.get(0).getMessage());
+  }
+
+  @Test
+  void importTestCasesReturnValidOutcomesWhenLockedByIsSameUser() throws JsonProcessingException {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    measure.setTestCases(List.of(testCase));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.ofNullable(measure));
+    LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();
+    when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString())).thenReturn(lock);
+    when(testCaseLockService.unlockTestCase(anyString(), anyString())).thenReturn(lock);
+
+    TestCase updatedTestCase = testCase;
+    updatedTestCase.setJson(testCaseImportWithMeasureReport);
+
+    doReturn(updatedTestCase)
+        .when(testCaseService)
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
+    var testCaseImportRequest =
+        TestCaseImportRequest.builder()
+            .patientId(testCase.getPatientId())
+            .json(testCaseImportWithMeasureReport)
+            .build();
+
+    var response =
+        testCaseService.importTestCases(
+            List.of(testCaseImportRequest),
+            measure.getId(),
+            "test.user",
+            "TOKEN",
+            ModelType.QI_CORE.getValue());
+    assertEquals(1, response.size());
+    assertEquals(testCase.getPatientId(), response.get(0).getPatientId());
+    assertNotNull(testCase.getDescription());
+    assertEquals(
+        testCase.getDescription(), JsonUtil.getTestDescription(testCaseImportWithMeasureReport));
+    assertTrue(response.get(0).isSuccessful());
+  }
+
   void testShiftQiCoreTestCaseDatesTestCasesEmpty() {
     List<TestCase> shiftedTestCases =
         testCaseService.shiftQiCoreTestCaseDates(null, 1, "TOKEN", "measureId", "userName");

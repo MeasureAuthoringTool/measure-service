@@ -1,32 +1,26 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.*;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.measure.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.*;
 import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
 import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
@@ -352,7 +346,6 @@ public class TestCaseService {
             measure, testCase, queueType, accessToken);
       }
     }
-
     return validateAndSave(testCase, measure, username, accessToken);
   }
 
@@ -748,6 +741,30 @@ public class TestCaseService {
             .patientId(testCaseImportRequest.getPatientId())
             .successful(false)
             .build();
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      LockInfo lock =
+          testCaseLockService.lockTestCase(measureId, existingTestCase.getId(), userName);
+      log.info(
+          "User [{}] is trying to lock test case id: [{}]  for measureId: [{}]",
+          userName,
+          existingTestCase.getId(),
+          measureId);
+      if (lock != null && !userName.equals(lock.getLockedBy())) {
+        log.info(
+            "User [{}] failed to acquire lock for test case id : [{}], measureId: [{}]. "
+                + "The test case is locked by another user: [{}]",
+            userName,
+            existingTestCase.getId(),
+            measureId,
+            lock.getLockedBy());
+        failureOutcome.setMessage(
+            "Failed to import test case: "
+                + existingTestCase.getId()
+                + ". The test case is locked by another user: "
+                + lock.getLockedBy());
+        return failureOutcome;
+      }
+    }
     try {
       existingTestCase.setDescription(
           getDescription(model, testCaseImportRequest.getJson(), testCaseImportRequest));
@@ -759,6 +776,25 @@ public class TestCaseService {
           "User {} successfully imported test case with patient id : {}",
           userName,
           updatedTestCase.getPatientId());
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+        LockInfo lock = testCaseLockService.unlockTestCase(existingTestCase.getId(), userName);
+        if (lock != null) {
+          if (!lock.isLocked()) {
+            log.info(
+                "User [{}] unlocked test case id: [{}] for measureId: [{}]",
+                userName,
+                existingTestCase.getId(),
+                measureId);
+          } else {
+            log.info(
+                "User [{}] failed unlocking test case id: [{}] for measureId: [{}], test case locked by: [{}}",
+                userName,
+                existingTestCase.getId(),
+                measureId,
+                lock.getLockedBy());
+          }
+        }
+      }
       TestCaseImportOutcome testCaseImportOutcome =
           TestCaseImportOutcome.builder()
               .familyName(testCaseImportRequest.getFamilyName())
