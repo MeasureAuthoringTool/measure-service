@@ -1,64 +1,53 @@
 package cms.gov.madie.measure.config.mongock;
 
-import cms.gov.madie.measure.repositories.OrganizationRepository;
-import gov.cms.madie.models.common.Organization;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.List;
-
-import static org.mockito.ArgumentMatchers.any;
+import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.query.Criteria;
+import org.springframework.data.mongodb.core.query.Query;
+import org.springframework.data.mongodb.core.query.Update;
 import static org.mockito.Mockito.*;
-
 @ExtendWith(MockitoExtension.class)
-public class UpdateMeasureOrganizationRecordNameChangeUnitTest {
+class UpdateMeasureOrganizationRecordNameChangeUnitTest {
 
-  @Mock private OrganizationRepository organizationRepository;
+  @Mock
+  private MongoTemplate mongoTemplate;
 
-  public List<Organization> buildOrganizations() {
-    return List.of(
-        Organization.builder().id("OrgId1").name("The Joint Commission").build(),
-        Organization.builder().id("OrgId2").name("Another Organization").build(),
-        Organization.builder().id("OrgId3").name("The Example Commission").build());
+  @Test
+  void updatesOrganizationNameWhenMatchingRecordExists() {
+    Query query = new Query(Criteria.where("name").is("The Joint Commission"));
+    Update update = new Update().set("name", "Joint Commission");
+
+    when(mongoTemplate.updateFirst(query, update, "organization")).thenReturn(null);
+
+    new UpdateMeasureOrganizationRecordNameChangeUnit().updateMeasureOrganizationRecordName(mongoTemplate);
+
+    verify(mongoTemplate, times(1)).updateFirst(query, update, "organization");
   }
 
   @Test
-  void updateMeasureOrganizationRecordNameUpdatesMatchingOrganizations() throws Exception {
-    when(organizationRepository.findAll()).thenReturn(buildOrganizations());
+  void doesNotUpdateOrganizationNameWhenNoMatchingRecordExists() {
+    Query query = new Query(Criteria.where("name").is("The Joint Commission"));
+    Update update = new Update().set("name", "Joint Commission");
 
-    new UpdateMeasureOrganizationRecordNameChangeUnit()
-        .updateMeasureOrganizationRecordName(organizationRepository);
+    when(mongoTemplate.updateFirst(query, update, "organization")).thenReturn(null);
 
-    verify(organizationRepository, times(1)).save(any(Organization.class));
-    verify(organizationRepository, times(1))
-        .save(
-            argThat(
-                org -> "Joint Commission".equals(org.getName()) && "OrgId1".equals(org.getId())));
+    new UpdateMeasureOrganizationRecordNameChangeUnit().updateMeasureOrganizationRecordName(mongoTemplate);
+
+    verify(mongoTemplate, times(1)).updateFirst(query, update, "organization");
   }
 
   @Test
-  void updateMeasureOrganizationRecordNameDoesNothingIfNoMatchingOrganizations() throws Exception {
-    when(organizationRepository.findAll())
-        .thenReturn(
-            List.of(
-                Organization.builder().id("OrgId1").name("Another Organization").build(),
-                Organization.builder().id("OrgId2").name("Different Organization").build()));
+  void handlesEmptyCollectionGracefully() {
+    Query query = new Query(Criteria.where("name").is("The Joint Commission"));
+    Update update = new Update().set("name", "Joint Commission");
 
-    new UpdateMeasureOrganizationRecordNameChangeUnit()
-        .updateMeasureOrganizationRecordName(organizationRepository);
+    when(mongoTemplate.updateFirst(query, update, "organization")).thenReturn(null);
 
-    verify(organizationRepository, never()).save(any());
-  }
+    new UpdateMeasureOrganizationRecordNameChangeUnit().updateMeasureOrganizationRecordName(mongoTemplate);
 
-  @Test
-  void updateMeasureOrganizationRecordNameHandlesEmptyRepository() throws Exception {
-    when(organizationRepository.findAll()).thenReturn(List.of());
-
-    new UpdateMeasureOrganizationRecordNameChangeUnit()
-        .updateMeasureOrganizationRecordName(organizationRepository);
-
-    verify(organizationRepository, never()).save(any());
+    verify(mongoTemplate, times(1)).updateFirst(query, update, "organization");
   }
 }
