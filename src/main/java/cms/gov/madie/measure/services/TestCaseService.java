@@ -1,32 +1,26 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.*;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.measure.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
-
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.*;
 import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
 import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
@@ -42,6 +36,7 @@ public class TestCaseService {
   private final TestCaseSequenceService sequenceService;
   private final AppConfigService appConfigService;
   final TestCaseValidationService testCaseValidationService;
+  private final TestCaseLockService testCaseLockService;
 
   @Value("${madie.json.resources.base-uri}")
   @Getter
@@ -58,7 +53,8 @@ public class TestCaseService {
       MeasureService measureService,
       TestCaseSequenceService sequenceService,
       AppConfigService appConfigService,
-      TestCaseValidationService testCaseValidationService) {
+      TestCaseValidationService testCaseValidationService,
+      TestCaseLockService testCaseLockService) {
     this.measureRepository = measureRepository;
     this.actionLogService = actionLogService;
     this.fhirServicesClient = fhirServicesClient;
@@ -66,6 +62,7 @@ public class TestCaseService {
     this.sequenceService = sequenceService;
     this.appConfigService = appConfigService;
     this.testCaseValidationService = testCaseValidationService;
+    this.testCaseLockService = testCaseLockService;
   }
 
   protected TestCase enrichNewTestCase(TestCase testCase, String username, String measureId) {
@@ -106,10 +103,6 @@ public class TestCaseService {
   public TestCase persistTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
     final Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
 
     verifyUniqueTestCaseName(testCase, measure);
 
@@ -126,7 +119,6 @@ public class TestCaseService {
     if (enrichedTestCase != null && !measure.getMeasureMetaData().isDraft()) {
       enrichedTestCase.setCreatedBeforeVersioning(false);
     }
-
     if (measure.getTestCases() == null) {
       measure.setTestCases(List.of(enrichedTestCase));
     } else {
@@ -151,10 +143,6 @@ public class TestCaseService {
       return newTestCases;
     }
     final Measure measure = findMeasureById(measureId);
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
 
     List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
     for (TestCase testCase : newTestCases) {
@@ -267,10 +255,6 @@ public class TestCaseService {
   // common method 2 for two overloading updateTestCase() method
   private void handleTestCasesForUpdate(
       TestCase testCase, String measureId, String username, Measure measure) {
-    TestCaseServiceUtil.checkIfEditable(
-        appConfigService.isFlagEnabled(MadieFeatureFlag.EDIT_TESTS_ON_VERSIONED_MEASURES),
-        measure.getMeasureMetaData().isDraft(),
-        measure.getId());
     checkTestCaseSpecialCharacters(testCase);
     if (measure.getTestCases() == null) {
       measure.setTestCases(new ArrayList<>());
@@ -362,7 +346,6 @@ public class TestCaseService {
             measure, testCase, queueType, accessToken);
       }
     }
-
     return validateAndSave(testCase, measure, username, accessToken);
   }
 
@@ -758,6 +741,30 @@ public class TestCaseService {
             .patientId(testCaseImportRequest.getPatientId())
             .successful(false)
             .build();
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      LockInfo lock =
+          testCaseLockService.lockTestCase(measureId, existingTestCase.getId(), userName);
+      log.info(
+          "User [{}] is trying to lock test case id: [{}]  for measureId: [{}]",
+          userName,
+          existingTestCase.getId(),
+          measureId);
+      if (lock != null && !userName.equals(lock.getLockedBy())) {
+        log.info(
+            "User [{}] failed to acquire lock for test case id : [{}], measureId: [{}]. "
+                + "The test case is locked by another user: [{}]",
+            userName,
+            existingTestCase.getId(),
+            measureId,
+            lock.getLockedBy());
+        failureOutcome.setMessage(
+            "Failed to import test case: "
+                + existingTestCase.getId()
+                + ". The test case is locked by another user: "
+                + lock.getLockedBy());
+        return failureOutcome;
+      }
+    }
     try {
       existingTestCase.setDescription(
           getDescription(model, testCaseImportRequest.getJson(), testCaseImportRequest));
@@ -769,6 +776,25 @@ public class TestCaseService {
           "User {} successfully imported test case with patient id : {}",
           userName,
           updatedTestCase.getPatientId());
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+        LockInfo lock = testCaseLockService.unlockTestCase(existingTestCase.getId(), userName);
+        if (lock != null) {
+          if (!lock.isLocked()) {
+            log.info(
+                "User [{}] unlocked test case id: [{}] for measureId: [{}]",
+                userName,
+                existingTestCase.getId(),
+                measureId);
+          } else {
+            log.info(
+                "User [{}] failed unlocking test case id: [{}] for measureId: [{}], test case locked by: [{}}",
+                userName,
+                existingTestCase.getId(),
+                measureId,
+                lock.getLockedBy());
+          }
+        }
+      }
       TestCaseImportOutcome testCaseImportOutcome =
           TestCaseImportOutcome.builder()
               .familyName(testCaseImportRequest.getFamilyName())
@@ -883,24 +909,50 @@ public class TestCaseService {
   }
 
   public List<TestCase> shiftQiCoreTestCaseDates(
-      List<TestCase> testCases, int shifted, String accessToken) {
+      List<TestCase> testCases, int shifted, String accessToken, String measureId, String userId) {
     if (isEmpty(testCases)) {
       return Collections.emptyList();
     }
-    return fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();
-  }
-
-  public TestCase shiftQiCoreTestCaseDates(TestCase testCase, int shifted, String accessToken) {
-    if (testCase == null) {
-      return null;
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      List<String> testCaseIds = testCases.stream().map(testCase -> testCase.getId()).toList();
+      log.info(
+          "User: [{}} is trying to shift dates for measureId: [{}] - testCaseIds: {}",
+          userId,
+          measureId,
+          testCaseIds);
+      List<LockInfo> failedLocks =
+          testCaseLockService.lockAllTestCases(measureId, testCaseIds, userId);
+      // only when all locks are acquired can test cases' dates be shifted
+      if (isEmpty(failedLocks)) {
+        log.info("Locking all test cases for testCaseIds: {} successful", testCaseIds);
+        List<TestCase> shiftedTestCases =
+            fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();
+        testCaseLockService.unlockAllTestCases(testCaseIds, userId);
+        return shiftedTestCases;
+      } else {
+        // otherwise, unlock previously locked test cases, and shift dates should not happen
+        List<String> failedIds =
+            failedLocks.stream().map(failedLock -> failedLock.getLockedId()).toList();
+        log.info("Failed locking test cases for testCaseIds: {}", failedIds);
+        List<String> successLocks =
+            testCaseIds.stream().filter(testCaseId -> !failedIds.contains(testCaseId)).toList();
+        log.info("Revert locking test cases for testCaseIds: {}", successLocks);
+        List<String> failedMsgs =
+            failedLocks.stream()
+                .map(
+                    failedLock ->
+                        "Test Case: "
+                            + failedLock.getLockedId()
+                            + " is locked by user: "
+                            + failedLock.getLockedBy()
+                            + ".\n")
+                .toList();
+        testCaseLockService.unlockAllTestCases(successLocks, userId);
+        throw new LockNotObtainedException(failedMsgs.toString());
+      }
+    } else {
+      return fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();
     }
-    List<TestCase> shiftedTestCases =
-        fhirServicesClient.shiftTestCaseDates(List.of(testCase), shifted, accessToken).getBody();
-
-    if (isNotEmpty(shiftedTestCases)) {
-      return shiftedTestCases.get(0);
-    }
-    return null;
   }
 
   protected void defaultTestCaseJsonForQdmMeasure(TestCase testCase, Measure measure) {

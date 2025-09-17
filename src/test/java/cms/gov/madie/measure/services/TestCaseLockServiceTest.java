@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +28,8 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.TestCaseLockRepository;
-import cms.gov.madie.measure.resources.DuplicateKeyException;
+import org.springframework.dao.DuplicateKeyException;
+
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCase;
 
@@ -35,18 +37,21 @@ import gov.cms.madie.models.measure.TestCase;
 public class TestCaseLockServiceTest {
 
   @InjectMocks private TestCaseLockService service;
-  @Mock private MeasureRepository MeasureRepository;
+  @Mock private MeasureRepository measureRepository;
   @Mock private TestCaseLockRepository testCaseLockRepository;
 
   private Measure measure;
   private TestCase testCase;
+  private TestCase testCase2;
   private TestCaseLock lock;
   private Instant instant = Instant.parse("2025-08-08T10:43:00Z");
+  private TestCaseLock lock2;
 
   @BeforeEach
   public void setUp() {
     measure = Measure.builder().id("measureId").build();
     testCase = TestCase.builder().id("testCaseId").build();
+    testCase2 = TestCase.builder().id("testCaseId2").build();
     lock =
         TestCaseLock.builder()
             .measureId("measureId")
@@ -54,11 +59,19 @@ public class TestCaseLockServiceTest {
             .lockedAt(instant)
             .lockedBy("test.user")
             .build();
+
+    lock2 =
+        TestCaseLock.builder()
+            .measureId("measureId")
+            .testCaseId("testCaseId2")
+            .lockedAt(instant)
+            .lockedBy("another.user")
+            .build();
   }
 
   @Test
   public void testLockTestCaseMeasureNotFound() {
-    when(MeasureRepository.findById(anyString())).thenReturn(Optional.empty());
+    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
 
     assertThrows(
         ResourceNotFoundException.class,
@@ -67,7 +80,7 @@ public class TestCaseLockServiceTest {
 
   @Test
   public void testLockTestCaseMeasureNoTestCases() {
-    when(MeasureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
 
     assertThrows(
         ResourceNotFoundException.class,
@@ -77,7 +90,7 @@ public class TestCaseLockServiceTest {
   @Test
   public void testLockTestCaseMeasureTestCaseNotFound() {
     measure.setTestCases(List.of(testCase));
-    when(MeasureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
 
     assertThrows(
         ResourceNotFoundException.class,
@@ -87,7 +100,7 @@ public class TestCaseLockServiceTest {
   @Test
   public void testLockTestCaseSuccess() {
     measure.setTestCases(List.of(testCase));
-    when(MeasureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(testCaseLockRepository.insert(any(TestCaseLock.class))).thenReturn(lock);
 
     LockInfo lockInfo = service.lockTestCase("measureId", "testCaseId", "test.user");
@@ -100,7 +113,7 @@ public class TestCaseLockServiceTest {
   @Test
   public void testLockTestCaseThrowsDuplicateKeyExceptionForSameUser() {
     measure.setTestCases(List.of(testCase));
-    when(MeasureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(testCaseLockRepository.insert(any(TestCaseLock.class)))
         .thenThrow(DuplicateKeyException.class);
     when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.of(lock));
@@ -115,7 +128,7 @@ public class TestCaseLockServiceTest {
   @Test
   public void testLockTestCaseThrowsDuplicateKeyExceptionForDifferentUser() {
     measure.setTestCases(List.of(testCase));
-    when(MeasureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(testCaseLockRepository.insert(any(TestCaseLock.class)))
         .thenThrow(DuplicateKeyException.class);
     lock.setLockedBy("test.user2");
@@ -131,7 +144,7 @@ public class TestCaseLockServiceTest {
   @Test
   public void testLockTestCaseThrowsDuplicateKeyExceptionNoExistingLock() {
     measure.setTestCases(List.of(testCase));
-    when(MeasureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(testCaseLockRepository.insert(any(TestCaseLock.class)))
         .thenThrow(DuplicateKeyException.class);
     when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.empty());
@@ -198,5 +211,81 @@ public class TestCaseLockServiceTest {
     String msg2 = "No test case locks found for harpId: test.user";
     List<String> expected = List.of(msg1, msg2);
     assertEquals(expected, results);
+  }
+
+  @Test
+  public void testUnlockTestCasesIdsNull() {
+    boolean result = service.unlockAllTestCases(List.of(), "test.user");
+    assertFalse(result);
+  }
+
+  @Test
+  public void testUnlockTestCasesLockNotFound() {
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.empty());
+    boolean result = service.unlockAllTestCases(List.of("testCaseId", "testCaseId2"), "test.user");
+    assertFalse(result);
+  }
+
+  @Test
+  public void testUnlockTestCasesLockByDifferentUser() {
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.of(lock));
+    boolean result = service.unlockAllTestCases(List.of("testCaseId"), "another.user");
+    assertFalse(result);
+  }
+
+  @Test
+  public void testUnlockTestCasesSuccess() {
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.of(lock));
+    boolean result = service.unlockAllTestCases(List.of("testCaseId"), "test.user");
+    assertTrue(result);
+  }
+
+  @Test
+  public void testLockAllTestCasesTestCaseIdsNull() {
+    List<LockInfo> locks = service.lockAllTestCases("testMeasureId", null, "test.user");
+    assertTrue(CollectionUtils.isEmpty(locks));
+  }
+
+  @Test
+  public void testLockAllTestCasesPartialSuccess() {
+    measure.setTestCases(List.of(testCase, testCase2));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(testCaseLockRepository.insert(any(TestCaseLock.class)))
+        .thenReturn(lock) // first call: lock acquired
+        .thenThrow(DuplicateKeyException.class); // second call: failure
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.of(lock2));
+
+    List<LockInfo> failedLocks =
+        service.lockAllTestCases("measureId", List.of("testCaseId", "testCaseId2"), "test.user");
+
+    assertTrue(failedLocks.size() == 1);
+    assertEquals(lock2.getLockedBy(), failedLocks.get(0).getLockedBy());
+  }
+
+  @Test
+  public void testLockAllTestCasesAllSuccess() {
+    measure.setTestCases(List.of(testCase, testCase2));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(testCaseLockRepository.insert(any(TestCaseLock.class)))
+        .thenReturn(lock) // first call: lock acquired
+        .thenReturn(lock2); // second call: lock acquired
+
+    List<LockInfo> failedLocks =
+        service.lockAllTestCases("measureId", List.of("testCaseId", "testCaseId2"), "test.user");
+
+    assertTrue(failedLocks.size() == 0);
+  }
+
+  @Test
+  public void testLockAllTestCasesLockInfoNull() {
+    measure.setTestCases(List.of(testCase));
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(testCaseLockRepository.insert(any(TestCaseLock.class)))
+        .thenThrow(DuplicateKeyException.class);
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.empty());
+
+    List<LockInfo> locks =
+        service.lockAllTestCases("testMeasureId", List.of("testCaseId"), "test.user");
+    assertTrue(CollectionUtils.isEmpty(locks));
   }
 }

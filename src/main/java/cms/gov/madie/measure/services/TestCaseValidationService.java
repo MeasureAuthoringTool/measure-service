@@ -78,7 +78,7 @@ public class TestCaseValidationService {
     saveExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
   }
 
-  void submitOnImportValidationTask(
+  public void submitOnImportValidationTask(
       String measureId, TestCase testCase, String accessToken, ModelType modelType) {
     UUID taskId = UUID.randomUUID();
     log.info(
@@ -126,12 +126,13 @@ public class TestCaseValidationService {
           currentTestCase.getId(), measureId, taskId, validationOutcome);
       Instant stopTime = Instant.now();
       log.info(
-          "TestCase Validation::completed::{}::{}::{}::{}::{}",
+          "TestCase Validation::completed::{}::{}::{}::{}::saveQueue::{}::importQueue::{}",
           currentTestCase.getId(),
           taskId,
           stopTime,
           Duration.between(startTime, stopTime),
-          saveExecutor.getQueueSize());
+          saveExecutor.getQueueSize(),
+          importExecutor.getQueueSize());
     } catch (Exception e) {
       log.error(
           "Error validating Test Case with Id {} from Measure {}",
