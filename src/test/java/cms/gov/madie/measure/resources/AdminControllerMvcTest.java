@@ -1377,6 +1377,8 @@ public class AdminControllerMvcTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
         .andExpect(status().isBadRequest())
         .andReturn();
+
+    verify(measureService, times(1)).findMeasureById(anyString());
   }
 
   @Test
