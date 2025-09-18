@@ -1207,7 +1207,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.put("/admin/measures/measureId")
+                MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
                     .with(csrf())
                     .with(user(TEST_USER_ID))
                     .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1279,7 +1279,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.put("/admin/measures/measureId")
+                MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
                     .with(csrf())
                     .with(user(TEST_USER_ID))
                     .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1304,7 +1304,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/measureId")
+            MockMvcRequestBuilders.put("/admin/measures/{id}", "measureId")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1336,7 +1336,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/measureId")
+            MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1369,7 +1369,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/measureId")
+            MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1399,7 +1399,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.put("/admin/measures/measureId")
+                MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
                     .with(csrf())
                     .with(user(TEST_USER_ID))
                     .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
