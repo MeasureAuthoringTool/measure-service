@@ -472,7 +472,7 @@ public class AdminController {
     if (!StringUtils.equals(
         sourceMeasure.getMeasureSet().getMeasureSetId(),
         targetMeasure.getMeasureSet().getMeasureSetId())) {
-      throw new InvalidRequestException("Source measure from different Measure family/set.");
+      return false;
     }
 
     return targetMeasure.getVersion().getMajor() == sourceMeasure.getVersion().getMajor()
@@ -487,7 +487,8 @@ public class AdminController {
       TestCaseGroupPopulation tcGroup = tcGroupPopulations.get(i);
       tcGroup.setGroupId(msr.getGroups().get(i).getId());
       // Correct Stratification IDs
-      if (CollectionUtils.isNotEmpty(msr.getGroups().get(i).getStratifications())) {
+      if (CollectionUtils.isNotEmpty(msr.getGroups().get(i).getStratifications())
+          && CollectionUtils.isNotEmpty(tcGroup.getStratificationValues())) {
         for (int j = 0; j < msr.getGroups().get(i).getStratifications().size(); j++) {
           tcGroup
               .getStratificationValues()
