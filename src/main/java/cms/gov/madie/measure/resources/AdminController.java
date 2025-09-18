@@ -468,17 +468,13 @@ public class AdminController {
   }
 
   private boolean isDirectAncestor(Measure sourceMeasure, Measure targetMeasure) {
-    // Verify source and target are part of the same Measure Set
-    if (!StringUtils.equals(
-        sourceMeasure.getMeasureSet().getMeasureSetId(),
-        targetMeasure.getMeasureSet().getMeasureSetId())) {
-      return false;
-    }
-
-    return targetMeasure.getVersion().getMajor() == sourceMeasure.getVersion().getMajor()
-        && targetMeasure.getVersion().getMinor() == sourceMeasure.getVersion().getMinor()
-        && targetMeasure.getVersion().getRevisionNumber()
-            == sourceMeasure.getVersion().getRevisionNumber();
+    return (StringUtils.equals(
+            sourceMeasure.getMeasureSet().getMeasureSetId(),
+            targetMeasure.getMeasureSet().getMeasureSetId())
+        && (targetMeasure.getVersion().getMajor() == sourceMeasure.getVersion().getMajor()
+            && targetMeasure.getVersion().getMinor() == sourceMeasure.getVersion().getMinor()
+            && targetMeasure.getVersion().getRevisionNumber()
+                == sourceMeasure.getVersion().getRevisionNumber()));
   }
 
   private void correctIdsAndExpectedValueType(
