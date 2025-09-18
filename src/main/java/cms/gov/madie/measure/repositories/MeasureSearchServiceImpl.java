@@ -149,7 +149,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       List<AggregationOperation> initialPipeline = new ArrayList<>(aggregationOperations);
       initialPipeline.add(
           group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
-      List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
+          // Find all the measures that matches the given Criteria and fetch unique measureSetIds
+          List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
           mongoTemplate
               .aggregate(
                   newAggregation(initialPipeline), Measure.class, MeasureSetMatchCountDTO.class)
@@ -175,10 +176,14 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
       postMatchPipeline.add(matchMeasureSetIds);
 
+      // Sort those measures based on active status, version and draft status
+      // Active measures should come first, then draft measures, then by version
       SortOperation sortByVersionAndDraft =
           sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
       postMatchPipeline.add(sortByVersionAndDraft);
 
+      // Group all measures that has same measureSetId and get the count and also first document
+      // which will be the latest measure in the MeasureSet
       GroupOperation groupByMeasureSet = group("measureSetId").first("$$ROOT").as("selectedDoc");
       postMatchPipeline.add(groupByMeasureSet);
 
