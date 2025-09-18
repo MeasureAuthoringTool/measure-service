@@ -673,6 +673,15 @@ public class MeasureService {
         username, pageReq, searchCriteria, ownershipTypes);
   }
 
+  public Page<MeasureListDTO> getUpdatedSearchMeasuresByCriteria(
+      MeasureSearchCriteria searchCriteria,
+      List<OwnershipType> ownershipTypes,
+      Pageable pageReq,
+      String username) {
+    return measureRepository.updatedSearchMeasuresByCriteria(
+        username, pageReq, searchCriteria, ownershipTypes);
+  }
+
   protected void updateReferences(MeasureMetaData metaData) {
     if (metaData != null && !CollectionUtils.isEmpty(metaData.getReferences())) {
       List<Reference> references =

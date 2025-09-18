@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @Document
@@ -54,4 +55,6 @@ public class MeasureListDTO {
 
   private MeasureMetaData measureMetaData;
   private boolean hasAssociatedMeasures;
+  private Object latestMeasure;
+  private List<Object> matchedMeasures;
 }

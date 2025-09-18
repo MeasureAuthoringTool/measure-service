@@ -394,6 +394,32 @@ public class MeasureController {
     return ResponseEntity.ok(measures);
   }
 
+  @PutMapping("/measures/searches/new")
+  public ResponseEntity<Page<MeasureListDTO>> getUpdatedSearchMeasuresByCriteria(
+      Principal principal,
+      @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
+      @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
+      @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
+      @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+      @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
+      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction,
+      // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
+      // Determines the source of the nested measures invocation (i.e., measures page or testcase
+      // copy page) as both measureSearch or EditTestsOnVersionedMeasures flags are used in this API
+      // call.
+      @RequestParam(required = false, defaultValue = "measures") String invocationSource) {
+
+    final String username = principal.getName();
+    final Pageable pageReq =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
+
+    Page<MeasureListDTO> measures =
+        measureService.getUpdatedSearchMeasuresByCriteria(
+            searchCriteria, ownershipTypes, pageReq, username);
+
+    return ResponseEntity.ok(measures);
+  }
+
   @PutMapping("/measures/{measureSetId}/create-cms-id")
   public ResponseEntity<MeasureSet> createCmsId(
       @PathVariable String measureSetId, Principal principal) {

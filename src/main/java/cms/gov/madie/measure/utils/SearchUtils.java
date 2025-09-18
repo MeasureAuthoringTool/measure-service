@@ -5,6 +5,7 @@ import gov.cms.madie.models.common.Version;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.aggregation.LookupOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 import java.util.ArrayList;
@@ -13,6 +14,8 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.project;
+import static org.springframework.data.mongodb.core.aggregation.VariableOperators.Let.ExpressionVariable.newVariable;
 
 public class SearchUtils {
   public static void appendAdditionalSearchCriteria(
@@ -105,5 +108,38 @@ public class SearchUtils {
                             "$concat",
                             List.of(new Document("$toString", "$measureSet.cmsId"), "FHIR")),
                         new Document("$toString", "$measureSet.cmsId")))));
+  }
+
+  public static LookupOperation buildLookupActiveMeasures() {
+    AggregationOperation matchWithExpr =
+        ctx ->
+            new Document(
+                "$match",
+                new Document(
+                    "$expr",
+                    new Document(
+                        "$and",
+                        List.of(
+                            new Document("$eq", List.of("$measureSetId", "$$msId")),
+                            new Document("$eq", List.of("$active", true))))));
+
+    return LookupOperation.newLookup()
+        .from("measure")
+        .let(newVariable("msId").forField("measureSetId"))
+        .pipeline(
+            matchWithExpr,
+            project(
+                    "_id",
+                    "measureSetId",
+                    "measureName",
+                    "model",
+                    "version",
+                    "measureMetaData",
+                    "ecqmTitle",
+                    "lastModifiedAt",
+                    "active")
+                .and("measureMetaData.draft")
+                .as("draft"))
+        .as("measures");
   }
 }

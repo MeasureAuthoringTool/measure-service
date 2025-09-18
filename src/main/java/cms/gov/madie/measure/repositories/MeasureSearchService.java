@@ -29,6 +29,12 @@ public interface MeasureSearchService {
       MeasureSearchCriteria searchCriteria,
       List<OwnershipType> ownershipTypes);
 
+  Page<MeasureListDTO> updatedSearchMeasuresByCriteria(
+      String userId,
+      Pageable pageable,
+      MeasureSearchCriteria measureSearchCriteria,
+      List<OwnershipType> ownershipTypes);
+
   /**
    * Get all the measures(name, version and owner) if they include any version of given library name
    *
