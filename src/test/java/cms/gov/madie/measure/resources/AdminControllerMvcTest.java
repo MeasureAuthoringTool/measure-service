@@ -48,6 +48,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -1206,7 +1207,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
+                put("/admin/measures/{id}", draftMeasure.getId())
                     .with(csrf())
                     .with(user(TEST_USER_ID))
                     .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1278,7 +1279,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
+                put("/admin/measures/{id}", draftMeasure.getId())
                     .with(csrf())
                     .with(user(TEST_USER_ID))
                     .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1303,7 +1304,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/{id}", "measureId")
+            put("/admin/measures/{id}", "measureId")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1335,7 +1336,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
+            put("/admin/measures/{id}", draftMeasure.getId())
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1368,7 +1369,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
+            put("/admin/measures/{id}", draftMeasure.getId())
                 .with(csrf())
                 .with(user(TEST_USER_ID))
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1400,7 +1401,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                MockMvcRequestBuilders.put("/admin/measures/{id}", draftMeasure.getId())
+                put("/admin/measures/{id}", draftMeasure.getId())
                     .with(csrf())
                     .with(user(TEST_USER_ID))
                     .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
