@@ -76,11 +76,7 @@ public class AdminControllerMvcTest {
 
   @Autowired private MockMvc mockMvc;
 
-  private Population population;
-  private Stratification stratification;
   private Group group;
-  private TestCaseGroupPopulation testCaseGroupPopulation1;
-  private TestCaseGroupPopulation testCaseGroupPopulation2;
   private TestCase testCase1;
   private TestCase testCase2;
   private MeasureSet measureSet;
@@ -89,13 +85,13 @@ public class AdminControllerMvcTest {
 
   @BeforeEach
   public void setUp() {
-    population =
+    Population population =
         Population.builder()
             .id("groupId")
             .name(PopulationType.INITIAL_POPULATION)
             .definition("ipp")
             .build();
-    stratification =
+    Stratification stratification =
         Stratification.builder()
             .id("test-strat")
             .cqlDefinition("Initial Population")
@@ -111,7 +107,7 @@ public class AdminControllerMvcTest {
             .populations(List.of(population))
             .stratifications(List.of(stratification))
             .build();
-    testCaseGroupPopulation1 =
+    TestCaseGroupPopulation testCaseGroupPopulation1 =
         TestCaseGroupPopulation.builder()
             .scoring(MeasureScoring.COHORT.toString())
             .populationBasis("boolean")
@@ -130,7 +126,7 @@ public class AdminControllerMvcTest {
                         .expected("1")
                         .build()))
             .build();
-    testCaseGroupPopulation2 =
+    TestCaseGroupPopulation testCaseGroupPopulation2 =
         TestCaseGroupPopulation.builder()
             .scoring(MeasureScoring.COHORT.toString())
             .populationBasis("boolean")
@@ -1317,6 +1313,8 @@ public class AdminControllerMvcTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
         .andExpect(status().isNotFound())
         .andReturn();
+
+    verify(measureService, times(1)).findMeasureById(anyString());
   }
 
   @Test
@@ -1347,6 +1345,8 @@ public class AdminControllerMvcTest {
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
         .andExpect(status().isBadRequest())
         .andReturn();
+
+    verify(measureService, times(1)).findMeasureById(anyString());
   }
 
   @Test
