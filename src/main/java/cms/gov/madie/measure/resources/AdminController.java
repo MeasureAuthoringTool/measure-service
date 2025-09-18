@@ -468,17 +468,13 @@ public class AdminController {
   }
 
   private boolean isDirectAncestor(Measure sourceMeasure, Measure targetMeasure) {
-    // Verify source and target are part of the same Measure Set
-    if (!StringUtils.equals(
-        sourceMeasure.getMeasureSet().getMeasureSetId(),
-        targetMeasure.getMeasureSet().getMeasureSetId())) {
-      throw new InvalidRequestException("Source measure from different Measure family/set.");
-    }
-
-    return targetMeasure.getVersion().getMajor() == sourceMeasure.getVersion().getMajor()
-        && targetMeasure.getVersion().getMinor() == sourceMeasure.getVersion().getMinor()
-        && targetMeasure.getVersion().getRevisionNumber()
-            == sourceMeasure.getVersion().getRevisionNumber();
+    return (StringUtils.equals(
+            sourceMeasure.getMeasureSet().getMeasureSetId(),
+            targetMeasure.getMeasureSet().getMeasureSetId())
+        && (targetMeasure.getVersion().getMajor() == sourceMeasure.getVersion().getMajor()
+            && targetMeasure.getVersion().getMinor() == sourceMeasure.getVersion().getMinor()
+            && targetMeasure.getVersion().getRevisionNumber()
+                == sourceMeasure.getVersion().getRevisionNumber()));
   }
 
   private void correctIdsAndExpectedValueType(
@@ -487,7 +483,8 @@ public class AdminController {
       TestCaseGroupPopulation tcGroup = tcGroupPopulations.get(i);
       tcGroup.setGroupId(msr.getGroups().get(i).getId());
       // Correct Stratification IDs
-      if (CollectionUtils.isNotEmpty(msr.getGroups().get(i).getStratifications())) {
+      if (CollectionUtils.isNotEmpty(msr.getGroups().get(i).getStratifications())
+          && CollectionUtils.isNotEmpty(tcGroup.getStratificationValues())) {
         for (int j = 0; j < msr.getGroups().get(i).getStratifications().size(); j++) {
           tcGroup
               .getStratificationValues()
