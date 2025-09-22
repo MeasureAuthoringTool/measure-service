@@ -77,4 +77,18 @@ public class MeasureLockService {
     }
     return deleteMesssages;
   }
+
+  public LockInfo getMeasureLock(String measureId) {
+    Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
+    if (existingLock.isPresent()) {
+      log.info("Measure Id: [{}] is locked by: [{}]", measureId, existingLock.get().getLockedBy());
+      return LockInfo.builder()
+          .lockedBy(existingLock.get().getLockedBy())
+          .isLocked(true)
+          .lockedId(existingLock.get().getId())
+          .build();
+    }
+    log.info("Measure Id: [{}] is not locked", measureId);
+    return LockInfo.builder().isLocked(false).build();
+  }
 }

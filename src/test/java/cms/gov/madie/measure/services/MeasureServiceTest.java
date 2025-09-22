@@ -31,6 +31,8 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import cms.gov.madie.measure.dto.LockInfo;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -75,6 +77,9 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private MeasureSetService measureSetService;
   @Mock private CqlTemplateConfigService cqlTemplateConfigService;
   @Mock private TerminologyValidationService terminologyValidationService;
+  @Mock private AppConfigService appConfigService;
+  @Mock private MeasureLockService measureLockService;
+  @Mock private TestCaseLockService testCaseLockService;
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
 
@@ -2315,5 +2320,186 @@ public class MeasureServiceTest implements ResourceUtil {
         () -> measureService.getMeasureHistory(measureId, userName));
     verify(measureRepository, times(1)).findById(measureId);
     verifyNoInteractions(actionLogService);
+  }
+
+  @Test
+  void deactivateMeasure() {
+    MeasureSet measureSet =
+        MeasureSet.builder().measureSetId("measureSetId").owner("testUser").build();
+    MeasureMetaData meta = MeasureMetaData.builder().draft(true).build();
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureMetaData(meta)
+            .active(true)
+            .build();
+    Measure deactivated = measure.toBuilder().active(false).build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+    when(measureRepository.save(any(Measure.class))).thenReturn(deactivated);
+
+    Measure result = measureService.deactivateMeasure("measureId", "testUser");
+
+    assertEquals(false, result.isActive());
+  }
+
+  @Test
+  void deactivateMeasureWhenFeatureFlagIsOn() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    LockInfo lock = LockInfo.builder().isLocked(false).build();
+    when(measureLockService.getMeasureLock(anyString())).thenReturn(lock);
+    when(testCaseLockService.testCaseLocksByOtherUser(anyString(), any(List.class), anyString()))
+        .thenReturn(false);
+
+    MeasureSet measureSet =
+        MeasureSet.builder().measureSetId("measureSetId").owner("testUser").build();
+    MeasureMetaData meta = MeasureMetaData.builder().draft(true).build();
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureMetaData(meta)
+            .active(true)
+            .testCases(List.of(TestCase.builder().id("testCaseId").build()))
+            .build();
+    Measure deactivated = measure.toBuilder().active(false).build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+    when(measureRepository.save(any(Measure.class))).thenReturn(deactivated);
+
+    Measure result = measureService.deactivateMeasure("measureId", "testUser");
+
+    assertEquals(false, result.isActive());
+  }
+
+  @Test
+  void deactivateMeasureWhenMeasureIsLockedByUser() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    LockInfo lock = LockInfo.builder().isLocked(true).lockedBy("testUser").build();
+    when(measureLockService.getMeasureLock(anyString())).thenReturn(lock);
+    MeasureSet measureSet =
+        MeasureSet.builder().measureSetId("measureSetId").owner("testUser").build();
+    MeasureMetaData meta = MeasureMetaData.builder().draft(true).build();
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureMetaData(meta)
+            .active(true)
+            .build();
+    Measure deactivated = measure.toBuilder().active(false).build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+    when(measureRepository.save(any(Measure.class))).thenReturn(deactivated);
+
+    Measure result = measureService.deactivateMeasure("measureId", "testUser");
+
+    assertEquals(false, result.isActive());
+  }
+
+  @Test
+  void deactivateMeasureWhenMeasureIsLockedByOtheUser() {
+    MeasureSet measureSet =
+        MeasureSet.builder().measureSetId("measureSetId").owner("testUser").build();
+    MeasureMetaData meta = MeasureMetaData.builder().draft(true).build();
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureMetaData(meta)
+            .active(true)
+            .build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    LockInfo lock = LockInfo.builder().isLocked(true).lockedBy("otherUser").build();
+    when(measureLockService.getMeasureLock(anyString())).thenReturn(lock);
+
+    assertThrows(
+        LockNotObtainedException.class,
+        () -> measureService.deactivateMeasure("measureId", "testUser"));
+  }
+
+  @Test
+  void deactivateMeasureWhenTestCasesLockedByOtheUser() {
+    MeasureSet measureSet =
+        MeasureSet.builder().measureSetId("measureSetId").owner("testUser").build();
+    MeasureMetaData meta = MeasureMetaData.builder().draft(true).build();
+    TestCase testCase = TestCase.builder().id("testCaseId").build();
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureMetaData(meta)
+            .active(true)
+            .testCases(List.of(testCase))
+            .build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    LockInfo lock = LockInfo.builder().isLocked(true).lockedBy("testUser").build();
+    when(measureLockService.getMeasureLock(anyString())).thenReturn(lock);
+    when(testCaseLockService.testCaseLocksByOtherUser(anyString(), any(List.class), anyString()))
+        .thenReturn(true);
+
+    assertThrows(
+        LockNotObtainedException.class,
+        () -> measureService.deactivateMeasure("measureId", "testUser"));
+  }
+
+  @Test
+  void deactivateMeasureThrowsInvalidIdException() {
+    assertThrows(
+        InvalidIdException.class, () -> measureService.deactivateMeasure(null, "testUser"));
+  }
+
+  @Test
+  void deactivateMeasureThrowsResourceNotFoundException() {
+    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> measureService.deactivateMeasure("measureId", "testUser"));
+  }
+
+  @Test
+  void deactivateMeasureThrowsResourceNotFoundExceptionWhenDraftIsFalse() {
+    MeasureSet measureSet =
+        MeasureSet.builder().measureSetId("measureSetId").owner("testUser").build();
+    MeasureMetaData meta = MeasureMetaData.builder().draft(false).build();
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureMetaData(meta)
+            .active(false)
+            .build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> measureService.deactivateMeasure("measureId", "testUser"));
+  }
+
+  @Test
+  void deactivateMeasureThrowsInvalidDraftStatusException() {
+    MeasureSet measureSet =
+        MeasureSet.builder().measureSetId("measureSetId").owner("testUser").build();
+    MeasureMetaData meta = MeasureMetaData.builder().draft(true).build();
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureMetaData(meta)
+            .active(false)
+            .build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+
+    assertThrows(
+        InvalidDraftStatusException.class,
+        () -> measureService.deactivateMeasure("measureId", "testUser"));
   }
 }

@@ -288,4 +288,36 @@ public class TestCaseLockServiceTest {
         service.lockAllTestCases("testMeasureId", List.of("testCaseId"), "test.user");
     assertTrue(CollectionUtils.isEmpty(locks));
   }
+
+  @Test
+  public void testCaseLocksByOtherUser() {
+    boolean result = service.testCaseLocksByOtherUser("measureId", null, "test.user");
+    assertFalse(result);
+  }
+
+  @Test
+  public void testCaseLocksByOtherUserReturnsTrue() {
+    TestCaseLock lock = TestCaseLock.builder().lockedBy("anotherUser").build();
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.of(lock));
+    boolean result =
+        service.testCaseLocksByOtherUser("measureId", List.of("testCaseId"), "test.user");
+    assertTrue(result);
+  }
+
+  @Test
+  public void testCaseLocksByOtherUserReturnsFalse() {
+    TestCaseLock lock = TestCaseLock.builder().lockedBy("test.user").build();
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.of(lock));
+    boolean result =
+        service.testCaseLocksByOtherUser("measureId", List.of("testCaseId"), "test.user");
+    assertFalse(result);
+  }
+
+  @Test
+  public void testCaseLocksByOtherUserReturnsFalseWhenLockNotFound() {
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.empty());
+    boolean result =
+        service.testCaseLocksByOtherUser("measureId", List.of("testCaseId"), "test.user");
+    assertFalse(result);
+  }
 }

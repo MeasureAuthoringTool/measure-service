@@ -165,4 +165,22 @@ public class TestCaseLockService {
     log.info("lockTestCases: " + success);
     return success;
   }
+
+  public boolean testCaseLocksByOtherUser(
+      String measureId, List<String> testCaseIds, String userId) {
+    if (CollectionUtils.isNotEmpty(testCaseIds)) {
+      for (String testCaseId : testCaseIds) {
+        Optional<TestCaseLock> existingLock = testCaseLockRepository.findByTestCaseId(testCaseId);
+        if (existingLock.isPresent() && !userId.equals(existingLock.get().getLockedBy())) {
+          log.info(
+              "Test Case: [{}} is locked by: [{}], other than user: [{}]",
+              testCaseId,
+              existingLock.get().getLockedBy(),
+              userId);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
 }

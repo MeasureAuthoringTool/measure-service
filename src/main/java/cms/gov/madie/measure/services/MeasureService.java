@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.LockInfo;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -43,8 +45,10 @@ public class MeasureService {
   private final ActionLogService actionLogService;
   private final MeasureSetService measureSetService;
   private final CqlTemplateConfigService cqlTemplateConfigService;
-
   private final TerminologyValidationService terminologyValidationService;
+  private final AppConfigService appConfigService;
+  private final MeasureLockService measureLockService;
+  private final TestCaseLockService testCaseLockService;
 
   public void verifyAuthorizationByMeasureSetId(
       String username, String measureSetId, boolean ownerOnly) {
@@ -331,9 +335,37 @@ public class MeasureService {
       } else {
         throw new InvalidDraftStatusException(id);
       }
-
     } else {
       throw new ResourceNotFoundException("Measure not found during delete action.");
+    }
+
+    List<String> testCaseIds = null;
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      LockInfo lock = measureLockService.getMeasureLock(id);
+      if (lock.isLocked() && !username.equals(lock.getLockedBy())) {
+        log.info(
+            "Measure: [{}] cannot be deactived by user: [{}], measure is locked by: [{}]",
+            id,
+            username,
+            lock.getLockedBy());
+        throw new LockNotObtainedException(username, lock.getLockedBy());
+      }
+      if (!CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
+        testCaseIds =
+            existingMeasure.getTestCases().stream()
+                .map(TestCase::getId)
+                .collect(Collectors.toList());
+        boolean testCaseLocksByOtherUser =
+            testCaseLockService.testCaseLocksByOtherUser(id, testCaseIds, username);
+        if (testCaseLocksByOtherUser) {
+          log.info(
+              "Measure: [{}] cannot be deactived by user: [{}], one of the test cases is locked by: [{}]",
+              id,
+              username,
+              lock.getLockedBy());
+          throw new LockNotObtainedException(username, lock.getLockedBy());
+        }
+      }
     }
 
     existingMeasure.setActive(false);
@@ -345,7 +377,19 @@ public class MeasureService {
     // prevent users from overwriting versionId and measureSetId
     existingMeasure.setVersionId(existingMeasure.getVersionId());
     existingMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
+
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      log.info("Locking measure: [{}] before deactivating it", id);
+      measureLockService.lockMeasure(id, username);
+    }
+
     Measure saveMeasure = measureRepository.save(existingMeasure);
+
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      log.info("Unocking measure: [{}] after deactivating it", id);
+      measureLockService.unlockMeasure(id, username);
+    }
+
     actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
     return saveMeasure;
   }
