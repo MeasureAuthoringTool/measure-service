@@ -68,10 +68,6 @@ class MeasureLockServiceTest {
         .when(repository)
         .insert(any(MeasureLock.class));
 
-    //    MeasureLock existing = new MeasureLock();
-    //    existing.setMeasureId(measureId);
-    //    existing.setLockedBy("other-user");
-    //    when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(existing));
     measureLock.setLockedBy("other-user");
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(measureLock));
 
@@ -97,11 +93,6 @@ class MeasureLockServiceTest {
 
   @Test
   void testUnlockMeasureWhenUserOwnsLock() {
-    //    MeasureLock lock = new MeasureLock();
-    //    lock.setMeasureId(measureId);
-    //    lock.setLockedBy(userName);
-    //    lock.setLockedAt(Instant.now());
-    //    when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(lock));
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(measureLock));
 
     LockInfo response = service.unlockMeasure(measureId, userName);
@@ -113,10 +104,6 @@ class MeasureLockServiceTest {
 
   @Test
   void testUnlockMeasureWhenDifferentUserOwnsLock() {
-    //    MeasureLock lock = new MeasureLock();
-    //    lock.setMeasureId(measureId);
-    //    lock.setLockedBy("other-user");
-    //    when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(lock));
     measureLock.setLockedBy("other-user");
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(measureLock));
 
@@ -139,12 +126,6 @@ class MeasureLockServiceTest {
 
   @Test
   public void testUnlockByUser() {
-    //    MeasureLock measureLock =
-    //        MeasureLock.builder()
-    //            .id("measureLockId")
-    //            .measureId("measureId")
-    //            .lockedBy("test.user")
-    //            .build();
     when(repository.findAllByLockedBy(anyString())).thenReturn(List.of(measureLock));
 
     List<String> results = service.unlockByUser("test.user");
