@@ -20,8 +20,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
+import static java.util.stream.Collectors.*;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 
@@ -204,8 +204,7 @@ public class TestCaseService {
         List<TestCase> validatedTestCases =
             updateTestCaseValidResourcesForMeasure(measure, accessToken);
         Map<String, TestCase> testCaseMap =
-            validatedTestCases.stream()
-                .collect(Collectors.toMap(TestCase::getId, Function.identity()));
+            validatedTestCases.stream().collect(toMap(TestCase::getId, Function.identity()));
         reports.forEach(
             report ->
                 report.setCurrentValidResource(
@@ -370,40 +369,6 @@ public class TestCaseService {
 
   public List<TestCase> findTestCasesByMeasureId(String measureId) {
     return findMeasureById(measureId).getTestCases();
-  }
-
-  public String deleteTestCase(String measureId, String testCaseId, String username) {
-    if (StringUtils.isBlank(testCaseId) || StringUtils.isBlank(measureId)) {
-      log.info("Test case/Measure Id cannot be null");
-      throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
-    }
-    Measure measure = findMeasureById(measureId);
-    measureService.verifyAuthorization(username, measure);
-    if (isEmpty(measure.getTestCases())) {
-      log.info("Measure with ID [{}] doesn't have any test cases", measureId);
-      throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
-    }
-    TestCaseServiceUtil.checkIfDeletable(
-        measure.getTestCases(), List.of(testCaseId), measure.getMeasureMetaData().isDraft());
-    List<TestCase> remainingTestCases =
-        measure.getTestCases().stream().filter(g -> !g.getId().equals(testCaseId)).toList();
-    // to check if given test case id is present
-    if (remainingTestCases.size() == measure.getTestCases().size()) {
-      log.info(
-          "Measure with ID [{}] doesn't have any test case with ID [{}]", measureId, testCaseId);
-      throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
-    }
-    measure.setTestCases(remainingTestCases);
-    log.info(
-        "User [{}] has successfully deleted a test case with Id [{}] from measure [{}]",
-        username,
-        testCaseId,
-        measureId);
-    measureRepository.save(measure);
-    if (isEmpty(remainingTestCases)) {
-      sequenceService.resetSequence(measureId);
-    }
-    return "Test case deleted successfully: " + testCaseId;
   }
 
   public String deleteTestCases(String measureId, List<String> testCaseIds, String username) {
@@ -905,7 +870,7 @@ public class TestCaseService {
         .map(TestCase::getSeries)
         .filter(series -> series != null && !series.trim().isEmpty())
         .distinct()
-        .collect(Collectors.toList());
+        .collect(toList());
   }
 
   public List<TestCase> shiftQiCoreTestCaseDates(
