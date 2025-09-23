@@ -267,8 +267,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
 
-    String output = testCaseService.deleteTestCase("measure-id", "TC2_ID", "test.user");
-    assertThat(output, is(equalTo("Test case deleted successfully: TC2_ID")));
+    String output = testCaseService.deleteTestCases("measure-id", List.of("TC2_ID"), "test.user");
     verify(testCaseSequenceService, times(1)).resetSequence("measure-id");
   }
 
@@ -1372,8 +1371,8 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
 
-    String output = testCaseService.deleteTestCase("measure-id", "TC2_ID", "test.user");
-    assertThat(output, is(equalTo("Test case deleted successfully: TC2_ID")));
+    String output = testCaseService.deleteTestCases("measure-id", List.of("TC2_ID"), "test.user");
+    assertThat(output, is(equalTo("Successfully deleted provided test cases")));
   }
 
   @Test
@@ -1395,8 +1394,8 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
 
-    String output = testCaseService.deleteTestCase("measure-id", "TC2_ID", "test.user");
-    assertThat(output, is(equalTo("Test case deleted successfully: TC2_ID")));
+    String output = testCaseService.deleteTestCases("measure-id", List.of("TC2_ID"), "test.user");
+    assertThat(output, is(equalTo("Successfully deleted provided test cases")));
   }
 
   @Test
@@ -1417,48 +1416,28 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenReturn(Optional.of(existingMeasure));
     assertThrows(
         InvalidIdException.class,
-        () -> testCaseService.deleteTestCase("measure-id", "TC1_ID", "test.user"));
+        () -> testCaseService.deleteTestCases("measure-id", List.of("TC1_ID"), "test.user"));
   }
 
   @Test
   void testDeleteTestCaseReturnsExceptionForNullMeasureId() {
     assertThrows(
         InvalidIdException.class,
-        () -> testCaseService.deleteTestCase("", "testCaseId", "OtherUser"));
+        () -> testCaseService.deleteTestCases("", List.of("testCaseId"), "OtherUser"));
   }
 
   @Test
   void testDeleteTestCaseReturnsExceptionForResourceNotFound() {
     assertThrows(
         ResourceNotFoundException.class,
-        () -> testCaseService.deleteTestCase("testid", "testCaseId", "user2"));
+        () -> testCaseService.deleteTestCases("testid", List.of("testCaseId"), "user2"));
   }
 
   @Test
   void testDeleteTestCaseReturnsExceptionForNullTestCaseId() {
     assertThrows(
         InvalidIdException.class,
-        () -> testCaseService.deleteTestCase("measure-id", "", "OtherUser"));
-  }
-
-  @Test
-  void testDeleteTestCaseReturnsExceptionForTestCaseNotFound() {
-    List<TestCase> testCases =
-        List.of(
-            TestCase.builder().id("TC1_ID").title("TC1").build(),
-            TestCase.builder().id("TC2_ID").title("TC2").build());
-    final Measure measure =
-        Measure.builder()
-            .id("measure-id")
-            .createdBy("OtherUser")
-            .testCases(testCases)
-            .measureMetaData(MeasureMetaData.builder().draft(true).build())
-            .build();
-    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
-        .thenReturn(Optional.of(measure));
-    assertThrows(
-        InvalidIdException.class,
-        () -> testCaseService.deleteTestCase("measure-id", "testCaseId", "OtherUser"));
+        () -> testCaseService.deleteTestCases("measure-id", Collections.emptyList(), "OtherUser"));
   }
 
   @Test
@@ -1476,14 +1455,14 @@ public class TestCaseServiceTest implements ResourceUtil {
         .verifyAuthorization(anyString(), any(Measure.class));
     assertThrows(
         UnauthorizedException.class,
-        () -> testCaseService.deleteTestCase("measure-id", "testCaseId", "user2"));
+        () -> testCaseService.deleteTestCases("measure-id", List.of("testCaseId"), "user2"));
   }
 
   @Test
   void testDeleteTestCaseReturnsExceptionForTestCaseNotFoundInMeasure() {
     assertThrows(
         ResourceNotFoundException.class,
-        () -> testCaseService.deleteTestCase("measure-id", "testCaseId", "test.user"));
+        () -> testCaseService.deleteTestCases("measure-id", List.of("testCaseId"), "test.user"));
   }
 
   @Test
@@ -1500,7 +1479,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     assertThrows(
         InvalidIdException.class,
-        () -> testCaseService.deleteTestCase("measure-id", "testCaseId", "test.user"));
+        () -> testCaseService.deleteTestCases("measure-id", List.of("testCaseId"), "test.user"));
   }
 
   @Test
