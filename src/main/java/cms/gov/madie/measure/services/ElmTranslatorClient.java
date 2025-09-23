@@ -40,9 +40,17 @@ public class ElmTranslatorClient {
       URI uri =
           getElmJsonURI(measureModel, CqlCompilerException.ErrorSeverity.valueOf(elmErrorSeverity));
       HttpEntity<String> cqlEntity = getCqlHttpEntity(cql, accessToken, null, null);
-      return elmTranslatorRestTemplate
-          .exchange(uri, HttpMethod.PUT, cqlEntity, ElmJson.class)
-          .getBody();
+      ElmJson elmJson =
+          elmTranslatorRestTemplate
+              .exchange(uri, HttpMethod.PUT, cqlEntity, ElmJson.class)
+              .getBody();
+      if (elmJson == null) {
+        log.info("DEBUG::{}::{}", cql, "No ELM returned from translation service");
+      } else {
+
+        log.info("DEBUG::{}::{}", cql, elmJson.getJson());
+      }
+      return elmJson;
     } catch (Exception ex) {
       log.error("An error occurred calling the CQL to ELM translation service", ex);
       throw new CqlElmTranslationServiceException(
