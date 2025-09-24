@@ -47,6 +47,14 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         .as("measureSet");
   }
 
+  private LookupOperation getLookupOperationMeasureLock() {
+    return LookupOperation.newLookup()
+        .from("measureLock")
+        .localField("idAsString")
+        .foreignField("measureId")
+        .as("measureLock");
+  }
+
   @Override
   public Page<MeasureListDTO> searchMeasuresByCriteria(
       String userId,
@@ -61,10 +69,32 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
 
+    // join measureLock to lookup lockedBy and measureId
+    //    LookupOperation measureLockLookup = null;
+    //    UnwindOperation unwindMeasureLock = null;
+    //    AddFieldsOperation addIdAsString = null;
+    //    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+    //      // 1. Convert Measure._id to string
+    //      addIdAsString =
+    //          AddFieldsOperation.addField("idAsString")
+    //              .withValue(ConvertOperators.ToString.toString("_id"))
+    //              .build();
+    //      // 2. Lookup measureLock
+    //      measureLockLookup = getLookupOperationMeasureLock();
+    //      // 3. Unwind measureLock if needed
+    //      unwindMeasureLock = Aggregation.unwind("measureLock", true);
+    //    }
+
     // Project only needed fields from Measure to improve performance
     ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
+
     aggregationOperations.add(lookupOperation);
     aggregationOperations.add(unwindOperation);
+    //    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+    //      aggregationOperations.add(addIdAsString);
+    //      aggregationOperations.add(measureLockLookup);
+    //      aggregationOperations.add(unwindMeasureLock);
+    //    }
     aggregationOperations.add(initialProjection);
 
     Criteria measureCriteria = Criteria.where("active").is(true);

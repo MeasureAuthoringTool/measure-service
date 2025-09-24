@@ -35,15 +35,15 @@ public class MeasureLockService {
 
     try {
       measureLockRepository.insert(lock);
-      return new LockInfo(true, userName, measureId); // not locked by someone else
+      return new LockInfo(true, userName, measureId, null); // not locked by someone else
     } catch (DuplicateKeyException ex) {
       Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
       if (existingLock.isPresent()) {
         String lockedBy = existingLock.get().getLockedBy();
         boolean locked = !lockedBy.equals(userName);
-        return new LockInfo(locked, lockedBy, measureId);
+        return new LockInfo(locked, lockedBy, measureId, null);
       }
-      return new LockInfo(true, null, measureId); // fallback
+      return new LockInfo(true, null, measureId, null); // fallback
     }
   }
 
@@ -52,10 +52,11 @@ public class MeasureLockService {
     // it's our lock. We delete it.
     if (existingLock.isPresent() && existingLock.get().getLockedBy().equals(userName)) {
       measureLockRepository.deleteByMeasureId(measureId);
-      return new LockInfo(false, null, measureId); // Successfully unlocked
+      return new LockInfo(false, null, measureId, null); // Successfully unlocked
     }
     // it's not our lock. we dont do anything
-    return new LockInfo(true, existingLock.map(MeasureLock::getLockedBy).orElse(null), measureId);
+    return new LockInfo(
+        true, existingLock.map(MeasureLock::getLockedBy).orElse(null), measureId, null);
   }
 
   public List<String> unlockByUser(String userName) {
@@ -76,5 +77,9 @@ public class MeasureLockService {
       deleteMesssages.add("No measure locks found for harpId: " + userName);
     }
     return deleteMesssages;
+  }
+
+  public List<MeasureLock> getAllMeasureLocks() {
+    return measureLockRepository.findAll();
   }
 }

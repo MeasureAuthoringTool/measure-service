@@ -13,4 +13,5 @@ public class LockInfo {
   private boolean isLocked;
   private String lockedBy;
   private String lockedId;
+  private String lockMessage;
 }

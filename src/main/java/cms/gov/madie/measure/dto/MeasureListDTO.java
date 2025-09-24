@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.*;
@@ -54,4 +55,8 @@ public class MeasureListDTO {
 
   private MeasureMetaData measureMetaData;
   private boolean hasAssociatedMeasures;
+
+  // private MeasureLock measureLock;
+  private LockInfo lockInfo;
+  // private List<TestCase> testCases;
 }

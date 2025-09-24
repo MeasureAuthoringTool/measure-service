@@ -165,4 +165,8 @@ public class TestCaseLockService {
     log.info("lockTestCases: " + success);
     return success;
   }
+
+  public List<TestCaseLock> getAllTestCaseLocks() {
+    return testCaseLockRepository.findAll();
+  }
 }
