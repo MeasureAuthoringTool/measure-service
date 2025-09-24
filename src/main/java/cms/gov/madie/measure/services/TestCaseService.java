@@ -585,8 +585,10 @@ public class TestCaseService {
       String accessToken,
       String model) {
     try {
-      String familyName = getPatientFamilyName(model, testCaseImportRequest.getJson());
-      String givenName = getPatientGivenName(model, testCaseImportRequest.getJson());
+      String familyName =
+          TestCaseServiceUtil.getPatientFamilyNameFromJson(model, testCaseImportRequest.getJson());
+      String givenName =
+          TestCaseServiceUtil.getPatientGivenNameFromJson(model, testCaseImportRequest.getJson());
       log.info("Test Case title + Test Case Group:  {}", givenName + " " + familyName);
       if (StringUtils.isBlank(givenName)) {
         return buildTestCaseImportOutcome(
@@ -655,26 +657,6 @@ public class TestCaseService {
     }
   }
 
-  public String getPatientFamilyName(String model, String json) throws JsonProcessingException {
-    String patientFamilyName = null;
-    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
-      patientFamilyName = JsonUtil.getPatientName(json, "family");
-    } else if ((ModelType.QDM_5_6.getValue().equalsIgnoreCase(model))) {
-      patientFamilyName = JsonUtil.getPatientNameQdm(json, "familyName");
-    }
-    return patientFamilyName;
-  }
-
-  public String getPatientGivenName(String model, String json) throws JsonProcessingException {
-    String patientGivenName = null;
-    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
-      patientGivenName = JsonUtil.getPatientName(json, "given");
-    } else if ((ModelType.QDM_5_6.getValue().equalsIgnoreCase(model))) {
-      patientGivenName = JsonUtil.getPatientNameQdm(json, "givenNames");
-    }
-    return patientGivenName;
-  }
-
   private List<TestCaseGroupPopulation> getTestCaseGroupPopulationsFromImportRequest(
       String model, String json, Measure measure) throws JsonProcessingException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations = null;
@@ -706,7 +688,8 @@ public class TestCaseService {
             .patientId(testCaseImportRequest.getPatientId())
             .successful(false)
             .build();
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
+        && existingTestCase.getId() != null) {
       LockInfo lock =
           testCaseLockService.lockTestCase(measureId, existingTestCase.getId(), userName);
       log.info(

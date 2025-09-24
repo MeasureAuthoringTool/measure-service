@@ -15,6 +15,8 @@ import java.util.Set;
 import java.util.UUID;
 
 import cms.gov.madie.measure.exceptions.InvalidIdException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
@@ -621,5 +623,27 @@ public class TestCaseServiceUtil {
       }
     }
     return true;
+  }
+
+  public static String getPatientFamilyNameFromJson(String model, String json)
+      throws JsonProcessingException {
+    String patientFamilyName = null;
+    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
+      patientFamilyName = JsonUtil.getPatientName(json, "family");
+    } else if ((ModelType.QDM_5_6.getValue().equalsIgnoreCase(model))) {
+      patientFamilyName = JsonUtil.getPatientNameQdm(json, "familyName");
+    }
+    return patientFamilyName;
+  }
+
+  public static String getPatientGivenNameFromJson(String model, String json)
+      throws JsonProcessingException {
+    String patientGivenName = null;
+    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
+      patientGivenName = JsonUtil.getPatientName(json, "given");
+    } else if ((ModelType.QDM_5_6.getValue().equalsIgnoreCase(model))) {
+      patientGivenName = JsonUtil.getPatientNameQdm(json, "givenNames");
+    }
+    return patientGivenName;
   }
 }
