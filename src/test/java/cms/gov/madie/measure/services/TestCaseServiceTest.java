@@ -265,7 +265,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureRepository.findByIdAndActive(anyString(), eq(true)))
         .thenReturn(Optional.of(existingMeasure));
 
-    doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
+    doReturn(existingMeasure).when(measureRepository).removeTestCase(anyString(), anyString());
 
     String output = testCaseService.deleteTestCases("measure-id", List.of("TC2_ID"), "test.user");
     verify(testCaseSequenceService, times(1)).resetSequence("measure-id");
@@ -1369,10 +1369,10 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureRepository.findByIdAndActive(anyString(), eq(true)))
         .thenReturn(Optional.of(existingMeasure));
 
-    doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
+    doReturn(existingMeasure).when(measureRepository).removeTestCase(anyString(), anyString());
 
     String output = testCaseService.deleteTestCases("measure-id", List.of("TC2_ID"), "test.user");
-    assertThat(output, is(equalTo("Successfully deleted provided test cases")));
+    assertThat(output, is(equalTo("Successfully deleted test cases: TC2_ID")));
   }
 
   @Test
@@ -1392,10 +1392,10 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureRepository.findByIdAndActive(anyString(), eq(true)))
         .thenReturn(Optional.of(existingMeasure));
 
-    doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
+    doReturn(existingMeasure).when(measureRepository).removeTestCase(anyString(), anyString());
 
     String output = testCaseService.deleteTestCases("measure-id", List.of("TC2_ID"), "test.user");
-    assertThat(output, is(equalTo("Successfully deleted provided test cases")));
+    assertThat(output, is(equalTo("Successfully deleted test cases: TC2_ID")));
   }
 
   @Test
@@ -1548,16 +1548,22 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setTestCases(testCases);
     when(measureRepository.findByIdAndActive(anyString(), eq(true)))
         .thenReturn(Optional.of(measure));
-    doReturn(measure).when(measureRepository).save(any(Measure.class));
+    doReturn(measure).when(measureRepository).removeTestCase(anyString(), anyString());
 
     String output =
         testCaseService.deleteTestCases(
-            measure.getId(), List.of("TC1_ID", "TC2_ID", "TC3_ID", "TC4_ID"), "test.user");
-    assertThat(output, is(equalTo("Successfully deleted provided test cases")));
+            measure.getId(), testCases.stream().map(TestCase::getId).toList(), "test.user");
+    assertThat(
+        output,
+        is(
+            equalTo(
+                "Successfully deleted test cases: "
+                    + String.join(", ", testCases.stream().map(TestCase::getId).toList()))));
   }
 
   @Test
   void testDeleteTestCasesAndReturnNotFoundTestIds() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     List<TestCase> testCases =
         List.of(
             TestCase.builder().id("TC1_ID").title("TC1").build(),
@@ -1568,13 +1574,47 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setTestCases(testCases);
     when(measureRepository.findByIdAndActive(anyString(), eq(true)))
         .thenReturn(Optional.of(measure));
-    doReturn(measure).when(measureRepository).save(any(Measure.class));
+    doReturn(measure).when(measureRepository).removeTestCase(anyString(), anyString());
 
     String output =
         testCaseService.deleteTestCases(
             measure.getId(), List.of("TC1_ID", "TC2_ID", "TC5_ID", "TC6_ID"), "test.user");
     assertThat(
-        output, is(equalTo("Successfully deleted provided test cases except [ TC5_ID, TC6_ID ]")));
+        output,
+        is(
+            equalTo(
+                "Successfully deleted test cases: TC1_ID, TC2_ID, unable to delete TC5_ID, TC6_ID")));
+  }
+
+  @Test
+  void testDeleteTestCasesAndReturnsLockedIds() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    List<TestCase> testCases =
+        List.of(
+            TestCase.builder().id("TC1_ID").title("TC1").build(),
+            TestCase.builder().id("TC2_ID").title("TC2").build(),
+            TestCase.builder().id("TC3_ID").title("TC3").build(),
+            TestCase.builder().id("TC4_ID").title("TC4").build());
+
+    measure.setTestCases(testCases);
+    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
+        .thenReturn(Optional.of(measure));
+    doReturn(measure).when(measureRepository).removeTestCase(anyString(), anyString());
+    doThrow(new LockNotObtainedException())
+        .when(testCaseLockService)
+        .lockTestCaseForUser(anyString(), eq("TC1_ID"), anyString());
+    doThrow(new LockNotObtainedException())
+        .when(testCaseLockService)
+        .lockTestCaseForUser(anyString(), eq("TC2_ID"), anyString());
+
+    LockNotObtainedException thrown =
+        assertThrows(
+            LockNotObtainedException.class,
+            () ->
+                testCaseService.deleteTestCases(
+                    measure.getId(), List.of("TC1_ID", "TC2_ID", "TC3_ID"), "test.user"));
+
+    assertThat(thrown.getMessage(), is("TC1_ID,TC2_ID"));
   }
 
   @Test
@@ -3477,7 +3517,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importTestCasesReturnInvalidOutcomesWhenLockingFails() throws JsonProcessingException {
+  void importTestCasesReturnInvalidOutcomesWhenLockingFails() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     measure.setTestCases(List.of(testCase));
     when(measureRepository.findByIdAndActive(anyString(), eq(true)))
@@ -3562,7 +3602,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     doReturn(mockClientResponse)
         .when(fhirServicesClient)
         .shiftTestCaseDates(anyList(), anyInt(), anyString());
-    when(testCaseLockService.unlockAllTestCases(any(List.class), anyString())).thenReturn(true);
+    when(testCaseLockService.unlockAllTestCases(anyList(), anyString())).thenReturn(true);
 
     List<TestCase> shiftedTestCases =
         testCaseService.shiftQiCoreTestCaseDates(
@@ -3577,7 +3617,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     LockInfo lock = LockInfo.builder().lockedId("TESTID").lockedBy("anotherUser").build();
     when(testCaseLockService.lockAllTestCases(anyString(), any(List.class), anyString()))
         .thenReturn(List.of(lock));
-    when(testCaseLockService.unlockAllTestCases(any(List.class), anyString())).thenReturn(true);
+    when(testCaseLockService.unlockAllTestCases(anyList(), anyString())).thenReturn(true);
 
     TestCase testCase2 = TestCase.builder().id("TESTID2").build();
     assertThrows(

@@ -10,6 +10,7 @@ import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
@@ -21,6 +22,7 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
+import static cms.gov.madie.measure.utils.TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning;
 import static java.util.stream.Collectors.*;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
@@ -204,8 +206,7 @@ public class TestCaseService {
         List<TestCase> validatedTestCases =
             updateTestCaseValidResourcesForMeasure(measure, accessToken);
         Map<String, TestCase> testCaseMap =
-            validatedTestCases.stream()
-                .collect(toMap(TestCase::getId, Function.identity()));
+            validatedTestCases.stream().collect(toMap(TestCase::getId, Function.identity()));
         reports.forEach(
             report ->
                 report.setCurrentValidResource(
@@ -373,7 +374,9 @@ public class TestCaseService {
   }
 
   public String deleteTestCases(String measureId, List<String> testCaseIds, String username) {
-    if (isEmpty(testCaseIds) || StringUtils.isBlank(measureId)) {
+    if (isEmpty(testCaseIds)
+        || StringUtils.isBlank(measureId)
+        || testCaseIds.stream().allMatch(StringUtils::isBlank)) {
       log.info("Test case Ids or Measure Id is Empty");
       throw new InvalidIdException("Test cases cannot be deleted, please contact the helpdesk");
     }
@@ -384,44 +387,64 @@ public class TestCaseService {
       throw new InvalidIdException(
           "Measure {} doesn't have any existing test cases to delete", measureId);
     }
-    TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning(
+    checkIfAnyCreatedBeforeVersioning(
         measure.getTestCases(), testCaseIds, measure.getMeasureMetaData().isDraft());
+
     List<TestCase> testCasesToDelete =
         measure.getTestCases().stream().filter(tc -> testCaseIds.contains(tc.getId())).toList();
 
-    List<String> testCasesLockedByOtherUser = new ArrayList<>();
-    testCasesToDelete.forEach(testCase -> {
-      try {
-        testCaseLockService.lockTestCaseForUser(measureId, testCase.getId(), username);
-        measureRepository.removeTestCase(measureId, testCase.getId());
-        testCaseLockService.unlockTestCase(measureId, testCase.getId());
-      } catch(Exception e) {
-        testCasesLockedByOtherUser.add(testCase.getId());
-      }
-    });
+    List<String> testCaseIdsDeleted = new ArrayList<>();
+    List<String> testCaseIdsLockedByOtherUser = new ArrayList<>();
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      testCasesToDelete.forEach(
+          testCase -> {
+            try {
+              testCaseLockService.lockTestCaseForUser(measureId, testCase.getId(), username);
+              measureRepository.removeTestCase(measureId, testCase.getId());
+              testCaseIdsDeleted.add(testCase.getId());
+              testCaseLockService.unlockTestCase(measureId, testCase.getId());
+            } catch (LockNotObtainedException e) {
+              testCaseIdsLockedByOtherUser.add(testCase.getId());
+            } catch (InvalidIdException e) {
+              // no-op - this means the test case was not found in the measure
+            }
+          });
+    } else {
+      testCasesToDelete.forEach(
+          testCase -> {
+            measureRepository.removeTestCase(measureId, testCase.getId());
+            testCaseIdsDeleted.add(testCase.getId());
+          });
+    }
 
-    if (testCasesToDelete.size() == measure.getTestCases().size()) {
+    if (testCaseIdsDeleted.size() == measure.getTestCases().size()) {
       sequenceService.resetSequence(measureId);
     }
 
-    if (!isEmpty(testCasesLockedByOtherUser)) {
+    if (isEmpty(testCaseIdsLockedByOtherUser)) {
       log.info(
-          "User [{}] was unable to delete following test cases with Ids [{}] from measure [{}]",
+          "User [{}] deleted test cases with Ids [{}] from measure [{}]",
           username,
-          String.join(", ", testCasesLockedByOtherUser),
+          testCaseIds,
           measureId);
-      return "Successfully deleted provided test cases except [ "
-          + String.join(", ", testCasesLockedByOtherUser)
-          + " ]";
+      String successMessage =
+          "Successfully deleted test cases: " + String.join(", ", testCaseIdsDeleted);
+      if (testCaseIdsDeleted.size() == testCaseIds.size()) {
+        return successMessage;
+      }
+      return successMessage
+          + ", unable to delete "
+          + String.join(", ", CollectionUtils.removeAll(testCaseIds, testCaseIdsDeleted));
     }
+
     log.info(
-        "User [{}] has successfully deleted following test cases with Ids [{}] from measure [{}]. Test Cases with Ids [{}] were locked by another user and could not be deleted.",
+        "User [{}] deleted test cases with Ids {} from measure [{}]. "
+            + "Test Cases with Ids {} were locked by another user and could not be deleted.",
         username,
-        testCaseIds.stream().filter(testCaseId ->
-          !testCasesLockedByOtherUser.contains(testCaseId))
-          .collect(joining(",")), String.join(", ", testCasesLockedByOtherUser),
-        measureId);
-    return "Successfully deleted provided test cases";
+        String.join(", ", testCaseIdsDeleted),
+        measureId,
+        String.join(", ", testCaseIdsLockedByOtherUser));
+    throw new LockNotObtainedException(String.join(",", testCaseIdsLockedByOtherUser));
   }
 
   public CopyTestCaseResult copyTestCasesToMeasure(
@@ -483,7 +506,7 @@ public class TestCaseService {
     }
     return CopyTestCaseResult.builder()
         .copiedTestCases(copiedTestCases)
-        .didClearExpectedValues(clearedExpectedValues)
+        .didClearExpectedValues(Boolean.valueOf(clearedExpectedValues))
         .build();
   }
 

@@ -1438,7 +1438,8 @@ public class TestCaseServiceUtilTest {
 
   @Test
   void testIfDeletableIfMeasureIsDraft() {
-    assertDoesNotThrow(() -> TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning(List.of(), List.of(), true));
+    assertDoesNotThrow(
+        () -> TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning(List.of(), List.of(), true));
   }
 
   @Test
