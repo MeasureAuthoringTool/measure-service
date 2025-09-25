@@ -556,9 +556,8 @@ public class MeasureService {
 
   /**
    * Verifies that the user is authorized to perform share/unshare operations on the given measures.
-   * - Restrict sharing to owners only (ownerOnly = true).
-   * - Allow unsharing by owners or users who the measure is already shared with (ownerOnly =
-   * false).
+   * - Restrict sharing to owners only (ownerOnly = true). - Allow unsharing by owners or users who
+   * the measure is already shared with (ownerOnly = false).
    */
   private void verifyShareAuthorization(
       Map<String, List<String>> measureUserIdMap, String username, boolean ownerOnly) {
@@ -583,7 +582,8 @@ public class MeasureService {
                     measureId);
                 throw new ResourceNotFoundException("Measure does not exist: " + measureId);
               }
-              verifyAuthorization(username, measure, ownerOnly ? List.of() : List.of(RoleEnum.SHARED_WITH));
+              verifyAuthorization(
+                  username, measure, ownerOnly ? List.of() : List.of(RoleEnum.SHARED_WITH));
             });
 
     log.info(
