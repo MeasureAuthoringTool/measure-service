@@ -11,7 +11,6 @@ import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import gov.cms.madie.models.common.ModelType;
 import cms.gov.madie.measure.services.TestCaseService;
 import cms.gov.madie.measure.utils.ControllerUtil;
-import cms.gov.madie.measure.utils.UserInputSanitizeUtil;
 import gov.cms.madie.models.measure.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +24,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
 import java.util.*;
+
+import static cms.gov.madie.measure.utils.UserInputSanitizeUtil.sanitizeUserInput;
 
 @Slf4j
 @RestController
@@ -117,7 +118,8 @@ public class TestCaseController {
         measureId);
 
     return ResponseEntity.ok(
-        testCaseService.deleteTestCases(measureId, testCaseIds, principal.getName()));
+        testCaseService.deleteTestCases(
+            sanitizeUserInput(measureId), sanitizeUserInput(testCaseIds), principal.getName()));
   }
 
   @PutMapping(ControllerUtil.TEST_CASES + "/imports")
@@ -134,9 +136,9 @@ public class TestCaseController {
   }
 
   private TestCase sanitizeTestCase(TestCase testCase) {
-    testCase.setDescription(UserInputSanitizeUtil.sanitizeUserInput(testCase.getDescription()));
-    testCase.setTitle(UserInputSanitizeUtil.sanitizeUserInput(testCase.getTitle()));
-    testCase.setSeries(UserInputSanitizeUtil.sanitizeUserInput(testCase.getSeries()));
+    testCase.setDescription(sanitizeUserInput(testCase.getDescription()));
+    testCase.setTitle(sanitizeUserInput(testCase.getTitle()));
+    testCase.setSeries(sanitizeUserInput(testCase.getSeries()));
     return testCase;
   }
 
