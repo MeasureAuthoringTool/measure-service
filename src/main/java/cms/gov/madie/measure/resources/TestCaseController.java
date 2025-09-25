@@ -106,24 +106,6 @@ public class TestCaseController {
     return ResponseEntity.ok(testCaseService.findTestCaseSeriesByMeasureId(measureId));
   }
 
-  @DeleteMapping(ControllerUtil.TEST_CASES + "/{testCaseId}")
-  public ResponseEntity<String> deleteTestCase(
-      @RequestBody @PathVariable String measureId,
-      @PathVariable String testCaseId,
-      Principal principal) {
-
-    log.info(
-        "User [{}] is attempting to delete a test case with Id [{}] from measure [{}]",
-        principal.getName(),
-        testCaseId,
-        measureId);
-    return ResponseEntity.ok(
-        testCaseService.deleteTestCase(
-            UserInputSanitizeUtil.sanitizeUserInput(measureId),
-            UserInputSanitizeUtil.sanitizeUserInput(testCaseId),
-            principal.getName()));
-  }
-
   @DeleteMapping(ControllerUtil.TEST_CASES)
   public ResponseEntity<String> deleteTestCases(
       @PathVariable String measureId, @RequestBody List<String> testCaseIds, Principal principal) {
@@ -200,7 +182,8 @@ public class TestCaseController {
             .toList();
 
     List<TestCase> shiftedTestCases =
-        testCaseService.shiftQiCoreTestCaseDates(testCases, shifted, accessToken);
+        testCaseService.shiftQiCoreTestCaseDates(
+            testCases, shifted, accessToken, measureId, principal.getName());
     List<String> savedTestCaseIds = new ArrayList<>();
 
     for (TestCase shiftedTestCase : shiftedTestCases) {
@@ -256,7 +239,8 @@ public class TestCaseController {
     }
     List<TestCase> testCases = testCaseService.findTestCasesByMeasureId(measureId);
     List<TestCase> shiftedTestCases =
-        testCaseService.shiftQiCoreTestCaseDates(testCases, shifted, accessToken);
+        testCaseService.shiftQiCoreTestCaseDates(
+            testCases, shifted, accessToken, measureId, principal.getName());
     List<String> savedTestCaseIds = new ArrayList<>();
     for (TestCase shiftedTestCase : shiftedTestCases) {
       try {

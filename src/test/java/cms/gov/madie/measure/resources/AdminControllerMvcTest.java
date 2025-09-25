@@ -14,20 +14,29 @@ import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.*;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
@@ -66,6 +75,108 @@ public class AdminControllerMvcTest {
   @MockitoBean private TestCaseLockService testCaseLockService;
 
   @Autowired private MockMvc mockMvc;
+
+  private Group group;
+  private TestCase testCase1;
+  private TestCase testCase2;
+  private MeasureSet measureSet;
+  private Version version;
+  private FhirMeasure versionedMeasure;
+
+  @BeforeEach
+  public void setUp() {
+    Population population =
+        Population.builder()
+            .id("groupId")
+            .name(PopulationType.INITIAL_POPULATION)
+            .definition("ipp")
+            .build();
+    Stratification stratification =
+        Stratification.builder()
+            .id("test-strat")
+            .cqlDefinition("Initial Population")
+            .association(PopulationType.INITIAL_POPULATION)
+            .associations(List.of(PopulationType.INITIAL_POPULATION))
+            .build();
+    group =
+        Group.builder()
+            .id("groupId")
+            .measureGroupTypes(List.of(MeasureGroupTypes.OUTCOME))
+            .scoring(MeasureScoring.COHORT.toString())
+            .populationBasis("boolean")
+            .populations(List.of(population))
+            .stratifications(List.of(stratification))
+            .build();
+    TestCaseGroupPopulation testCaseGroupPopulation1 =
+        TestCaseGroupPopulation.builder()
+            .scoring(MeasureScoring.COHORT.toString())
+            .populationBasis("boolean")
+            .populationValues(
+                List.of(
+                    TestCasePopulationValue.builder()
+                        .name(PopulationType.INITIAL_POPULATION)
+                        .expected("1")
+                        .actual("1")
+                        .build()))
+            .stratificationValues(
+                List.of(
+                    TestCaseStratificationValue.builder()
+                        .name("Strata-1")
+                        .id("strat1Id")
+                        .expected("1")
+                        .build()))
+            .build();
+    TestCaseGroupPopulation testCaseGroupPopulation2 =
+        TestCaseGroupPopulation.builder()
+            .scoring(MeasureScoring.COHORT.toString())
+            .populationBasis("boolean")
+            .populationValues(
+                List.of(
+                    TestCasePopulationValue.builder()
+                        .name(PopulationType.INITIAL_POPULATION)
+                        .expected("0")
+                        .actual("0")
+                        .build()))
+            .stratificationValues(
+                List.of(
+                    TestCaseStratificationValue.builder()
+                        .name("Strata-1")
+                        .id("strat1Id")
+                        .expected("0")
+                        .build()))
+            .build();
+    testCase1 =
+        TestCase.builder()
+            .id("testCaseId")
+            .patientId(UUID.fromString("3d2abb9d-c10a-4ab3-ae1a-1684ab61c07e"))
+            .title("title")
+            .description("description")
+            .series("series")
+            .groupPopulations(List.of(testCaseGroupPopulation1))
+            .build();
+    testCase2 =
+        TestCase.builder()
+            .id("testCaseId")
+            .patientId(UUID.fromString("3d2abb9d-c10a-4ab3-ae1a-1684ab61c07e"))
+            .title("title")
+            .description("description")
+            .series("series")
+            .groupPopulations(List.of(testCaseGroupPopulation2))
+            .build();
+    measureSet = MeasureSet.builder().id("measureSetId").owner("owner").build();
+    version = Version.builder().major(1).minor(0).revisionNumber(0).build();
+    versionedMeasure =
+        FhirMeasure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(measureSet)
+            .model(String.valueOf(ModelType.QI_CORE))
+            .cqlLibraryName("CqlLibraryName")
+            .version(version)
+            .groups(List.of(group))
+            .testCases(List.of(testCase2))
+            .build();
+  }
 
   @Test
   public void testValidateAllMeasureTestCasesNoMeasuresFoundDefaultDraftOnly() throws Exception {
@@ -816,6 +927,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -852,7 +965,7 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(0)),
             eq("test-okta"),
@@ -868,6 +981,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -889,7 +1004,7 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0));
   }
 
@@ -900,6 +1015,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -921,7 +1038,7 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, never())
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             anyString(), any(TestCase.class), anyString(), any(ModelType.class));
   }
 
@@ -973,6 +1090,8 @@ public class AdminControllerMvcTest {
         Measure.builder()
             .id("M1")
             .model(ModelType.QI_CORE_6_0_0.getValue())
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .testCases(
                 List.of(
                     TestCase.builder()
@@ -1018,13 +1137,13 @@ public class AdminControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(testCaseValidationService, times(1))
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(1)),
             eq("test-okta"),
             eq(ModelType.QI_CORE_6_0_0));
     verify(testCaseValidationService, never())
-        .submitOnSaveValidationTask(
+        .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(2)),
             eq("test-okta"),
@@ -1068,5 +1187,229 @@ public class AdminControllerMvcTest {
     assertTrue(result.getResponse().getContentAsString().contains(msg2));
     assertTrue(result.getResponse().getContentAsString().contains(msg3));
     assertTrue(result.getResponse().getContentAsString().contains(msg4));
+  }
+
+  @Test
+  public void overwriteExpectedValuesQiCore() throws Exception {
+    FhirMeasure draftMeasure =
+        FhirMeasure.builder()
+            .id("measureId")
+            .model(String.valueOf(ModelType.QI_CORE))
+            .cqlLibraryName("CqlLibraryName")
+            .measureSetId("measureSetId")
+            .measureSet(measureSet)
+            .version(version)
+            .groups(List.of(group))
+            .testCases(List.of(testCase1))
+            .build();
+
+    when(measureService.findMeasureById(anyString())).thenReturn(draftMeasure);
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/{id}", draftMeasure.getId())
+                    .with(csrf())
+                    .with(user(TEST_USER_ID))
+                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .header("Authorization", "test-okta")
+                    .content(toJsonString(versionedMeasure))
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertTrue(result.getResponse().getContentAsString().contains("false"));
+  }
+
+  @Test
+  public void overwriteExpectedValuesQdm() throws Exception {
+    TestCaseGroupPopulation tcgp1 =
+        TestCaseGroupPopulation.builder()
+            .scoring(MeasureScoring.COHORT.toString())
+            .populationBasis("boolean")
+            .populationValues(
+                List.of(
+                    TestCasePopulationValue.builder()
+                        .name(PopulationType.INITIAL_POPULATION)
+                        .expected(1)
+                        .actual(1)
+                        .build()))
+            .stratificationValues(Collections.emptyList())
+            .build();
+    TestCase tc1 = testCase1.toBuilder().build();
+    tc1.setGroupPopulations(List.of(tcgp1));
+    QdmMeasure draftMeasure =
+        QdmMeasure.builder()
+            .id("measureId")
+            .model(String.valueOf(ModelType.QDM_5_6))
+            .cqlLibraryName("CqlLibraryName")
+            .measureSetId("measureSetId")
+            .measureSet(measureSet)
+            .version(version)
+            .patientBasis(true)
+            .groups(List.of(group))
+            .testCases(List.of(tc1))
+            .build();
+    TestCaseGroupPopulation tcgp2 =
+        TestCaseGroupPopulation.builder()
+            .scoring(MeasureScoring.COHORT.toString())
+            .populationBasis("boolean")
+            .populationValues(
+                List.of(
+                    TestCasePopulationValue.builder()
+                        .name(PopulationType.INITIAL_POPULATION)
+                        .expected(1)
+                        .actual(1)
+                        .build()))
+            .stratificationValues(Collections.emptyList())
+            .build();
+    TestCase tc2 = testCase2.toBuilder().build();
+    tc2.setGroupPopulations(List.of(tcgp2));
+    QdmMeasure versionedMeasure =
+        QdmMeasure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(measureSet)
+            .model(String.valueOf(ModelType.QDM_5_6))
+            .cqlLibraryName("CqlLibraryName")
+            .version(version)
+            .patientBasis(true)
+            .groups(List.of(group))
+            .testCases(List.of(tc2))
+            .build();
+    when(measureService.findMeasureById(anyString())).thenReturn(draftMeasure);
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/{id}", draftMeasure.getId())
+                    .with(csrf())
+                    .with(user(TEST_USER_ID))
+                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .header("Authorization", "test-okta")
+                    .content(toJsonString(versionedMeasure))
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertTrue(result.getResponse().getContentAsString().contains("false"));
+  }
+
+  private String toJsonString(Object obj) throws JsonProcessingException {
+    ObjectMapper mapper = new ObjectMapper();
+    mapper.registerModule(new JavaTimeModule());
+    mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+    return mapper.writeValueAsString(obj);
+  }
+
+  @Test
+  public void overwriteExpectedValuesThrowsResourceNotFoundException() throws Exception {
+    when(measureService.findMeasureById(anyString())).thenReturn(null);
+
+    mockMvc
+        .perform(
+            put("/admin/measures/{id}", "measureId")
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta")
+                .content(toJsonString(versionedMeasure))
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+        .andExpect(status().isNotFound())
+        .andReturn();
+
+    verify(measureService, times(1)).findMeasureById(anyString());
+  }
+
+  @Test
+  public void overwriteExpectedValuesThrowsInvalidRequestException() throws Exception {
+    MeasureSet mSet = MeasureSet.builder().measureSetId("differentMeasureSetId").build();
+    FhirMeasure draftMeasure =
+        FhirMeasure.builder()
+            .id("anotherMeasureId")
+            .model(String.valueOf(ModelType.QI_CORE))
+            .cqlLibraryName("CqlLibraryName")
+            .measureSetId("differentMeasureSetId")
+            .measureSet(mSet)
+            .version(version)
+            .groups(List.of(group))
+            .testCases(List.of(testCase1))
+            .build();
+
+    when(measureService.findMeasureById(anyString())).thenReturn(draftMeasure);
+
+    mockMvc
+        .perform(
+            put("/admin/measures/{id}", draftMeasure.getId())
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta")
+                .content(toJsonString(versionedMeasure))
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+        .andExpect(status().isBadRequest())
+        .andReturn();
+
+    verify(measureService, times(1)).findMeasureById(anyString());
+  }
+
+  @Test
+  public void overwriteExpectedValuesThrowsInvalidRequestExceptionVersionDifferent()
+      throws Exception {
+    Version version = Version.builder().major(1).minor(1).revisionNumber(1).build();
+    FhirMeasure draftMeasure =
+        FhirMeasure.builder()
+            .id("anotherMeasureId")
+            .model(String.valueOf(ModelType.QI_CORE))
+            .cqlLibraryName("CqlLibraryName")
+            .measureSetId("measureSetId")
+            .measureSet(measureSet)
+            .version(version)
+            .groups(List.of(group))
+            .testCases(List.of(testCase1))
+            .build();
+
+    when(measureService.findMeasureById(anyString())).thenReturn(draftMeasure);
+
+    mockMvc
+        .perform(
+            put("/admin/measures/{id}", draftMeasure.getId())
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta")
+                .content(toJsonString(versionedMeasure))
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+        .andExpect(status().isBadRequest())
+        .andReturn();
+
+    verify(measureService, times(1)).findMeasureById(anyString());
+  }
+
+  @Test
+  public void coverwriteExpectedValuesTestCaseIdDifferent() throws Exception {
+    TestCase tc = testCase1.toBuilder().id("anotherTestCaseId").build();
+    FhirMeasure draftMeasure =
+        FhirMeasure.builder()
+            .id("measureId")
+            .model(String.valueOf(ModelType.QI_CORE))
+            .cqlLibraryName("CqlLibraryName")
+            .measureSetId("measureSetId")
+            .measureSet(measureSet)
+            .version(version)
+            .groups(List.of(group))
+            .testCases(List.of(tc))
+            .build();
+
+    when(measureService.findMeasureById(anyString())).thenReturn(draftMeasure);
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/{id}", draftMeasure.getId())
+                    .with(csrf())
+                    .with(user(TEST_USER_ID))
+                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .header("Authorization", "test-okta")
+                    .content(toJsonString(versionedMeasure))
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isOk())
+            .andReturn();
+    assertTrue(result.getResponse().getContentAsString().contains("false"));
   }
 }

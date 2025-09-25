@@ -210,9 +210,12 @@ public class TestCaseControllerTest {
     String returnOutput = "Test case deleted successfully: TC1_ID";
     doReturn(returnOutput)
         .when(testCaseService)
-        .deleteTestCase(any(String.class), any(String.class), any(String.class));
+        .deleteTestCases(any(String.class), anyList(), any(String.class));
 
-    ResponseEntity<String> output = controller.deleteTestCase("measure-id", "TC1_ID", principal);
+    List<String> testCaseIds = new ArrayList<>();
+    testCaseIds.add("TC1_ID");
+    ResponseEntity<String> output =
+        controller.deleteTestCases("measure-id", testCaseIds, principal);
 
     assertThat(output.getBody(), is(equalTo("Test case deleted successfully: TC1_ID")));
     assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
@@ -228,8 +231,10 @@ public class TestCaseControllerTest {
         .when(testCaseService)
         .deleteTestCases(any(String.class), any(), any(String.class));
 
+    List<String> testCaseIds = new ArrayList<>();
+    testCaseIds.add("TC1_ID");
     ResponseEntity<String> output =
-        controller.deleteTestCases("measure.id", List.of("TC1_ID"), principal);
+        controller.deleteTestCases("measure.id", testCaseIds, principal);
 
     assertEquals(mockedServiceResponse, output.getBody());
     assertEquals(HttpStatus.OK, output.getStatusCode());
@@ -412,7 +417,7 @@ public class TestCaseControllerTest {
         .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
-        .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString());
+        .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString(), anyString(), anyString());
 
     ResponseEntity<List<String>> response =
         controller.shiftQiCoreTestCaseDates(
@@ -456,7 +461,7 @@ public class TestCaseControllerTest {
         .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     doReturn(List.of(testCase2))
         .when(testCaseService)
-        .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString());
+        .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString(), anyString(), anyString());
 
     ResponseEntity<List<String>> response =
         controller.shiftQiCoreTestCaseDates(
@@ -517,7 +522,7 @@ public class TestCaseControllerTest {
         .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
-        .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString());
+        .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString(), anyString(), anyString());
 
     ResponseEntity<List<String>> response =
         controller.shiftAllQiCoreTestCaseDates(fhirMeasure.getId(), 1, principal, "TOKEN");
@@ -552,7 +557,7 @@ public class TestCaseControllerTest {
         .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
     doReturn(List.of(testCase))
         .when(testCaseService)
-        .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString());
+        .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString(), anyString(), anyString());
 
     ResponseEntity<List<String>> response =
         controller.shiftAllQiCoreTestCaseDates(fhirMeasure.getId(), 1, principal, "TOKEN");
