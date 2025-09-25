@@ -63,7 +63,10 @@ public class TestCaseLockService {
     if (existingLock.isPresent()) {
       if (existingLock.get().getLockedBy().equals(userName)) {
         testCaseLockRepository.deleteByTestCaseId(testCaseId);
-        return LockInfo.builder().lockedId(existingLock.get().getTestCaseId()).isLocked(false).build();
+        return LockInfo.builder()
+            .lockedId(existingLock.get().getTestCaseId())
+            .isLocked(false)
+            .build();
       } else {
         return LockInfo.builder()
             .lockedId((existingLock.get().getTestCaseId()))
