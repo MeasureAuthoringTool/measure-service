@@ -146,14 +146,15 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     if (nestedFlag) {
       aggregationOperations.add(matchOperation);
-      List<AggregationOperation> initialPipeline = new ArrayList<>(aggregationOperations);
-      initialPipeline.add(
+      aggregationOperations.add(
           group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
-          // Find all the measures that matches the given Criteria and fetch unique measureSetIds
-          List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
+      // Find all the measures that matches the given Criteria and fetch unique measureSetIds
+      List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
           mongoTemplate
               .aggregate(
-                  newAggregation(initialPipeline), Measure.class, MeasureSetMatchCountDTO.class)
+                  newAggregation(aggregationOperations),
+                  Measure.class,
+                  MeasureSetMatchCountDTO.class)
               .getMappedResults();
 
       Map<String, MeasureSetMatchCountDTO> matchInfoMap =
