@@ -302,11 +302,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         newAggregation(
             lookupOperation, matchOperation, groupOperation, group().count().as("count"));
 
-    @SuppressWarnings("unchecked")
-    List<Map<String, Object>> results =
-        (List<Map<String, Object>>)
-            (List<?>)
-                mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
+    List<Map> results =
+        mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
 
     return results.isEmpty() ? 0 : Integer.parseInt(results.get(0).get("count").toString());
   }
