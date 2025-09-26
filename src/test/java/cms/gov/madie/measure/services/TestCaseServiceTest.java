@@ -1437,27 +1437,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   void testDeleteTestCaseReturnsExceptionForNullTestCaseId() {
     assertThrows(
         InvalidIdException.class,
-        () -> testCaseService.deleteTestCase("measure-id", "", "OtherUser"));
-  }
-
-  @Test
-  void testDeleteTestCaseReturnsExceptionForTestCaseNotFound() {
-    List<TestCase> testCases =
-        List.of(
-            TestCase.builder().id("TC1_ID").title("TC1").build(),
-            TestCase.builder().id("TC2_ID").title("TC2").build());
-    final Measure measure =
-        Measure.builder()
-            .id("measure-id")
-            .createdBy("OtherUser")
-            .testCases(testCases)
-            .measureMetaData(MeasureMetaData.builder().draft(true).build())
-            .build();
-    when(measureRepository.findByIdAndActive(anyString(), eq(true)))
-        .thenReturn(Optional.of(measure));
-    assertThrows(
-        InvalidIdException.class,
-        () -> testCaseService.deleteTestCase("measure-id", "testCaseId", "OtherUser"));
+        () -> testCaseService.deleteTestCases("measure-id", Collections.emptyList(), "OtherUser"));
   }
 
   @Test
