@@ -112,7 +112,11 @@ public class MeasureService {
     // also returns the exception when id is not found
     return measureRepository
         .findByIdAndActive(measureId, true)
-        .orElseThrow(() -> new ResourceNotFoundException("Measure", measureId));
+        .orElseThrow(
+            () -> {
+              log.info("Could not find active Measure with id: {}", measureId);
+              return new ResourceNotFoundException("Measure", measureId);
+            });
   }
 
   public Measure createMeasure(
