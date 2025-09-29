@@ -124,7 +124,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
 
-    Mockito.doReturn(measure).when(measureRepository).save(any(Measure.class));
+    doReturn(measure).when(measureRepository).save(any(Measure.class));
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
@@ -170,7 +170,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
 
-    Mockito.doReturn(measure).when(measureRepository).save(any(Measure.class));
+    doReturn(measure).when(measureRepository).save(any(Measure.class));
 
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -1306,7 +1306,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testGetTestCaseThrowsNotFoundExceptionForMeasureWithNullTestCases() {
-    Mockito.doReturn(measure.toBuilder().testCases(null).build())
+    doReturn(measure.toBuilder().testCases(null).build())
         .when(measureService)
         .findActiveMeasureById(any(String.class));
     assertThrows(
@@ -1320,7 +1320,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         List.of(
             TestCase.builder().id("TC1_ID").title("TC1").build(),
             TestCase.builder().id("TC2_ID").title("TC2").build());
-    Mockito.doReturn(measure.toBuilder().testCases(testCases).build())
+    doReturn(measure.toBuilder().testCases(testCases).build())
         .when(measureService)
         .findActiveMeasureById(any(String.class));
     assertThrows(
@@ -2509,7 +2509,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
 
-    Mockito.doReturn(measure).when(measureRepository).save(any(Measure.class));
+    doReturn(measure).when(measureRepository).save(any(Measure.class));
 
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
