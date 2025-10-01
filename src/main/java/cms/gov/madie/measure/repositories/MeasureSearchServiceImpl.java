@@ -58,16 +58,16 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     return Arrays.asList(
         // Stage 1: Add 'measureId' field as string version of measure._id because measureLock uses
         // measureId as String
-        Aggregation.addFields()
+        addFields()
             .addField("measureId")
             .withValue(ConvertOperators.ToString.toString("$_id"))
             .build(),
 
         // Stage 2: Lookup measureLock
-        Aggregation.lookup("measureLock", "measureId", "measureId", "measureLock"),
+        lookup("measureLock", "measureId", "measureId", "measureLock"),
 
         // Stage 3: Filter out measureLocks where lockedBy equals current userId
-        Aggregation.addFields()
+        addFields()
             .addField("measureLock")
             .withValue(
                 ArrayOperators.Filter.filter("measureLock")
@@ -76,16 +76,16 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             .build(),
 
         // Stage 4: Set measureLock to first element of filtered array
-        Aggregation.addFields()
+        addFields()
             .addField("measureLock")
             .withValue(ArrayOperators.ArrayElemAt.arrayOf("measureLock").elementAt(0))
             .build(),
 
         // Stage 5: Lookup testCaseLock
-        Aggregation.lookup("testCaseLock", "measureId", "measureId", "testCaseLock"),
+        lookup("testCaseLock", "measureId", "measureId", "testCaseLock"),
 
         // Stage 6: Filter out testCaseLocks where lockedBy equals current userId
-        Aggregation.addFields()
+        addFields()
             .addField("testCaseLock")
             .withValue(
                 ArrayOperators.Filter.filter("testCaseLock")
@@ -94,7 +94,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             .build(),
 
         // Stage 7: Set flag to indicate if any test case is locked by other users
-        Aggregation.addFields()
+        addFields()
             .addField("hasLockedTestCases")
             .withValue(
                 ComparisonOperators.Gt.valueOf(ArrayOperators.Size.lengthOfArray("testCaseLock"))
