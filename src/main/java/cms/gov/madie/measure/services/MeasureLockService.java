@@ -77,8 +77,4 @@ public class MeasureLockService {
     }
     return deleteMesssages;
   }
-
-  public List<MeasureLock> getAllMeasureLocks() {
-    return measureLockRepository.findAll();
-  }
 }

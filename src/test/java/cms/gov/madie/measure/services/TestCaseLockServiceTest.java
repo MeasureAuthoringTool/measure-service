@@ -288,13 +288,4 @@ public class TestCaseLockServiceTest {
         service.lockAllTestCases("testMeasureId", List.of("testCaseId"), "test.user");
     assertTrue(CollectionUtils.isEmpty(locks));
   }
-
-  @Test
-  public void testGetAllMeasureLocks() {
-    when(testCaseLockRepository.findAll()).thenReturn(List.of(lock));
-
-    List<TestCaseLock> locks = service.getAllTestCaseLocks();
-
-    assertEquals(1, locks.size());
-  }
 }

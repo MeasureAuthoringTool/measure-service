@@ -166,19 +166,4 @@ class MeasureLockServiceTest {
     expected.add(msg2);
     assertEquals(expected, results);
   }
-
-  @Test
-  public void testGetAllMeasureLocks() {
-    MeasureLock measureLock =
-        MeasureLock.builder()
-            .id("measureLockId")
-            .measureId("measureId")
-            .lockedBy("test.user")
-            .build();
-    when(repository.findAll()).thenReturn(List.of(measureLock));
-
-    List<MeasureLock> locks = service.getAllMeasureLocks();
-
-    assertEquals(1, locks.size());
-  }
 }
