@@ -1,13 +1,10 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.LockInfo;
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
 import cms.gov.madie.measure.exceptions.*;
-import cms.gov.madie.measure.locks.MeasureLock;
-import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
@@ -25,7 +22,6 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -333,17 +329,38 @@ public class MeasureService {
       throw new InvalidIdException(message);
     }
     final Measure existingMeasure = findMeasureById(id);
-    if (existingMeasure != null && existingMeasure.getMeasureMetaData().isDraft()) {
-      if (existingMeasure.isActive()) {
-        verifyAuthorization(username, existingMeasure);
-      } else {
-        throw new InvalidDraftStatusException(id);
-      }
+    if (existingMeasure == null) {
+      throw new ResourceNotFoundException("Measure does not exist.");
+    }
+    if (!existingMeasure.getMeasureMetaData().isDraft()) {
+      throw new InvalidDraftStatusException(id);
+    }
+    if (!existingMeasure.isActive()) {
+      throw new InvalidResourceStateException("Measure is inactive.");
+    }
+    verifyAuthorization(username, existingMeasure);
 
-    } else {
-      throw new ResourceNotFoundException("Measure not found during delete action.");
+    LockInfo lockInfo = measureLockService.lockMeasure(id, username);
+    if (lockInfo.isLocked() && !username.equals(lockInfo.getLockedBy())) {
+      log.info(
+          "user: [{}] can't de-activate Measure: [{}], because measure is locked by: [{}]",
+          username,
+          id,
+          lockInfo.getLockedBy());
+      throw new LockNotObtainedException(
+          "Unable to delete measure. Locked while being edited by " + lockInfo.getLockedBy());
     }
 
+    boolean isAnyTestCaseLockedByOthers =
+        testCaseLockService.isAnyTestCaseLockedByOthers(id, username);
+    if (isAnyTestCaseLockedByOthers) {
+      log.info(
+          "user: [{}] can't de-activate Measure: [{}], because one or more test cases are locked by other users",
+          username,
+          id);
+      throw new LockNotObtainedException(
+          "Unable to delete measure.  One or more test cases are locked by another user.");
+    }
     existingMeasure.setActive(false);
     existingMeasure.setLastModifiedBy(username);
     existingMeasure.setLastModifiedAt(Instant.now());
@@ -663,16 +680,8 @@ public class MeasureService {
       String username,
       // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource) {
-    Page<MeasureListDTO> measures =
-        measureRepository.searchMeasuresByCriteria(
-            username, pageReq, searchCriteria, ownershipTypes, invocationSource);
-    //    return measureRepository.searchMeasuresByCriteria(
-    //        username, pageReq, searchCriteria, ownershipTypes, invocationSource);
-
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      addLockInfo(measures, username);
-    }
-    return measures;
+    return measureRepository.searchMeasuresByCriteria(
+        username, pageReq, searchCriteria, ownershipTypes, invocationSource);
   }
 
   protected void updateReferences(MeasureMetaData metaData) {
@@ -978,59 +987,5 @@ public class MeasureService {
         measureId);
 
     return measureHistory;
-  }
-
-  Page<MeasureListDTO> addLockInfo(Page<MeasureListDTO> measures, String username) {
-    List<MeasureLock> measureLocks = measureLockService.getAllMeasureLocks();
-    List<TestCaseLock> testCaseLocks = testCaseLockService.getAllTestCaseLocks();
-
-    List<MeasureListDTO> updatedList =
-        measures.getContent().stream()
-            .map(
-                measure -> {
-                  // Check for MeasureLock
-                  Optional<MeasureLock> measureLock =
-                      measureLocks.stream()
-                          .filter(
-                              lock ->
-                                  lock.getMeasureId().equals(measure.getId())
-                                      && !username.equals(lock.getLockedBy()))
-                          .findFirst();
-                  if (measureLock.isPresent()) {
-                    measure.setLockInfo(
-                        LockInfo.builder()
-                            .isLocked(true)
-                            .lockedBy(measureLock.get().getLockedBy())
-                            .lockMessage(measureLock.get().getLockedBy())
-                            .build());
-                    return measure;
-                  }
-                  // Check for TestCaseLock
-                  Optional<TestCaseLock> testCaseLock =
-                      testCaseLocks.stream()
-                          .filter(
-                              lock ->
-                                  lock.getMeasureId().equals(measure.getId())
-                                      && !username.equals(lock.getLockedBy())
-                              // && measureLock.isEmpty())
-                              )
-                          .findFirst();
-                  if (testCaseLock.isPresent()) {
-                    measure.setLockInfo(
-                        LockInfo.builder()
-                            .isLocked(true)
-                            .lockedBy(testCaseLock.get().getLockedBy())
-                            .lockMessage("One or more test cases are locked by another user.")
-                            .build());
-                    return measure;
-                  }
-                  // No lock
-                  measure.setLockInfo(
-                      LockInfo.builder().isLocked(false).lockMessage("OK to proceed").build());
-                  return measure;
-                })
-            .collect(Collectors.toList());
-
-    return new PageImpl<>(updatedList, measures.getPageable(), measures.getTotalElements());
   }
 }

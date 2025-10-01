@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.dto;
 
+import cms.gov.madie.measure.locks.MeasureLock;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -14,11 +15,9 @@ import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
-import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 
 @Data
-@Document
 @SuperBuilder(toBuilder = true)
 @NoArgsConstructor
 @JsonTypeInfo(
@@ -56,7 +55,6 @@ public class MeasureListDTO {
   private MeasureMetaData measureMetaData;
   private boolean hasAssociatedMeasures;
 
-  // private MeasureLock measureLock;
-  private LockInfo lockInfo;
-  // private List<TestCase> testCases;
+  private MeasureLock measureLock;
+  private boolean hasLockedTestCases;
 }

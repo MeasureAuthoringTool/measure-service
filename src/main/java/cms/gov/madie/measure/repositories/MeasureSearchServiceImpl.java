@@ -20,10 +20,7 @@ import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -32,7 +29,7 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
   private final MongoTemplate mongoTemplate;
-  private AppConfigService appConfigService;
+  private final AppConfigService appConfigService;
 
   public MeasureSearchServiceImpl(MongoTemplate mongoTemplate, AppConfigService appConfigService) {
     this.mongoTemplate = mongoTemplate;
@@ -47,12 +44,61 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         .as("measureSet");
   }
 
-  private LookupOperation getLookupOperationMeasureLock() {
-    return LookupOperation.newLookup()
-        .from("measureLock")
-        .localField("idAsString")
-        .foreignField("measureId")
-        .as("measureLock");
+  /**
+   * Generates aggregation stages to lookup measure and test case locks, filtering out locks held
+   * by the specified user.
+   * @param userId ID of the user to exclude locks for.
+   * @return List of aggregation operations.
+   */
+  private List<AggregationOperation> getLockStages(String userId) {
+    if (StringUtils.isBlank(userId)) {
+      return Collections.emptyList();
+    }
+    return Arrays.asList(
+        // Stage 1: Add 'measureId' field as string version of measure._id because measureLock uses
+        // measureId as String
+        Aggregation.addFields()
+            .addField("measureId")
+            .withValue(ConvertOperators.ToString.toString("$_id"))
+            .build(),
+
+        // Stage 2: Lookup measureLock
+        Aggregation.lookup("measureLock", "measureId", "measureId", "measureLock"),
+
+        // Stage 3: Filter out measureLocks where lockedBy equals current userId
+        Aggregation.addFields()
+            .addField("measureLock")
+            .withValue(
+                ArrayOperators.Filter.filter("measureLock")
+                    .as("lock")
+                    .by(ComparisonOperators.Ne.valueOf("$$lock.lockedBy").notEqualToValue(userId)))
+            .build(),
+
+        // Stage 4: Set measureLock to first element of filtered array
+        Aggregation.addFields()
+            .addField("measureLock")
+            .withValue(ArrayOperators.ArrayElemAt.arrayOf("measureLock").elementAt(0))
+            .build(),
+
+        // Stage 5: Lookup testCaseLock
+        Aggregation.lookup("testCaseLock", "measureId", "measureId", "testCaseLock"),
+
+        // Stage 6: Filter out testCaseLocks where lockedBy equals current userId
+        Aggregation.addFields()
+            .addField("testCaseLock")
+            .withValue(
+                ArrayOperators.Filter.filter("testCaseLock")
+                    .as("lock")
+                    .by(ComparisonOperators.Ne.valueOf("$$lock.lockedBy").notEqualToValue(userId)))
+            .build(),
+
+        // Stage 7: Set flag to indicate if any test case is locked by other users
+        Aggregation.addFields()
+            .addField("hasLockedTestCases")
+            .withValue(
+                ComparisonOperators.Gt.valueOf(ArrayOperators.Size.lengthOfArray("testCaseLock"))
+                    .greaterThanValue(0))
+            .build());
   }
 
   @Override
@@ -64,37 +110,14 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       List<OwnershipType> ownershipTypes,
       String invocationSource) {
     List<AggregationOperation> aggregationOperations = new ArrayList<>();
-
     // join measure and measure_set to lookup owner and ACL info
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
-
-    // join measureLock to lookup lockedBy and measureId
-    //    LookupOperation measureLockLookup = null;
-    //    UnwindOperation unwindMeasureLock = null;
-    //    AddFieldsOperation addIdAsString = null;
-    //    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-    //      // 1. Convert Measure._id to string
-    //      addIdAsString =
-    //          AddFieldsOperation.addField("idAsString")
-    //              .withValue(ConvertOperators.ToString.toString("_id"))
-    //              .build();
-    //      // 2. Lookup measureLock
-    //      measureLockLookup = getLookupOperationMeasureLock();
-    //      // 3. Unwind measureLock if needed
-    //      unwindMeasureLock = Aggregation.unwind("measureLock", true);
-    //    }
-
     // Project only needed fields from Measure to improve performance
     ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
 
     aggregationOperations.add(lookupOperation);
     aggregationOperations.add(unwindOperation);
-    //    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-    //      aggregationOperations.add(addIdAsString);
-    //      aggregationOperations.add(measureLockLookup);
-    //      aggregationOperations.add(unwindMeasureLock);
-    //    }
     aggregationOperations.add(initialProjection);
 
     Criteria measureCriteria = Criteria.where("active").is(true);
@@ -213,6 +236,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
 
       aggregationOperations.add(matchMeasureSetIds);
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+        aggregationOperations.addAll(getLockStages(userId));
+      }
       aggregationOperations.add(sortByVersionAndDraft);
       aggregationOperations.add(groupByMeasureSet);
       aggregationOperations.add(replaceRoot);
