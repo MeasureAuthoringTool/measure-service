@@ -2329,10 +2329,9 @@ public class MeasureServiceTest implements ResourceUtil {
     String username = "test-user";
 
     // When & Then
-    InvalidIdException exception = assertThrows(
-      InvalidIdException.class,
-      () -> measureService.deactivateMeasure(measureId, username)
-    );
+    InvalidIdException exception =
+        assertThrows(
+            InvalidIdException.class, () -> measureService.deactivateMeasure(measureId, username));
 
     assertThat(exception.getMessage(), is(equalTo("Invalid measure id:    ")));
   }
@@ -2342,10 +2341,10 @@ public class MeasureServiceTest implements ResourceUtil {
     String measureId = "1";
     String username = "test-user";
     when(measureService.findMeasureById(measureId)).thenReturn(null);
-    Exception exception = assertThrows(
-      ResourceNotFoundException.class,
-      () -> measureService.deactivateMeasure(measureId, username)
-    );
+    Exception exception =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> measureService.deactivateMeasure(measureId, username));
 
     assertThat(exception.getMessage(), is(equalTo("Measure does not exist.")));
   }
@@ -2355,22 +2354,27 @@ public class MeasureServiceTest implements ResourceUtil {
     // Given
     String measureId = "test-measure-id";
     String username = "test-user";
-    Measure existingMeasure = measure1.toBuilder()
-      .id(measureId)
-      .active(true)
-      .measureMetaData(MeasureMetaData.builder().draft(false).build()) // not a draft
-      .build();
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(false).build()) // not a draft
+            .build();
 
     // When
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
 
     // Then
-    Exception exception = assertThrows(
-      InvalidDraftStatusException.class,
-      () -> measureService.deactivateMeasure(measureId, username)
-    );
+    Exception exception =
+        assertThrows(
+            InvalidDraftStatusException.class,
+            () -> measureService.deactivateMeasure(measureId, username));
 
-    assertThat(exception.getMessage(), is(equalTo("Response could not be completed for measure with ID test-measure-id, since the measure is not in a draft status")));
+    assertThat(
+        exception.getMessage(),
+        is(
+            equalTo(
+                "Response could not be completed for measure with ID test-measure-id, since the measure is not in a draft status")));
   }
 
   @Test
@@ -2378,20 +2382,21 @@ public class MeasureServiceTest implements ResourceUtil {
     // Given
     String measureId = "test-measure-id";
     String username = "test-user";
-    Measure existingMeasure = measure1.toBuilder()
-      .id(measureId)
-      .active(false)
-      .measureMetaData(draftMeasureMetaData)
-      .build();
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(false)
+            .measureMetaData(draftMeasureMetaData)
+            .build();
 
     // When
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
 
     // Then
-    Exception exception = assertThrows(
-      InvalidResourceStateException.class,
-      () -> measureService.deactivateMeasure(measureId, username)
-    );
+    Exception exception =
+        assertThrows(
+            InvalidResourceStateException.class,
+            () -> measureService.deactivateMeasure(measureId, username));
 
     assertThat(exception.getMessage(), is(equalTo("Measure is inactive.")));
   }
@@ -2401,22 +2406,24 @@ public class MeasureServiceTest implements ResourceUtil {
     // Given
     String measureId = "test-measure-id";
     String username = "unauthorized-user";
-    Measure existingMeasure = measure1.toBuilder()
-        .id(measureId)
-        .active(true)
-        .measureMetaData(draftMeasureMetaData)
-        .build();
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(true)
+            .measureMetaData(draftMeasureMetaData)
+            .build();
 
     // When
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
     doThrow(new UnauthorizedException("User not authorized"))
-        .when(measureService).verifyAuthorization(username, existingMeasure);
+        .when(measureService)
+        .verifyAuthorization(username, existingMeasure);
 
     // Then
-    UnauthorizedException exception = assertThrows(
-        UnauthorizedException.class,
-        () -> measureService.deactivateMeasure(measureId, username)
-    );
+    UnauthorizedException exception =
+        assertThrows(
+            UnauthorizedException.class,
+            () -> measureService.deactivateMeasure(measureId, username));
 
     assertThat(exception.getMessage(), is(equalTo("User not authorized")));
     verify(measureLockService, never()).lockMeasure(anyString(), anyString());
@@ -2429,11 +2436,12 @@ public class MeasureServiceTest implements ResourceUtil {
     String measureId = "test-measure-id";
     String currentUser = "test-user";
     String otherUser = "test-user-2";
-    Measure existingMeasure = measure1.toBuilder()
-        .id(measureId)
-        .active(true)
-        .measureMetaData(draftMeasureMetaData)
-        .build();
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(true)
+            .measureMetaData(draftMeasureMetaData)
+            .build();
 
     // When
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
@@ -2442,12 +2450,14 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(LockInfo.builder().isLocked(true).lockedBy(otherUser).build());
 
     // Then
-    Exception exception = assertThrows(
-      LockNotObtainedException.class,
-        () -> measureService.deactivateMeasure(measureId, currentUser)
-    );
+    Exception exception =
+        assertThrows(
+            LockNotObtainedException.class,
+            () -> measureService.deactivateMeasure(measureId, currentUser));
 
-    assertThat(exception.getMessage(), is(equalTo("Unable to delete measure. Locked while being edited by test-user-2")));
+    assertThat(
+        exception.getMessage(),
+        is(equalTo("Unable to delete measure. Locked while being edited by test-user-2")));
   }
 
   @Test
@@ -2455,31 +2465,32 @@ public class MeasureServiceTest implements ResourceUtil {
     // Given
     String measureId = "test-measure-id";
     String currentUser = "test-user";
-    Measure existingMeasure = measure1.toBuilder()
-        .id(measureId)
-        .active(true)
-        .measureMetaData(draftMeasureMetaData)
-        .build();
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(true)
+            .measureMetaData(draftMeasureMetaData)
+            .build();
 
-    LockInfo lockInfo = LockInfo.builder()
-        .isLocked(true)
-        .lockedBy(currentUser)
-        .build();
+    LockInfo lockInfo = LockInfo.builder().isLocked(true).lockedBy(currentUser).build();
 
     // When
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
     doNothing().when(measureService).verifyAuthorization(currentUser, existingMeasure);
     when(measureLockService.lockMeasure(measureId, currentUser)).thenReturn(lockInfo);
-    when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser))
-        .thenReturn(true);
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(true);
 
     // Then
-    Exception exception = assertThrows(
-      LockNotObtainedException.class,
-        () -> measureService.deactivateMeasure(measureId, currentUser)
-    );
+    Exception exception =
+        assertThrows(
+            LockNotObtainedException.class,
+            () -> measureService.deactivateMeasure(measureId, currentUser));
 
-    assertThat(exception.getMessage(), is(equalTo("Unable to delete measure.  One or more test cases are locked by another user.")));
+    assertThat(
+        exception.getMessage(),
+        is(
+            equalTo(
+                "Unable to delete measure.  One or more test cases are locked by another user.")));
   }
 
   @Test
@@ -2487,18 +2498,17 @@ public class MeasureServiceTest implements ResourceUtil {
     // Given
     String username = "test-user";
 
-    LockInfo lockInfo = LockInfo.builder()
-        .isLocked(true)
-        .lockedBy(username)
-        .build();
+    LockInfo lockInfo = LockInfo.builder().isLocked(true).lockedBy(username).build();
 
     // When
     when(measureService.findMeasureById(measure1.getId())).thenReturn(measure1);
     doNothing().when(measureService).verifyAuthorization(username, measure1);
     when(measureLockService.lockMeasure(measure1.getId(), username)).thenReturn(lockInfo);
-    when(testCaseLockService.isAnyTestCaseLockedByOthers(measure1.getId(), username)).thenReturn(false);
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(measure1.getId(), username))
+        .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(measure1);
-    when(actionLogService.logAction(measure1.getId(), Measure.class, ActionType.DELETED, username)).thenReturn(true);
+    when(actionLogService.logAction(measure1.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
 
     // Then
     Measure result = measureService.deactivateMeasure(measure1.getId(), username);

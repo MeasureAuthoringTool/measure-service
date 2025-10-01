@@ -71,7 +71,7 @@ class MeasureLockControllerMvcTest {
 
   @Test
   void testUpdateMeasureLockReturns200AndLockResponse() throws Exception {
-    LockInfo mockResponse = new LockInfo(true, harpId, measureId, null);
+    LockInfo mockResponse = new LockInfo(true, harpId, measureId);
     when(measureLockService.lockMeasure(eq(measureId), eq(harpId))).thenReturn(mockResponse);
 
     String jsonResponse =
@@ -93,7 +93,7 @@ class MeasureLockControllerMvcTest {
 
   @Test
   void testUnlockMeasureReturns200AndLockResponse() throws Exception {
-    LockInfo mockResponse = new LockInfo(false, harpId, measureId, null);
+    LockInfo mockResponse = new LockInfo(false, harpId, measureId);
     when(measureLockService.unlockMeasure(eq(measureId), eq(harpId))).thenReturn(mockResponse);
 
     String jsonResponse =
@@ -115,7 +115,7 @@ class MeasureLockControllerMvcTest {
   @Test
   void testUpdateMeasureLockWhenAlreadyLockedByAnotherUser() throws Exception {
     String otherUser = "other-user";
-    LockInfo mockResponse = new LockInfo(true, otherUser, measureId, null);
+    LockInfo mockResponse = new LockInfo(true, otherUser, measureId);
     when(measureLockService.lockMeasure(eq(measureId), eq(harpId))).thenReturn(mockResponse);
     // If the locks don't belong to this user, we're not doing anything
     mockMvc
@@ -129,7 +129,7 @@ class MeasureLockControllerMvcTest {
   @Test
   void testUnlockMeasureWhenLockedByDifferentUser() throws Exception {
     String otherUser = "other-user";
-    LockInfo mockResponse = new LockInfo(true, otherUser, measureId, null);
+    LockInfo mockResponse = new LockInfo(true, otherUser, measureId);
     when(measureLockService.unlockMeasure(eq(measureId), eq(harpId))).thenReturn(mockResponse);
     // If the locks don't belong to this user, we're not doing anything
     mockMvc

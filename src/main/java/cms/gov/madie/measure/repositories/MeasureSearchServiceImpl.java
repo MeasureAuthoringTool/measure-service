@@ -45,8 +45,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   }
 
   /**
-   * Generates aggregation stages to lookup measure and test case locks, filtering out locks held
-   * by the specified user.
+   * Generates aggregation stages to lookup measure and test case locks, filtering out locks held by
+   * the specified user.
+   *
    * @param userId ID of the user to exclude locks for.
    * @return List of aggregation operations.
    */
