@@ -128,7 +128,7 @@ public class TestCaseLockService {
    * Check if any test case for a measure is locked by other users.
    *
    * @param measureId the measure id
-   * @param username the user name
+   * @param username the username
    * @return true if any test case is locked by other users, false otherwise
    */
   public boolean isAnyTestCaseLockedByOthers(String measureId, String username) {

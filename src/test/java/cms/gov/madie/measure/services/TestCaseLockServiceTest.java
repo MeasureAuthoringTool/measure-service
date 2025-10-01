@@ -288,4 +288,10 @@ public class TestCaseLockServiceTest {
         service.lockAllTestCases("testMeasureId", List.of("testCaseId"), "test.user");
     assertTrue(CollectionUtils.isEmpty(locks));
   }
+
+  @Test
+  public void testIsAnyTestCaseLockedByOthers() {
+    when(testCaseLockRepository.existsByMeasureIdAndLockedByNot(anyString(), anyString())).thenReturn(true);
+    assertTrue(service.isAnyTestCaseLockedByOthers("testMeasureId", "test.user"));
+  }
 }
