@@ -291,7 +291,8 @@ public class TestCaseLockServiceTest {
 
   @Test
   public void testIsAnyTestCaseLockedByOthers() {
-    when(testCaseLockRepository.existsByMeasureIdAndLockedByNot(anyString(), anyString())).thenReturn(true);
+    when(testCaseLockRepository.existsByMeasureIdAndLockedByNot(anyString(), anyString()))
+        .thenReturn(true);
     assertTrue(service.isAnyTestCaseLockedByOthers("testMeasureId", "test.user"));
   }
 }
