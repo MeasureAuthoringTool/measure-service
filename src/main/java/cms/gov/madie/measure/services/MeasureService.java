@@ -1,9 +1,6 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.LockInfo;
-import cms.gov.madie.measure.dto.MeasureListDTO;
-import cms.gov.madie.measure.dto.MeasureSearchCriteria;
-import cms.gov.madie.measure.dto.SharedUser;
+import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
@@ -327,43 +324,46 @@ public class MeasureService {
   }
 
   public Measure deactivateMeasure(final String id, final String username) {
-    if (StringUtils.isBlank(id)) {
-      String message = "Invalid measure id: " + id;
-      log.error(message);
-      throw new InvalidIdException(message);
+    if (StringUtils.isBlank(id) || StringUtils.isBlank(username)) {
+      throw new InvalidIdException("Username and Measure Id is required.");
     }
     final Measure existingMeasure = findMeasureById(id);
     if (existingMeasure == null) {
       throw new ResourceNotFoundException("Measure does not exist.");
     }
+    if(!username.equalsIgnoreCase(existingMeasure.getMeasureSet().getOwner())) {
+      throw new UnauthorizedException("User is not authorized to delete this measure.");
+    }
+
     if (!existingMeasure.getMeasureMetaData().isDraft()) {
       throw new InvalidDraftStatusException(id);
     }
     if (!existingMeasure.isActive()) {
       throw new InvalidResourceStateException("Measure is inactive.");
     }
-    verifyAuthorization(username, existingMeasure);
 
-    LockInfo lockInfo = measureLockService.lockMeasure(id, username);
-    if (lockInfo.isLocked() && !username.equals(lockInfo.getLockedBy())) {
-      log.info(
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      LockInfo lockInfo = measureLockService.lockMeasure(id, username);
+      if (lockInfo.isLocked() && !username.equals(lockInfo.getLockedBy())) {
+        log.info(
           "user: [{}] can't de-activate Measure: [{}], because measure is locked by: [{}]",
           username,
           id,
           lockInfo.getLockedBy());
-      throw new LockNotObtainedException(
+        throw new LockNotObtainedException(
           "Unable to delete measure. Locked while being edited by " + lockInfo.getLockedBy());
-    }
+      }
 
-    boolean isAnyTestCaseLockedByOthers =
+      boolean isAnyTestCaseLockedByOthers =
         testCaseLockService.isAnyTestCaseLockedByOthers(id, username);
-    if (isAnyTestCaseLockedByOthers) {
-      log.info(
+      if (isAnyTestCaseLockedByOthers) {
+        log.info(
           "user: [{}] can't de-activate Measure: [{}], because one or more test cases are locked by other users",
           username,
           id);
-      throw new LockNotObtainedException(
+        throw new LockNotObtainedException(
           "Unable to delete measure.  One or more test cases are locked by another user.");
+      }
     }
     existingMeasure.setActive(false);
     existingMeasure.setLastModifiedBy(username);
