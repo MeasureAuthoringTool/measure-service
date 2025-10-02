@@ -2550,7 +2550,6 @@ public class MeasureServiceTest implements ResourceUtil {
         .measureSet(MeasureSet.builder().owner(username).build())
         .measureMetaData(draftMeasureMetaData)
         .build();
-    LockInfo lockInfo = LockInfo.builder().isLocked(true).lockedBy(username).build();
 
     // When
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);

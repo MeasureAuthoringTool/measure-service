@@ -2,12 +2,25 @@ spring:
   data:
     mongodb:
       database: ${MONGO_DATABASE:madie}
-      uri: ${MONGO_URI:mongodb://${DBUSER}:${DBPASS}@localhost:27017/madie}?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
+      uri: mongodb://localhost:27017/madie?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
       auto-index-creation: true
   servlet:
     multipart:
       max-file-size: 10MB
       max-request-size: 10MB
+
+logging:
+  level:
+    org.springframework.data.mongodb.core.MongoTemplate: DEBUG
+    org.springframework.data.mongodb.repository.Query: DEBUG
+    org.springframework.data.mongodb.core.query: DEBUG
+    org.springframework.data.mongodb.core.convert: DEBUG
+    org.springframework.data.mongodb.core.mapping: DEBUG
+    org.springframework.data.mongodb.repository.support: DEBUG
+    org.mongodb.driver.protocol.query: DEBUG
+    org.mongodb.driver.protocol.insert: DEBUG
+    org.mongodb.driver.protocol.update: DEBUG
+    org.mongodb.driver.protocol.delete: DEBUG
 
 server:
   servlet:
@@ -73,7 +86,7 @@ management:
 
 okta:
   oauth2:
-    issuer: ${OKTA_ISSUER:https://integrator-3514157.okta.com/oauth2/default}
+    issuer: ${OKTA_ISSUER:https://dev-18092578.okta.com/oauth2/default}
     audience: ${OKTA_AUDIENCE:api://default}
 
 organizations-api-key: ${ORGANIZATIONS_API_KEY:fa9c193c}
