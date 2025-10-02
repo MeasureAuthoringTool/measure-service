@@ -2491,7 +2491,7 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
     when(measureLockService.lockMeasure(measureId, currentUser)).thenReturn(lockInfo);
     when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(true);
-
+    when(measureLockService.unlockMeasure(measureId, currentUser)).thenReturn(LockInfo.builder().build());
     // Then
     Exception exception =
         assertThrows(

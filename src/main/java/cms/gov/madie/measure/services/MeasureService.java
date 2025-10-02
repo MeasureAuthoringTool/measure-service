@@ -361,6 +361,7 @@ public class MeasureService {
           "user: [{}] can't de-activate Measure: [{}], because one or more test cases are locked by other users",
           username,
           id);
+        measureLockService.unlockMeasure(id, username);
         throw new LockNotObtainedException(
           "Unable to delete measure.  One or more test cases are locked by another user.");
       }
