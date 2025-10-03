@@ -6,8 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -287,5 +286,108 @@ public class TestCaseLockServiceTest {
     List<LockInfo> locks =
         service.lockAllTestCases("testMeasureId", List.of("testCaseId"), "test.user");
     assertTrue(CollectionUtils.isEmpty(locks));
+  }
+
+  @Test
+  public void testCaseLocksByOtherUser() {
+    boolean result = service.testCaseLocksByOtherUser("measureId", null, "test.user");
+    assertFalse(result);
+  }
+
+  @Test
+  public void testCaseLocksByOtherUserReturnsTrue() {
+    TestCaseLock lock = TestCaseLock.builder().lockedBy("anotherUser").build();
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.of(lock));
+    boolean result =
+        service.testCaseLocksByOtherUser("measureId", List.of("testCaseId"), "test.user");
+    assertTrue(result);
+  }
+
+  @Test
+  public void testCaseLocksByOtherUserReturnsFalse() {
+    TestCaseLock lock = TestCaseLock.builder().lockedBy("test.user").build();
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.of(lock));
+    boolean result =
+        service.testCaseLocksByOtherUser("measureId", List.of("testCaseId"), "test.user");
+    assertFalse(result);
+  }
+
+  @Test
+  public void testCaseLocksByOtherUserReturnsFalseWhenLockNotFound() {
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.empty());
+    boolean result =
+        service.testCaseLocksByOtherUser("measureId", List.of("testCaseId"), "test.user");
+    assertFalse(result);
+  }
+
+  @Test
+  public void checkTestCaseLocksInMeasureReturnsTrueWhenLockedByOtherUser() {
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .testCases(List.of(TestCase.builder().id("testCaseId").build()))
+            .build();
+    when(measureRepository.findByIdAndActive(anyString(), anyBoolean()))
+        .thenReturn(Optional.of(measure));
+    when(testCaseLockRepository.findByTestCaseId(anyString()))
+        .thenReturn(Optional.of(TestCaseLock.builder().lockedBy("anotherUser").build()));
+
+    boolean result = service.checkTestCaseLocksInMeasure("measureId", "test.user");
+
+    assertTrue(result);
+  }
+
+  @Test
+  public void checkTestCaseLocksInMeasureReturnsFalseWhenNoLocksExist() {
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .testCases(List.of(TestCase.builder().id("testCaseId").build()))
+            .build();
+    when(measureRepository.findByIdAndActive(anyString(), anyBoolean()))
+        .thenReturn(Optional.of(measure));
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.empty());
+
+    boolean result = service.checkTestCaseLocksInMeasure("measureId", "test.user");
+
+    assertFalse(result);
+  }
+
+  @Test
+  public void checkTestCaseLocksInMeasureReturnsFalseWhenLockedBySameUser() {
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .testCases(List.of(TestCase.builder().id("testCaseId").build()))
+            .build();
+    when(measureRepository.findByIdAndActive(anyString(), anyBoolean()))
+        .thenReturn(Optional.of(measure));
+    when(testCaseLockRepository.findByTestCaseId(anyString()))
+        .thenReturn(Optional.of(TestCaseLock.builder().lockedBy("test.user").build()));
+
+    boolean result = service.checkTestCaseLocksInMeasure("measureId", "test.user");
+
+    assertFalse(result);
+  }
+
+  @Test
+  public void checkTestCaseLocksInMeasureThrowsExceptionWhenMeasureNotFound() {
+    when(measureRepository.findByIdAndActive(anyString(), anyBoolean()))
+        .thenReturn(Optional.empty());
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> service.checkTestCaseLocksInMeasure("measureId", "test.user"));
+  }
+
+  @Test
+  public void checkTestCaseLocksInMeasureReturnsFalseWhenNoTestCasesExist() {
+    Measure measure = Measure.builder().id("measureId").testCases(Collections.emptyList()).build();
+    when(measureRepository.findByIdAndActive(anyString(), anyBoolean()))
+        .thenReturn(Optional.of(measure));
+
+    boolean result = service.checkTestCaseLocksInMeasure("measureId", "test.user");
+
+    assertFalse(result);
   }
 }
