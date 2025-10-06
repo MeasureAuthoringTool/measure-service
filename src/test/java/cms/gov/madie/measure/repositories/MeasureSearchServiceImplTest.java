@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.repositories;
 
 import cms.gov.madie.measure.dto.*;
+import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.OwnershipType;
@@ -26,6 +27,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -493,5 +495,48 @@ public class MeasureSearchServiceImplTest {
         .thenReturn(result);
     int count = measureAclRepository.countMeasuresByOwnership(true, null, List.of());
     assertEquals(count, 10);
+  }
+
+  @Test
+  void testFindOwnedActiveMeasuresWithLocking() {
+    List<MeasureListDTO> measuresList =
+        List.of(
+            measure1.toBuilder()
+                .measureLock(MeasureLock.builder().lockedBy("Jane").build())
+                .hasLockedTestCases(true)
+                .build());
+    FacetDTO mockFacetDto = FacetDTO.builder().queryResults(measuresList).build();
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
+    PageRequest pageRequest = PageRequest.of(0, 3);
+
+    when(mongoTemplate.aggregate(
+            any(), ArgumentMatchers.eq(Measure.class), ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(mockFacetDto), new Document()));
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder()
+            .searchField("test-measure-name")
+            .optionalSearchProperties(List.of("measure"))
+            .build();
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(1, page.getTotalElements());
+    assertEquals(1, page.getTotalPages());
+    assertEquals(1, page.getContent().size());
+    List<MeasureListDTO> page1Measures = page.getContent();
+    assertEquals("test-measure-name", page1Measures.get(0).getMeasureName());
+    assertEquals("Jane", page1Measures.get(0).getMeasureLock().getLockedBy());
+    assertTrue(page1Measures.get(0).isHasLockedTestCases());
   }
 }
