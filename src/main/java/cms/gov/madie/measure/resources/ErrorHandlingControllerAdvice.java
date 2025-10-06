@@ -141,12 +141,18 @@ public class ErrorHandlingControllerAdvice {
     InvalidMeasureStateException.class,
     DuplicateMeasureException.class,
     UnsupportedTypeException.class,
-    LockNotObtainedException.class,
   })
   @ResponseStatus(HttpStatus.CONFLICT)
   @ResponseBody
   Map<String, Object> onResourceNotDraftableException(WebRequest request) {
     return getErrorAttributes(request, HttpStatus.CONFLICT);
+  }
+
+  @ExceptionHandler(LockNotObtainedException.class)
+  @ResponseStatus(HttpStatus.LOCKED)
+  @ResponseBody
+  Map<String, Object> onLockNotObtainedException(LockNotObtainedException ex, WebRequest request) {
+    return getErrorAttributes(request, HttpStatus.LOCKED);
   }
 
   @ExceptionHandler({BundleOperationException.class, CqlElmTranslationServiceException.class})

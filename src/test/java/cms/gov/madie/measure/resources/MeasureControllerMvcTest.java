@@ -49,7 +49,9 @@ import java.util.*;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -2319,5 +2321,52 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(0))
         .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID));
+  }
+
+  @Test
+  public void testDeactivateMeasureSuccessfully() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+
+    when(measureService.deactivateMeasure(eq(measureId), eq(TEST_USER_ID)))
+        .thenReturn(Measure.builder().active(false).id(measureId).build());
+    MvcResult result =
+        mockMvc
+            .perform(
+                delete("/measures/" + measureId + "/delete")
+                    .with(user(TEST_USER_ID))
+                    .with(csrf())
+                    .header("harpId", "testUser")
+                    .header("Authorization", "test-okta")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andReturn();
+
+    verify(measureService, times(1)).deactivateMeasure(eq(measureId), eq(TEST_USER_ID));
+    assertThat(result.getResponse().getContentAsString(), containsString("\"active\":false"));
+  }
+
+  @Test
+  public void testDeactivateMeasureFailed() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+    String reason = "Lock can't be obtained to deactivate";
+    doThrow(new LockNotObtainedException(reason))
+        .when(measureService)
+        .deactivateMeasure(eq(measureId), eq(TEST_USER_ID));
+    MvcResult result =
+        mockMvc
+            .perform(
+                delete("/measures/" + measureId + "/delete")
+                    .with(user(TEST_USER_ID))
+                    .with(csrf())
+                    .header("harpId", "testUser")
+                    .header("Authorization", "test-okta")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isLocked())
+            .andReturn();
+
+    verify(measureService, times(1)).deactivateMeasure(eq(measureId), eq(TEST_USER_ID));
+    assertThat(result.getResponse().getContentAsString(), containsString(reason));
   }
 }
