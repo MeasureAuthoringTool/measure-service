@@ -331,7 +331,7 @@ public class MeasureService {
     if (existingMeasure == null) {
       throw new ResourceNotFoundException("Measure does not exist.");
     }
-    if(!username.equalsIgnoreCase(existingMeasure.getMeasureSet().getOwner())) {
+    if (!username.equalsIgnoreCase(existingMeasure.getMeasureSet().getOwner())) {
       throw new UnauthorizedException("User is not authorized to delete this measure.");
     }
 
@@ -346,24 +346,24 @@ public class MeasureService {
       LockInfo lockInfo = measureLockService.lockMeasure(id, username);
       if (lockInfo.isLocked() && !username.equals(lockInfo.getLockedBy())) {
         log.info(
-          "user: [{}] can't de-activate Measure: [{}], because measure is locked by: [{}]",
-          username,
-          id,
-          lockInfo.getLockedBy());
+            "user: [{}] can't de-activate Measure: [{}], because measure is locked by: [{}]",
+            username,
+            id,
+            lockInfo.getLockedBy());
         throw new LockNotObtainedException(
-          "Unable to delete measure. Locked while being edited by " + lockInfo.getLockedBy());
+            "Unable to delete measure. Locked while being edited by " + lockInfo.getLockedBy());
       }
 
       boolean isAnyTestCaseLockedByOthers =
-        testCaseLockService.isAnyTestCaseLockedByOthers(id, username);
+          testCaseLockService.isAnyTestCaseLockedByOthers(id, username);
       if (isAnyTestCaseLockedByOthers) {
         log.info(
-          "user: [{}] can't de-activate Measure: [{}], because one or more test cases are locked by other users",
-          username,
-          id);
+            "user: [{}] can't de-activate Measure: [{}], because one or more test cases are locked by other users",
+            username,
+            id);
         measureLockService.unlockMeasure(id, username);
         throw new LockNotObtainedException(
-          "Unable to delete measure.  One or more test cases are locked by another user.");
+            "Unable to delete measure.  One or more test cases are locked by another user.");
       }
     }
     existingMeasure.setActive(false);

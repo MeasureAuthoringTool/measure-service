@@ -2341,8 +2341,8 @@ public class MeasureServiceTest implements ResourceUtil {
 
     // When & Then
     InvalidIdException exception =
-      assertThrows(
-        InvalidIdException.class, () -> measureService.deactivateMeasure(measureId, username));
+        assertThrows(
+            InvalidIdException.class, () -> measureService.deactivateMeasure(measureId, username));
 
     assertThat(exception.getMessage(), is(equalTo("Username and Measure Id is required.")));
   }
@@ -2366,22 +2366,23 @@ public class MeasureServiceTest implements ResourceUtil {
     String measureId = "test-measure-id";
     String username = "unauthorized-user";
     Measure existingMeasure =
-      measure1.toBuilder()
-        .id(measureId)
-        .active(true)
-        .measureSet(MeasureSet.builder().owner("test").build())
-        .build();
+        measure1.toBuilder()
+            .id(measureId)
+            .active(true)
+            .measureSet(MeasureSet.builder().owner("test").build())
+            .build();
 
     // When
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
 
     // Then
     UnauthorizedException exception =
-      assertThrows(
-        UnauthorizedException.class,
-        () -> measureService.deactivateMeasure(measureId, username));
+        assertThrows(
+            UnauthorizedException.class,
+            () -> measureService.deactivateMeasure(measureId, username));
 
-    assertThat(exception.getMessage(), is(equalTo("User is not authorized to delete this measure.")));
+    assertThat(
+        exception.getMessage(), is(equalTo("User is not authorized to delete this measure.")));
     verify(measureLockService, never()).lockMeasure(anyString(), anyString());
     verify(measureRepository, never()).save(any(Measure.class));
   }
@@ -2491,7 +2492,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
     when(measureLockService.lockMeasure(measureId, currentUser)).thenReturn(lockInfo);
     when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(true);
-    when(measureLockService.unlockMeasure(measureId, currentUser)).thenReturn(LockInfo.builder().build());
+    when(measureLockService.unlockMeasure(measureId, currentUser))
+        .thenReturn(LockInfo.builder().build());
     // Then
     Exception exception =
         assertThrows(
@@ -2511,11 +2513,11 @@ public class MeasureServiceTest implements ResourceUtil {
     String username = "test-user";
 
     Measure existingMeasure =
-      measure1.toBuilder()
-        .active(true)
-        .measureSet(MeasureSet.builder().owner(username).build())
-        .measureMetaData(draftMeasureMetaData)
-        .build();
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
     LockInfo lockInfo = LockInfo.builder().isLocked(true).lockedBy(username).build();
 
     // When
@@ -2525,7 +2527,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
-    when(actionLogService.logAction(existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
         .thenReturn(true);
 
     // Then
@@ -2545,18 +2548,19 @@ public class MeasureServiceTest implements ResourceUtil {
     String username = "test-user";
 
     Measure existingMeasure =
-      measure1.toBuilder()
-        .active(true)
-        .measureSet(MeasureSet.builder().owner(username).build())
-        .measureMetaData(draftMeasureMetaData)
-        .build();
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
 
     // When
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
     when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
-    when(actionLogService.logAction(existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
-      .thenReturn(true);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
 
     // Then
     Measure result = measureService.deactivateMeasure(existingMeasure.getId(), username);
