@@ -112,7 +112,11 @@ public class MeasureService {
     // also returns the exception when id is not found
     return measureRepository
         .findByIdAndActive(measureId, true)
-        .orElseThrow(() -> new ResourceNotFoundException("Measure", measureId));
+        .orElseThrow(
+            () -> {
+              log.info("Could not find active Measure with id: {}", measureId);
+              return new ResourceNotFoundException("Measure", measureId);
+            });
   }
 
   public Measure createMeasure(
@@ -505,7 +509,8 @@ public class MeasureService {
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
-    verifyShareAuthorization(measureUserIdMap, username);
+    // Restrict sharing to owners of measure only
+    verifyShareAuthorization(measureUserIdMap, username, true);
 
     measureUserIdMap.forEach(
         (measureId, userIds) -> {
@@ -533,7 +538,8 @@ public class MeasureService {
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
-    verifyShareAuthorization(measureUserIdMap, username);
+    // Allow unsharing by owners of measure or already shared user of measure
+    verifyShareAuthorization(measureUserIdMap, username, false);
 
     measureUserIdMap.forEach(
         (measureId, userIds) -> {
@@ -552,8 +558,13 @@ public class MeasureService {
     return measureIdToAclSpecification;
   }
 
+  /**
+   * Verifies that the user is authorized to perform share/unshare operations on the given measures.
+   * - Restrict sharing to owners only (ownerOnly = true). - Allow unsharing by owners or users who
+   * the measure is already shared with (ownerOnly = false).
+   */
   private void verifyShareAuthorization(
-      Map<String, List<String>> measureUserIdMap, String username) {
+      Map<String, List<String>> measureUserIdMap, String username, boolean ownerOnly) {
     log.info(
         "User [{}] has called verifyShareAuthorization to determine whether operation with [{}]"
             + " is allowed to be performed",
@@ -575,7 +586,8 @@ public class MeasureService {
                     measureId);
                 throw new ResourceNotFoundException("Measure does not exist: " + measureId);
               }
-              verifyAuthorization(username, measure, null);
+              verifyAuthorization(
+                  username, measure, ownerOnly ? List.of() : List.of(RoleEnum.SHARED_WITH));
             });
 
     log.info(

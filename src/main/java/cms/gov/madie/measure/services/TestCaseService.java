@@ -20,8 +20,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
+import static java.util.stream.Collectors.*;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 
@@ -102,7 +102,7 @@ public class TestCaseService {
 
   public TestCase persistTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
-    final Measure measure = findMeasureById(measureId);
+    final Measure measure = measureService.findActiveMeasureById(measureId);
 
     verifyUniqueTestCaseName(testCase, measure);
 
@@ -142,7 +142,7 @@ public class TestCaseService {
     if (newTestCases == null || newTestCases.isEmpty()) {
       return newTestCases;
     }
-    final Measure measure = findMeasureById(measureId);
+    final Measure measure = measureService.findActiveMeasureById(measureId);
 
     List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
     for (TestCase testCase : newTestCases) {
@@ -204,8 +204,7 @@ public class TestCaseService {
         List<TestCase> validatedTestCases =
             updateTestCaseValidResourcesForMeasure(measure, accessToken);
         Map<String, TestCase> testCaseMap =
-            validatedTestCases.stream()
-                .collect(Collectors.toMap(TestCase::getId, Function.identity()));
+            validatedTestCases.stream().collect(toMap(TestCase::getId, Function.identity()));
         reports.forEach(
             report ->
                 report.setCurrentValidResource(
@@ -351,7 +350,7 @@ public class TestCaseService {
 
   public TestCase getTestCase(
       String measureId, String testCaseId, boolean validate, String accessToken) {
-    Measure measure = findMeasureById(measureId);
+    Measure measure = measureService.findActiveMeasureById(measureId);
     TestCase testCase =
         Optional.ofNullable(measure.getTestCases())
             .orElseThrow(() -> new ResourceNotFoundException("Test Case", testCaseId))
@@ -369,41 +368,7 @@ public class TestCaseService {
   }
 
   public List<TestCase> findTestCasesByMeasureId(String measureId) {
-    return findMeasureById(measureId).getTestCases();
-  }
-
-  public String deleteTestCase(String measureId, String testCaseId, String username) {
-    if (StringUtils.isBlank(testCaseId) || StringUtils.isBlank(measureId)) {
-      log.info("Test case/Measure Id cannot be null");
-      throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
-    }
-    Measure measure = findMeasureById(measureId);
-    measureService.verifyAuthorization(username, measure);
-    if (isEmpty(measure.getTestCases())) {
-      log.info("Measure with ID [{}] doesn't have any test cases", measureId);
-      throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
-    }
-    TestCaseServiceUtil.checkIfDeletable(
-        measure.getTestCases(), List.of(testCaseId), measure.getMeasureMetaData().isDraft());
-    List<TestCase> remainingTestCases =
-        measure.getTestCases().stream().filter(g -> !g.getId().equals(testCaseId)).toList();
-    // to check if given test case id is present
-    if (remainingTestCases.size() == measure.getTestCases().size()) {
-      log.info(
-          "Measure with ID [{}] doesn't have any test case with ID [{}]", measureId, testCaseId);
-      throw new InvalidIdException("Test case cannot be deleted, please contact the helpdesk");
-    }
-    measure.setTestCases(remainingTestCases);
-    log.info(
-        "User [{}] has successfully deleted a test case with Id [{}] from measure [{}]",
-        username,
-        testCaseId,
-        measureId);
-    measureRepository.save(measure);
-    if (isEmpty(remainingTestCases)) {
-      sequenceService.resetSequence(measureId);
-    }
-    return "Test case deleted successfully: " + testCaseId;
+    return measureService.findActiveMeasureById(measureId).getTestCases();
   }
 
   public String deleteTestCases(String measureId, List<String> testCaseIds, String username) {
@@ -411,7 +376,7 @@ public class TestCaseService {
       log.info("Test case Ids or Measure Id is Empty");
       throw new InvalidIdException("Test cases cannot be deleted, please contact the helpdesk");
     }
-    Measure measure = findMeasureById(measureId);
+    Measure measure = measureService.findActiveMeasureById(measureId);
     measureService.verifyAuthorization(username, measure);
     if (isEmpty(measure.getTestCases())) {
       log.info("Measure with ID [{}] doesn't have any test cases", measureId);
@@ -552,7 +517,7 @@ public class TestCaseService {
       String userName,
       String accessToken,
       String model) {
-    Measure measure = findMeasureById(measureId);
+    Measure measure = measureService.findActiveMeasureById(measureId);
     Set<UUID> checkedTestCases = new HashSet<>();
     return testCaseImportRequests.stream()
         .filter(
@@ -620,8 +585,10 @@ public class TestCaseService {
       String accessToken,
       String model) {
     try {
-      String familyName = getPatientFamilyName(model, testCaseImportRequest.getJson());
-      String givenName = getPatientGivenName(model, testCaseImportRequest.getJson());
+      String familyName =
+          TestCaseServiceUtil.getPatientFamilyNameFromJson(model, testCaseImportRequest.getJson());
+      String givenName =
+          TestCaseServiceUtil.getPatientGivenNameFromJson(model, testCaseImportRequest.getJson());
       log.info("Test Case title + Test Case Group:  {}", givenName + " " + familyName);
       if (StringUtils.isBlank(givenName)) {
         return buildTestCaseImportOutcome(
@@ -690,26 +657,6 @@ public class TestCaseService {
     }
   }
 
-  public String getPatientFamilyName(String model, String json) throws JsonProcessingException {
-    String patientFamilyName = null;
-    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
-      patientFamilyName = JsonUtil.getPatientName(json, "family");
-    } else if ((ModelType.QDM_5_6.getValue().equalsIgnoreCase(model))) {
-      patientFamilyName = JsonUtil.getPatientNameQdm(json, "familyName");
-    }
-    return patientFamilyName;
-  }
-
-  public String getPatientGivenName(String model, String json) throws JsonProcessingException {
-    String patientGivenName = null;
-    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
-      patientGivenName = JsonUtil.getPatientName(json, "given");
-    } else if ((ModelType.QDM_5_6.getValue().equalsIgnoreCase(model))) {
-      patientGivenName = JsonUtil.getPatientNameQdm(json, "givenNames");
-    }
-    return patientGivenName;
-  }
-
   private List<TestCaseGroupPopulation> getTestCaseGroupPopulationsFromImportRequest(
       String model, String json, Measure measure) throws JsonProcessingException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations = null;
@@ -741,7 +688,8 @@ public class TestCaseService {
             .patientId(testCaseImportRequest.getPatientId())
             .successful(false)
             .build();
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
+        && existingTestCase.getId() != null) {
       LockInfo lock =
           testCaseLockService.lockTestCase(measureId, existingTestCase.getId(), userName);
       log.info(
@@ -887,15 +835,6 @@ public class TestCaseService {
         : e.getMessage();
   }
 
-  public Measure findMeasureById(String measureId) {
-    Measure measure = measureRepository.findById(measureId).orElse(null);
-    if (measure == null) {
-      log.info("Could not find Measure with id: {}", measureId);
-      throw new ResourceNotFoundException("Measure", measureId);
-    }
-    return measure;
-  }
-
   public List<String> findTestCaseSeriesByMeasureId(String measureId) {
     Measure measure =
         measureRepository
@@ -905,7 +844,7 @@ public class TestCaseService {
         .map(TestCase::getSeries)
         .filter(series -> series != null && !series.trim().isEmpty())
         .distinct()
-        .collect(Collectors.toList());
+        .collect(toList());
   }
 
   public List<TestCase> shiftQiCoreTestCaseDates(

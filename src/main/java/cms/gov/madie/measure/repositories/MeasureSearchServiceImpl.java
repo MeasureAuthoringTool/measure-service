@@ -146,14 +146,15 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     if (nestedFlag) {
       aggregationOperations.add(matchOperation);
-      List<AggregationOperation> initialPipeline = new ArrayList<>(aggregationOperations);
-      initialPipeline.add(
+      aggregationOperations.add(
           group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
       // Find all the measures that matches the given Criteria and fetch unique measureSetIds
       List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
           mongoTemplate
               .aggregate(
-                  newAggregation(initialPipeline), Measure.class, MeasureSetMatchCountDTO.class)
+                  newAggregation(aggregationOperations),
+                  Measure.class,
+                  MeasureSetMatchCountDTO.class)
               .getMappedResults();
 
       Map<String, MeasureSetMatchCountDTO> matchInfoMap =
@@ -167,28 +168,32 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         return new PageImpl<>(Collections.emptyList(), pageable, 0);
       }
 
-      // Fetch all measures associated to each MeasureSetId
+      List<AggregationOperation> postMatchPipeline = new ArrayList<>();
+      postMatchPipeline.add(lookupOperation);
+      postMatchPipeline.add(unwindOperation);
+      postMatchPipeline.add(initialProjection);
+
       MatchOperation matchMeasureSetIds =
           match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
+      postMatchPipeline.add(matchMeasureSetIds);
 
       // Sort those measures based on active status, version and draft status
       // Active measures should come first, then draft measures, then by version
       SortOperation sortByVersionAndDraft =
           sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
+      postMatchPipeline.add(sortByVersionAndDraft);
 
       // Group all measures that has same measureSetId and get the count and also first document
       // which will be the latest measure in the MeasureSet
       GroupOperation groupByMeasureSet = group("measureSetId").first("$$ROOT").as("selectedDoc");
+      postMatchPipeline.add(groupByMeasureSet);
 
       ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
+      postMatchPipeline.add(replaceRoot);
 
-      aggregationOperations.add(matchMeasureSetIds);
-      aggregationOperations.add(sortByVersionAndDraft);
-      aggregationOperations.add(groupByMeasureSet);
-      aggregationOperations.add(replaceRoot);
-      aggregationOperations.add(facets);
+      postMatchPipeline.add(facets);
 
-      Aggregation pipeline = newAggregation(aggregationOperations);
+      Aggregation pipeline = newAggregation(postMatchPipeline);
       List<FacetDTO> results =
           mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
       for (MeasureListDTO dto : results.get(0).getQueryResults()) {

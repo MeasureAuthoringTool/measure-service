@@ -9,11 +9,11 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import static org.mockito.Mockito.*;
+
 @ExtendWith(MockitoExtension.class)
 class UpdateMeasureOrganizationRecordNameChangeUnitTest {
 
-  @Mock
-  private MongoTemplate mongoTemplate;
+  @Mock private MongoTemplate mongoTemplate;
 
   @Test
   void updatesOrganizationNameWhenMatchingRecordExists() {
@@ -22,7 +22,8 @@ class UpdateMeasureOrganizationRecordNameChangeUnitTest {
 
     when(mongoTemplate.updateFirst(query, update, "organization")).thenReturn(null);
 
-    new UpdateMeasureOrganizationRecordNameChangeUnit().updateMeasureOrganizationRecordName(mongoTemplate);
+    new UpdateMeasureOrganizationRecordNameChangeUnit()
+        .updateMeasureOrganizationRecordName(mongoTemplate);
 
     verify(mongoTemplate, times(1)).updateFirst(query, update, "organization");
   }
@@ -34,7 +35,8 @@ class UpdateMeasureOrganizationRecordNameChangeUnitTest {
 
     when(mongoTemplate.updateFirst(query, update, "organization")).thenReturn(null);
 
-    new UpdateMeasureOrganizationRecordNameChangeUnit().updateMeasureOrganizationRecordName(mongoTemplate);
+    new UpdateMeasureOrganizationRecordNameChangeUnit()
+        .updateMeasureOrganizationRecordName(mongoTemplate);
 
     verify(mongoTemplate, times(1)).updateFirst(query, update, "organization");
   }
@@ -46,7 +48,8 @@ class UpdateMeasureOrganizationRecordNameChangeUnitTest {
 
     when(mongoTemplate.updateFirst(query, update, "organization")).thenReturn(null);
 
-    new UpdateMeasureOrganizationRecordNameChangeUnit().updateMeasureOrganizationRecordName(mongoTemplate);
+    new UpdateMeasureOrganizationRecordNameChangeUnit()
+        .updateMeasureOrganizationRecordName(mongoTemplate);
 
     verify(mongoTemplate, times(1)).updateFirst(query, update, "organization");
   }
