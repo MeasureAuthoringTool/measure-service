@@ -14,4 +14,6 @@ public interface TestCaseLockRepository extends MongoRepository<TestCaseLock, St
   void deleteByTestCaseId(String testCaseId);
 
   List<TestCaseLock> findAllByLockedBy(String lockedBy);
+
+  boolean existsByMeasureIdAndLockedByNot(String measureId, String lockedBy);
 }
