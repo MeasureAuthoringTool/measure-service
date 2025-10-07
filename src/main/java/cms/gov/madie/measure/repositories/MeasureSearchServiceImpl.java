@@ -20,10 +20,7 @@ import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Repository;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -32,7 +29,7 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
   private final MongoTemplate mongoTemplate;
-  private AppConfigService appConfigService;
+  private final AppConfigService appConfigService;
 
   public MeasureSearchServiceImpl(MongoTemplate mongoTemplate, AppConfigService appConfigService) {
     this.mongoTemplate = mongoTemplate;
@@ -45,6 +42,64 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         .localField("measureSetId")
         .foreignField("measureSetId")
         .as("measureSet");
+  }
+
+  /**
+   * Generates aggregation stages to lookup measure and test case locks, filtering out locks held by
+   * the specified user.
+   *
+   * @param userId ID of the user to exclude locks for.
+   * @return List of aggregation operations.
+   */
+  private List<AggregationOperation> getLockStages(String userId) {
+    if (StringUtils.isBlank(userId)) {
+      return Collections.emptyList();
+    }
+    return Arrays.asList(
+        // Stage 1: Add 'measureId' field as string version of measure._id because measureLock uses
+        // measureId as String
+        addFields()
+            .addField("measureId")
+            .withValue(ConvertOperators.ToString.toString("$_id"))
+            .build(),
+
+        // Stage 2: Lookup measureLock
+        lookup("measureLock", "measureId", "measureId", "measureLock"),
+
+        // Stage 3: Filter out measureLocks where lockedBy equals current userId
+        addFields()
+            .addField("measureLock")
+            .withValue(
+                ArrayOperators.Filter.filter("measureLock")
+                    .as("lock")
+                    .by(ComparisonOperators.Ne.valueOf("$$lock.lockedBy").notEqualToValue(userId)))
+            .build(),
+
+        // Stage 4: Set measureLock to first element of filtered array
+        addFields()
+            .addField("measureLock")
+            .withValue(ArrayOperators.ArrayElemAt.arrayOf("measureLock").elementAt(0))
+            .build(),
+
+        // Stage 5: Lookup testCaseLock
+        lookup("testCaseLock", "measureId", "measureId", "testCaseLock"),
+
+        // Stage 6: Filter out testCaseLocks where lockedBy equals current userId
+        addFields()
+            .addField("testCaseLock")
+            .withValue(
+                ArrayOperators.Filter.filter("testCaseLock")
+                    .as("lock")
+                    .by(ComparisonOperators.Ne.valueOf("$$lock.lockedBy").notEqualToValue(userId)))
+            .build(),
+
+        // Stage 7: Set flag to indicate if any test case is locked by other users
+        addFields()
+            .addField("hasLockedTestCases")
+            .withValue(
+                ComparisonOperators.Gt.valueOf(ArrayOperators.Size.lengthOfArray("testCaseLock"))
+                    .greaterThanValue(0))
+            .build());
   }
 
   @Override
@@ -146,14 +201,15 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     if (nestedFlag) {
       aggregationOperations.add(matchOperation);
-      List<AggregationOperation> initialPipeline = new ArrayList<>(aggregationOperations);
-      initialPipeline.add(
+      aggregationOperations.add(
           group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
       // Find all the measures that matches the given Criteria and fetch unique measureSetIds
       List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
           mongoTemplate
               .aggregate(
-                  newAggregation(initialPipeline), Measure.class, MeasureSetMatchCountDTO.class)
+                  newAggregation(aggregationOperations),
+                  Measure.class,
+                  MeasureSetMatchCountDTO.class)
               .getMappedResults();
 
       Map<String, MeasureSetMatchCountDTO> matchInfoMap =
@@ -167,28 +223,35 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         return new PageImpl<>(Collections.emptyList(), pageable, 0);
       }
 
-      // Fetch all measures associated to each MeasureSetId
+      List<AggregationOperation> postMatchPipeline = new ArrayList<>();
+      postMatchPipeline.add(lookupOperation);
+      postMatchPipeline.add(unwindOperation);
+      postMatchPipeline.add(initialProjection);
+
       MatchOperation matchMeasureSetIds =
           match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
-
+      postMatchPipeline.add(matchMeasureSetIds);
+      // lock stages
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+        postMatchPipeline.addAll(getLockStages(userId));
+      }
       // Sort those measures based on active status, version and draft status
       // Active measures should come first, then draft measures, then by version
       SortOperation sortByVersionAndDraft =
           sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
+      postMatchPipeline.add(sortByVersionAndDraft);
 
       // Group all measures that has same measureSetId and get the count and also first document
       // which will be the latest measure in the MeasureSet
       GroupOperation groupByMeasureSet = group("measureSetId").first("$$ROOT").as("selectedDoc");
+      postMatchPipeline.add(groupByMeasureSet);
 
       ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
+      postMatchPipeline.add(replaceRoot);
 
-      aggregationOperations.add(matchMeasureSetIds);
-      aggregationOperations.add(sortByVersionAndDraft);
-      aggregationOperations.add(groupByMeasureSet);
-      aggregationOperations.add(replaceRoot);
-      aggregationOperations.add(facets);
+      postMatchPipeline.add(facets);
 
-      Aggregation pipeline = newAggregation(aggregationOperations);
+      Aggregation pipeline = newAggregation(postMatchPipeline);
       List<FacetDTO> results =
           mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
       for (MeasureListDTO dto : results.get(0).getQueryResults()) {

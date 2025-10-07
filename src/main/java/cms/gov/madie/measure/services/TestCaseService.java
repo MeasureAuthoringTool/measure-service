@@ -104,7 +104,7 @@ public class TestCaseService {
 
   public TestCase persistTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
-    final Measure measure = findActiveMeasureById(measureId);
+    final Measure measure = measureService.findActiveMeasureById(measureId);
 
     verifyUniqueTestCaseName(testCase, measure);
 
@@ -144,7 +144,7 @@ public class TestCaseService {
     if (newTestCases == null || newTestCases.isEmpty()) {
       return newTestCases;
     }
-    final Measure measure = findActiveMeasureById(measureId);
+    final Measure measure = measureService.findActiveMeasureById(measureId);
 
     List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
     for (TestCase testCase : newTestCases) {
@@ -352,7 +352,7 @@ public class TestCaseService {
 
   public TestCase getTestCase(
       String measureId, String testCaseId, boolean validate, String accessToken) {
-    Measure measure = findActiveMeasureById(measureId);
+    Measure measure = measureService.findActiveMeasureById(measureId);
     TestCase testCase =
         Optional.ofNullable(measure.getTestCases())
             .orElseThrow(() -> new ResourceNotFoundException("Test Case", testCaseId))
@@ -370,7 +370,7 @@ public class TestCaseService {
   }
 
   public List<TestCase> findTestCasesByMeasureId(String measureId) {
-    return findActiveMeasureById(measureId).getTestCases();
+    return measureService.findActiveMeasureById(measureId).getTestCases();
   }
 
   public String deleteTestCases(String measureId, List<String> testCaseIds, String username) {
@@ -380,7 +380,7 @@ public class TestCaseService {
       log.info("Test case Ids or Measure Id is Empty");
       throw new InvalidIdException("Test cases cannot be deleted, please contact the helpdesk");
     }
-    Measure measure = findActiveMeasureById(measureId);
+    Measure measure = measureService.findActiveMeasureById(measureId);
     measureService.verifyAuthorization(username, measure);
     if (isEmpty(measure.getTestCases())) {
       log.info("Measure with ID [{}] doesn't have any test cases", measureId);
@@ -545,7 +545,7 @@ public class TestCaseService {
       String userName,
       String accessToken,
       String model) {
-    Measure measure = findActiveMeasureById(measureId);
+    Measure measure = measureService.findActiveMeasureById(measureId);
     Set<UUID> checkedTestCases = new HashSet<>();
     return testCaseImportRequests.stream()
         .filter(
@@ -861,15 +861,6 @@ public class TestCaseService {
             + "measure. The combination must be unique (case insensitive,"
             + " spaces ignored) across all test cases associated with the measure."
         : e.getMessage();
-  }
-
-  public Measure findActiveMeasureById(String measureId) {
-    Measure measure = measureRepository.findByIdAndActive(measureId, true).orElse(null);
-    if (measure == null) {
-      log.info("Could not find active Measure with id: {}", measureId);
-      throw new ResourceNotFoundException("Measure", measureId);
-    }
-    return measure;
   }
 
   public List<String> findTestCaseSeriesByMeasureId(String measureId) {
