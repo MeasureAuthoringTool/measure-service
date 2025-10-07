@@ -6,26 +6,20 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.MeasureService;
-import cms.gov.madie.measure.services.TestCaseService;
 import cms.gov.madie.measure.services.QdmTestCaseShiftDatesService;
-
+import cms.gov.madie.measure.services.TestCaseService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import gov.cms.madie.models.measure.Measure;
-import gov.cms.madie.models.measure.MeasureScoring;
-import gov.cms.madie.models.measure.PopulationType;
-import gov.cms.madie.models.measure.TestCase;
-import gov.cms.madie.models.measure.TestCaseGroupPopulation;
-import gov.cms.madie.models.measure.TestCasePopulationValue;
+import gov.cms.madie.models.measure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -51,15 +45,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 public class TestCaseControllerMvcTest {
 
-  @MockBean private TestCaseService testCaseService;
-  @MockBean private MeasureRepository repository;
+  @MockitoBean private TestCaseService testCaseService;
+  @MockitoBean private MeasureRepository repository;
   @Autowired private MockMvc mockMvc;
-  @MockBean private MeasureService measureService;
+  @MockitoBean private MeasureService measureService;
   @Captor ArgumentCaptor<TestCase> testCaseCaptor;
   @Captor ArgumentCaptor<String> measureIdCaptor;
   @Captor ArgumentCaptor<String> testCaseIdCaptor;
   @Captor ArgumentCaptor<String> usernameCaptor;
-  @MockBean private QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
+  @MockitoBean private QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
 
   private TestCase testCase;
   private static final String TEST_ID = "TESTID";
@@ -216,10 +210,10 @@ public class TestCaseControllerMvcTest {
         .andExpect(status().isCreated())
         .andExpect(jsonPath("$[0].id").value("ID1"))
         .andExpect(jsonPath("$[0].title").value("Test1"))
-        .andExpect(jsonPath("$[0].validResource").value(true))
+        .andExpect(jsonPath("$[0].validResource").value(Boolean.TRUE))
         .andExpect(jsonPath("$[1].id").value("ID2"))
         .andExpect(jsonPath("$[1].title").value("Test2"))
-        .andExpect(jsonPath("$[1].validResource").value(false));
+        .andExpect(jsonPath("$[1].validResource").value(Boolean.FALSE));
     verify(testCaseService, times(1))
         .persistTestCases(
             testCaseListCaptor.capture(),
@@ -692,7 +686,7 @@ public class TestCaseControllerMvcTest {
                     List.of(
                         TestCasePopulationValue.builder()
                             .name(PopulationType.INITIAL_POPULATION)
-                            .expected(true)
+                            .expected(Boolean.TRUE)
                             .build()))
                 .build()));
 
@@ -841,7 +835,7 @@ public class TestCaseControllerMvcTest {
   public void testDeleteTestCases() throws Exception {
     List<String> testCaseIds = List.of("testCaseId1", "testCaseId1");
     when(testCaseService.deleteTestCases(anyString(), any(), any(String.class)))
-        .thenReturn("Succesfully deleted provided test cases");
+        .thenReturn("mock text");
 
     MvcResult result =
         mockMvc
@@ -853,10 +847,10 @@ public class TestCaseControllerMvcTest {
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())
-            .andExpect(content().string("Succesfully deleted provided test cases"))
+            .andExpect(content().string("mock text"))
             .andReturn();
 
     String response = result.getResponse().getContentAsString();
-    assertTrue(response.contains("Succesfully deleted provided test cases"));
+    assertTrue(response.contains("mock text"));
   }
 }
