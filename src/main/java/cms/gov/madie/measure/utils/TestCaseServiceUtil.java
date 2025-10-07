@@ -608,7 +608,7 @@ public class TestCaseServiceUtil {
     return testCaseGroupPopulations;
   }
 
-  public static boolean checkIfDeletable(
+  public static void checkIfAnyCreatedBeforeVersioning(
       List<TestCase> testCases, List<String> testCaseIds, boolean isDraft) {
     if (!isDraft) {
       boolean checkIfCreatedBeforeVersioning =
@@ -622,7 +622,6 @@ public class TestCaseServiceUtil {
         throw new InvalidIdException("Test case(s) cannot be deleted, please contact the helpdesk");
       }
     }
-    return true;
   }
 
   public static String getPatientFamilyNameFromJson(String model, String json)
