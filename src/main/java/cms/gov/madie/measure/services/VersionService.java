@@ -324,12 +324,14 @@ public class VersionService {
             findHighestCaseNumberWhenCaseNumbersExist(savedDraft.getTestCases()));
       }
 
-      if (!measure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
-          && !measure.getModel().equals(model)
-          && appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
+      // any time when a QICORE measure is drafted to QICORE_6.0.0,
+      // e.g. QICORE_4.1.1 to QICORE_6.0.0, or QICORE_6.0.0 to QICORE_6.0.0.
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)
+          && !measure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
+          && ModelType.QI_CORE_6_0_0.getValue().equals(model)) {
         for (TestCase testCase : savedDraft.getTestCases()) {
           testCaseValidationService.validateResourceAsynchronously(
-              savedDraft, testCase, TestCaseServiceUtil.SAVE, accessToken);
+              savedDraft, testCase, TestCaseServiceUtil.IMPORT, accessToken);
         }
       }
     }

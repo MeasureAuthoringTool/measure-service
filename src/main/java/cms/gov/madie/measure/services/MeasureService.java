@@ -377,6 +377,7 @@ public class MeasureService {
     existingMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
     Measure saveMeasure = measureRepository.save(existingMeasure);
     actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
+    measureLockService.unlockMeasure(id, username);
     return saveMeasure;
   }
 
