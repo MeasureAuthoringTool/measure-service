@@ -122,9 +122,9 @@ public class VersionService {
           "Unable to version measure. One or more test cases are locked by another user.");
     } else {
       // no lock on measure and no locks on any test cases, version is ok
-      measure = versionMeasure(measure, versionType, username, accessToken);
+      Measure versionedMeasure = versionMeasure(measure, versionType, username, accessToken);
       measureLockService.unlockMeasure(measure.getId(), username);
-      return measure;
+      return versionedMeasure;
     }
   }
 
