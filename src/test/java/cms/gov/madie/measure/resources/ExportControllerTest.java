@@ -4,9 +4,11 @@ import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.services.ActionLogService;
 import cms.gov.madie.measure.services.ExportService;
 import cms.gov.madie.measure.services.FhirServicesClient;
 import cms.gov.madie.measure.services.MeasureService;
+import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCase;
@@ -36,6 +38,8 @@ import static org.mockito.Mockito.anyList;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
 class ExportControllerTest {
@@ -44,6 +48,7 @@ class ExportControllerTest {
   @Mock private FhirServicesClient fhirServicesClient;
   @Mock private ExportService exportService;
   @Mock private MeasureService measureService;
+  @Mock private ActionLogService actionLogService;
   @InjectMocks private ExportController exportController;
 
   @Test
@@ -74,6 +79,8 @@ class ExportControllerTest {
     ResponseEntity<byte[]> output =
         exportController.getZip(principal, "test_id", "Info", "Bearer TOKEN");
     assertEquals(HttpStatus.CREATED, output.getStatusCode());
+    verify(actionLogService, times(1))
+        .logAction("test_id", Measure.class, ActionType.EXPORTED_MEASURE, "test.user");
   }
 
   @Test
@@ -95,6 +102,8 @@ class ExportControllerTest {
     ResponseEntity<byte[]> output =
         exportController.getZip(principal, "test_id", "Info", "Bearer TOKEN");
     assertEquals(HttpStatus.OK, output.getStatusCode());
+    verify(actionLogService, times(1))
+        .logAction("test_id", Measure.class, ActionType.EXPORTED_MEASURE, "test.user");
   }
 
   @Test

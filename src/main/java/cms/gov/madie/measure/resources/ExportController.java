@@ -5,8 +5,10 @@ import java.util.List;
 import java.util.Optional;
 
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
+import cms.gov.madie.measure.services.ActionLogService;
 import cms.gov.madie.measure.services.ExportService;
 import cms.gov.madie.measure.services.MeasureService;
+import gov.cms.madie.models.common.ActionType;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -37,6 +39,7 @@ public class ExportController {
   private final FhirServicesClient fhirServicesClient;
   private final ExportService exportService;
   private final MeasureService measureService;
+  private final ActionLogService actionLogService;
 
   @GetMapping(path = "/measures/{id}/exports", produces = "application/zip")
   public ResponseEntity<byte[]> getZip(
@@ -55,6 +58,8 @@ public class ExportController {
       throw new ResourceNotFoundException("Measure", id);
     }
     var packageDto = exportService.getMeasureExport(measure, accessToken, elmErrorSeverity);
+
+    actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_MEASURE, principal.getName());
 
     return ResponseEntity.status(
             packageDto.isFromStorage() ? HttpStatus.OK.value() : HttpStatus.CREATED.value())
