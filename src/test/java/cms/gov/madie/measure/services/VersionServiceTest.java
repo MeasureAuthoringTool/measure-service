@@ -1637,7 +1637,7 @@ public class VersionServiceTest {
         .thenReturn(true);
     // Mocks a validation request awaiting execution.
     when(testCaseValidationService.validateResourceAsynchronously(
-            any(), any(TestCase.class), eq(TestCaseServiceUtil.SAVE), anyString()))
+            any(), any(TestCase.class), eq(TestCaseServiceUtil.IMPORT), anyString()))
         .thenAnswer(
             invocation ->
                 invocation.getArgument(1, TestCase.class).toBuilder()
@@ -1667,5 +1667,51 @@ public class VersionServiceTest {
     assertTrue(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
     assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-11T01:30:10.123+00:00"));
     assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-10T01:31:20.456+00:00"));
+  }
+
+  @Test
+  public void testCreateDraftDoesNotCallValidationForQdm() {
+    Measure measure = buildBasicMeasure();
+    // Set to QDM
+    measure.setModel(ModelType.QDM_5_6.getValue());
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class)))
+        .thenReturn(measure.toBuilder().id("2").build());
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
+        .thenReturn(true);
+
+    versionService.createDraft(
+        measure.getId(), "Test", ModelType.QI_CORE.getValue(), "test-user", TEST_ACCESS_TOKEN);
+
+    verify(testCaseValidationService, never())
+        .validateResourceAsynchronously(any(), any(), anyString(), anyString());
+  }
+
+  @Test
+  public void testCreateDraftDoesNotCallValidationFoNonQiCore600() {
+    Measure measure = buildBasicMeasure();
+    // Set to any model not QI_CORE_6_0_0
+    measure.setModel(ModelType.QI_CORE.getValue());
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class)))
+        .thenReturn(measure.toBuilder().id("2").build());
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
+        .thenReturn(true);
+
+    versionService.createDraft(
+        measure.getId(), "Test", ModelType.QI_CORE.getValue(), "test-user", TEST_ACCESS_TOKEN);
+
+    verify(testCaseValidationService, never())
+        .validateResourceAsynchronously(any(), any(), anyString(), anyString());
   }
 }
