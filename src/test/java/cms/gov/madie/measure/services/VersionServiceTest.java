@@ -1,10 +1,12 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BadVersionRequestException;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
 import cms.gov.madie.measure.exceptions.CqlElmTranslationErrorException;
+import cms.gov.madie.measure.exceptions.LockNotObtainedException;
 import cms.gov.madie.measure.exceptions.MeasureNotDraftableException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
@@ -68,6 +70,9 @@ public class VersionServiceTest {
   @Mock FhirServicesClient fhirServicesClient;
 
   @Mock private TestCaseValidationService testCaseValidationService;
+
+  @Mock private MeasureLockService measureLockService;
+  @Mock private TestCaseLockService testCaseLockService;
 
   @Captor private ArgumentCaptor<Measure> measureCaptor;
   @Captor private ArgumentCaptor<CqmMeasure> cqmMeasureCaptor;
@@ -185,7 +190,8 @@ public class VersionServiceTest {
           .scoringUnit("test-scoring-unit")
           .build();
 
-  MeasureSet measureSet = MeasureSet.builder().measureSetId("MS123").cmsId(144).build();
+  MeasureSet measureSet =
+      MeasureSet.builder().measureSetId("MS123").cmsId(144).owner("testUser").build();
 
   private static final String MODEL_QI_CORE = "QI-Core v4.1.1";
   private static MockedStatic<PackagingUtilityFactory> factory;
@@ -1667,5 +1673,220 @@ public class VersionServiceTest {
     assertTrue(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
     assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-11T01:30:10.123+00:00"));
     assertFalse(draft.getTestCases().get(0).getJson().contains("2024-10-10T01:31:20.456+00:00"));
+  }
+
+  @Test
+  public void testCreateVersionWhenLockingFeatureFlagIsOn() {
+    FhirMeasure existingMeasure =
+        FhirMeasure.builder()
+            .id("testMeasureId")
+            .measureSetId("testMeasureSetId")
+            .createdBy("testUser")
+            .cql("library Test1CQLLib version '2.3.001'")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .model(ModelType.QI_CORE.getValue())
+            .measureSet(measureSet)
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    existingMeasure.setMeasureMetaData(metaData);
+    Version version = Version.builder().major(2).minor(3).revisionNumber(1).build();
+    existingMeasure.setVersion(version);
+
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.lockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().isLocked(false).lockedBy("testUser").build());
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
+        .thenReturn(false);
+
+    ElmJson elmJson = ElmJson.builder().json(ELMJON_NO_ERROR).build();
+    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.hasErrors(any())).thenReturn(false);
+
+    Version newVersion = Version.builder().major(2).minor(2).revisionNumber(2).build();
+    when(measureRepository.findMaxVersionByMeasureSetId(anyString()))
+        .thenReturn(Optional.of(newVersion));
+
+    Measure updatedMeasure = existingMeasure.toBuilder().build();
+    Version updatedVersion = Version.builder().major(3).minor(0).revisionNumber(0).build();
+    updatedMeasure.setVersion(updatedVersion);
+    MeasureMetaData updatedMetaData = new MeasureMetaData();
+    updatedMetaData.setDraft(false);
+    updatedMeasure.setMeasureMetaData(updatedMetaData);
+    when(measureRepository.save(any(Measure.class))).thenReturn(updatedMeasure);
+
+    factory.when(() -> PackagingUtilityFactory.getInstance(MODEL_QI_CORE)).thenReturn(utility);
+
+    String measureBundleJson =
+        """
+            {"resourceType": "Bundle","entry": [ {
+                "resource": {
+                  "resourceType": "Measure","text":{"div":"humanReadable"}}}]}""";
+    Export measureExport =
+        Export.builder()
+            .id("testId")
+            .measureId("testMeasureId")
+            .measureBundleJson(measureBundleJson)
+            .measureBundleGridFsId("id1")
+            .measureBundleWithoutWarningsGridFsId("id2")
+            .build();
+    when(exportRepository.save(any(Export.class))).thenReturn(measureExport);
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
+        .thenReturn(measureBundleJson);
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), anyString(), anyString()))
+        .thenReturn(measureBundleJson);
+    // mock bundle and hex
+    ObjectId measureBundleId = mock(ObjectId.class);
+    when(measureBundleId.toHexString()).thenReturn("hex1");
+    ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
+    when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
+
+    when(mongoGridFsService.save(
+            any(ByteArrayInputStream.class),
+            eq(existingMeasure.getEcqmTitle() + "-v" + updatedMeasure.getVersion().toString()),
+            eq("application/json")))
+        .thenReturn(measureBundleId);
+    when(mongoGridFsService.save(
+            any(ByteArrayInputStream.class),
+            eq(
+                existingMeasure.getEcqmTitle()
+                    + "-v"
+                    + updatedMeasure.getVersion().toString()
+                    + "-withoutWarnings"),
+            eq("application/json")))
+        .thenReturn(measureBundleWithoutWarningsId);
+
+    versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken");
+
+    verify(measureRepository, times(1)).save(measureCaptor.capture());
+    Measure savedValue = measureCaptor.getValue();
+    assertEquals(savedValue.getVersion().getMajor(), 3);
+    assertEquals(savedValue.getVersion().getMinor(), 0);
+    assertEquals(savedValue.getVersion().getRevisionNumber(), 0);
+    assertFalse(savedValue.getMeasureMetaData().isDraft());
+
+    verify(exportRepository, times(1)).save(exportArgumentCaptor.capture());
+    Export capturedExport = exportArgumentCaptor.getValue();
+    assertEquals(savedValue.getId(), capturedExport.getMeasureId());
+    assertEquals("hex1", capturedExport.getMeasureBundleGridFsId());
+    assertEquals("hex2", capturedExport.getMeasureBundleWithoutWarningsGridFsId());
+  }
+
+  @Test
+  public void testCreateVersionThrowsLockNotObtainedExceptionWhenMeasureIsLocked() {
+    FhirMeasure existingMeasure =
+        FhirMeasure.builder()
+            .id("testMeasureId")
+            .measureSetId("testMeasureSetId")
+            .createdBy("testUser")
+            .cql("library Test1CQLLib version '2.3.001'")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .model(ModelType.QI_CORE.getValue())
+            .measureSet(measureSet)
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    existingMeasure.setMeasureMetaData(metaData);
+    Version version = Version.builder().major(2).minor(3).revisionNumber(1).build();
+    existingMeasure.setVersion(version);
+
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.lockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().isLocked(true).lockedBy("testUser2").build());
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
+        .thenReturn(false);
+
+    Exception exception =
+        assertThrows(
+            LockNotObtainedException.class,
+            () ->
+                versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+
+    assertThat(
+        exception.getMessage(),
+        is(equalTo("Unable to version measure. Locked while being edited by testUser2")));
+  }
+
+  @Test
+  public void testCreateVersionThrowsLockNotObtainedExceptionWhenTestCaseIsLocked() {
+    FhirMeasure existingMeasure =
+        FhirMeasure.builder()
+            .id("testMeasureId")
+            .measureSetId("testMeasureSetId")
+            .createdBy("testUser")
+            .cql("library Test1CQLLib version '2.3.001'")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .model(ModelType.QI_CORE.getValue())
+            .measureSet(measureSet)
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    existingMeasure.setMeasureMetaData(metaData);
+    Version version = Version.builder().major(2).minor(3).revisionNumber(1).build();
+    existingMeasure.setVersion(version);
+
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.lockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().isLocked(true).lockedBy("testUser2").build());
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
+        .thenReturn(true);
+
+    Exception exception =
+        assertThrows(
+            LockNotObtainedException.class,
+            () ->
+                versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+
+    assertThat(
+        exception.getMessage(),
+        is(
+            equalTo(
+                "Unable to version measure. One or more test cases are locked by another user.")));
+  }
+
+  @Test
+  public void testCreateVersionThrowsLockNotObtainedExceptionWhenMeasureAndTestCaseAreLocked() {
+    FhirMeasure existingMeasure =
+        FhirMeasure.builder()
+            .id("testMeasureId")
+            .measureSetId("testMeasureSetId")
+            .createdBy("testUser")
+            .cql("library Test1CQLLib version '2.3.001'")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .model(ModelType.QI_CORE.getValue())
+            .measureSet(measureSet)
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    existingMeasure.setMeasureMetaData(metaData);
+    Version version = Version.builder().major(2).minor(3).revisionNumber(1).build();
+    existingMeasure.setVersion(version);
+
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.lockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().isLocked(true).lockedBy("testUser").build());
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
+        .thenReturn(true);
+
+    Exception exception =
+        assertThrows(
+            LockNotObtainedException.class,
+            () ->
+                versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+
+    assertThat(
+        exception.getMessage(),
+        is(
+            equalTo(
+                "Unable to version measure. One or more test cases are locked by another user.")));
   }
 }

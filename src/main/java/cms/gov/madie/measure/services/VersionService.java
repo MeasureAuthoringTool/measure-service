@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
@@ -50,6 +51,8 @@ public class VersionService {
   private final MongoGridFsService mongoGridFsService;
   private final AppConfigService appConfigService;
   private final TestCaseValidationService testCaseValidationService;
+  private final MeasureLockService measureLockService;
+  private final TestCaseLockService testCaseLockService;
 
   public enum VersionValidationResult {
     VALID,
@@ -79,11 +82,50 @@ public class VersionService {
   public Measure createVersion(String id, String versionType, String username, String accessToken) {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      return checkLockAndVersionMeasure(versionType, username, accessToken, measure);
+    } else {
+      return versionMeasure(measure, versionType, username, accessToken);
+    }
+  }
+
+  private Measure versionMeasure(
+      Measure measure, String versionType, String username, String accessToken) {
     if (measure instanceof FhirMeasure) {
       return versionFhirMeasure(versionType, username, accessToken, measure);
     }
-
     return versionQdmMeasure(versionType, username, measure, accessToken);
+  }
+
+  private Measure checkLockAndVersionMeasure(
+      String versionType, String username, String accessToken, Measure measure) {
+    LockInfo lock = measureLockService.lockMeasure(measure.getId(), username);
+    boolean isAnyTestCaseLocked =
+        testCaseLockService.isAnyTestCaseLockedByOthers(measure.getId(), username);
+    if (lock.isLocked() && !username.equals(lock.getLockedBy()) && !isAnyTestCaseLocked) {
+      log.info(
+          "user: [{}] can't version Measure: [{}], because measure is locked by: [{}]",
+          username,
+          measure.getId(),
+          lock.getLockedBy());
+      throw new LockNotObtainedException(
+          "Unable to version measure. Locked while being edited by " + lock.getLockedBy());
+    }
+
+    if (isAnyTestCaseLocked) {
+      log.info(
+          "user: [{}] can't de-activate Measure: [{}], because one or more test cases are locked by other users",
+          username,
+          measure.getId());
+      measureLockService.unlockMeasure(measure.getId(), username);
+      throw new LockNotObtainedException(
+          "Unable to version measure. One or more test cases are locked by another user.");
+    } else {
+      // no lock on measure and no locks on any test cases, version is ok
+      measure = versionMeasure(measure, versionType, username, accessToken);
+      measureLockService.unlockMeasure(measure.getId(), username);
+      return measure;
+    }
   }
 
   /**
