@@ -208,12 +208,13 @@ public class ActionLogServiceTest {
                     AccessControlAction.builder()
                         .actionType(ActionType.UPDATED)
                         .performedAt(fixedInstantUpdated)
-                        .performedBy("user2")
+                        .performedBy("user1")
                         .build(),
+                    // CREATED action to be filtered out
                     AccessControlAction.builder()
-                        .actionType(ActionType.CREATED) // same timestamp, should be filtered
+                        .actionType(ActionType.CREATED)
                         .performedAt(fixedInstant)
-                        .performedBy("user3")
+                        .performedBy("user1")
                         .build()))
             .build();
 
@@ -233,7 +234,7 @@ public class ActionLogServiceTest {
 
     assertThat(updatedAction.getActionType(), is(ActionType.UPDATED));
     assertThat(updatedAction.getPerformedAt(), is(fixedInstantUpdated));
-    assertThat(updatedAction.getPerformedBy(), is("user2"));
+    assertThat(updatedAction.getPerformedBy(), is("user1"));
 
     assertThat(createdAction.getActionType(), is(ActionType.CREATED));
     assertThat(createdAction.getPerformedAt(), is(fixedInstant));
