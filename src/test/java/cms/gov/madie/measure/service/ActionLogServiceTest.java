@@ -187,11 +187,18 @@ public class ActionLogServiceTest {
 
   @Test
   void findMeasureHistoryReturnsCombinedActionsForValidTargetIds() {
+    Instant fixedInstant = Instant.parse("2025-08-11T21:05:59Z");
+    Instant fixedInstantUpdated = fixedInstant.plusSeconds(10);
+
     ActionLog measureActionLogs =
         ActionLog.builder()
             .actions(
                 List.of(
-                    Action.builder().actionType(ActionType.CREATED).performedBy("user1").build()))
+                    Action.builder()
+                        .actionType(ActionType.CREATED)
+                        .performedAt(fixedInstant)
+                        .performedBy("user1")
+                        .build()))
             .build();
 
     MeasureSetActionLog measureSetActionLog =
@@ -200,7 +207,13 @@ public class ActionLogServiceTest {
                 List.of(
                     AccessControlAction.builder()
                         .actionType(ActionType.UPDATED)
+                        .performedAt(fixedInstantUpdated)
                         .performedBy("user2")
+                        .build(),
+                    AccessControlAction.builder()
+                        .actionType(ActionType.CREATED) // same timestamp, should be filtered
+                        .performedAt(fixedInstant)
+                        .performedBy("user3")
                         .build()))
             .build();
 
@@ -211,9 +224,20 @@ public class ActionLogServiceTest {
 
     List<Action> result = actionLogService.findMeasureHistory("targetId", "measureSetId");
 
+    // Only 2 actions included (CREATED from measure set log filtered out)
     assertThat(result.size(), is(2));
-    assertThat(result.get(0).getActionType(), is(ActionType.CREATED));
-    assertThat(result.get(1).getActionType(), is(ActionType.UPDATED));
+
+    // Verify ordering (descending by performedAt)
+    Action updatedAction = result.get(0);
+    Action createdAction = result.get(1);
+
+    assertThat(updatedAction.getActionType(), is(ActionType.UPDATED));
+    assertThat(updatedAction.getPerformedAt(), is(fixedInstantUpdated));
+    assertThat(updatedAction.getPerformedBy(), is("user2"));
+
+    assertThat(createdAction.getActionType(), is(ActionType.CREATED));
+    assertThat(createdAction.getPerformedAt(), is(fixedInstant));
+    assertThat(createdAction.getPerformedBy(), is("user1"));
   }
 
   @Test
