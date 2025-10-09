@@ -31,9 +31,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
-import cms.gov.madie.measure.dto.MeasureListDTO;
-import cms.gov.madie.measure.dto.MeasureSearchCriteria;
-import cms.gov.madie.measure.dto.SharedUser;
+import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
@@ -75,6 +73,9 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private MeasureSetService measureSetService;
   @Mock private CqlTemplateConfigService cqlTemplateConfigService;
   @Mock private TerminologyValidationService terminologyValidationService;
+  @Mock private AppConfigService appConfigService;
+  @Mock private MeasureLockService measureLockService;
+  @Mock private TestCaseLockService testCaseLockService;
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
 
@@ -2315,5 +2316,260 @@ public class MeasureServiceTest implements ResourceUtil {
         () -> measureService.getMeasureHistory(measureId, userName));
     verify(measureRepository, times(1)).findById(measureId);
     verifyNoInteractions(actionLogService);
+  }
+
+  // test cases for deactivateMeasure method
+  @Test
+  public void testDeactivateMeasureWithBlankId() {
+    // Given
+    String measureId = "   ";
+    String username = "test-user";
+
+    // When & Then
+    InvalidIdException exception =
+        assertThrows(
+            InvalidIdException.class, () -> measureService.deactivateMeasure(measureId, username));
+
+    assertThat(exception.getMessage(), is(equalTo("Username and Measure Id is required.")));
+  }
+
+  @Test
+  public void testDeactivateMeasureWithBlankBlankOwner() {
+    // Given
+    String measureId = "1";
+    String username = " ";
+
+    // When & Then
+    InvalidIdException exception =
+        assertThrows(
+            InvalidIdException.class, () -> measureService.deactivateMeasure(measureId, username));
+
+    assertThat(exception.getMessage(), is(equalTo("Username and Measure Id is required.")));
+  }
+
+  @Test
+  public void testDeactivateMeasureThatDoesNotExist() {
+    String measureId = "1";
+    String username = "test-user";
+    when(measureService.findMeasureById(measureId)).thenReturn(null);
+    Exception exception =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> measureService.deactivateMeasure(measureId, username));
+
+    assertThat(exception.getMessage(), is(equalTo("Measure does not exist.")));
+  }
+
+  @Test
+  public void testDeactivateMeasureWhenUserNotAuthorized() {
+    // Given
+    String measureId = "test-measure-id";
+    String username = "unauthorized-user";
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(true)
+            .measureSet(MeasureSet.builder().owner("test").build())
+            .build();
+
+    // When
+    when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
+
+    // Then
+    UnauthorizedException exception =
+        assertThrows(
+            UnauthorizedException.class,
+            () -> measureService.deactivateMeasure(measureId, username));
+
+    assertThat(
+        exception.getMessage(), is(equalTo("User is not authorized to delete this measure.")));
+    verify(measureLockService, never()).lockMeasure(anyString(), anyString());
+    verify(measureRepository, never()).save(any(Measure.class));
+  }
+
+  @Test
+  public void testDeactivateVersionedMeasure() {
+    // Given
+    String measureId = "test-measure-id";
+    String username = "test-user";
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .build();
+
+    // When
+    when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
+
+    // Then
+    Exception exception =
+        assertThrows(
+            InvalidDraftStatusException.class,
+            () -> measureService.deactivateMeasure(measureId, username));
+
+    assertThat(
+        exception.getMessage(),
+        is(
+            equalTo(
+                "Response could not be completed for measure with ID test-measure-id, since the measure is not in a draft status")));
+  }
+
+  @Test
+  public void testDeactivateInactiveMeasure() {
+    // Given
+    String measureId = "test-measure-id";
+    String username = "test-user";
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(false)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
+
+    // When
+    when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
+
+    // Then
+    Exception exception =
+        assertThrows(
+            InvalidResourceStateException.class,
+            () -> measureService.deactivateMeasure(measureId, username));
+
+    assertThat(exception.getMessage(), is(equalTo("Measure is inactive.")));
+  }
+
+  @Test
+  public void testDeactivateMeasureWhenMeasureLockExists() {
+    // Given
+    String measureId = "test-measure-id";
+    String currentUser = "test-user";
+    String otherUser = "test-user-2";
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(currentUser).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
+
+    // When
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
+    when(measureLockService.lockMeasure(measureId, currentUser))
+        .thenReturn(LockInfo.builder().isLocked(true).lockedBy(otherUser).build());
+
+    // Then
+    Exception exception =
+        assertThrows(
+            LockNotObtainedException.class,
+            () -> measureService.deactivateMeasure(measureId, currentUser));
+
+    assertThat(
+        exception.getMessage(),
+        is(equalTo("Unable to delete measure. Locked while being edited by test-user-2")));
+  }
+
+  @Test
+  public void testDeactivateMeasureWhenTestCaseLockExists() {
+    // Given
+    String measureId = "test-measure-id";
+    String currentUser = "test-user";
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .id(measureId)
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(currentUser).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
+
+    LockInfo lockInfo = LockInfo.builder().isLocked(true).lockedBy(currentUser).build();
+
+    // When
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
+    when(measureLockService.lockMeasure(measureId, currentUser)).thenReturn(lockInfo);
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(true);
+    when(measureLockService.unlockMeasure(measureId, currentUser))
+        .thenReturn(LockInfo.builder().build());
+    // Then
+    Exception exception =
+        assertThrows(
+            LockNotObtainedException.class,
+            () -> measureService.deactivateMeasure(measureId, currentUser));
+
+    assertThat(
+        exception.getMessage(),
+        is(
+            equalTo(
+                "Unable to delete measure.  One or more test cases are locked by another user.")));
+  }
+
+  @Test
+  public void testDeactivateMeasureSuccessfullyWhenLockingIsEnabled() {
+    // Given
+    String username = "test-user";
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
+    LockInfo lockInfo = LockInfo.builder().isLocked(true).lockedBy(username).build();
+
+    // When
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureLockService.lockMeasure(existingMeasure.getId(), username)).thenReturn(lockInfo);
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+
+    // Then
+    Measure result = measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    assertThat(result, is(notNullValue()));
+    assertThat(result.isActive(), is(false));
+
+    verify(measureRepository).save(measureArgumentCaptor.capture());
+    Measure savedMeasure = measureArgumentCaptor.getValue();
+    assertThat(savedMeasure.isActive(), is(false));
+  }
+
+  @Test
+  public void testDeactivateMeasureSuccessfullyWhenLockingIsDisabled() {
+    // Given
+    String username = "test-user";
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
+
+    // When
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+
+    // Then
+    Measure result = measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    assertThat(result, is(notNullValue()));
+    assertThat(result.isActive(), is(false));
+
+    verify(measureRepository).save(measureArgumentCaptor.capture());
+    Measure savedMeasure = measureArgumentCaptor.getValue();
+    assertThat(savedMeasure.isActive(), is(false));
   }
 }

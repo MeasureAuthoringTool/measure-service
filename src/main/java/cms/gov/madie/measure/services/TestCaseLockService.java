@@ -124,6 +124,17 @@ public class TestCaseLockService {
     return failedLocks;
   }
 
+  /**
+   * Check if any test case for a measure is locked by other users.
+   *
+   * @param measureId the measure id
+   * @param username the username
+   * @return true if any test case is locked by other users, false otherwise
+   */
+  public boolean isAnyTestCaseLockedByOthers(String measureId, String username) {
+    return testCaseLockRepository.existsByMeasureIdAndLockedByNot(measureId, username);
+  }
+
   private TestCaseLock makeNewLock(String measureId, String testCaseId, String userName) {
     Instant now = Instant.now();
     Instant expiresAt = now.plus(Duration.ofMinutes(15)); // 15 minute lock
