@@ -46,6 +46,7 @@ public class MeasureController {
   private final MeasureSetRepository measureSetRepository;
   private final MeasureSetService measureSetService;
   private final TestCaseService testCaseService;
+  private final TestCaseLockService testCaseLockService;
 
   @PostMapping("/measures/draftstatus")
   public ResponseEntity<Map<String, Boolean>> getDraftStatuses(
@@ -186,6 +187,11 @@ public class MeasureController {
         // delete
         if (!measure.isActive()) {
           measureService.verifyAuthorization(username, measure, null);
+        }
+
+        if (testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username)) {
+          throw new LockNotObtainedException(
+              "Unable to update measure.  One or more test cases are locked by another user.");
         }
 
         // clear testcase groups for qdm when scoring or patient basis is changed.

@@ -60,7 +60,7 @@ public class TestCaseLockControllerTest {
   public void isMeasureLockedByOtherUserReturnsTrueWhenLockedByOtherUser() {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
-    when(testCaseLockService.checkTestCaseLocksInMeasure(anyString(), anyString()))
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(true);
 
     ResponseEntity<Boolean> response =
@@ -73,7 +73,7 @@ public class TestCaseLockControllerTest {
   public void isMeasureLockedByOtherUserReturnsFalseWhenNotLockedByOtherUser() {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
-    when(testCaseLockService.checkTestCaseLocksInMeasure(anyString(), anyString()))
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(false);
 
     ResponseEntity<Boolean> response =

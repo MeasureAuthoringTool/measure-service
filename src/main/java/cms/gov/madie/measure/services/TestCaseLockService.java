@@ -176,36 +176,4 @@ public class TestCaseLockService {
     log.info("lockTestCases: " + success);
     return success;
   }
-
-  public boolean testCaseLocksByOtherUser(
-      String measureId, List<String> testCaseIds, String userId) {
-    if (CollectionUtils.isNotEmpty(testCaseIds)) {
-      for (String testCaseId : testCaseIds) {
-        Optional<TestCaseLock> existingLock = testCaseLockRepository.findByTestCaseId(testCaseId);
-        if (existingLock.isPresent() && !userId.equals(existingLock.get().getLockedBy())) {
-          log.info(
-              "Test Case: [{}} is locked by: [{}], other than user: [{}]",
-              testCaseId,
-              existingLock.get().getLockedBy(),
-              userId);
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  public boolean checkTestCaseLocksInMeasure(String measureId, String userId) {
-    boolean lockMessage = false;
-    Optional<Measure> measureOpt = measureRepository.findByIdAndActive(measureId, true);
-    if (measureOpt.isEmpty()) {
-      throw new ResourceNotFoundException("Measure", measureId);
-    }
-    if (CollectionUtils.isNotEmpty(measureOpt.get().getTestCases())) {
-      List<String> testCaseIds =
-          measureOpt.get().getTestCases().stream().map(TestCase::getId).toList();
-      lockMessage = testCaseLocksByOtherUser(measureId, testCaseIds, userId);
-    }
-    return lockMessage;
-  }
 }

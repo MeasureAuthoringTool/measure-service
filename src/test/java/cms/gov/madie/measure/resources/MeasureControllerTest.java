@@ -2,10 +2,7 @@ package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
-import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
-import cms.gov.madie.measure.exceptions.InvalidIdException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import cms.gov.madie.measure.exceptions.UnauthorizedException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
@@ -56,6 +53,7 @@ class MeasureControllerTest {
   @Mock private ActionLogService actionLogService;
   @Mock private MeasureSetRepository measureSetRepository;
   @Mock private TestCaseService testCaseService;
+  @Mock private TestCaseLockService testCaseLockService;
   @InjectMocks private MeasureController controller;
 
   private Measure measure1;
@@ -603,6 +601,25 @@ class MeasureControllerTest {
     assertThrows(
         InvalidIdException.class,
         () -> controller.updateMeasure("ID5678", m1234, principal, "Bearer TOKEN"));
+  }
+
+  @Test
+  void testUpdateMeasureReturnsExceptionForLockedTestCases() {
+    Principal principal = mock(Principal.class);
+    Measure m1234 =
+        measure1.toBuilder()
+            .id("ID1234")
+            .createdBy("test.user2")
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .build();
+    when(principal.getName()).thenReturn("test.user2");
+    when(measureService.findMeasureById(anyString())).thenReturn(m1234);
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
+        .thenReturn(true);
+
+    assertThrows(
+        LockNotObtainedException.class,
+        () -> controller.updateMeasure("ID1234", m1234, principal, "Bearer TOKEN"));
   }
 
   @Test

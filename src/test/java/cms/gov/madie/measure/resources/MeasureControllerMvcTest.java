@@ -74,6 +74,7 @@ public class MeasureControllerMvcTest {
   @MockitoBean private MeasureSetRepository measureSetRepository;
   @MockitoBean private TestCasePatchRepository testCasePatchRepository;
   @MockitoBean private TestCaseService testCaseService;
+  @MockitoBean private TestCaseLockService testCaseLockService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor2;
 
