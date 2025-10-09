@@ -54,6 +54,7 @@ class MeasureControllerTest {
   @Mock private MeasureSetRepository measureSetRepository;
   @Mock private TestCaseService testCaseService;
   @Mock private TestCaseLockService testCaseLockService;
+  @Mock private AppConfigService appConfigService;
   @InjectMocks private MeasureController controller;
 
   private Measure measure1;
@@ -614,6 +615,7 @@ class MeasureControllerTest {
             .build();
     when(principal.getName()).thenReturn("test.user2");
     when(measureService.findMeasureById(anyString())).thenReturn(m1234);
+    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
     when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(true);
 

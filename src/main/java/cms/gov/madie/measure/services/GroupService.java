@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import cms.gov.madie.measure.exceptions.LockNotObtainedException;
@@ -51,6 +52,7 @@ public class GroupService {
   private final CqlObservationFunctionService cqlObservationFunctionService;
   private final ModelValidatorFactory modelValidatorFactory;
   private final TestCaseLockService testCaseLockService;
+  private final AppConfigService appConfigService;
 
   public Group createOrUpdateGroup(Group group, String measureId, String username) {
 
@@ -62,7 +64,8 @@ public class GroupService {
       throw new InvalidDraftStatusException(measure.getId());
     }
 
-    if (testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username)) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
+        && testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username)) {
       throw new LockNotObtainedException(
           "Unable to update measure.  One or more test cases are locked by another user.");
     }

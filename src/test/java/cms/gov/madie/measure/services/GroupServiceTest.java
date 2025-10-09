@@ -78,6 +78,7 @@ public class GroupServiceTest implements ResourceUtil {
   @Mock private QiCoreModelValidator qicoreModelValidator;
 
   @Mock private TestCaseLockService testCaseLockService;
+  @Mock private AppConfigService appConfigService;
 
   @InjectMocks private GroupService groupService;
 
@@ -764,6 +765,7 @@ public class GroupServiceTest implements ResourceUtil {
   public void testCreateOrUpdateGroupWhenMeasureHasLockedTestCases() {
     Optional<Measure> optional = Optional.of(measure);
     when(measureRepository.findById(anyString())).thenReturn(optional);
+    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
     when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(true);
     assertThrows(
