@@ -22,6 +22,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.factories.ModelValidatorFactory;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,10 +38,6 @@ import org.springframework.data.domain.PageRequest;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 
-import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
-import cms.gov.madie.measure.exceptions.InvalidIdException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
@@ -79,6 +76,9 @@ public class GroupServiceTest implements ResourceUtil {
   @Mock private ModelValidatorFactory modelValidatorFactory;
 
   @Mock private QiCoreModelValidator qicoreModelValidator;
+
+  @Mock private TestCaseLockService testCaseLockService;
+  @Mock private AppConfigService appConfigService;
 
   @InjectMocks private GroupService groupService;
 
@@ -758,6 +758,18 @@ public class GroupServiceTest implements ResourceUtil {
     when(measureRepository.findById(anyString())).thenReturn(optional);
     assertThrows(
         ResourceNotFoundException.class,
+        () -> groupService.createOrUpdateGroup(group1, "test", "test.user"));
+  }
+
+  @Test
+  public void testCreateOrUpdateGroupWhenMeasureHasLockedTestCases() {
+    Optional<Measure> optional = Optional.of(measure);
+    when(measureRepository.findById(anyString())).thenReturn(optional);
+    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
+        .thenReturn(true);
+    assertThrows(
+        LockNotObtainedException.class,
         () -> groupService.createOrUpdateGroup(group1, "test", "test.user"));
   }
 
