@@ -2561,6 +2561,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(actionLogService.logAction(
             existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
         .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
 
     // Then
     Measure result = measureService.deactivateMeasure(existingMeasure.getId(), username);

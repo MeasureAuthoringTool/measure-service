@@ -159,7 +159,10 @@ public class TestCaseLockServiceTest {
 
     LockInfo lockInfo = service.unlockTestCase("testCaseId", "test.user");
 
-    assertNull(lockInfo);
+    assertNotNull(lockInfo);
+    assertFalse(lockInfo.isLocked());
+    assertNull(lockInfo.getLockedBy());
+    assertEquals("testCaseId", lockInfo.getLockedId());
   }
 
   @Test
@@ -171,7 +174,7 @@ public class TestCaseLockServiceTest {
     assertNotNull(lockInfo);
     assertFalse(lockInfo.isLocked());
     assertNull(lockInfo.getLockedBy());
-    assertNull(lockInfo.getLockedId());
+    assertEquals("testCaseId", lockInfo.getLockedId());
   }
 
   @Test
@@ -182,8 +185,8 @@ public class TestCaseLockServiceTest {
 
     assertNotNull(lockInfo);
     assertTrue(lockInfo.isLocked());
-    assertEquals(lockInfo.getLockedId(), "testCaseId");
-    assertEquals(lockInfo.getLockedBy(), "test.user");
+    assertEquals("testCaseId", lockInfo.getLockedId());
+    assertEquals("test.user", lockInfo.getLockedBy());
   }
 
   @Test
