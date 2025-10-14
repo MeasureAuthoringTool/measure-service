@@ -20,7 +20,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Map;
@@ -294,10 +293,12 @@ public class MeasureSetService {
     if (CollectionUtils.isEmpty(measureSet.getAcls())) {
       return null;
     }
-    return measureSet.getAcls().stream()
-        .filter(existingAcl -> Objects.equals(existingAcl.getUserId(), userId))
-        .findFirst()
-        .orElse(null);
+    AclSpecification aclSpecification =
+        measureSet.getAcls().stream()
+            .filter(existingAcl -> existingAcl.getUserId().equalsIgnoreCase(userId))
+            .findFirst()
+            .orElse(null);
+    return aclSpecification;
   }
 
   public List<MeasureListDTO> getMeasuresByMeasureSetId(
