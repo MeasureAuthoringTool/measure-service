@@ -83,7 +83,12 @@ public class VersionService {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      return checkLockAndVersionMeasure(versionType, username, accessToken, measure);
+      checkMeasureAndTestCaseLock(versionType, username, accessToken, measure, "version");
+      // no lock on measure and no locks on any test cases, version is ok
+      Measure versionedMeasure = versionMeasure(measure, versionType, username, accessToken);
+      measureLockService.unlockMeasure(measure.getId(), username);
+      log.info("user: [{}] unlocked Measure: [{}] after versioning.", username, measure.getId());
+      return versionedMeasure;
     } else {
       return versionMeasure(measure, versionType, username, accessToken);
     }
@@ -97,15 +102,17 @@ public class VersionService {
     return versionQdmMeasure(versionType, username, measure, accessToken);
   }
 
-  private Measure checkLockAndVersionMeasure(
-      String versionType, String username, String accessToken, Measure measure) {
-    LockInfo lock = measureLockService.lockMeasure(measure.getId(), username);
-    boolean isAnyTestCaseLocked =
-        testCaseLockService.isAnyTestCaseLockedByOthers(measure.getId(), username);
-    if (lock.isLocked() && !username.equals(lock.getLockedBy()) && !isAnyTestCaseLocked) {
+  public boolean checkMeasureAndTestCaseLock(
+      String versionType, String username, String accessToken, Measure measure, String action) {
+    LockInfo lock = getMeasureLock(measure.getId(), username);
+    boolean measureLockedByOthers = lock.isLocked() && !username.equals(lock.getLockedBy());
+    boolean isAnyTestCaseLocked = isAnyTestCaseLockedByOthers(measure.getId(), username);
+
+    if (measureLockedByOthers && !isAnyTestCaseLockedByOthers(measure.getId(), username)) {
       log.info(
-          "user: [{}] can't version Measure: [{}], because measure is locked by: [{}]",
+          "user: [{}] can't [{}] Measure: [{}], because measure is locked by: [{}]",
           username,
+          action,
           measure.getId(),
           lock.getLockedBy());
       throw new LockNotObtainedException(
@@ -114,18 +121,40 @@ public class VersionService {
 
     if (isAnyTestCaseLocked) {
       log.info(
-          "user: [{}] can't de-activate Measure: [{}], because one or more test cases are locked by other users",
+          "user: [{}] can't [{}] Measure: [{}], because one or more test cases are locked by other users",
           username,
+          action,
           measure.getId());
       measureLockService.unlockMeasure(measure.getId(), username);
+      log.info("user: [{}] unlocked Measure: [{}]", username, measure.getId());
+
       throw new LockNotObtainedException(
-          "Unable to version measure. One or more test cases are locked by another user.");
-    } else {
-      // no lock on measure and no locks on any test cases, version is ok
-      Measure versionedMeasure = versionMeasure(measure, versionType, username, accessToken);
-      measureLockService.unlockMeasure(measure.getId(), username);
-      return versionedMeasure;
+          "Unable to " + action + " measure. One or more test cases are locked by another user.");
     }
+    log.info(
+        "Measure: [{}] has [{}]",
+        measure.getId(),
+        isAnyTestCaseLocked
+            ? "test case(s) locked by other user"
+            : "no test case(s) locked by other user");
+    return isAnyTestCaseLocked;
+  }
+
+  protected LockInfo getMeasureLock(String measureId, String username) {
+    LockInfo lock = measureLockService.lockMeasure(measureId, username);
+    boolean measureLockedByOthers = lock.isLocked() && !username.equals(lock.getLockedBy());
+    log.info(
+        "user: [{}] is trying to lock Measure: [{}]. Measure is [{}] [{}]",
+        username,
+        measureId,
+        measureLockedByOthers ? "locked by " : "not locked.",
+        measureLockedByOthers ? lock.getLockedBy() : "");
+
+    return lock;
+  }
+
+  public boolean isAnyTestCaseLockedByOthers(String measureId, String username) {
+    return testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username);
   }
 
   /**
