@@ -52,8 +52,6 @@ public class VersionService {
   private final TestCaseValidationService testCaseValidationService;
   private final MeasureLockService measureLockService;
 
-  // private final TestCaseLockService testCaseLockService;
-
   public enum VersionValidationResult {
     VALID,
     TEST_CASE_ERROR

@@ -70,7 +70,6 @@ public class VersionServiceTest {
   @Mock private TestCaseValidationService testCaseValidationService;
 
   @Mock private MeasureLockService measureLockService;
-  // @Mock private TestCaseLockService testCaseLockService;
 
   @Captor private ArgumentCaptor<Measure> measureCaptor;
   @Captor private ArgumentCaptor<CqmMeasure> cqmMeasureCaptor;
