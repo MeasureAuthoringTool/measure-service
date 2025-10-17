@@ -1,6 +1,5 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
@@ -52,7 +51,8 @@ public class VersionService {
   private final AppConfigService appConfigService;
   private final TestCaseValidationService testCaseValidationService;
   private final MeasureLockService measureLockService;
-  private final TestCaseLockService testCaseLockService;
+
+  // private final TestCaseLockService testCaseLockService;
 
   public enum VersionValidationResult {
     VALID,
@@ -83,7 +83,7 @@ public class VersionService {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      checkMeasureAndTestCaseLock(username, measure, "version");
+      measureLockService.checkMeasureAndTestCaseLock(username, measure, "version");
       // no lock on measure and no locks on any test cases, version is ok
       Measure versionedMeasure = versionMeasure(measure, versionType, username, accessToken);
       measureLockService.unlockMeasure(measure.getId(), username);
@@ -100,47 +100,6 @@ public class VersionService {
       return versionFhirMeasure(versionType, username, accessToken, measure);
     }
     return versionQdmMeasure(versionType, username, measure, accessToken);
-  }
-
-  public boolean checkMeasureAndTestCaseLock(String username, Measure measure, String action) {
-    LockInfo lock = getMeasureLock(measure.getId(), username);
-    boolean measureLockedByOthers = lock.isLocked() && !username.equals(lock.getLockedBy());
-    boolean isAnyTestCaseLocked = isAnyTestCaseLockedByOthers(measure.getId(), username);
-
-    if (measureLockedByOthers && !isAnyTestCaseLocked) {
-      String error =
-          "Unable to " + action + " measure. Locked while being edited by " + lock.getLockedBy();
-      log.info("user: " + username + ": " + error);
-      throw new LockNotObtainedException(error);
-    }
-
-    if (isAnyTestCaseLocked) {
-      String error =
-          "Unable to " + action + " measure. One or more test cases are locked by another user.";
-      log.info("user: " + username + ": " + error);
-      measureLockService.unlockMeasure(measure.getId(), username);
-      log.info("user: [{}] unlocked Measure: [{}]", username, measure.getId());
-
-      throw new LockNotObtainedException(error);
-    }
-    return isAnyTestCaseLocked;
-  }
-
-  protected LockInfo getMeasureLock(String measureId, String username) {
-    LockInfo lock = measureLockService.lockMeasure(measureId, username);
-    boolean measureLockedByOthers = lock.isLocked() && !username.equals(lock.getLockedBy());
-    log.info(
-        "user: [{}] is trying to lock Measure: [{}]. Measure is [{}] [{}]",
-        username,
-        measureId,
-        measureLockedByOthers ? "locked by " : "not locked.",
-        measureLockedByOthers ? lock.getLockedBy() : "");
-
-    return lock;
-  }
-
-  public boolean isAnyTestCaseLockedByOthers(String measureId, String username) {
-    return testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username);
   }
 
   /**
