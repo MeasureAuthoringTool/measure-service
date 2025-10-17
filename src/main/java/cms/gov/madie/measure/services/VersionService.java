@@ -83,7 +83,7 @@ public class VersionService {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      checkMeasureAndTestCaseLock(versionType, username, accessToken, measure, "version");
+      checkMeasureAndTestCaseLock(username, measure, "version");
       // no lock on measure and no locks on any test cases, version is ok
       Measure versionedMeasure = versionMeasure(measure, versionType, username, accessToken);
       measureLockService.unlockMeasure(measure.getId(), username);
@@ -102,13 +102,12 @@ public class VersionService {
     return versionQdmMeasure(versionType, username, measure, accessToken);
   }
 
-  public boolean checkMeasureAndTestCaseLock(
-      String versionType, String username, String accessToken, Measure measure, String action) {
+  public boolean checkMeasureAndTestCaseLock(String username, Measure measure, String action) {
     LockInfo lock = getMeasureLock(measure.getId(), username);
     boolean measureLockedByOthers = lock.isLocked() && !username.equals(lock.getLockedBy());
     boolean isAnyTestCaseLocked = isAnyTestCaseLockedByOthers(measure.getId(), username);
 
-    if (measureLockedByOthers && !isAnyTestCaseLockedByOthers(measure.getId(), username)) {
+    if (measureLockedByOthers && !isAnyTestCaseLocked) {
       String error =
           "Unable to " + action + " measure. Locked while being edited by " + lock.getLockedBy();
       log.info("user: " + username + ": " + error);
