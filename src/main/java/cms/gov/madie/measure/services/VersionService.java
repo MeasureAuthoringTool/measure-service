@@ -109,34 +109,21 @@ public class VersionService {
     boolean isAnyTestCaseLocked = isAnyTestCaseLockedByOthers(measure.getId(), username);
 
     if (measureLockedByOthers && !isAnyTestCaseLockedByOthers(measure.getId(), username)) {
-      log.info(
-          "user: [{}] can't [{}] Measure: [{}], because measure is locked by: [{}]",
-          username,
-          action,
-          measure.getId(),
-          lock.getLockedBy());
-      throw new LockNotObtainedException(
-          "Unable to version measure. Locked while being edited by " + lock.getLockedBy());
+      String error =
+          "Unable to " + action + " measure. Locked while being edited by " + lock.getLockedBy();
+      log.info("user: " + username + ": " + error);
+      throw new LockNotObtainedException(error);
     }
 
     if (isAnyTestCaseLocked) {
-      log.info(
-          "user: [{}] can't [{}] Measure: [{}], because one or more test cases are locked by other users",
-          username,
-          action,
-          measure.getId());
+      String error =
+          "Unable to " + action + " measure. One or more test cases are locked by another user.";
+      log.info("user: " + username + ": " + error);
       measureLockService.unlockMeasure(measure.getId(), username);
       log.info("user: [{}] unlocked Measure: [{}]", username, measure.getId());
 
-      throw new LockNotObtainedException(
-          "Unable to " + action + " measure. One or more test cases are locked by another user.");
+      throw new LockNotObtainedException(error);
     }
-    log.info(
-        "Measure: [{}] has [{}]",
-        measure.getId(),
-        isAnyTestCaseLocked
-            ? "test case(s) locked by other user"
-            : "no test case(s) locked by other user");
     return isAnyTestCaseLocked;
   }
 
