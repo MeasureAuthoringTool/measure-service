@@ -343,7 +343,7 @@ public class MeasureService {
     }
 
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      measureLockService.checkMeasureAndTestCaseLock(username, existingMeasure, "de-activate");
+      measureLockService.checkMeasureAndTestCaseLock(username, existingMeasure, "delete");
     }
     existingMeasure.setActive(false);
     existingMeasure.setLastModifiedBy(username);
