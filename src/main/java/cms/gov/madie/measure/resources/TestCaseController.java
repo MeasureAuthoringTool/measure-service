@@ -7,6 +7,7 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.MeasureService;
 import cms.gov.madie.measure.services.QdmTestCaseShiftDatesService;
+import cms.gov.madie.measure.services.TestCaseLockEnrichmentService;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import gov.cms.madie.models.common.ModelType;
 import cms.gov.madie.measure.services.TestCaseService;
@@ -36,6 +37,7 @@ public class TestCaseController {
   private final MeasureRepository measureRepository;
   private final MeasureService measureService;
   private final QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
+  private final TestCaseLockEnrichmentService testCaseLockEnrichmentService;
 
   @PostMapping(ControllerUtil.TEST_CASES)
   public ResponseEntity<TestCase> addTestCase(
@@ -71,8 +73,14 @@ public class TestCaseController {
   }
 
   @GetMapping(ControllerUtil.TEST_CASES)
-  public ResponseEntity<List<TestCase>> getTestCasesByMeasureId(@PathVariable String measureId) {
-    return ResponseEntity.ok(testCaseService.findTestCasesByMeasureId(measureId));
+  public ResponseEntity<List<TestCase>> getTestCasesByMeasureId(
+      @PathVariable String measureId, Principal principal) {
+    List<TestCase> testCases = testCaseService.findTestCasesByMeasureId(measureId);
+    // Enrich with lock information (excluding current user's locks)
+    if (principal != null) {
+      testCaseLockEnrichmentService.enrichTestCasesWithLockInfo(testCases, principal.getName());
+    }
+    return ResponseEntity.ok(testCases);
   }
 
   @GetMapping(ControllerUtil.TEST_CASES + "/{testCaseId}")
@@ -80,9 +88,14 @@ public class TestCaseController {
       @PathVariable String measureId,
       @PathVariable String testCaseId,
       @RequestParam(name = "validate", defaultValue = "true") boolean validate,
-      @RequestHeader("Authorization") String accessToken) {
-    return ResponseEntity.ok(
-        testCaseService.getTestCase(measureId, testCaseId, validate, accessToken));
+      @RequestHeader("Authorization") String accessToken,
+      Principal principal) {
+    TestCase testCase = testCaseService.getTestCase(measureId, testCaseId, validate, accessToken);
+    // Enrich with lock information (excluding current user's locks)
+    if (principal != null) {
+      testCaseLockEnrichmentService.enrichTestCaseWithLockInfo(testCase, principal.getName());
+    }
+    return ResponseEntity.ok(testCase);
   }
 
   @PutMapping(ControllerUtil.TEST_CASES + "/{testCaseId}")

@@ -157,9 +157,12 @@ public class TestCaseControllerTest {
 
   @Test
   void getTestCases() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
     doReturn(List.of(testCase)).when(testCaseService).findTestCasesByMeasureId(any(String.class));
 
-    ResponseEntity<List<TestCase>> response = controller.getTestCasesByMeasureId(measure.getId());
+    ResponseEntity<List<TestCase>> response =
+        controller.getTestCasesByMeasureId(measure.getId(), principal);
     assertEquals(1, Objects.requireNonNull(response.getBody()).size());
     assertEquals("IPPPass", response.getBody().get(0).getName());
     assertEquals("BloodPressure>124", response.getBody().get(0).getSeries());
@@ -167,11 +170,13 @@ public class TestCaseControllerTest {
 
   @Test
   void getTestCase() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
     doReturn(testCase)
         .when(testCaseService)
         .getTestCase(any(String.class), any(String.class), anyBoolean(), anyString());
     ResponseEntity<TestCase> response =
-        controller.getTestCase(measure.getId(), testCase.getId(), true, "TOKEN");
+        controller.getTestCase(measure.getId(), testCase.getId(), true, "TOKEN", principal);
     assertNotNull(response.getBody());
     assertNotNull(response.getBody());
     assertEquals("IPPPass", response.getBody().getName());
