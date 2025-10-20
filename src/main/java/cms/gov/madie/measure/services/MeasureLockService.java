@@ -91,18 +91,16 @@ public class MeasureLockService {
         measure.getId(),
         measureLockedByOthers ? "locked by " : "not locked.",
         measureLockedByOthers ? lock.getLockedBy() : "");
-
-    boolean isAnyTestCaseLocked =
-        testCaseLockService.isAnyTestCaseLockedByOthers(measure.getId(), username);
-    log.info("Measure: [{}] has test case lock? [{}]", measure.getId(), isAnyTestCaseLocked);
-
-    if (measureLockedByOthers && !isAnyTestCaseLocked) {
+    if (measureLockedByOthers) {
       String error =
           "Unable to " + action + " measure. Locked while being edited by " + lock.getLockedBy();
       log.info("user: " + username + ": " + error);
       throw new LockNotObtainedException(error);
     }
 
+    boolean isAnyTestCaseLocked =
+        testCaseLockService.isAnyTestCaseLockedByOthers(measure.getId(), username);
+    log.info("Measure: [{}] has test case lock? [{}]", measure.getId(), isAnyTestCaseLocked);
     if (isAnyTestCaseLocked) {
       String error =
           "Unable to " + action + " measure. One or more test cases are locked by another user.";
@@ -112,14 +110,6 @@ public class MeasureLockService {
 
       throw new LockNotObtainedException(error);
     }
-
-    /* The first 3 conditions will throw Exception
-     *   1. measureLockedByOthers && !isAnyTestCaseLocked
-     *   2. measureLockedByOthers && isAnyTestCaseLocked
-     *   3. !measureLockedByOthers && isAnyTestCaseLocked
-     *   4. !measureLockedByOthers && !isAnyTestCaseLocked
-     * Therefore, until this point, measure and test cases are not locked.
-     */
     return false;
   }
 }

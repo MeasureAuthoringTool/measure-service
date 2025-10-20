@@ -188,14 +188,12 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  public void testCheckMeasureAndTestCaseLockHasOnlyMeasureLock() {
+  public void testCheckMeasureAndTestCaseLockHasMeasureLock() {
     // measure locked by another user, throws DuplicateKeyException
     doThrow(new DuplicateKeyException("duplicate")).when(repository).insert(any(MeasureLock.class));
     when(repository.findByMeasureId("measureId"))
         .thenReturn(
             Optional.of(MeasureLock.builder().id("measureId").lockedBy("another.user").build()));
-    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
-        .thenReturn(false);
 
     Exception exception =
         assertThrows(
@@ -208,7 +206,7 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  public void testCheckMeasureAndTestCaseLockHasOnlyTestCaseLock() {
+  public void testCheckMeasureAndTestCaseLockHasTestCaseLock() {
     when(repository.insert(any(MeasureLock.class)))
         .thenReturn(MeasureLock.builder().id("measureId").lockedBy(userName).build());
     when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
@@ -227,32 +225,8 @@ class MeasureLockServiceTest {
   }
 
   @Test
-  public void testCheckMeasureAndTestCaseLockHasBothMeasureAndTestCaseLock() {
-    doThrow(new DuplicateKeyException("duplicate")).when(repository).insert(any(MeasureLock.class));
-    when(repository.findByMeasureId("measureId"))
-        .thenReturn(
-            Optional.of(MeasureLock.builder().id("measureId").lockedBy("another.user").build()));
-    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
-        .thenReturn(true);
-
-    Exception exception =
-        assertThrows(
-            LockNotObtainedException.class,
-            () -> service.checkMeasureAndTestCaseLock(userName, measure, "version"));
-
-    assertThat(
-        exception.getMessage(),
-        is(
-            equalTo(
-                "Unable to version measure. One or more test cases are locked by another user.")));
-  }
-
-  @Test
   public void testCheckMeasureAndTestCaseLockMeasureNotLocked() {
     // Simulate lockMeasure returning isLocked = false
-    MeasureLock lock = MeasureLock.builder().id("measureId").lockedBy(userName).build();
-    when(repository.insert(any(MeasureLock.class))).thenReturn(lock);
-
     // In MeasureLockService.lockMeasure, isLocked is set to false only if
     // DuplicateKeyException is thrown and the lock is owned by the same user
     doThrow(new DuplicateKeyException("duplicate")).when(repository).insert(any(MeasureLock.class));
