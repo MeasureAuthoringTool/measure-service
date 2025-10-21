@@ -1658,6 +1658,55 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testValidateCmsIdAssociationWhenFeatureFlagIsOn() {
+    MeasureSet qiCoreMeasureSet =
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+    MeasureSet qdmMeasureSet =
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+
+    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
+        .thenReturn(Collections.emptyList());
+
+    measure1.setMeasureSet(qiCoreMeasureSet);
+    measure2.setMeasureSet(qdmMeasureSet);
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
+        .thenReturn(false);
+
+    assertDoesNotThrow(() -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
+  }
+
+  @Test
+  public void testValidateCmsIdAssociationWhenMeasureIsLocked() {
+    MeasureSet qiCoreMeasureSet =
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+    MeasureSet qdmMeasureSet =
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+
+    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
+        .thenReturn(Collections.emptyList());
+
+    measure1.setMeasureSet(qiCoreMeasureSet);
+    measure2.setMeasureSet(qdmMeasureSet);
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
+        .thenThrow(
+            new LockNotObtainedException(
+                "Unable to associate measure. Locked while being edited by another.user"));
+
+    Exception exception =
+        assertThrows(
+            LockNotObtainedException.class,
+            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
+
+    assertThat(
+        exception.getMessage(),
+        is(equalTo("Unable to associate measure. Locked while being edited by another.user")));
+  }
+
+  @Test
   void testFindLibraryUsage() {
     String libraryName = "test";
     String owner = "john";

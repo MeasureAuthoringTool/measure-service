@@ -112,4 +112,22 @@ public class MeasureLockService {
     }
     return false;
   }
+
+  public boolean checkMeasureLock(String username, Measure measure, String action) {
+    LockInfo lock = lockMeasure(measure.getId(), username);
+    boolean measureLockedByOthers = lock.isLocked() && !username.equals(lock.getLockedBy());
+    log.info(
+        "user: [{}] is trying to lock Measure: [{}]. Measure is [{}] [{}]",
+        username,
+        measure.getId(),
+        measureLockedByOthers ? "locked by " : "not locked.",
+        measureLockedByOthers ? lock.getLockedBy() : "");
+    if (measureLockedByOthers) {
+      String error =
+          "Unable to " + action + " measure. Locked while being edited by " + lock.getLockedBy();
+      log.info("user: " + username + ": " + error);
+      throw new LockNotObtainedException(error);
+    }
+    return measureLockedByOthers;
+  }
 }
