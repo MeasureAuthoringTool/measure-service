@@ -50,6 +50,7 @@ public class VersionService {
   private final MongoGridFsService mongoGridFsService;
   private final AppConfigService appConfigService;
   private final TestCaseValidationService testCaseValidationService;
+  private final MeasureLockService measureLockService;
 
   public enum VersionValidationResult {
     VALID,
@@ -79,10 +80,23 @@ public class VersionService {
   public Measure createVersion(String id, String versionType, String username, String accessToken) {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      measureLockService.checkMeasureAndTestCaseLock(username, measure, "version");
+      // no lock on measure and no locks on any test cases, version is ok
+      Measure versionedMeasure = versionMeasure(measure, versionType, username, accessToken);
+      measureLockService.unlockMeasure(measure.getId(), username);
+      log.info("user: [{}] unlocked Measure: [{}] after versioning.", username, measure.getId());
+      return versionedMeasure;
+    } else {
+      return versionMeasure(measure, versionType, username, accessToken);
+    }
+  }
+
+  private Measure versionMeasure(
+      Measure measure, String versionType, String username, String accessToken) {
     if (measure instanceof FhirMeasure) {
       return versionFhirMeasure(versionType, username, accessToken, measure);
     }
-
     return versionQdmMeasure(versionType, username, measure, accessToken);
   }
 
@@ -282,12 +296,14 @@ public class VersionService {
             findHighestCaseNumberWhenCaseNumbersExist(savedDraft.getTestCases()));
       }
 
-      if (!measure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
-          && !measure.getModel().equals(model)
-          && appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)) {
+      // any time when a QICORE measure is drafted to QICORE_6.0.0,
+      // e.g. QICORE_4.1.1 to QICORE_6.0.0, or QICORE_6.0.0 to QICORE_6.0.0.
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)
+          && !measure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
+          && ModelType.QI_CORE_6_0_0.getValue().equals(model)) {
         for (TestCase testCase : savedDraft.getTestCases()) {
           testCaseValidationService.validateResourceAsynchronously(
-              savedDraft, testCase, TestCaseServiceUtil.SAVE, accessToken);
+              savedDraft, testCase, TestCaseServiceUtil.IMPORT, accessToken);
         }
       }
     }

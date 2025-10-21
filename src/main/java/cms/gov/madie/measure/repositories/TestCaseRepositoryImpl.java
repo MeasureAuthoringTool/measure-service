@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
+import cms.gov.madie.measure.exceptions.InvalidIdException;
 import gov.cms.madie.models.measure.HapiOperationOutcome;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCase;
@@ -51,6 +52,19 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
       Update pushUpdate = new Update().push("testCases", testCase);
       updatedMeasure =
           mongoOperations.findAndModify(pushQuery, pushUpdate, RETURN_NEW_OPTIONS, Measure.class);
+    }
+    return updatedMeasure;
+  }
+
+  @Override
+  public Measure removeTestCase(String measureId, String testCaseId) {
+    Query query = new Query(Criteria.where("_id").is(measureId));
+    Update update =
+        new Update().pull("testCases", Query.query(Criteria.where("_id").is(testCaseId)));
+    Measure updatedMeasure =
+        mongoOperations.findAndModify(query, update, RETURN_NEW_OPTIONS, Measure.class);
+    if (updatedMeasure == null) {
+      throw new InvalidIdException("Test Case", "delete");
     }
     return updatedMeasure;
   }

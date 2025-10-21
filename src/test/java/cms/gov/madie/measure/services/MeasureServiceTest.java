@@ -2458,8 +2458,11 @@ public class MeasureServiceTest implements ResourceUtil {
     // When
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
-    when(measureLockService.lockMeasure(measureId, currentUser))
-        .thenReturn(LockInfo.builder().isLocked(true).lockedBy(otherUser).build());
+    when(measureLockService.checkMeasureAndTestCaseLock(
+            anyString(), any(Measure.class), anyString()))
+        .thenThrow(
+            new LockNotObtainedException(
+                "Unable to delete measure. Locked while being edited by " + otherUser));
 
     // Then
     Exception exception =
@@ -2469,42 +2472,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThat(
         exception.getMessage(),
-        is(equalTo("Unable to delete measure. Locked while being edited by test-user-2")));
-  }
-
-  @Test
-  public void testDeactivateMeasureWhenTestCaseLockExists() {
-    // Given
-    String measureId = "test-measure-id";
-    String currentUser = "test-user";
-    Measure existingMeasure =
-        measure1.toBuilder()
-            .id(measureId)
-            .active(true)
-            .measureSet(MeasureSet.builder().owner(currentUser).build())
-            .measureMetaData(draftMeasureMetaData)
-            .build();
-
-    LockInfo lockInfo = LockInfo.builder().isLocked(true).lockedBy(currentUser).build();
-
-    // When
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
-    when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
-    when(measureLockService.lockMeasure(measureId, currentUser)).thenReturn(lockInfo);
-    when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(true);
-    when(measureLockService.unlockMeasure(measureId, currentUser))
-        .thenReturn(LockInfo.builder().build());
-    // Then
-    Exception exception =
-        assertThrows(
-            LockNotObtainedException.class,
-            () -> measureService.deactivateMeasure(measureId, currentUser));
-
-    assertThat(
-        exception.getMessage(),
-        is(
-            equalTo(
-                "Unable to delete measure.  One or more test cases are locked by another user.")));
+        is(equalTo("Unable to delete measure. Locked while being edited by " + otherUser)));
   }
 
   @Test
@@ -2518,13 +2486,12 @@ public class MeasureServiceTest implements ResourceUtil {
             .measureSet(MeasureSet.builder().owner(username).build())
             .measureMetaData(draftMeasureMetaData)
             .build();
-    LockInfo lockInfo = LockInfo.builder().isLocked(true).lockedBy(username).build();
 
     // When
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
-    when(measureLockService.lockMeasure(existingMeasure.getId(), username)).thenReturn(lockInfo);
-    when(testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username))
+    when(measureLockService.checkMeasureAndTestCaseLock(
+            anyString(), any(Measure.class), anyString()))
         .thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
     when(actionLogService.logAction(
@@ -2561,6 +2528,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(actionLogService.logAction(
             existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
         .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
 
     // Then
     Measure result = measureService.deactivateMeasure(existingMeasure.getId(), username);

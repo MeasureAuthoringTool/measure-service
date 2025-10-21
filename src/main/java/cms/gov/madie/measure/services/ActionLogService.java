@@ -6,13 +6,12 @@ import cms.gov.madie.measure.utils.ActionLogCollectionType;
 import gov.cms.madie.models.common.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -88,25 +87,23 @@ public class ActionLogService {
   }
 
   public List<Action> findMeasureHistory(String measureId, String measureSetId) {
-    Optional<ActionLog> measureActionLogs = measureActionLogRepository.findByTargetId(measureId);
-    Optional<MeasureSetActionLog> measureSetActionLogs =
-        measureSetActionLogRepository.findByTargetId(measureSetId);
-
-    List<Action> combinedActionLogs = new ArrayList<>();
-
-    measureActionLogs.ifPresent(
-        log -> {
-          if (CollectionUtils.isNotEmpty(log.getActions())) {
-            combinedActionLogs.addAll(log.getActions());
-          }
-        });
-
-    measureSetActionLogs.ifPresent(
-        log -> {
-          if (CollectionUtils.isNotEmpty(log.getActions())) {
-            combinedActionLogs.addAll(log.getActions());
-          }
-        });
+    List<Action> combinedActionLogs =
+        Stream.concat(
+                measureActionLogRepository
+                    .findByTargetId(measureId)
+                    .map(ActionLog::getActions)
+                    .stream()
+                    .flatMap(List::stream),
+                measureSetActionLogRepository
+                    .findByTargetId(measureSetId)
+                    .map(MeasureSetActionLog::getActions)
+                    .stream()
+                    .flatMap(List::stream)
+                    // exclude CREATED from measure set
+                    .filter(a -> !ActionType.CREATED.equals(a.getActionType())))
+            // sort descending
+            .sorted(Comparator.comparing(Action::getPerformedAt).reversed())
+            .toList();
 
     return combinedActionLogs;
   }

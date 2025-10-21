@@ -3,10 +3,7 @@ package cms.gov.madie.measure.resources;
 import java.security.Principal;
 
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.services.TestCaseLockService;
@@ -30,5 +27,12 @@ public class TestCaseLockController {
   public ResponseEntity<LockInfo> unlockTestCase(
       @PathVariable String testCaseId, Principal principal) {
     return ResponseEntity.ok(testCaseLockService.unlockTestCase(testCaseId, principal.getName()));
+  }
+
+  @GetMapping("/measures/{measureId}/test-cases/lock-by-other-user")
+  public ResponseEntity<Boolean> isTestCaseLockedByOtherUser(
+      @PathVariable String measureId, Principal principal) {
+    return ResponseEntity.ok(
+        testCaseLockService.isAnyTestCaseLockedByOthers(measureId, principal.getName()));
   }
 }

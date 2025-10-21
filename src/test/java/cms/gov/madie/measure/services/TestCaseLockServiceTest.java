@@ -6,8 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.when;
 
 import java.time.Instant;
@@ -160,7 +159,10 @@ public class TestCaseLockServiceTest {
 
     LockInfo lockInfo = service.unlockTestCase("testCaseId", "test.user");
 
-    assertNull(lockInfo);
+    assertNotNull(lockInfo);
+    assertFalse(lockInfo.isLocked());
+    assertNull(lockInfo.getLockedBy());
+    assertEquals("testCaseId", lockInfo.getLockedId());
   }
 
   @Test
@@ -172,7 +174,7 @@ public class TestCaseLockServiceTest {
     assertNotNull(lockInfo);
     assertFalse(lockInfo.isLocked());
     assertNull(lockInfo.getLockedBy());
-    assertNull(lockInfo.getLockedId());
+    assertEquals("testCaseId", lockInfo.getLockedId());
   }
 
   @Test
@@ -183,8 +185,8 @@ public class TestCaseLockServiceTest {
 
     assertNotNull(lockInfo);
     assertTrue(lockInfo.isLocked());
-    assertEquals(lockInfo.getLockedId(), "testCaseId");
-    assertEquals(lockInfo.getLockedBy(), "test.user");
+    assertEquals("testCaseId", lockInfo.getLockedId());
+    assertEquals("test.user", lockInfo.getLockedBy());
   }
 
   @Test
