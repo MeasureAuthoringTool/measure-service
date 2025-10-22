@@ -45,7 +45,6 @@ public class MeasureService {
   private final TerminologyValidationService terminologyValidationService;
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
-  private final TestCaseLockService testCaseLockService;
 
   public void verifyAuthorizationByMeasureSetId(
       String username, String measureSetId, boolean ownerOnly) {
@@ -827,6 +826,8 @@ public class MeasureService {
         qiCoreMeasureId,
         qdmMeasureId,
         measureSet.getCmsId());
+
+    measureLockService.unlockMeasure(qiCoreMeasureId, username);
 
     String associationSuccessMessage =
         "QI Core measure with ID %s and QDM measure with ID %s are Associated with "
