@@ -627,15 +627,30 @@ public class MeasureService {
         .toList();
   }
 
-  public boolean changeOwnership(String measureId, String userid, String username) {
-    boolean result = false;
-    Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
-    if (persistedMeasure.isPresent()) {
-      Measure measure = persistedMeasure.get();
-      measureSetService.changeOwnership(measure.getMeasureSetId(), userid, false, username);
-      result = true;
+  public void changeOwnership(
+      String measureId, String userid, boolean retainShareAccess, String username) {
+    Measure measure =
+        measureRepository
+            .findById(measureId)
+            .orElseThrow(
+                () -> {
+                  log.error(
+                      "Measure with measure id [{}] cannot change ownership to user [{}]. Measure may not exist.",
+                      measureId,
+                      userid);
+                  return new ResourceNotFoundException("Measure", measureId);
+                });
+
+    try {
+      measureSetService.changeOwnership(
+          measure.getMeasureSetId(), userid, retainShareAccess, username);
+    } catch (RuntimeException e) {
+      if (e instanceof ResourceNotFoundException) {
+        throw e;
+      }
+      log.error("Error changing ownership for measure [{}] to user [{}]", measureId, userid, e);
+      throw new InternalServerException("Failed to change ownership for measure " + measureId);
     }
-    return result;
   }
 
   public Map<String, Boolean> getMeasureDrafts(List<String> measureSetIds) {
@@ -955,19 +970,24 @@ public class MeasureService {
     return measureRepository.countMeasuresByOwnership(isActive, userId, ownershipTypes);
   }
 
-  public boolean transferMeasures(
+  public List<String> transferMeasures(
       List<String> measureIds, String harpId, boolean retainShareAccess, String conductedBy) {
-    boolean result = true;
+    List<String> failedMeasures = new ArrayList<>();
+
     for (String measureId : measureIds) {
-      Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
-      if (persistedMeasure.isPresent()) {
-        measureSetService.changeOwnership(
-            persistedMeasure.get().getMeasureSetId(), harpId, retainShareAccess, conductedBy);
-      } else {
-        result = false;
+      try {
+        changeOwnership(measureId, harpId, retainShareAccess, conductedBy);
+      } catch (RuntimeException e) {
+        log.warn(
+            "Failed to transfer ownership of measure [{}] to [{}]: {}",
+            measureId,
+            harpId,
+            e.getMessage());
+        failedMeasures.add(measureId);
       }
     }
-    return result;
+
+    return failedMeasures;
   }
 
   public List<Action> getMeasureHistory(String measureId, String userName) {

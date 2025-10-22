@@ -169,9 +169,9 @@ public class MeasureControllerMvcTest {
     String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
     String newOwner = "updatedUserId";
 
-    doReturn(true)
+    doNothing()
         .when(measureService)
-        .changeOwnership(eq(measureId), eq(newOwner), eq(TEST_USER_ID));
+        .changeOwnership(eq(measureId), eq(newOwner), eq(false), eq(TEST_USER_ID));
 
     mockMvc
         .perform(
@@ -181,7 +181,50 @@ public class MeasureControllerMvcTest {
         .andExpect(status().isOk())
         .andExpect(content().string(newOwner + " granted ownership to Measure successfully."));
 
-    verify(measureService, times(1)).changeOwnership(eq(measureId), eq(newOwner), eq(TEST_USER_ID));
+    verify(measureService, times(1))
+        .changeOwnership(eq(measureId), eq(newOwner), eq(false), eq(TEST_USER_ID));
+  }
+
+  @Test
+  public void testChangeOwnershipMeasureNotFound() throws Exception {
+    String measureId = "nonexistentId";
+    String newOwner = "user123";
+
+    doThrow(new ResourceNotFoundException("Measure", measureId))
+        .when(measureService)
+        .changeOwnership(eq(measureId), eq(newOwner), eq(false), eq(TEST_USER_ID));
+
+    mockMvc
+        .perform(
+            put("/measures/" + measureId + "/ownership?userid=" + newOwner)
+                .with(user(TEST_USER_ID))
+                .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE))
+        .andExpect(status().isNotFound())
+        .andExpect(content().string("Measure does not exist."));
+
+    verify(measureService, times(1))
+        .changeOwnership(eq(measureId), eq(newOwner), eq(false), eq(TEST_USER_ID));
+  }
+
+  @Test
+  public void testChangeOwnershipInternalServerError() throws Exception {
+    String measureId = "measureId";
+    String newOwner = "user123";
+
+    doThrow(new InternalServerException("Failed to change ownership"))
+        .when(measureService)
+        .changeOwnership(eq(measureId), eq(newOwner), eq(false), eq(TEST_USER_ID));
+
+    mockMvc
+        .perform(
+            put("/measures/" + measureId + "/ownership?userid=" + newOwner)
+                .with(user(TEST_USER_ID))
+                .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE))
+        .andExpect(status().isInternalServerError())
+        .andExpect(content().string("Failed to grant ownership."));
+
+    verify(measureService, times(1))
+        .changeOwnership(eq(measureId), eq(newOwner), eq(false), eq(TEST_USER_ID));
   }
 
   @Test
@@ -2281,9 +2324,9 @@ public class MeasureControllerMvcTest {
   public void testTransferMeasures() throws Exception {
     String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
 
-    doReturn(true)
+    doReturn(Collections.emptyList())
         .when(measureService)
-        .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(false), eq("testUser"));
+        .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(true), eq("testUser"));
 
     mockMvc
         .perform(
@@ -2301,6 +2344,32 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID));
+  }
+
+  @Test
+  public void testTransferMeasuresPartialFailure() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+
+    doReturn(List.of("1"))
+        .when(measureService)
+        .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(false), eq(TEST_USER_ID));
+
+    mockMvc
+        .perform(
+            put("/measures/transfer")
+                .with(user(TEST_USER_ID))
+                .with(csrf())
+                .header("harpId", "testUser")
+                .header("Authorization", "test-okta")
+                .queryParam("retainShareAccess", "false")
+                .content(gson.toJson(List.of(measureId)))
+                .contentType(MediaType.APPLICATION_JSON)
+                .accept(MediaType.APPLICATION_JSON))
+        .andDo(print())
+        .andExpect(status().isPartialContent());
+
+    verify(measureService, times(1))
+        .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(false), eq(TEST_USER_ID));
   }
 
   @Test

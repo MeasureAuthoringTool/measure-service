@@ -280,17 +280,21 @@ public class MeasureController {
       @RequestParam(required = true, name = "userid") String userid,
       @Value("${admin-api-key}") String apiKey,
       Principal principal) {
-    ResponseEntity<String> response = ResponseEntity.badRequest().body("Measure does not exist.");
-
-    log.info("getMeasureId [{}] using apiKey ", id, "apikey");
-
-    if (measureService.changeOwnership(id, userid, principal.getName())) {
-      response =
-          ResponseEntity.ok()
-              .body(String.format("%s granted ownership to Measure successfully.", userid));
+    try {
+      measureService.changeOwnership(id, userid, false, principal.getName());
+      return ResponseEntity.ok(userid + " granted ownership to Measure successfully.");
+    } catch (ResourceNotFoundException e) {
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Measure does not exist.");
+    } catch (InternalServerException e) {
+      log.error(
+          "Failed to change ownership for measure [{}] to user [{}]: {}",
+          id,
+          userid,
+          e.getMessage(),
+          e);
+      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+          .body("Failed to grant ownership.");
     }
-
-    return response;
   }
 
   @GetMapping("/measures/{measureId}/groups")
@@ -450,7 +454,7 @@ public class MeasureController {
   }
 
   @PutMapping("/measures/transfer")
-  public ResponseEntity<Boolean> transferMeasures(
+  public ResponseEntity<List<String>> transferMeasures(
       @RequestBody List<String> measureIds,
       @RequestHeader(name = "harpId") String harpId,
       @RequestParam(defaultValue = "false") boolean retainShareAccess,
@@ -458,11 +462,15 @@ public class MeasureController {
       @RequestHeader("Authorization") String accessToken) {
     log.info("transferMeasures to [{}] ", harpId);
     if (CollectionUtils.isEmpty(measureIds)) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(false);
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.emptyList());
     }
-    return ResponseEntity.ok(
-        measureService.transferMeasures(
-            measureIds, harpId, retainShareAccess, principal.getName()));
+    List<String> failedTransfers =
+        measureService.transferMeasures(measureIds, harpId, retainShareAccess, principal.getName());
+    if (CollectionUtils.isEmpty(failedTransfers)) {
+      return ResponseEntity.ok().body(failedTransfers);
+    } else {
+      return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(failedTransfers);
+    }
   }
 
   @GetMapping(value = "/measures/{id}/history")
