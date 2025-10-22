@@ -75,7 +75,6 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private TerminologyValidationService terminologyValidationService;
   @Mock private AppConfigService appConfigService;
   @Mock private MeasureLockService measureLockService;
-  @Mock private TestCaseLockService testCaseLockService;
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
 
