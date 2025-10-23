@@ -644,10 +644,9 @@ public class MeasureService {
     try {
       measureSetService.changeOwnership(
           measure.getMeasureSetId(), userid, retainShareAccess, username);
+    } catch (ResourceNotFoundException e) {
+      throw e;
     } catch (RuntimeException e) {
-      if (e instanceof ResourceNotFoundException) {
-        throw e;
-      }
       log.error("Error changing ownership for measure [{}] to user [{}]", measureId, userid, e);
       throw new InternalServerException("Failed to change ownership for measure " + measureId);
     }
