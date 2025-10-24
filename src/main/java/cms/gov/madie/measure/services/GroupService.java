@@ -244,7 +244,6 @@ public class GroupService {
       }
     }
     testCaseGroup.setPopulationValues(populations);
-
     // update test case stratification based on measure group stratification
     if (CollectionUtils.isEmpty(measureGroup.getStratifications())) {
       testCaseGroup.setStratificationValues(List.of());
