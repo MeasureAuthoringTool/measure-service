@@ -45,7 +45,6 @@ public class MeasureService {
   private final TerminologyValidationService terminologyValidationService;
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
-  private final TestCaseLockService testCaseLockService;
 
   public void verifyAuthorizationByMeasureSetId(
       String username, String measureSetId, boolean ownerOnly) {
@@ -828,6 +827,8 @@ public class MeasureService {
         qdmMeasureId,
         measureSet.getCmsId());
 
+    measureLockService.unlockMeasure(qiCoreMeasureId, username);
+
     String associationSuccessMessage =
         "QI Core measure with ID %s and QDM measure with ID %s are Associated with "
             + "CMS ID %s on %s.";
@@ -864,6 +865,7 @@ public class MeasureService {
     verifyQiCoreDoesNotHaveCmsId(qiCoreMeasure);
     verifyQiCoreIsDraft(qiCoreMeasure);
     verifyNoOtherQiCoreHasCmsId(qdmMeasure);
+    verifyQiCoreMeasureNotLocked(qiCoreMeasure, username);
   }
 
   private void verifyOneQiCoreAndOneQdmMeasure(Measure qiCoreMeasure, Measure qdmMeasure) {
@@ -926,6 +928,12 @@ public class MeasureService {
           qdmMeasure.getMeasureSet().getCmsId());
       throw new InvalidResourceStateException(
           "CMS ID could not be associated. A QI-Core measure already utilizes that CMS ID.");
+    }
+  }
+
+  private void verifyQiCoreMeasureNotLocked(Measure qiCoreMeasure, String username) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      measureLockService.checkMeasureLock(username, qiCoreMeasure, "associate");
     }
   }
 

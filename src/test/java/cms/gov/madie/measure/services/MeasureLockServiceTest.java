@@ -240,4 +240,44 @@ class MeasureLockServiceTest {
     boolean isLocked = service.checkMeasureAndTestCaseLock(userName, measure, "version");
     assertFalse(isLocked);
   }
+
+  @Test
+  public void testCheckMeasureLockNoLock() {
+    MeasureLock lock = MeasureLock.builder().id("measureId").lockedBy(userName).build();
+    when(repository.insert(any(MeasureLock.class))).thenReturn(lock);
+    Measure measure = Measure.builder().id("measureId").build();
+    boolean isLocked = service.checkMeasureLock(userName, measure, "version");
+    assertFalse(isLocked);
+  }
+
+  @Test
+  public void testCheckMeasureLockLockedFalse() {
+    // In MeasureLockService.lockMeasure, isLocked is set to false only if
+    // DuplicateKeyException is thrown and the lock is owned by the same user
+    doThrow(new DuplicateKeyException("duplicate")).when(repository).insert(any(MeasureLock.class));
+    MeasureLock existing = MeasureLock.builder().measureId("measureId").lockedBy(userName).build();
+    when(repository.findByMeasureId("measureId")).thenReturn(Optional.of(existing));
+
+    Measure measure = Measure.builder().id("measureId").build();
+    boolean isLocked = service.checkMeasureLock(userName, measure, "version");
+    assertFalse(isLocked);
+  }
+
+  @Test
+  public void testCheckMeasureLocked() {
+    // measure locked by another user, throws DuplicateKeyException
+    doThrow(new DuplicateKeyException("duplicate")).when(repository).insert(any(MeasureLock.class));
+    when(repository.findByMeasureId("measureId"))
+        .thenReturn(
+            Optional.of(MeasureLock.builder().id("measureId").lockedBy("another.user").build()));
+
+    Exception exception =
+        assertThrows(
+            LockNotObtainedException.class,
+            () -> service.checkMeasureLock(userName, measure, "associate"));
+
+    assertThat(
+        exception.getMessage(),
+        is(equalTo("Unable to associate measure. Locked while being edited by another.user")));
+  }
 }
