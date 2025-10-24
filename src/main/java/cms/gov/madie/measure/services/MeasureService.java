@@ -45,7 +45,6 @@ public class MeasureService {
   private final TerminologyValidationService terminologyValidationService;
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
-  private final TestCaseLockService testCaseLockService;
 
   public void verifyAuthorizationByMeasureSetId(
       String username, String measureSetId, boolean ownerOnly) {
@@ -343,28 +342,7 @@ public class MeasureService {
     }
 
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      LockInfo lockInfo = measureLockService.lockMeasure(id, username);
-      if (lockInfo.isLocked() && !username.equals(lockInfo.getLockedBy())) {
-        log.info(
-            "user: [{}] can't de-activate Measure: [{}], because measure is locked by: [{}]",
-            username,
-            id,
-            lockInfo.getLockedBy());
-        throw new LockNotObtainedException(
-            "Unable to delete measure. Locked while being edited by " + lockInfo.getLockedBy());
-      }
-
-      boolean isAnyTestCaseLockedByOthers =
-          testCaseLockService.isAnyTestCaseLockedByOthers(id, username);
-      if (isAnyTestCaseLockedByOthers) {
-        log.info(
-            "user: [{}] can't de-activate Measure: [{}], because one or more test cases are locked by other users",
-            username,
-            id);
-        measureLockService.unlockMeasure(id, username);
-        throw new LockNotObtainedException(
-            "Unable to delete measure.  One or more test cases are locked by another user.");
-      }
+      measureLockService.checkMeasureAndTestCaseLock(username, existingMeasure, "delete");
     }
     existingMeasure.setActive(false);
     existingMeasure.setLastModifiedBy(username);
@@ -849,6 +827,8 @@ public class MeasureService {
         qdmMeasureId,
         measureSet.getCmsId());
 
+    measureLockService.unlockMeasure(qiCoreMeasureId, username);
+
     String associationSuccessMessage =
         "QI Core measure with ID %s and QDM measure with ID %s are Associated with "
             + "CMS ID %s on %s.";
@@ -885,6 +865,7 @@ public class MeasureService {
     verifyQiCoreDoesNotHaveCmsId(qiCoreMeasure);
     verifyQiCoreIsDraft(qiCoreMeasure);
     verifyNoOtherQiCoreHasCmsId(qdmMeasure);
+    verifyQiCoreMeasureNotLocked(qiCoreMeasure, username);
   }
 
   private void verifyOneQiCoreAndOneQdmMeasure(Measure qiCoreMeasure, Measure qdmMeasure) {
@@ -947,6 +928,12 @@ public class MeasureService {
           qdmMeasure.getMeasureSet().getCmsId());
       throw new InvalidResourceStateException(
           "CMS ID could not be associated. A QI-Core measure already utilizes that CMS ID.");
+    }
+  }
+
+  private void verifyQiCoreMeasureNotLocked(Measure qiCoreMeasure, String username) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      measureLockService.checkMeasureLock(username, qiCoreMeasure, "associate");
     }
   }
 
