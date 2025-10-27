@@ -1126,7 +1126,7 @@ class MeasureControllerTest {
         controller.transferMeasures(
             List.of("measureId1", "measureId2"), "harpId1", true, principal, "testToken");
 
-    assertEquals(HttpStatus.PARTIAL_CONTENT, result.getStatusCode());
+    assertEquals(HttpStatus.MULTI_STATUS, result.getStatusCode());
     assertNotNull(result.getBody());
     assertEquals(1, result.getBody().size());
     assertTrue(result.getBody().contains("measureId2"));

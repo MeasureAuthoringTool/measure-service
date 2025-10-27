@@ -453,6 +453,14 @@ public class MeasureController {
     return ResponseEntity.ok().body(measureService.findLibraryUsage(libraryName));
   }
 
+  /**
+   * Handles transfer of multiple measures to a new owner (identified by harpId).
+   *
+   * <p>- Validates the input list of measure IDs. - Delegates transfer logic to measureService,
+   * which attempts to reassign each measure. - Returns: - 200 OK if all transfers succeed. - 400
+   * BAD REQUEST if the input list is empty. - 207 MULTI_STATUS if some transfers fail, returning
+   * only the failed measure IDs in the body
+   */
   @PutMapping("/measures/transfer")
   public ResponseEntity<List<String>> transferMeasures(
       @RequestBody List<String> measureIds,
@@ -469,7 +477,7 @@ public class MeasureController {
     if (CollectionUtils.isEmpty(failedTransfers)) {
       return ResponseEntity.ok().body(failedTransfers);
     } else {
-      return ResponseEntity.status(HttpStatus.PARTIAL_CONTENT).body(failedTransfers);
+      return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(failedTransfers);
     }
   }
 

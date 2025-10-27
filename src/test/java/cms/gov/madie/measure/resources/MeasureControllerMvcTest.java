@@ -2366,7 +2366,7 @@ public class MeasureControllerMvcTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .accept(MediaType.APPLICATION_JSON))
         .andDo(print())
-        .andExpect(status().isPartialContent());
+        .andExpect(status().isMultiStatus());
 
     verify(measureService, times(1))
         .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(false), eq(TEST_USER_ID));
