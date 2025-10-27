@@ -55,6 +55,10 @@ public class TestCaseControllerMvcTest {
   @Captor ArgumentCaptor<String> usernameCaptor;
   @MockitoBean private QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
 
+  @MockitoBean
+  private cms.gov.madie.measure.services.TestCaseLockEnrichmentService
+      testCaseLockEnrichmentService;
+
   private TestCase testCase;
   private static final String TEST_ID = "TESTID";
   private static final String TEST_USER = "TestUser";
@@ -243,7 +247,8 @@ public class TestCaseControllerMvcTest {
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
                         + "\"groupPopulations\":null,"
                         + "\"validationStatus\":null,"
-                        + "\"validationTaskId\":null"
+                        + "\"validationTaskId\":null,"
+                        + "\"testCaseLock\":null"
                         + "}]"));
     verify(testCaseService, times(1)).findTestCasesByMeasureId(measureIdCaptor.capture());
     String measureId = measureIdCaptor.getValue();
@@ -293,7 +298,8 @@ public class TestCaseControllerMvcTest {
                         + "\"json\":\"{\\\"test\\\":\\\"test\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
                         + "\"groupPopulations\":null,"
                         + "\"validationStatus\":null,"
-                        + "\"validationTaskId\":null"
+                        + "\"validationTaskId\":null,"
+                        + "\"testCaseLock\":null"
                         + "}"));
     verify(testCaseService, times(1))
         .getTestCase(
@@ -341,7 +347,8 @@ public class TestCaseControllerMvcTest {
                         + "\"json\":\"{\\\"new\\\":\\\"json\\\"}\",\"patientId\":null,\"hapiOperationOutcome\":null,"
                         + "\"groupPopulations\":null,"
                         + "\"validationStatus\":null,"
-                        + "\"validationTaskId\":null"
+                        + "\"validationTaskId\":null,"
+                        + "\"testCaseLock\":null"
                         + "}"));
     verify(testCaseService, times(1))
         .updateTestCase(
