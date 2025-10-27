@@ -456,10 +456,15 @@ public class MeasureController {
   /**
    * Handles transfer of multiple measures to a new owner (identified by harpId).
    *
-   * <p>- Validates the input list of measure IDs. - Delegates transfer logic to measureService,
-   * which attempts to reassign each measure. - Returns: - 200 OK if all transfers succeed. - 400
-   * BAD REQUEST if the input list is empty. - 207 MULTI_STATUS if some transfers fail, returning
-   * only the failed measure IDs in the body
+   * <p>Validates the input list of measure IDs. Delegates transfer logic to measureService, which
+   * attempts to reassign each measure. Returns:
+   *
+   * <ul>
+   *   <li>200 OK if all transfers succeed.
+   *   <li>400 BAD REQUEST if the input list is empty.
+   *   <li>207 MULTI_STATUS if some transfers fail, returning only the failed measure IDs in the
+   *       body.
+   * </ul>
    */
   @PutMapping("/measures/transfer")
   public ResponseEntity<List<String>> transferMeasures(
