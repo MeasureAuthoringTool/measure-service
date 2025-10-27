@@ -90,8 +90,34 @@ public class ExportController {
     Measure measure = measureOptional.get();
     // change Measure Bundle Type to "type" for export
 
-    return fhirServicesClient.getTestCaseExports(
-        measure, accessToken, testCaseId, bundleType.orElse(("COLLECTION").toUpperCase()));
+    ResponseEntity<byte[]> exportResponse =
+        fhirServicesClient.getTestCaseExports(
+            measure, accessToken, testCaseId, bundleType.orElse(("COLLECTION").toUpperCase()));
+
+    int statusCode = exportResponse.getStatusCode().value();
+
+    if (statusCode == 200) {
+      log.info(
+          "Successfully exported all [{}] test cases for measure [{}] by user [{}]",
+          testCaseId.size(),
+          measureId,
+          username);
+      actionLogService.logAction(measureId, Measure.class, ActionType.EXPORTED_TESTCASES, username);
+    } else if (statusCode == 206) {
+      log.warn(
+          "Partial export for measure [{}] by user [{}]. Some test cases could not be exported.",
+          measureId,
+          username);
+      actionLogService.logAction(measureId, Measure.class, ActionType.EXPORTED_TESTCASES, username);
+    } else {
+      log.error(
+          "Failed to export test cases for measure [{}] by user [{}]. Status: [{}]",
+          measureId,
+          username,
+          statusCode);
+    }
+
+    return exportResponse;
   }
 
   @PutMapping(path = "/measures/{id}/test-cases/qrda", produces = "application/zip")
