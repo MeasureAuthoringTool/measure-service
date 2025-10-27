@@ -19,18 +19,9 @@ import java.time.Instant;
 public class TestCaseLockInfo implements Serializable {
   private static final long serialVersionUID = 1L;
 
-  /** The ID of the measure containing the test case */
   private String measureId;
-
-  /** The ID of the locked test case */
   private String testCaseId;
-
-  /** The username of the user who locked the test case */
   private String lockedBy;
-
-  /** The timestamp when the test case was locked */
   private Instant lockedAt;
-
-  /** The timestamp when the lock will expire */
   private Instant expiresAt;
 }
