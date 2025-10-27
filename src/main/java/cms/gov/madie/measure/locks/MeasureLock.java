@@ -15,14 +15,11 @@ import java.time.Instant;
 @AllArgsConstructor
 @Document(collection = "measureLock")
 public class MeasureLock {
-  @Id private String id; // MongoDB document ID
-
+  @Id private String id; 
   @Indexed(unique = true)
-  private String measureId; // ID of the measure being locked; indexed to prevent duplicates
-
-  private String lockedBy; // ID of the user locking the measure
-  private Instant lockedAt; // Timestamp of when the lock was created
-
+  private String measureId; 
+  private String lockedBy; 
+  private Instant lockedAt; 
   @Indexed(expireAfter = "0s")
   private Instant expiresAt;
 }
