@@ -150,7 +150,11 @@
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-java-models</artifactId>
+<<<<<<< HEAD
       <version>0.6.109-SNAPSHOT</version>
+=======
+      <version>0.6.111-SNAPSHOT</version>
+>>>>>>> 4303a0205b33fd9d637700ae460240872222b263
     </dependency>
     <dependency>
       <groupId>gov.cms.madie</groupId>
