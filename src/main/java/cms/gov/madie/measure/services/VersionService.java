@@ -50,6 +50,7 @@ public class VersionService {
   private final MongoGridFsService mongoGridFsService;
   private final AppConfigService appConfigService;
   private final TestCaseValidationService testCaseValidationService;
+  private final MeasureLockService measureLockService;
 
   public enum VersionValidationResult {
     VALID,
@@ -79,10 +80,23 @@ public class VersionService {
   public Measure createVersion(String id, String versionType, String username, String accessToken) {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      measureLockService.checkMeasureAndTestCaseLock(username, measure, "version");
+      // no lock on measure and no locks on any test cases, version is ok
+      Measure versionedMeasure = versionMeasure(measure, versionType, username, accessToken);
+      measureLockService.unlockMeasure(measure.getId(), username);
+      log.info("user: [{}] unlocked Measure: [{}] after versioning.", username, measure.getId());
+      return versionedMeasure;
+    } else {
+      return versionMeasure(measure, versionType, username, accessToken);
+    }
+  }
+
+  private Measure versionMeasure(
+      Measure measure, String versionType, String username, String accessToken) {
     if (measure instanceof FhirMeasure) {
       return versionFhirMeasure(versionType, username, accessToken, measure);
     }
-
     return versionQdmMeasure(versionType, username, measure, accessToken);
   }
 

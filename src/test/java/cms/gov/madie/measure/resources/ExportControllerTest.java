@@ -190,6 +190,36 @@ class ExportControllerTest {
   }
 
   @Test
+  void getTestCaseExportErrorResponse() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    final Measure measure =
+        Measure.builder()
+            .ecqmTitle("test_ecqm_title")
+            .version(new Version(0, 0, 0))
+            .model("QiCore 4.1.1")
+            .createdBy("test.user")
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+
+    when(fhirServicesClient.getTestCaseExports(
+            any(Measure.class), anyString(), anyList(), anyString()))
+        .thenReturn(new ResponseEntity<byte[]>(HttpStatus.INTERNAL_SERVER_ERROR));
+
+    ResponseEntity<byte[]> output =
+        exportController.getTestCaseExport(
+            principal,
+            "access-token",
+            "example-measure-id",
+            Optional.of("COLLECTION"),
+            asList("example-test-case-id-1", "example-test-case-id-2"));
+
+    assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, output.getStatusCode());
+  }
+
+  @Test
   void getTestCaseExportAllThrowsResourceNotFoundException() {
     Principal principal = mock(Principal.class);
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
