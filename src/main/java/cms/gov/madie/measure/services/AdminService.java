@@ -26,7 +26,7 @@ public class AdminService {
     }
 
     if (!Objects.equals(targetMeasure.getModel(), ModelType.QDM_5_6.getValue())) {
-      log.info("Measure with id: " + id + " is not a QDM measure. No HCPC updates made.");
+      log.info("Measure with id: " + id + " is not a QDM measure. No HCPCSReleaseCodeSets updates made.");
       return targetMeasure;
     }
 
@@ -41,7 +41,7 @@ public class AdminService {
                           "http://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets",
                           "2.16.840.1.113883.6.285");
               if (!Objects.equals(testCase.getJson(), updatedJson)) {
-                log.info("Updating HCPC codes in test case with id: " + testCase.getId());
+                log.info("Updating HCPCSReleaseCodeSets values in test case with id: " + testCase.getId());
                 testCase.setJson(updatedJson);
                 testCaseService.updateTestCase(testCase, id, username, accessToken);
                 actionLogService.logAction(
@@ -49,7 +49,7 @@ public class AdminService {
                     Measure.class,
                     ActionType.UPDATED,
                     username,
-                    "Admin Action: Overwrote HCPC Values.");
+                    "Admin Action: Overwrote HCPCSReleaseCodeSets Values.");
               }
             });
 

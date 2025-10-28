@@ -55,7 +55,7 @@ class AdminServiceTest {
             eq(Measure.class),
             eq(ActionType.UPDATED),
             eq("testUser"),
-            eq("Admin Action: Overwrote HCPC Values."));
+            eq("Admin Action: Overwrote HCPCSReleaseCodeSets Values."));
     assertThat(updatedMeasure, is(notNullValue()));
   }
 
