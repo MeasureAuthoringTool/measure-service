@@ -57,6 +57,7 @@ public class AdminController {
 
   private final MeasureLockService measureLockService;
   private final TestCaseLockService testCaseLockService;
+  private final AdminService adminService;
 
   @Value("${madie.admin.concurrency-limit}")
   private int concurrencyLimit;
@@ -592,5 +593,17 @@ public class AdminController {
     messages.addAll(measureLockService.unlockByUser(harpId));
     messages.addAll(testCaseLockService.unlockByUser(harpId));
     return ResponseEntity.ok(messages);
+  }
+
+  @PutMapping("/measures/hcpc/{id}")
+  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  public ResponseEntity<Measure> updateHCPC(
+      HttpServletRequest request,
+      @Value("${admin-api-key}") String apiKey,
+      Principal principal,
+      @PathVariable String id,
+      @RequestHeader("Authorization") String accessToken) {
+
+    return ResponseEntity.ok(adminService.updateHcpcCodes(id, principal.getName(), accessToken));
   }
 }
