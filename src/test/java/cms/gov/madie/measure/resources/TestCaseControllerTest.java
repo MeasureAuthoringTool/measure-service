@@ -42,6 +42,10 @@ public class TestCaseControllerTest {
   @Mock private MeasureService measureService;
   @Mock private QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
 
+  @Mock
+  private cms.gov.madie.measure.services.TestCaseLockEnrichmentService
+      testCaseLockEnrichmentService;
+
   @InjectMocks private TestCaseController controller;
 
   private TestCase testCase;

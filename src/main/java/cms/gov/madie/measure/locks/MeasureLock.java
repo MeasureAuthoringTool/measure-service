@@ -15,11 +15,14 @@ import java.time.Instant;
 @AllArgsConstructor
 @Document(collection = "measureLock")
 public class MeasureLock {
-  @Id private String id; 
+  @Id private String id;
+
   @Indexed(unique = true)
-  private String measureId; 
-  private String lockedBy; 
-  private Instant lockedAt; 
+  private String measureId;
+
+  private String lockedBy;
+  private Instant lockedAt;
+
   @Indexed(expireAfter = "0s")
   private Instant expiresAt;
 }
