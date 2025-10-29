@@ -45,7 +45,7 @@ class MeasureLockEnrichmentServiceTest {
   }
 
   @Test
-  void testEnrichMeasureWithLockInfo_MeasureLockedByOtherUser() {
+  void testEnrichMeasureWithLockInfoMeasureLockedByOtherUser() {
     when(measureLockRepository.findByMeasureId(measureId)).thenReturn(Optional.of(lock));
     when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(false);
 
@@ -58,7 +58,7 @@ class MeasureLockEnrichmentServiceTest {
   }
 
   @Test
-  void testEnrichMeasureWithLockInfo_MeasureLockedByCurrentUser() {
+  void testEnrichMeasureWithLockInfoMeasureLockedByCurrentUser() {
     lock.setLockedBy(currentUser);
     when(measureLockRepository.findByMeasureId(measureId)).thenReturn(Optional.of(lock));
     when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(false);
@@ -71,7 +71,7 @@ class MeasureLockEnrichmentServiceTest {
   }
 
   @Test
-  void testEnrichMeasureWithLockInfo_NoLock() {
+  void testEnrichMeasureWithLockInfoNoLock() {
     when(measureLockRepository.findByMeasureId(measureId)).thenReturn(Optional.empty());
     when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(false);
 
@@ -82,7 +82,7 @@ class MeasureLockEnrichmentServiceTest {
   }
 
   @Test
-  void testEnrichMeasureWithLockInfo_TestCasesLockedByOthers() {
+  void testEnrichMeasureWithLockInfoTestCasesLockedByOthers() {
     when(measureLockRepository.findByMeasureId(measureId)).thenReturn(Optional.empty());
     when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(true);
 
@@ -93,7 +93,7 @@ class MeasureLockEnrichmentServiceTest {
   }
 
   @Test
-  void testEnrichMeasureWithLockInfo_BothMeasureAndTestCasesLocked() {
+  void testEnrichMeasureWithLockInfoBothMeasureAndTestCasesLocked() {
     when(measureLockRepository.findByMeasureId(measureId)).thenReturn(Optional.of(lock));
     when(testCaseLockService.isAnyTestCaseLockedByOthers(measureId, currentUser)).thenReturn(true);
 
@@ -105,7 +105,7 @@ class MeasureLockEnrichmentServiceTest {
   }
 
   @Test
-  void testEnrichMeasureWithLockInfo_NullMeasure() {
+  void testEnrichMeasureWithLockInfoNullMeasure() {
     // Should not throw exception
     assertDoesNotThrow(() -> service.enrichMeasureWithLockInfo(null, currentUser));
 
