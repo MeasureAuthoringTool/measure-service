@@ -53,6 +53,9 @@ madie:
     create-qrda-urn: /qdm/measures/package/qrda
     human-readable: /qdm/measures/human-readable
     retrieve-cqmmeasure-urn: /qdm/measures/cqm
+  excel-export-service:
+    base-url: ${EXCEL_EXPORT_SERVICE:http://localhost:3000/api}
+    get-excel-urn: /excel
   service-config:
     json-url: ${SERVICE_CONFIG_JSON_URL:http://localhost:9000/env-config/serviceConfig.json}
     cql-template-qicore411-url: ${CQL_TEMPLATE_QICORE411_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore411_CQLTemplate.txt}
@@ -73,7 +76,7 @@ management:
 
 okta:
   oauth2:
-    issuer: ${OKTA_ISSUER:https://integrator-3514157.okta.com/oauth2/default}
+    issuer: ${OKTA_ISSUER:https://dev-18092578.okta.com/oauth2/default}
     audience: ${OKTA_AUDIENCE:api://default}
 
 organizations-api-key: ${ORGANIZATIONS_API_KEY:fa9c193c}
