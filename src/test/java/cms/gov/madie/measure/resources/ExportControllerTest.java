@@ -292,19 +292,23 @@ class ExportControllerTest {
 
     assertEquals(HttpStatus.OK, response.getStatusCode());
 
-    assertNotNull(response.getHeaders().get(HttpHeaders.CONTENT_DISPOSITION), "Content-Disposition header missing");
-    assertFalse(response.getHeaders().get(HttpHeaders.CONTENT_DISPOSITION).isEmpty(), "Content-Disposition header empty");
+    assertNotNull(
+        response.getHeaders().get(HttpHeaders.CONTENT_DISPOSITION),
+        "Content-Disposition header missing");
+    assertFalse(
+        response.getHeaders().get(HttpHeaders.CONTENT_DISPOSITION).isEmpty(),
+        "Content-Disposition header empty");
     assertEquals(
         "attachment; filename=\"testCases.xlsx\"",
-        response.getHeaders().get(HttpHeaders.CONTENT_DISPOSITION).get(0)
-    );
+        response.getHeaders().get(HttpHeaders.CONTENT_DISPOSITION).get(0));
 
-    assertNotNull(response.getHeaders().get(HttpHeaders.CONTENT_TYPE), "Content-Type header missing");
-    assertFalse(response.getHeaders().get(HttpHeaders.CONTENT_TYPE).isEmpty(), "Content-Type header empty");
+    assertNotNull(
+        response.getHeaders().get(HttpHeaders.CONTENT_TYPE), "Content-Type header missing");
+    assertFalse(
+        response.getHeaders().get(HttpHeaders.CONTENT_TYPE).isEmpty(), "Content-Type header empty");
     assertEquals(
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        response.getHeaders().get(HttpHeaders.CONTENT_TYPE).get(0)
-    );
+        response.getHeaders().get(HttpHeaders.CONTENT_TYPE).get(0));
 
     assertEquals(response.getBody(), excelBytes);
 

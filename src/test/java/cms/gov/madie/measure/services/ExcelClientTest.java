@@ -28,14 +28,11 @@ import static org.mockito.Mockito.eq;
 @ExtendWith(MockitoExtension.class)
 class ExcelClientTest {
 
-  @Mock
-  private RestTemplate excelRestTemplate;
+  @Mock private RestTemplate excelRestTemplate;
 
-  @Mock
-  private ExcelConfig excelConfig;
+  @Mock private ExcelConfig excelConfig;
 
-  @InjectMocks
-  private ExcelClient excelClient;
+  @InjectMocks private ExcelClient excelClient;
 
   private List<TestCaseExcelExportDTO> testCaseExcelExportDtos;
 
@@ -57,11 +54,8 @@ class ExcelClientTest {
     ResponseEntity<byte[]> responseEntity = ResponseEntity.ok(expectedBytes);
 
     when(excelRestTemplate.exchange(
-        any(URI.class),
-        eq(HttpMethod.PUT),
-        any(HttpEntity.class),
-        eq(byte[].class)
-    )).thenReturn(responseEntity);
+            any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), eq(byte[].class)))
+        .thenReturn(responseEntity);
 
     byte[] result = excelClient.exportExcel(measureId, testCaseExcelExportDtos, accessToken);
 
@@ -77,11 +71,8 @@ class ExcelClientTest {
     String accessToken = "Bearer FAKE_TOKEN";
 
     when(excelRestTemplate.exchange(
-        any(URI.class),
-        eq(HttpMethod.PUT),
-        any(HttpEntity.class),
-        eq(byte[].class)
-    )).thenThrow(new RuntimeException("Excel Export failed"));
+            any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), eq(byte[].class)))
+        .thenThrow(new RuntimeException("Excel Export failed"));
 
     try {
       excelClient.exportExcel(measureId, testCaseExcelExportDtos, accessToken);

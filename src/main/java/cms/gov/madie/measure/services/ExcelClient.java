@@ -39,7 +39,7 @@ public class ExcelClient {
 
     ResponseEntity<byte[]> response =
         excelRestTemplate.exchange(uri, HttpMethod.PUT, entity, byte[].class);
-    
+
     return response.getBody();
   }
 }
