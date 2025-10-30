@@ -140,6 +140,7 @@ public class ExportController {
 
     try {
       qrdaPackage = exportService.getQRDA(requestDTO, accessToken);
+      log.info("QRDA export successful for measure [{}] by user [{}]", id, username);
     } catch (Exception e) {
       log.error("Failed to export QRDA for measure [{}] by user [{}]", id, username, e);
       throw e;
