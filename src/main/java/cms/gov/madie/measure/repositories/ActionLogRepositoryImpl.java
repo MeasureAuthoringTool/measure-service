@@ -60,11 +60,10 @@ public class ActionLogRepositoryImpl implements ActionLogRepository {
         new Update().pull("actions", Query.query(Criteria.where("performedBy").in(users)));
 
     UpdateResult result = mongoTemplate.updateMulti(query, update, collection);
-    log.debug(
-        "removeActionsByUsers: UpdateResult: matchedAcount = "
-            + result.getMatchedCount()
-            + " modifiedCount = "
-            + result.getModifiedCount());
+    log.info(
+        "removeActionsByUsers: UpdateResult: matchedAcount: {} modifiedCount: {}",
+        result.getMatchedCount(),
+        result.getModifiedCount());
 
     Query emptyActionsQuery = new Query(Criteria.where("actions").size(0));
     mongoTemplate.remove(emptyActionsQuery, collection);

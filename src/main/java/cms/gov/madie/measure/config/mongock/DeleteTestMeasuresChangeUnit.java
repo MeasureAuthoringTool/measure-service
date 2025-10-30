@@ -82,7 +82,7 @@ public class DeleteTestMeasuresChangeUnit {
 
   int deleteTestCaseActionLogs(ActionLogRepositoryImpl actionLogRepository) {
     List<ActionLog> testCaseActionLogs = actionLogRepository.findAllActionLogs(TestCase.class);
-    log.info("TestCaseAction total = " + testCaseActionLogs.size());
+    log.info("TestCaseAction total: {}", testCaseActionLogs.size());
     int toBeDeleted = 0;
     filteredTestCaseActionLogs =
         testCaseActionLogs.stream()
@@ -93,7 +93,7 @@ public class DeleteTestMeasuresChangeUnit {
             .toList();
     if (CollectionUtils.isNotEmpty(filteredTestCaseActionLogs)) {
       toBeDeleted = filteredTestCaseActionLogs.size();
-      log.info("TestCaseActionLog to be deleted: " + toBeDeleted);
+      log.info("TestCaseActionLog to be deleted:  {}", toBeDeleted);
       actionLogRepository.removeActionsByUsers(users, TestCase.class);
     }
     return toBeDeleted;
@@ -101,7 +101,7 @@ public class DeleteTestMeasuresChangeUnit {
 
   int deleteMeasureActionLogs(ActionLogRepositoryImpl actionLogRepository) {
     List<ActionLog> measureActionLogs = actionLogRepository.findAllActionLogs(Measure.class);
-    log.info("MeasureActionLog total = " + measureActionLogs.size());
+    log.info("MeasureActionLog total: {}", measureActionLogs.size());
     int toBeDeleted = 0;
     filteredMeasureActionLogs =
         measureActionLogs.stream()
@@ -112,7 +112,7 @@ public class DeleteTestMeasuresChangeUnit {
             .toList();
     if (CollectionUtils.isNotEmpty(filteredMeasureActionLogs)) {
       toBeDeleted = filteredMeasureActionLogs.size();
-      log.info("MeasureActionLog to be deleted: " + toBeDeleted);
+      log.info("MeasureActionLog to be deleted:  {}", toBeDeleted);
       actionLogRepository.removeActionsByUsers(users, Measure.class);
     }
     return toBeDeleted;
@@ -120,7 +120,7 @@ public class DeleteTestMeasuresChangeUnit {
 
   int deleteMeasureSetActionLogs(ActionLogRepositoryImpl actionLogRepository) {
     List<ActionLog> measureSetActionLogs = actionLogRepository.findAllActionLogs(MeasureSet.class);
-    log.info("MeasureSetActionLog total = " + measureSetActionLogs.size());
+    log.info("MeasureSetActionLog total: {}", measureSetActionLogs.size());
     int toBeDeleted = 0;
     filteredMeasureSetActionLogs =
         measureSetActionLogs.stream()
@@ -132,7 +132,7 @@ public class DeleteTestMeasuresChangeUnit {
 
     if (CollectionUtils.isNotEmpty(filteredMeasureSetActionLogs)) {
       toBeDeleted = filteredMeasureSetActionLogs.size();
-      log.info("MeasureSetActionLog to be deleted: " + toBeDeleted);
+      log.info("MeasureSetActionLog to be deleted: {}", toBeDeleted);
       actionLogRepository.removeActionsByUsers(users, MeasureSet.class);
     }
     return toBeDeleted;
@@ -147,19 +147,19 @@ public class DeleteTestMeasuresChangeUnit {
             .collect(Collectors.toList());
     if (CollectionUtils.isNotEmpty(filteredExports)) {
       exportRepository.deleteAll(filteredExports);
-      log.info("Deleted Export size: " + filteredExports.size());
+      log.info("Deleted Export size:  {}", filteredExports.size());
     }
   }
 
   void deleteMeasures(MeasureRepository measureRepository, List<Measure> filteredMeasures) {
     measureRepository.deleteAll(filteredMeasures);
-    log.info("Deleted Measures: " + filteredMeasures.size());
+    log.info("Deleted Measures: {}", filteredMeasures.size());
   }
 
   void deleteMeasureSets(
       MeasureSetRepository measureSetRepository, List<MeasureSet> filteredMeasureSets) {
     measureSetRepository.deleteAll(filteredMeasureSets);
-    log.info("Deleted MeasureSets: " + filteredMeasureSets.size());
+    log.info("Deleted MeasureSets:  {}", filteredMeasureSets.size());
   }
 
   @RollbackExecution
@@ -180,70 +180,68 @@ public class DeleteTestMeasuresChangeUnit {
   }
 
   int rollBackTestCaseActionLogs(ActionLogRepositoryImpl actionLogRepository) {
+    int size = 0;
     if (CollectionUtils.isNotEmpty(filteredTestCaseActionLogs)) {
       List<ActionLog> savedTestCaseActionLogs =
           (List<ActionLog>)
               actionLogRepository.saveAllActionLogs(filteredTestCaseActionLogs, TestCase.class);
-      log.info(
-          "Roll back TestCaseActionLog: "
-              + (savedTestCaseActionLogs != null ? savedTestCaseActionLogs.size() : " null"));
-      return savedTestCaseActionLogs != null ? savedTestCaseActionLogs.size() : 0;
+      size = savedTestCaseActionLogs != null ? savedTestCaseActionLogs.size() : 0;
+      log.info("Roll back TestCaseActionLog: {}", size);
     }
-    return 0;
+    return size;
   }
 
   int rollBackMeasureActionLogs(ActionLogRepositoryImpl actionLogRepository) {
+    int size = 0;
     if (CollectionUtils.isNotEmpty(filteredMeasureActionLogs)) {
       List<ActionLog> savedMeasureActionLogs =
           (List<ActionLog>)
               actionLogRepository.saveAllActionLogs(filteredMeasureActionLogs, Measure.class);
-      log.info(
-          "Roll back MeasureActionLog: "
-              + (savedMeasureActionLogs != null ? savedMeasureActionLogs.size() : " null"));
-      return savedMeasureActionLogs != null ? savedMeasureActionLogs.size() : 0;
+      size = savedMeasureActionLogs != null ? savedMeasureActionLogs.size() : 0;
+      log.info("Roll back MeasureActionLog: {}", size);
     }
-    return 0;
+    return size;
   }
 
   int rollBackMeasureSetActionLogs(ActionLogRepositoryImpl actionLogRepository) {
+    int size = 0;
     if (CollectionUtils.isNotEmpty(filteredMeasureSetActionLogs)) {
       List<ActionLog> savedMeasureSetActionLogs =
           (List<ActionLog>)
               actionLogRepository.saveAllActionLogs(filteredMeasureSetActionLogs, MeasureSet.class);
-      log.info(
-          "Roll back MeasureActionLog: "
-              + (savedMeasureSetActionLogs != null ? savedMeasureSetActionLogs.size() : " null"));
-      return savedMeasureSetActionLogs != null ? savedMeasureSetActionLogs.size() : 0;
+      size = savedMeasureSetActionLogs != null ? savedMeasureSetActionLogs.size() : 0;
+      log.info("Roll back MeasureActionLog: {}", size);
     }
-    return 0;
+    return size;
   }
 
   int rollBackExports(ExportRepository exportRepository) {
+    int size = 0;
     if (CollectionUtils.isNotEmpty(filteredExports)) {
       List<Export> savedExports = exportRepository.saveAll(filteredExports);
-      log.info("Roll back Exports: " + (savedExports != null ? savedExports.size() : " null"));
-      return savedExports != null ? savedExports.size() : 0;
+      size = savedExports != null ? savedExports.size() : 0;
+      log.info("Roll back Exports: {}", size);
     }
-    return 0;
+    return size;
   }
 
   int rollBackMeasures(MeasureRepository measureRepository) {
+    int size = 0;
     if (CollectionUtils.isNotEmpty(filteredMeasures)) {
       List<Measure> savedMeasures = measureRepository.saveAll(filteredMeasures);
-      log.info("Roll back Measure: " + (savedMeasures != null ? savedMeasures.size() : " null"));
-      return savedMeasures != null ? savedMeasures.size() : 0;
+      size = savedMeasures != null ? savedMeasures.size() : 0;
+      log.info("Roll back Measure: {}", size);
     }
-    return 0;
+    return size;
   }
 
   int rollBackMeasureSets(MeasureSetRepository measureSetRepository) {
+    int size = 0;
     if (CollectionUtils.isNotEmpty(filteredMeasureSets)) {
       List<MeasureSet> savedMeasureSets = measureSetRepository.saveAll(filteredMeasureSets);
-      log.info(
-          "Roll back MeasureSets: "
-              + (savedMeasureSets != null ? savedMeasureSets.size() : " null"));
-      return savedMeasureSets != null ? savedMeasureSets.size() : 0;
+      size = savedMeasureSets != null ? savedMeasureSets.size() : 0;
+      log.info("Roll back MeasureSets: {}", size);
     }
-    return 0;
+    return size;
   }
 }
