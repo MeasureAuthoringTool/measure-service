@@ -75,8 +75,10 @@ class AdminServiceTest {
 
     Measure result = adminService.updateHcpcCodes("measureId", "testUser", "accessToken");
 
-    verify(testCaseService, times(0)).updateTestCase(any(TestCase.class), anyString(), anyString(), anyString());
-    verify(actionLogService, times(0)).logAction(anyString(), any(Class.class), any(ActionType.class), anyString(), anyString());
+    verify(testCaseService, times(0))
+        .updateTestCase(any(TestCase.class), anyString(), anyString(), anyString());
+    verify(actionLogService, times(0))
+        .logAction(anyString(), any(Class.class), any(ActionType.class), anyString(), anyString());
     assertThat(result, is(notNullValue()));
     assertThat(result.getModel(), is("FHIR"));
   }

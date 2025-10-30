@@ -1,6 +1,10 @@
 package cms.gov.madie.measure.repositories;
 
+import java.util.Collection;
+import java.util.List;
+
 import gov.cms.madie.models.common.Action;
+import gov.cms.madie.models.common.ActionLog;
 
 public interface ActionLogRepository {
 
@@ -16,4 +20,10 @@ public interface ActionLogRepository {
    * @return true if upsert is successful, false otherwise
    */
   boolean pushEvent(String targetId, Action action, String collection);
+
+  List<ActionLog> findAllActionLogs(Class<?> targetClass);
+
+  Collection<ActionLog> saveAllActionLogs(List<ActionLog> actionLogs, Class<?> targetClass);
+
+  void removeActionsByUsers(List<String> users, Class<?> clazz);
 }
