@@ -4,6 +4,7 @@ import cms.gov.madie.measure.SecurityConfig;
 import cms.gov.madie.measure.dto.JobStatus;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
+import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -73,6 +74,7 @@ public class AdminControllerMvcTest {
 
   @MockitoBean private MeasureLockService measureLockService;
   @MockitoBean private TestCaseLockService testCaseLockService;
+  @MockitoBean private AdminService adminService;
 
   @Autowired private MockMvc mockMvc;
 
@@ -1411,5 +1413,40 @@ public class AdminControllerMvcTest {
             .andExpect(status().isOk())
             .andReturn();
     assertTrue(result.getResponse().getContentAsString().contains("false"));
+  }
+
+  @Test
+  public void updateHCPCUpdatesMeasureSuccessfully() throws Exception {
+    Measure updatedMeasure = Measure.builder().id("measureId").build();
+    when(adminService.updateHcpcCodes(eq("measureId"), eq(TEST_USER_ID), anyString()))
+        .thenReturn(updatedMeasure);
+
+    mockMvc
+        .perform(
+            put("/admin/measures/hcpc/{id}", "measureId")
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value("measureId"));
+
+    verify(adminService, times(1)).updateHcpcCodes(eq("measureId"), eq(TEST_USER_ID), anyString());
+  }
+
+  @Test
+  public void updateHCPCThrowsResourceNotFoundExceptionWhenMeasureNotFound() throws Exception {
+    when(adminService.updateHcpcCodes(eq("invalidId"), eq(TEST_USER_ID), anyString()))
+        .thenThrow(new ResourceNotFoundException("Measure with id invalidId not found"));
+    mockMvc
+        .perform(
+            put("/admin/measures/hcpc/{id}", "invalidId")
+                .with(csrf())
+                .with(user(TEST_USER_ID))
+                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isNotFound());
+
+    verify(adminService, times(1)).updateHcpcCodes(eq("invalidId"), eq(TEST_USER_ID), anyString());
   }
 }
