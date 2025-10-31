@@ -64,4 +64,6 @@ public interface MeasureRepository
 
   List<Measure> findByMeasureSetIdAndModelInAndMeasureMetaDataDraft(
       String setId, Collection<String> model, boolean draft);
+
+  List<Measure> findByMeasureSetIdIn(Collection<String> measureSetIds);
 }
