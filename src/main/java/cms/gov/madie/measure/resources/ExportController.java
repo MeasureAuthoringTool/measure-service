@@ -131,6 +131,8 @@ public class ExportController {
       @RequestHeader("Authorization") String accessToken) {
 
     final String username = principal.getName();
+    byte[] qrdaPackage;
+
     log.info("User [{}] is attempting to export QRDA for measure [{}]", username, id);
 
     Optional<Measure> measureOptional = measureRepository.findById(id);
@@ -139,14 +141,19 @@ public class ExportController {
       throw new ResourceNotFoundException("Measure", id);
     }
 
-    return ResponseEntity.status(HttpStatus.OK)
+    qrdaPackage = exportService.getQRDA(requestDTO, accessToken);
+
+    log.info("QRDA export successful for measure [{}] by user [{}]", id, username);
+    actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_TESTCASES, username);
+
+    return ResponseEntity.ok()
         .header(
             HttpHeaders.CONTENT_DISPOSITION,
             "attachment;filename=\""
                 + ExportFileNamesUtil.getExportFileName(requestDTO.getMeasure())
                 + ".zip\"")
         .contentType(MediaType.APPLICATION_OCTET_STREAM)
-        .body(exportService.getQRDA(requestDTO, accessToken));
+        .body(qrdaPackage);
   }
 
   @PutMapping(

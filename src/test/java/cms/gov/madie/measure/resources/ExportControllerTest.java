@@ -14,7 +14,6 @@ import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCase;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -251,7 +250,6 @@ class ExportControllerTest {
   }
 
   @Test
-  @Disabled
   void testGetQRDASuccess() {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -273,6 +271,37 @@ class ExportControllerTest {
             QrdaRequestDTO.builder().measure(measure).build(),
             "Bearer TOKEN");
     assertEquals(HttpStatus.OK, output.getStatusCode());
+    verify(actionLogService, times(1))
+        .logAction("test_id", Measure.class, ActionType.EXPORTED_TESTCASES, "test.user");
+  }
+
+  @Test
+  void testGetQRDAThrowsException() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    final Measure measure =
+        Measure.builder()
+            .ecqmTitle("test_ecqm_title")
+            .version(new Version(0, 0, 0))
+            .model("QiCore 4.1.1")
+            .createdBy("test.user")
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(exportService.getQRDA(eq(QrdaRequestDTO.builder().measure(measure).build()), anyString()))
+        .thenThrow(new RuntimeException("Export failed"));
+
+    QrdaRequestDTO requestDTO = QrdaRequestDTO.builder().measure(measure).build();
+
+    RuntimeException thrown =
+        assertThrows(
+            RuntimeException.class,
+            () -> exportController.getQRDA(principal, "test_id", requestDTO, "Bearer TOKEN"));
+
+    assertEquals("Export failed", thrown.getMessage());
+    verify(actionLogService, times(0))
+        .logAction("test_id", Measure.class, ActionType.EXPORTED_TESTCASES, "test.user");
   }
 
   @Test
