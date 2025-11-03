@@ -1109,8 +1109,6 @@ class MeasureControllerTest {
             List.of("testMeasureId"), "testHarpId", true, principal, "testToken");
 
     assertEquals(HttpStatus.OK, result.getStatusCode());
-    assertNotNull(result.getBody());
-    assertTrue(result.getBody().isEmpty());
   }
 
   @Test

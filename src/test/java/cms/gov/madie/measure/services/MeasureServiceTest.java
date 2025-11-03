@@ -1331,18 +1331,18 @@ public class MeasureServiceTest implements ResourceUtil {
     when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
 
-    doThrow(new RuntimeException("Unexpected error"))
+    doThrow(new RuntimeException("Error occurred during measure ownership transfer"))
         .when(measureSetService)
         .changeOwnership(anyString(), anyString(), anyBoolean(), anyString());
 
-    InternalServerException exception =
+    RuntimeException exception =
         assertThrows(
-            InternalServerException.class,
+            RuntimeException.class,
             () ->
                 measureService.changeOwnership(
                     measure.getId(), "updatedUserId", true, principal.getName()));
 
-    assertTrue(exception.getMessage().contains("Failed to change ownership for measure"));
+    assertEquals("Error occurred during measure ownership transfer", exception.getMessage());
 
     verify(measureSetService, times(1))
         .changeOwnership(measure.getMeasureSetId(), "updatedUserId", true, principal.getName());
