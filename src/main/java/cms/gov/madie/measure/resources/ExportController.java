@@ -138,14 +138,9 @@ public class ExportController {
       throw new ResourceNotFoundException("Measure", id);
     }
 
-    try {
-      qrdaPackage = exportService.getQRDA(requestDTO, accessToken);
-      log.info("QRDA export successful for measure [{}] by user [{}]", id, username);
-    } catch (Exception e) {
-      log.error("Failed to export QRDA for measure [{}] by user [{}]", id, username, e);
-      throw e;
-    }
+    qrdaPackage = exportService.getQRDA(requestDTO, accessToken);
 
+    log.info("QRDA export successful for measure [{}] by user [{}]", id, username);
     actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_TESTCASES, username);
 
     return ResponseEntity.ok()
