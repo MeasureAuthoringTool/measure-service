@@ -71,8 +71,10 @@ public class TestCaseController {
   }
 
   @GetMapping(ControllerUtil.TEST_CASES)
-  public ResponseEntity<List<TestCase>> getTestCasesByMeasureId(@PathVariable String measureId) {
-    return ResponseEntity.ok(testCaseService.findTestCasesByMeasureId(measureId));
+  public ResponseEntity<List<TestCase>> getTestCasesByMeasureId(
+      Principal principal, @PathVariable String measureId) {
+    final String username = principal.getName();
+    return ResponseEntity.ok(testCaseService.findTestCasesByMeasureId(measureId, username));
   }
 
   @GetMapping(ControllerUtil.TEST_CASES + "/{testCaseId}")
@@ -241,7 +243,8 @@ public class TestCaseController {
     if (measure instanceof QdmMeasure) {
       throw new ResourceNotFoundException("QICore Measure", measureId);
     }
-    List<TestCase> testCases = testCaseService.findTestCasesByMeasureId(measureId);
+    List<TestCase> testCases =
+        testCaseService.findTestCasesByMeasureId(measureId, principal.getName());
     List<TestCase> shiftedTestCases =
         testCaseService.shiftQiCoreTestCaseDates(
             testCases, shifted, accessToken, measureId, principal.getName());
