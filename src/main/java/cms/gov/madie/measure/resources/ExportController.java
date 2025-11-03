@@ -162,14 +162,9 @@ public class ExportController {
 
     log.info("User [{}] is attempting to export Excel for measure [{}]", username, id);
 
-    try {
-      excelBytes = excelClient.exportExcel(id, testCaseExcelExportDtos, accessToken);
-      log.info("Excel export successful for measure [{}] by user [{}]", id, username);
-    } catch (Exception e) {
-      log.error("Failed to export Excel for measure {}: {}", id, e.getMessage(), e);
-      throw e;
-    }
+    excelBytes = excelClient.exportExcel(id, testCaseExcelExportDtos, accessToken);
 
+    log.info("Excel export successful for measure [{}] by user [{}]", id, username);
     actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_TESTCASES, username);
 
     return ResponseEntity.ok()
