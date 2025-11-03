@@ -212,4 +212,9 @@ public class TestCaseLockService {
     log.info("lockTestCases: " + success);
     return success;
   }
+
+  public TestCaseLock findByTestCaseId(String testCaseId) {
+    Optional<TestCaseLock> existingLock = testCaseLockRepository.findByTestCaseId(testCaseId);
+    return existingLock.isPresent() ? existingLock.get() : null;
+  }
 }

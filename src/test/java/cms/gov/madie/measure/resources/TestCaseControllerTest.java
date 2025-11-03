@@ -178,9 +178,9 @@ public class TestCaseControllerTest {
     when(principal.getName()).thenReturn("test.user");
     doReturn(testCase)
         .when(testCaseService)
-        .getTestCase(any(String.class), any(String.class), anyBoolean(), anyString());
+        .getTestCase(any(String.class), any(String.class), anyBoolean(), anyString(), anyString());
     ResponseEntity<TestCase> response =
-        controller.getTestCase(measure.getId(), testCase.getId(), true, "TOKEN", principal);
+        controller.getTestCase(principal, measure.getId(), testCase.getId(), true, "TOKEN");
     assertNotNull(response.getBody());
     assertNotNull(response.getBody());
     assertEquals("IPPPass", response.getBody().getName());

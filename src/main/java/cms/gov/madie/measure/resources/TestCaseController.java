@@ -85,17 +85,14 @@ public class TestCaseController {
 
   @GetMapping(ControllerUtil.TEST_CASES + "/{testCaseId}")
   public ResponseEntity<TestCase> getTestCase(
+      Principal principal,
       @PathVariable String measureId,
       @PathVariable String testCaseId,
       @RequestParam(name = "validate", defaultValue = "true") boolean validate,
-      @RequestHeader("Authorization") String accessToken,
-      Principal principal) {
-    TestCase testCase = testCaseService.getTestCase(measureId, testCaseId, validate, accessToken);
-    // Enrich with lock information (excluding current user's locks)
-    if (principal != null) {
-      testCaseLockEnrichmentService.enrichTestCaseWithLockInfo(testCase, principal.getName());
-    }
-    return ResponseEntity.ok(testCase);
+      @RequestHeader("Authorization") String accessToken) {
+    final String username = principal.getName();
+    return ResponseEntity.ok(
+        testCaseService.getTestCase(measureId, testCaseId, validate, accessToken, username));
   }
 
   @PutMapping(ControllerUtil.TEST_CASES + "/{testCaseId}")
