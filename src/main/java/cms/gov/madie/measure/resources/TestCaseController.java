@@ -77,12 +77,14 @@ public class TestCaseController {
 
   @GetMapping(ControllerUtil.TEST_CASES + "/{testCaseId}")
   public ResponseEntity<TestCase> getTestCase(
+      Principal principal,
       @PathVariable String measureId,
       @PathVariable String testCaseId,
       @RequestParam(name = "validate", defaultValue = "true") boolean validate,
       @RequestHeader("Authorization") String accessToken) {
+    final String username = principal.getName();
     return ResponseEntity.ok(
-        testCaseService.getTestCase(measureId, testCaseId, validate, accessToken));
+        testCaseService.getTestCase(measureId, testCaseId, validate, accessToken, username));
   }
 
   @PutMapping(ControllerUtil.TEST_CASES + "/{testCaseId}")
