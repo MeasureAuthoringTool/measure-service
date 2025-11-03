@@ -4,8 +4,10 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 
+import cms.gov.madie.measure.dto.excel.TestCaseExcelExportDTO;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
 import cms.gov.madie.measure.services.ActionLogService;
+import cms.gov.madie.measure.services.ExcelClient;
 import cms.gov.madie.measure.services.ExportService;
 import cms.gov.madie.measure.services.MeasureService;
 import gov.cms.madie.models.common.ActionType;
@@ -37,6 +39,7 @@ public class ExportController {
 
   private final MeasureRepository measureRepository;
   private final FhirServicesClient fhirServicesClient;
+  private final ExcelClient excelClient;
   private final ExportService exportService;
   private final MeasureService measureService;
   private final ActionLogService actionLogService;
@@ -144,5 +147,31 @@ public class ExportController {
                 + ".zip\"")
         .contentType(MediaType.APPLICATION_OCTET_STREAM)
         .body(exportService.getQRDA(requestDTO, accessToken));
+  }
+
+  @PutMapping(
+      path = "/measures/{id}/test-cases/excel",
+      produces = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+  public ResponseEntity<byte[]> getExcel(
+      Principal principal,
+      @PathVariable("id") String id,
+      @RequestBody List<TestCaseExcelExportDTO> testCaseExcelExportDtos,
+      @RequestHeader("Authorization") String accessToken) {
+    byte[] excelBytes;
+    final String username = principal.getName();
+
+    log.info("User [{}] is attempting to export Excel for measure [{}]", username, id);
+
+    excelBytes = excelClient.exportExcel(id, testCaseExcelExportDtos, accessToken);
+
+    log.info("Excel export successful for measure [{}] by user [{}]", id, username);
+    actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_TESTCASES, username);
+
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"testCases.xlsx\"")
+        .header(
+            HttpHeaders.CONTENT_TYPE,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        .body(excelBytes);
   }
 }
