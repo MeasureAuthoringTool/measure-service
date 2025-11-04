@@ -285,7 +285,7 @@ public class MeasureController {
       return ResponseEntity.ok(userid + " granted ownership to Measure successfully.");
     } catch (ResourceNotFoundException e) {
       return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Measure does not exist.");
-    } catch (InternalServerException e) {
+    } catch (RuntimeException e) {
       log.error(
           "Failed to change ownership for measure [{}] to user [{}]: {}",
           id,
