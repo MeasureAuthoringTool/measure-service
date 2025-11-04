@@ -32,7 +32,6 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -1104,23 +1103,44 @@ class MeasureControllerTest {
 
     when(measureService.transferMeasures(
             any(List.class), anyString(), any(Boolean.class), anyString()))
-        .thenReturn(true);
-    ResponseEntity<Boolean> result =
+        .thenReturn(Collections.emptyList());
+    ResponseEntity<List<String>> result =
         controller.transferMeasures(
             List.of("testMeasureId"), "testHarpId", true, principal, "testToken");
-    assertTrue(result.getBody());
+
     assertEquals(HttpStatus.OK, result.getStatusCode());
   }
 
   @Test
-  public void testTransferMeasuresNullMeasureIds() {
+  public void testTransferMeasuresPartialFailure() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    List<String> failedMeasures = List.of("measureId2");
+    when(measureService.transferMeasures(any(List.class), anyString(), anyBoolean(), anyString()))
+        .thenReturn(failedMeasures);
+
+    ResponseEntity<List<String>> result =
+        controller.transferMeasures(
+            List.of("measureId1", "measureId2"), "harpId1", true, principal, "testToken");
+
+    assertEquals(HttpStatus.MULTI_STATUS, result.getStatusCode());
+    assertNotNull(result.getBody());
+    assertEquals(1, result.getBody().size());
+    assertTrue(result.getBody().contains("measureId2"));
+  }
+
+  @Test
+  public void testTransferMeasuresEmptyMeasureIds() {
     Principal principal = mock(Principal.class);
 
-    ResponseEntity<Boolean> result =
+    ResponseEntity<List<String>> result =
         controller.transferMeasures(
             Collections.emptyList(), "testHarpId", true, principal, "testToken");
-    assertFalse(result.getBody());
+
     assertEquals(HttpStatus.BAD_REQUEST, result.getStatusCode());
+    assertNotNull(result.getBody());
+    assertTrue(result.getBody().isEmpty());
   }
 
   @Test
