@@ -155,7 +155,11 @@ public class ErrorHandlingControllerAdvice {
     return getErrorAttributes(request, HttpStatus.LOCKED);
   }
 
-  @ExceptionHandler({BundleOperationException.class, CqlElmTranslationServiceException.class})
+  @ExceptionHandler({
+    BundleOperationException.class,
+    CqlElmTranslationServiceException.class,
+    InternalServerException.class
+  })
   @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
   @ResponseBody
   Map<String, Object> onBundleOperationFailedException(WebRequest request) {

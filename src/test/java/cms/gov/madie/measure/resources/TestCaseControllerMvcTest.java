@@ -272,7 +272,7 @@ public class TestCaseControllerMvcTest {
   @Test
   public void getTestCase() throws Exception {
     when(testCaseService.getTestCase(
-            any(String.class), any(String.class), anyBoolean(), anyString()))
+            any(String.class), any(String.class), anyBoolean(), anyString(), anyString()))
         .thenReturn(testCase, null);
 
     mockMvc
@@ -299,7 +299,11 @@ public class TestCaseControllerMvcTest {
                         + "}"));
     verify(testCaseService, times(1))
         .getTestCase(
-            measureIdCaptor.capture(), testCaseIdCaptor.capture(), anyBoolean(), anyString());
+            measureIdCaptor.capture(),
+            testCaseIdCaptor.capture(),
+            anyBoolean(),
+            anyString(),
+            anyString());
     assertEquals("1234", measureIdCaptor.getValue());
     assertEquals("TESTID", testCaseIdCaptor.getValue());
   }
