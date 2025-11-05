@@ -49,6 +49,11 @@ public class TestCaseControllerMvcTest {
   @MockitoBean private MeasureRepository repository;
   @Autowired private MockMvc mockMvc;
   @MockitoBean private MeasureService measureService;
+
+  @MockitoBean
+  private cms.gov.madie.measure.services.TestCaseLockEnrichmentService
+      testCaseLockEnrichmentService;
+
   @Captor ArgumentCaptor<TestCase> testCaseCaptor;
   @Captor ArgumentCaptor<String> measureIdCaptor;
   @Captor ArgumentCaptor<String> testCaseIdCaptor;

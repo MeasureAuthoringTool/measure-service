@@ -7,6 +7,7 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.MeasureService;
 import cms.gov.madie.measure.services.QdmTestCaseShiftDatesService;
+import cms.gov.madie.measure.services.TestCaseLockEnrichmentService;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import gov.cms.madie.models.common.ModelType;
 import cms.gov.madie.measure.services.TestCaseService;
@@ -36,6 +37,7 @@ public class TestCaseController {
   private final MeasureRepository measureRepository;
   private final MeasureService measureService;
   private final QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
+  private final TestCaseLockEnrichmentService testCaseLockEnrichmentService;
 
   @PostMapping(ControllerUtil.TEST_CASES)
   public ResponseEntity<TestCase> addTestCase(
@@ -72,9 +74,14 @@ public class TestCaseController {
 
   @GetMapping(ControllerUtil.TEST_CASES)
   public ResponseEntity<List<TestCase>> getTestCasesByMeasureId(
-      Principal principal, @PathVariable String measureId) {
-    final String username = principal.getName();
-    return ResponseEntity.ok(testCaseService.findTestCasesByMeasureId(measureId, username));
+      @PathVariable String measureId, Principal principal) {
+    List<TestCase> testCases =
+        testCaseService.findTestCasesByMeasureId(measureId, principal.getName());
+    // Enrich with lock information (excluding current user's locks)
+    if (principal != null) {
+      testCaseLockEnrichmentService.enrichTestCasesWithLockInfo(testCases, principal.getName());
+    }
+    return ResponseEntity.ok(testCases);
   }
 
   @GetMapping(ControllerUtil.TEST_CASES + "/{testCaseId}")

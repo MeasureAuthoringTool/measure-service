@@ -42,6 +42,10 @@ public class TestCaseControllerTest {
   @Mock private MeasureService measureService;
   @Mock private QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
 
+  @Mock
+  private cms.gov.madie.measure.services.TestCaseLockEnrichmentService
+      testCaseLockEnrichmentService;
+
   @InjectMocks private TestCaseController controller;
 
   private TestCase testCase;
@@ -161,10 +165,10 @@ public class TestCaseControllerTest {
     when(principal.getName()).thenReturn("test.user");
     doReturn(List.of(testCase))
         .when(testCaseService)
-        .findTestCasesByMeasureId(any(String.class), any(String.class));
+        .findTestCasesByMeasureId(any(String.class), anyString());
 
     ResponseEntity<List<TestCase>> response =
-        controller.getTestCasesByMeasureId(principal, measure.getId());
+        controller.getTestCasesByMeasureId(measure.getId(), principal);
     assertEquals(1, Objects.requireNonNull(response.getBody()).size());
     assertEquals("IPPPass", response.getBody().get(0).getName());
     assertEquals("BloodPressure>124", response.getBody().get(0).getSeries());
