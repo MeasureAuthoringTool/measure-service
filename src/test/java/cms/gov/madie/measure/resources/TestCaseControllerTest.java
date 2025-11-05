@@ -163,7 +163,9 @@ public class TestCaseControllerTest {
   void getTestCases() {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
-    doReturn(List.of(testCase)).when(testCaseService).findTestCasesByMeasureId(any(String.class));
+    doReturn(List.of(testCase))
+        .when(testCaseService)
+        .findTestCasesByMeasureId(any(String.class), anyString());
 
     ResponseEntity<List<TestCase>> response =
         controller.getTestCasesByMeasureId(measure.getId(), principal);

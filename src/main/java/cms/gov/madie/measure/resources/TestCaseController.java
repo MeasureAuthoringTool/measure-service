@@ -75,7 +75,8 @@ public class TestCaseController {
   @GetMapping(ControllerUtil.TEST_CASES)
   public ResponseEntity<List<TestCase>> getTestCasesByMeasureId(
       @PathVariable String measureId, Principal principal) {
-    List<TestCase> testCases = testCaseService.findTestCasesByMeasureId(measureId);
+    List<TestCase> testCases =
+        testCaseService.findTestCasesByMeasureId(measureId, principal.getName());
     // Enrich with lock information (excluding current user's locks)
     if (principal != null) {
       testCaseLockEnrichmentService.enrichTestCasesWithLockInfo(testCases, principal.getName());
