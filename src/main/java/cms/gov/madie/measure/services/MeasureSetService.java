@@ -334,43 +334,41 @@ public class MeasureSetService {
   public MeasureSet changeOwnership(
       String measureSetId, String userId, boolean retainShareAccess, String conductedBy) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
-    if (optionalMeasureSet.isPresent()) {
-      MeasureSet measureSet = optionalMeasureSet.get();
-      String originalOwner = optionalMeasureSet.get().getOwner();
-      measureSet.setOwner(userId);
-      if (retainShareAccess) {
-        List<AclSpecification> acls =
-            !CollectionUtils.isEmpty(measureSet.getAcls())
-                ? measureSet.getAcls()
-                : new ArrayList<>();
-        acls.add(
-            AclSpecification.builder()
-                .userId(originalOwner)
-                .roles(Set.of(RoleEnum.SHARED_WITH))
-                .build());
-        measureSet.setAcls(acls);
-      }
-      MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
-      log.info(
-          "Measure set: [{}] has been transferred ownership from original owner: [{}] to new owner: [{}] by user: [{}]",
-          updatedMeasureSet.getId(),
-          originalOwner,
-          userId,
-          conductedBy);
-      actionLogService.logMeasureSetAction(
+
+    if (optionalMeasureSet.isEmpty()) {
+      log.error(
+          "Measure with set id [{}] cannot change ownership to user [{}]. Measure set may not exist.",
           measureSetId,
-          MeasureSet.class,
-          ActionType.OWNERSHIP_TRANSFER,
-          conductedBy,
-          String.format("Transferred from %s to %s", originalOwner, userId));
-      return updatedMeasureSet;
-    } else {
-      String error =
-          String.format(
-              "Measure with set id `%s` can not change ownership `%s`, measure set may not exist.",
-              measureSetId, userId);
-      log.error(error);
-      throw new ResourceNotFoundException(error);
+          userId);
+      throw new ResourceNotFoundException("MeasureSet", measureSetId);
     }
+
+    MeasureSet measureSet = optionalMeasureSet.get();
+    String originalOwner = optionalMeasureSet.get().getOwner();
+    measureSet.setOwner(userId);
+    if (retainShareAccess) {
+      List<AclSpecification> acls =
+          !CollectionUtils.isEmpty(measureSet.getAcls()) ? measureSet.getAcls() : new ArrayList<>();
+      acls.add(
+          AclSpecification.builder()
+              .userId(originalOwner)
+              .roles(Set.of(RoleEnum.SHARED_WITH))
+              .build());
+      measureSet.setAcls(acls);
+    }
+    MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
+    log.info(
+        "Measure set [{}] ownership transferred from original owner [{}] to new owner [{}] by user [{}].",
+        updatedMeasureSet.getId(),
+        originalOwner,
+        userId,
+        conductedBy);
+    actionLogService.logMeasureSetAction(
+        measureSetId,
+        MeasureSet.class,
+        ActionType.OWNERSHIP_TRANSFER,
+        conductedBy,
+        String.format("Transferred from %s to %s", originalOwner, userId));
+    return updatedMeasureSet;
   }
 }
