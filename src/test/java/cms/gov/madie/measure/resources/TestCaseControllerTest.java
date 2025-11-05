@@ -157,9 +157,14 @@ public class TestCaseControllerTest {
 
   @Test
   void getTestCases() {
-    doReturn(List.of(testCase)).when(testCaseService).findTestCasesByMeasureId(any(String.class));
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    doReturn(List.of(testCase))
+        .when(testCaseService)
+        .findTestCasesByMeasureId(any(String.class), any(String.class));
 
-    ResponseEntity<List<TestCase>> response = controller.getTestCasesByMeasureId(measure.getId());
+    ResponseEntity<List<TestCase>> response =
+        controller.getTestCasesByMeasureId(principal, measure.getId());
     assertEquals(1, Objects.requireNonNull(response.getBody()).size());
     assertEquals("IPPPass", response.getBody().get(0).getName());
     assertEquals("BloodPressure>124", response.getBody().get(0).getSeries());
@@ -514,7 +519,7 @@ public class TestCaseControllerTest {
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
-        .findTestCasesByMeasureId(anyString());
+        .findTestCasesByMeasureId(anyString(), anyString());
 
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -549,7 +554,7 @@ public class TestCaseControllerTest {
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
-        .findTestCasesByMeasureId(anyString());
+        .findTestCasesByMeasureId(anyString(), anyString());
 
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
