@@ -183,7 +183,8 @@ public class TestCaseShiftDatesServiceQdmTest {
 
   @Test
   public void shiftAllTestCaseDates() {
-    when(testCaseService.findTestCasesByMeasureId(anyString())).thenReturn(List.of(testCase));
+    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
+        .thenReturn(List.of(testCase));
 
     List<TestCase> modified =
         qdmTestCaseShiftDatesService.shiftAllTestCaseDates(
@@ -196,7 +197,8 @@ public class TestCaseShiftDatesServiceQdmTest {
 
   @Test
   public void shiftAllTestCaseDatesNoResourceFound() {
-    when(testCaseService.findTestCasesByMeasureId(anyString())).thenReturn(Collections.emptyList());
+    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
+        .thenReturn(Collections.emptyList());
 
     assertThrows(
         ResourceNotFoundException.class,
@@ -217,7 +219,7 @@ public class TestCaseShiftDatesServiceQdmTest {
   @Test
   public void shiftAllTestCaseDatesWithError() {
     TestCase testCase2 = TestCase.builder().id("TESTID2").json(JSON2).build();
-    when(testCaseService.findTestCasesByMeasureId(anyString()))
+    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
         .thenReturn(List.of(testCase, testCase2));
 
     assertThrows(
@@ -430,7 +432,8 @@ public class TestCaseShiftDatesServiceQdmTest {
   @Test
   void testShiftAllTestCaseDatesWhenFeatureFlagOn() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
-    when(testCaseService.findTestCasesByMeasureId(anyString())).thenReturn(List.of(testCase));
+    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
+        .thenReturn(List.of(testCase));
     when(testCaseLockService.lockAllTestCases(anyString(), any(List.class), anyString()))
         .thenReturn(Collections.emptyList());
     when(testCaseLockService.unlockAllTestCases(any(List.class), anyString())).thenReturn(true);
@@ -448,7 +451,7 @@ public class TestCaseShiftDatesServiceQdmTest {
   void testShiftAllTestCaseDatesWhenLockingFails() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     TestCase testCase2 = TestCase.builder().id("TESTID2").title("TITLE2").json(JSON).build();
-    when(testCaseService.findTestCasesByMeasureId(anyString()))
+    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
         .thenReturn(List.of(testCase, testCase2));
     LockInfo lock = LockInfo.builder().lockedId("TESTID2").lockedBy("another.user").build();
     when(testCaseLockService.lockAllTestCases(anyString(), any(List.class), anyString()))

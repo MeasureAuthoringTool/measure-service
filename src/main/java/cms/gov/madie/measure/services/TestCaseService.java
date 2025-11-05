@@ -381,8 +381,23 @@ public class TestCaseService {
     return testCase;
   }
 
-  public List<TestCase> findTestCasesByMeasureId(String measureId) {
-    return measureService.findActiveMeasureById(measureId).getTestCases();
+  public List<TestCase> findTestCasesByMeasureId(String measureId, String username) {
+    List<TestCase> testCases = measureService.findActiveMeasureById(measureId).getTestCases();
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING) && !isEmpty(testCases)) {
+      testCases.forEach(
+          testCase -> {
+            TestCaseLock lock = testCaseLockService.findByTestCaseId(testCase.getId());
+            testCase.setTestCaseLock(
+                lock != null && !username.equalsIgnoreCase(lock.getLockedBy())
+                    ? TestCaseLockInfo.builder()
+                        .measureId(lock.getMeasureId())
+                        .testCaseId(lock.getTestCaseId())
+                        .lockedBy(lock.getLockedBy())
+                        .build()
+                    : null);
+          });
+    }
+    return testCases;
   }
 
   public String deleteTestCases(String measureId, List<String> testCaseIds, String username) {

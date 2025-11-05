@@ -231,7 +231,8 @@ public class TestCaseControllerMvcTest {
 
   @Test
   public void testGetTestCases() throws Exception {
-    when(testCaseService.findTestCasesByMeasureId(any(String.class))).thenReturn(List.of(testCase));
+    when(testCaseService.findTestCasesByMeasureId(any(String.class), any(String.class)))
+        .thenReturn(List.of(testCase));
 
     mockMvc
         .perform(get("/measures/1234/test-cases").with(user(TEST_USER_ID)).with(csrf()))
@@ -251,21 +252,23 @@ public class TestCaseControllerMvcTest {
                         + "\"validationTaskId\":null,"
                         + "\"testCaseLock\":null"
                         + "}]"));
-    verify(testCaseService, times(1)).findTestCasesByMeasureId(measureIdCaptor.capture());
+    verify(testCaseService, times(1))
+        .findTestCasesByMeasureId(measureIdCaptor.capture(), anyString());
     String measureId = measureIdCaptor.getValue();
     assertEquals("1234", measureId);
   }
 
   @Test
   public void testGetTestCasesWhenMeasureWithMeasureIdMissing() throws Exception {
-    when(testCaseService.findTestCasesByMeasureId(any(String.class)))
+    when(testCaseService.findTestCasesByMeasureId(any(String.class), any(String.class)))
         .thenThrow(new ResourceNotFoundException("Measure", "1234"));
 
     mockMvc
         .perform(get("/measures/1234/test-cases").with(user(TEST_USER_ID)).with(csrf()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.message").value("Could not find Measure with id: 1234"));
-    verify(testCaseService, times(1)).findTestCasesByMeasureId(measureIdCaptor.capture());
+    verify(testCaseService, times(1))
+        .findTestCasesByMeasureId(measureIdCaptor.capture(), anyString());
     String measureId = measureIdCaptor.getValue();
     assertEquals("1234", measureId);
   }

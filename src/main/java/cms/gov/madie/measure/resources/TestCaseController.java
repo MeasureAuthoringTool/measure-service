@@ -249,7 +249,8 @@ public class TestCaseController {
     if (measure instanceof QdmMeasure) {
       throw new ResourceNotFoundException("QICore Measure", measureId);
     }
-    List<TestCase> testCases = testCaseService.findTestCasesByMeasureId(measureId);
+    List<TestCase> testCases =
+        testCaseService.findTestCasesByMeasureId(measureId, principal.getName());
     List<TestCase> shiftedTestCases =
         testCaseService.shiftQiCoreTestCaseDates(
             testCases, shifted, accessToken, measureId, principal.getName());

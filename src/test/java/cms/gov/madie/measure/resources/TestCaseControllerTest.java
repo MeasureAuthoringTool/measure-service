@@ -521,7 +521,7 @@ public class TestCaseControllerTest {
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
-        .findTestCasesByMeasureId(anyString());
+        .findTestCasesByMeasureId(anyString(), anyString());
 
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -556,7 +556,7 @@ public class TestCaseControllerTest {
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
-        .findTestCasesByMeasureId(anyString());
+        .findTestCasesByMeasureId(anyString(), anyString());
 
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
