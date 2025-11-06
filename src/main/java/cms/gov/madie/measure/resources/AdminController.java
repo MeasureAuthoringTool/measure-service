@@ -595,15 +595,19 @@ public class AdminController {
     return ResponseEntity.ok(messages);
   }
 
-  @PutMapping("/measures/hcpc/{id}")
+  @PutMapping("/measures/{id}/testcases/code-system-correction")
   @PreAuthorize("#request.getHeader('api-key') == #apiKey")
-  public ResponseEntity<Measure> updateHCPC(
+  public ResponseEntity<List<Integer>> updateCodeSystemInTestCaseJson(
       HttpServletRequest request,
       @Value("${admin-api-key}") String apiKey,
       Principal principal,
       @PathVariable String id,
+      @RequestParam String incorrectCodeSystem,
+      @RequestParam String correctCodeSystem,
       @RequestHeader("Authorization") String accessToken) {
 
-    return ResponseEntity.ok(adminService.updateHcpcCodes(id, principal.getName(), accessToken));
+    return ResponseEntity.ok(
+        adminService.updateCodeSystem(
+            id, principal.getName(), incorrectCodeSystem, correctCodeSystem, accessToken));
   }
 }
