@@ -2,11 +2,12 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import gov.cms.madie.models.common.ActionType;
+import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Measure;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
@@ -19,15 +20,10 @@ import java.util.Objects;
 @Service
 public class AdminService {
   private final MeasureService measureService;
-  private final TestCaseService testCaseService;
-  private final ActionLogService actionLogService;
+  private final MeasureRepository measureRepository;
 
   public List<Integer> updateCodeSystem(
-      String id,
-      String username,
-      String incorrectCodeSystem,
-      String correctCodeSystem,
-      String accessToken) {
+      String id, String username, String incorrectCodeSystem, String correctCodeSystem) {
     Measure targetMeasure = measureService.findMeasureById(id);
 
     if (StringUtils.isBlank(incorrectCodeSystem) || StringUtils.isBlank(correctCodeSystem)) {
@@ -54,21 +50,20 @@ public class AdminService {
         .forEach(
             testCase -> {
               String updatedJson =
-                  testCase.getJson().replace(incorrectCodeSystem, correctCodeSystem);
+                  testCase.getJson().replace(incorrectCodeSystem.trim(), correctCodeSystem.trim());
               if (!Objects.equals(testCase.getJson(), updatedJson)) {
-                log.info("Updating code system in test case with id: " + testCase.getId());
-                testCase.setJson(updatedJson);
-                testCaseService.updateTestCase(testCase, id, username, accessToken);
-                actionLogService.logAction(
-                    id,
-                    Measure.class,
-                    ActionType.UPDATED,
+                log.info(
+                    "{} is updating the code system in the test case with id: {}",
                     username,
-                    "Admin Action: Corrected code system values.");
+                    testCase.getId());
+                testCase.setJson(updatedJson);
                 caseNumbers.add(testCase.getCaseNumber());
               }
             });
 
+    if (CollectionUtils.isNotEmpty(caseNumbers)) {
+      measureRepository.save(targetMeasure);
+    }
     return caseNumbers;
   }
 }
