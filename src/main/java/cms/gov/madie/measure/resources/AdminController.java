@@ -606,7 +606,6 @@ public class AdminController {
    * @param id Measure identifier whose test cases are to be updated
    * @param incorrectCodeSystem Code system string to search for
    * @param correctCodeSystem Replacement code system string
-   * @param accessToken Okta access token for downstream authorization
    * @return ResponseEntity wrapping a List<Integer> case numbers of updated test cases
    */
   @PutMapping("/measures/{id}/testcases/code-system-correction")
@@ -617,11 +616,10 @@ public class AdminController {
       Principal principal,
       @PathVariable String id,
       @RequestParam String incorrectCodeSystem,
-      @RequestParam String correctCodeSystem,
-      @RequestHeader("Authorization") String accessToken) {
+      @RequestParam String correctCodeSystem) {
 
     return ResponseEntity.ok(
         adminService.updateCodeSystem(
-            id, principal.getName(), incorrectCodeSystem, correctCodeSystem, accessToken));
+            id, principal.getName(), incorrectCodeSystem, correctCodeSystem));
   }
 }
