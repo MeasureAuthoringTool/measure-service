@@ -1171,12 +1171,5 @@ class MeasureControllerTest {
     assertNotNull(Objects.requireNonNull(response.getBody()).getMeasureLock());
     assertEquals(
         "another.user", Objects.requireNonNull(response.getBody()).getMeasureLock().getLockedBy());
-
-    // if measure not found
-    //    Optional<Measure> empty = Optional.empty();
-    //    doReturn(empty).when(repository).findByIdAndActive(id, true);
-    //    response = controller.getMeasure(id, principal);
-    //    assertNull(response.getBody());
-    //    assertEquals(response.getStatusCodeValue(), 404);
   }
 }
