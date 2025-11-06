@@ -1,16 +1,12 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.repositories.MeasureSetRepository;
-import cms.gov.madie.measure.repositories.TestCasePatchRepository;
+import cms.gov.madie.measure.repositories.*;
 import cms.gov.madie.measure.resources.DuplicateKeyException;
-import cms.gov.madie.measure.utils.MeasureServiceUtil;
-import cms.gov.madie.measure.utils.MeasureUtil;
-import gov.cms.madie.models.access.AclOperation;
-import gov.cms.madie.models.access.AclSpecification;
-import gov.cms.madie.models.access.RoleEnum;
+import cms.gov.madie.measure.utils.*;
+import gov.cms.madie.models.access.*;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
@@ -988,7 +984,6 @@ public class MeasureService {
         failedMeasures.add(measureId);
       }
     }
-
     return failedMeasures;
   }
 
@@ -996,19 +991,30 @@ public class MeasureService {
     if (StringUtils.isBlank(measureId)) {
       throw new InvalidRequestException("Measure ID cannot be null or empty.");
     }
-
     Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
     if (persistedMeasure.isEmpty()) {
       throw new ResourceNotFoundException("Measure does not exist: " + measureId);
     }
-
     List<Action> measureHistory =
         actionLogService.findMeasureHistory(measureId, persistedMeasure.get().getMeasureSetId());
     log.info(
         "User [{}] successfully retrieved the history of the measure with ID [{}]",
         userName,
         measureId);
-
     return measureHistory;
+  }
+
+  public gov.cms.madie.models.measure.MeasureLock getMeasureLock(
+      String measureId, String username) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      MeasureLock lock = measureLockService.findByMeasureId(measureId);
+      if (lock != null && !username.equalsIgnoreCase(lock.getLockedBy())) {
+        return gov.cms.madie.models.measure.MeasureLock.builder()
+            .id(lock.getId())
+            .lockedBy(lock.getLockedBy())
+            .build();
+      }
+    }
+    return null;
   }
 }

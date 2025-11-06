@@ -55,6 +55,7 @@ class MeasureControllerTest {
   @Mock private TestCaseLockService testCaseLockService;
   @Mock private AppConfigService appConfigService;
   @InjectMocks private MeasureController controller;
+  @Mock private Principal principal;
 
   private Measure measure1;
   private MeasureListDTO measureList;
@@ -91,7 +92,6 @@ class MeasureControllerTest {
         .when(measureService)
         .createMeasure(any(Measure.class), anyString(), anyString(), any(Boolean.class));
     Measure measures = new Measure();
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     ResponseEntity<Measure> response = controller.addMeasure(measures, false, principal, "");
@@ -113,7 +113,6 @@ class MeasureControllerTest {
             eq("test.user"),
             eq("measures")))
         .thenReturn(measures);
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     ResponseEntity<Page<MeasureListDTO>> response =
@@ -143,7 +142,6 @@ class MeasureControllerTest {
             eq("test.user"),
             eq("measures")))
         .thenReturn(measures);
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     ResponseEntity<Page<MeasureListDTO>> response =
@@ -166,8 +164,6 @@ class MeasureControllerTest {
   @Test
   void getMeasuresWithAllOwnershipType() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
-
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
     when(measureService.getMeasuresByCriteria(
             eq(null),
@@ -227,18 +223,19 @@ class MeasureControllerTest {
 
   @Test
   void getMeasure() {
+    when(principal.getName()).thenReturn("test.user");
     String id = "testid";
     Optional<Measure> optionalMeasure = Optional.of(measure1);
     doReturn(optionalMeasure).when(repository).findByIdAndActive(id, true);
     // measure found
-    ResponseEntity<Measure> response = controller.getMeasure(id);
+    ResponseEntity<Measure> response = controller.getMeasure(id, principal);
     assertEquals(
         measure1.getMeasureName(), Objects.requireNonNull(response.getBody()).getMeasureName());
 
     // if measure not found
     Optional<Measure> empty = Optional.empty();
     doReturn(empty).when(repository).findByIdAndActive(id, true);
-    response = controller.getMeasure(id);
+    response = controller.getMeasure(id, principal);
     assertNull(response.getBody());
     assertEquals(response.getStatusCodeValue(), 404);
   }
@@ -246,7 +243,6 @@ class MeasureControllerTest {
   @Test
   void updateMeasureSuccessfully() {
     ArgumentCaptor<Measure> saveMeasureArgCaptor = ArgumentCaptor.forClass(Measure.class);
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user2");
 
     Instant createdAt = Instant.now().minus(300, ChronoUnit.SECONDS);
@@ -310,7 +306,6 @@ class MeasureControllerTest {
 
   @Test
   void createCmsId() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user2");
 
     final MeasureSet measureSet =
@@ -333,7 +328,6 @@ class MeasureControllerTest {
 
   @Test
   void deleteCmsId() {
-    Principal principal = mock(Principal.class);
     MockHttpServletRequest mockHttpServletRequest = new MockHttpServletRequest();
 
     String measureId = "measureId";
@@ -369,7 +363,6 @@ class MeasureControllerTest {
   @Test
   void updateMeasureSuccessfullyLogDeleted() {
     ArgumentCaptor<Measure> saveMeasureArgCaptor = ArgumentCaptor.forClass(Measure.class);
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user2");
 
     Instant createdAt = Instant.now().minus(300, ChronoUnit.SECONDS);
@@ -437,7 +430,6 @@ class MeasureControllerTest {
 
   @Test
   void testUpdateMeasureReturnsExceptionForNullId() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user2");
 
     assertThrows(
@@ -447,7 +439,6 @@ class MeasureControllerTest {
 
   @Test
   void testUpdateMeasureReturnsExceptionForInvalidCredentials() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("aninvalidUser@gmail.com");
     measure1.setCreatedBy("MSR01");
     measure1.setActive(true);
@@ -472,7 +463,6 @@ class MeasureControllerTest {
 
   @Test
   void testUpdateMeasureReturnsExceptionForUpdatingSoftDeletedMeasure() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("validuser@gmail.com");
     measure1.setCreatedBy("validuser@gmail.com");
     measure1.setActive(false);
@@ -498,7 +488,6 @@ class MeasureControllerTest {
 
   @Test
   void testUpdateMeasureReturnsExceptionForSoftDeletedMeasure() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("validUser@gmail.com");
     measure1.setCreatedBy("MSR01");
     measure1.setActive(false);
@@ -524,7 +513,6 @@ class MeasureControllerTest {
 
   @Test
   void testUpdateMeasureReturnsInvalidDeletionCredentialsException() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("sharedUser@gmail.com");
     measure1.setCreatedBy("MSR01");
     measure1.setActive(true);
@@ -556,7 +544,6 @@ class MeasureControllerTest {
 
   @Test
   void testUpdateMeasureReturnsInvalidDraftStatusException() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("sharedUser@gmail.com");
     measure1.setCreatedBy("MSR01");
     measure1.setActive(true);
@@ -584,7 +571,6 @@ class MeasureControllerTest {
 
   @Test
   void testUpdateMeasureReturnsExceptionForEmptyStringId() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user2");
 
     assertThrows(
@@ -594,7 +580,6 @@ class MeasureControllerTest {
 
   @Test
   void testUpdateMeasureReturnsExceptionForNonMatchingIds() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user2");
     Measure m1234 = measure1.toBuilder().id("ID1234").build();
 
@@ -605,7 +590,6 @@ class MeasureControllerTest {
 
   @Test
   void testUpdateMeasureReturnsExceptionForLockedTestCases() {
-    Principal principal = mock(Principal.class);
     Measure m1234 =
         measure1.toBuilder()
             .id("ID1234")
@@ -625,7 +609,6 @@ class MeasureControllerTest {
 
   @Test
   void updateNonExistingMeasure() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user2");
 
     // no measure id specified
@@ -644,7 +627,6 @@ class MeasureControllerTest {
 
   @Test
   void updateUnAuthorizedMeasure() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("unAuthorized user");
     measure1.setCreatedBy("actual owner");
     measure1.setActive(true);
@@ -682,7 +664,6 @@ class MeasureControllerTest {
                         null,
                         "IntialPopulation_1")))
             .build();
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(group)
@@ -700,7 +681,6 @@ class MeasureControllerTest {
 
   @Test
   void deleteGroup() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     Measure updatedMeasure =
@@ -731,7 +711,6 @@ class MeasureControllerTest {
                         null,
                         "IntialPopulation_1")))
             .build();
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(group)
@@ -751,7 +730,6 @@ class MeasureControllerTest {
   void searchOwnedMeasuresByNameOrEcqmTitle() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
 
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(measures)
@@ -793,7 +771,6 @@ class MeasureControllerTest {
   void searchSharedMeasuresByNameOrEcqmTitle() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
 
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(measures)
@@ -835,7 +812,6 @@ class MeasureControllerTest {
   void searchAllMeasuresByNameOrEcqmTitle() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
 
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(measures)
@@ -882,7 +858,6 @@ class MeasureControllerTest {
             .association(PopulationType.INITIAL_POPULATION)
             .associations(List.of(PopulationType.INITIAL_POPULATION, PopulationType.NUMERATOR))
             .build();
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(stratification)
@@ -900,7 +875,6 @@ class MeasureControllerTest {
 
   @Test
   void deleteStratification() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     Measure updatedMeasure =
@@ -929,7 +903,6 @@ class MeasureControllerTest {
             .association(PopulationType.INITIAL_POPULATION)
             .associations(List.of(PopulationType.INITIAL_POPULATION, PopulationType.NUMERATOR))
             .build();
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     doReturn(stratification)
@@ -949,7 +922,6 @@ class MeasureControllerTest {
   public void testValidateCmsAssociationSuccessfully() {
     MeasureSet qiCoreMeasureSet =
         MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     when(measureService.associateCmsId(
@@ -976,7 +948,6 @@ class MeasureControllerTest {
 
   @Test
   void testGetCounts() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     when(measureService.countMeasuresByOwnership(true, "test.user", List.of(OwnershipType.OWNED)))
@@ -1029,7 +1000,6 @@ class MeasureControllerTest {
         updated.toBuilder().error(MeasureErrorType.MISMATCH_CQL_POPULATION_RETURN_TYPES).build();
 
     ArgumentCaptor<TestCase> saveTestCaseCaptor = ArgumentCaptor.forClass(TestCase.class);
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     when(measureService.updateMeasure(
@@ -1056,7 +1026,6 @@ class MeasureControllerTest {
 
   @Test
   void updateMeasureTestCaseConfigurationReturnsUpdatedMeasure() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     Measure updatedMeasure = Measure.builder().id("measureId").build();
@@ -1080,7 +1049,6 @@ class MeasureControllerTest {
 
   @Test
   void updateMeasureTestCaseConfigurationThrowsUnauthorizedExceptionForInvalidUser() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("invalid.user");
 
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
@@ -1098,7 +1066,6 @@ class MeasureControllerTest {
 
   @Test
   public void testTransferMeasures() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     when(measureService.transferMeasures(
@@ -1113,7 +1080,6 @@ class MeasureControllerTest {
 
   @Test
   public void testTransferMeasuresPartialFailure() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     List<String> failedMeasures = List.of("measureId2");
@@ -1132,7 +1098,6 @@ class MeasureControllerTest {
 
   @Test
   public void testTransferMeasuresEmptyMeasureIds() {
-    Principal principal = mock(Principal.class);
 
     ResponseEntity<List<String>> result =
         controller.transferMeasures(
@@ -1145,7 +1110,6 @@ class MeasureControllerTest {
 
   @Test
   void getMeasureHistoryReturnsActionsForValidMeasureId() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     List<Action> actions =
@@ -1165,7 +1129,6 @@ class MeasureControllerTest {
 
   @Test
   void getMeasureHistoryReturnsEmptyListForNonExistentMeasureId() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
     when(measureService.getMeasureHistory("nonExistentId", "test.user")).thenReturn(List.of());
@@ -1179,7 +1142,6 @@ class MeasureControllerTest {
 
   @Test
   void getMeasureHistoryThrowsUnauthorizedExceptionForInvalidUser() {
-    Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("invalid.user");
 
     doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
@@ -1188,5 +1150,33 @@ class MeasureControllerTest {
 
     assertThrows(
         UnauthorizedException.class, () -> controller.getMeasureHistory("measureId", principal));
+  }
+
+  @Test
+  void getMeasureWithLock() {
+    when(principal.getName()).thenReturn("test.user");
+    String id = "testid";
+    Optional<Measure> optionalMeasure = Optional.of(measure1);
+    doReturn(optionalMeasure).when(repository).findByIdAndActive(id, true);
+    when(measureService.getMeasureLock(anyString(), anyString()))
+        .thenReturn(
+            gov.cms.madie.models.measure.MeasureLock.builder()
+                .id(id)
+                .lockedBy("another.user")
+                .build());
+    // measure found
+    ResponseEntity<Measure> response = controller.getMeasure(id, principal);
+    assertEquals(
+        measure1.getMeasureName(), Objects.requireNonNull(response.getBody()).getMeasureName());
+    assertNotNull(Objects.requireNonNull(response.getBody()).getMeasureLock());
+    assertEquals(
+        "another.user", Objects.requireNonNull(response.getBody()).getMeasureLock().getLockedBy());
+
+    // if measure not found
+    //    Optional<Measure> empty = Optional.empty();
+    //    doReturn(empty).when(repository).findByIdAndActive(id, true);
+    //    response = controller.getMeasure(id, principal);
+    //    assertNull(response.getBody());
+    //    assertEquals(response.getStatusCodeValue(), 404);
   }
 }
