@@ -595,15 +595,33 @@ public class AdminController {
     return ResponseEntity.ok(messages);
   }
 
-  @PutMapping("/measures/hcpc/{id}")
+  /**
+   * Admin endpoint to correct an incorrect code system reference inside all test case JSON objects
+   * for the specified Measure. Replaces occurrences of the provided incorrectCodeSystem with
+   * correctCodeSystem in each test case resource tied to the Measure id.
+   *
+   * @param request HTTP servlet request (context only)
+   * @param apiKey Injected admin API key value (compared against request header)
+   * @param principal Authenticated user performing the correction
+   * @param id Measure identifier whose test cases are to be updated
+   * @param incorrectCodeSystem Code system string to search for
+   * @param correctCodeSystem Replacement code system string
+   * @param accessToken Okta access token for downstream authorization
+   * @return ResponseEntity wrapping a List<Integer> case numbers of updated test cases
+   */
+  @PutMapping("/measures/{id}/testcases/code-system-correction")
   @PreAuthorize("#request.getHeader('api-key') == #apiKey")
-  public ResponseEntity<Measure> updateHCPC(
+  public ResponseEntity<List<Integer>> updateCodeSystemInTestCaseJson(
       HttpServletRequest request,
       @Value("${admin-api-key}") String apiKey,
       Principal principal,
       @PathVariable String id,
+      @RequestParam String incorrectCodeSystem,
+      @RequestParam String correctCodeSystem,
       @RequestHeader("Authorization") String accessToken) {
 
-    return ResponseEntity.ok(adminService.updateHcpcCodes(id, principal.getName(), accessToken));
+    return ResponseEntity.ok(
+        adminService.updateCodeSystem(
+            id, principal.getName(), incorrectCodeSystem, correctCodeSystem, accessToken));
   }
 }
