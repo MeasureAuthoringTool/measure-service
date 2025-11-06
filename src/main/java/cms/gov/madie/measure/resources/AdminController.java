@@ -595,6 +595,20 @@ public class AdminController {
     return ResponseEntity.ok(messages);
   }
 
+  /**
+   * Admin endpoint to correct an incorrect code system reference inside all test case JSON objects
+   * for the specified Measure. Replaces occurrences of the provided incorrectCodeSystem with
+   * correctCodeSystem in each test case resource tied to the Measure id.
+   *
+   * @param request HTTP servlet request (context only)
+   * @param apiKey Injected admin API key value (compared against request header)
+   * @param principal Authenticated user performing the correction
+   * @param id Measure identifier whose test cases are to be updated
+   * @param incorrectCodeSystem Code system string to search for
+   * @param correctCodeSystem Replacement code system string
+   * @param accessToken Okta access token for downstream authorization
+   * @return ResponseEntity wrapping a List<Integer> case numbers of updated test cases
+   */
   @PutMapping("/measures/{id}/testcases/code-system-correction")
   @PreAuthorize("#request.getHeader('api-key') == #apiKey")
   public ResponseEntity<List<Integer>> updateCodeSystemInTestCaseJson(
