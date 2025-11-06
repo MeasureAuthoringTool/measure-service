@@ -179,7 +179,7 @@ public class QdmTestCaseShiftDatesService {
 
   public List<TestCase> shiftAllTestCaseDates(
       String measureId, int shifted, String username, String accessToken) {
-    List<TestCase> testCases = testCaseService.findTestCasesByMeasureId(measureId);
+    List<TestCase> testCases = testCaseService.findTestCasesByMeasureId(measureId, username);
     if (CollectionUtils.isEmpty(testCases)) {
       throw new ResourceNotFoundException("TestCases", measureId);
     }
