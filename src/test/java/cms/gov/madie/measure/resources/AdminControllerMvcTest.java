@@ -16,6 +16,7 @@ import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.*;
 
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -1416,37 +1417,47 @@ public class AdminControllerMvcTest {
   }
 
   @Test
-  public void updateHCPCUpdatesMeasureSuccessfully() throws Exception {
-    Measure updatedMeasure = Measure.builder().id("measureId").build();
-    when(adminService.updateHcpcCodes(eq("measureId"), eq(TEST_USER_ID), anyString()))
-        .thenReturn(updatedMeasure);
+  public void updateCodeSystemInTestCaseJsonSuccessfully() throws Exception {
+    when(adminService.updateCodeSystem(
+            eq("measureId"), eq(TEST_USER_ID), anyString(), anyString(), anyString()))
+        .thenReturn(List.of(80));
 
-    mockMvc
-        .perform(
-            put("/admin/measures/hcpc/{id}", "measureId")
-                .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
-                .header("Authorization", "test-okta"))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value("measureId"));
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/{id}/testcases/code-system-correction", "measureId")
+                    .with(csrf())
+                    .with(user(TEST_USER_ID))
+                    .param("incorrectCodeSystem", "test")
+                    .param("correctCodeSystem", "test")
+                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .header("Authorization", "test-okta"))
+            .andExpect(status().isOk())
+            .andReturn();
 
-    verify(adminService, times(1)).updateHcpcCodes(eq("measureId"), eq(TEST_USER_ID), anyString());
+    verify(adminService, times(1))
+        .updateCodeSystem(eq("measureId"), eq(TEST_USER_ID), anyString(), anyString(), anyString());
+    Assertions.assertThat(result.getResponse().getContentAsString()).contains("80");
   }
 
   @Test
-  public void updateHCPCThrowsResourceNotFoundExceptionWhenMeasureNotFound() throws Exception {
-    when(adminService.updateHcpcCodes(eq("invalidId"), eq(TEST_USER_ID), anyString()))
+  public void updateCodeSystemThrowsResourceNotFoundExceptionWhenMeasureNotFound()
+      throws Exception {
+    when(adminService.updateCodeSystem(
+            eq("invalidId"), eq(TEST_USER_ID), anyString(), anyString(), anyString()))
         .thenThrow(new ResourceNotFoundException("Measure with id invalidId not found"));
     mockMvc
         .perform(
-            put("/admin/measures/hcpc/{id}", "invalidId")
+            put("/admin/measures/{id}/testcases/code-system-correction", "invalidId")
                 .with(csrf())
                 .with(user(TEST_USER_ID))
+                .param("incorrectCodeSystem", "test")
+                .param("correctCodeSystem", "test")
                 .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
                 .header("Authorization", "test-okta"))
         .andExpect(status().isNotFound());
 
-    verify(adminService, times(1)).updateHcpcCodes(eq("invalidId"), eq(TEST_USER_ID), anyString());
+    verify(adminService, times(1))
+        .updateCodeSystem(eq("invalidId"), eq(TEST_USER_ID), anyString(), anyString(), anyString());
   }
 }
