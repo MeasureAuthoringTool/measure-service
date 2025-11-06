@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
@@ -13,8 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
 
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -30,8 +30,12 @@ class AdminServiceTest {
   @Mock private ActionLogService actionLogService;
   @InjectMocks private AdminService adminService;
 
+  private final String incorrectCodeSystemValue =
+      "http://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets";
+  private final String codeSystemValue = "2.16.840.1.113883.6.285";
+
   @Test
-  void updateHCPCUpdatesTestCaseJsonWhenModelIsQDM() {
+  void updateCodeSystemInTestCaseJsonWhenModelIsQDM() {
     Measure measure =
         Measure.builder()
             .id("measureId")
@@ -40,12 +44,15 @@ class AdminServiceTest {
                 List.of(
                     TestCase.builder()
                         .id("testCaseId")
-                        .json("http://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets")
+                        .caseNumber(80)
+                        .json(incorrectCodeSystemValue)
                         .build()))
             .build();
     when(measureService.findMeasureById("measureId")).thenReturn(measure);
 
-    Measure updatedMeasure = adminService.updateHcpcCodes("measureId", "testUser", "accessToken");
+    List<Integer> caseNumbers =
+        adminService.updateCodeSystem(
+            "measureId", "testUser", incorrectCodeSystemValue, codeSystemValue, "accessToken");
 
     verify(testCaseService, times(1))
         .updateTestCase(any(TestCase.class), eq("measureId"), eq("testUser"), eq("accessToken"));
@@ -55,50 +62,71 @@ class AdminServiceTest {
             eq(Measure.class),
             eq(ActionType.UPDATED),
             eq("testUser"),
-            eq("Admin Action: Overwrote HCPCSReleaseCodeSets Values."));
-    assertThat(updatedMeasure, is(notNullValue()));
+            eq("Admin Action: Corrected code system values."));
+    assertThat(caseNumbers, is(notNullValue()));
+    assertThat(caseNumbers.size(), is(equalTo(1)));
+    assertThat(caseNumbers.get(0), is(equalTo(80)));
   }
 
   @Test
-  void updateHCPCThrowsResourceNotFoundExceptionWhenMeasureDoesNotExist() {
+  void updateCodeSystemThrowsInvalidRequestExceptionWhenCodeSystemNotProvided() {
+    when(measureService.findMeasureById("invalidId")).thenReturn(null);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            adminService.updateCodeSystem(
+                "invalidId", "testUser", "", codeSystemValue, "accessToken"));
+  }
+
+  @Test
+  void updateCodeSystemThrowsResourceNotFoundExceptionWhenMeasureDoesNotExist() {
     when(measureService.findMeasureById("invalidId")).thenReturn(null);
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> adminService.updateHcpcCodes("invalidId", "testUser", "accessToken"));
+        () ->
+            adminService.updateCodeSystem(
+                "invalidId", "testUser", incorrectCodeSystemValue, codeSystemValue, "accessToken"));
   }
 
   @Test
-  void updateHCPCReturnsMeasureWithoutChangesWhenModelIsNotQDM() {
+  void updateCodeSystemThrowsErrorWhenModelIsNotQDM() {
     Measure measure = Measure.builder().id("measureId").model("FHIR").build();
     when(measureService.findMeasureById("measureId")).thenReturn(measure);
 
-    Measure result = adminService.updateHcpcCodes("measureId", "testUser", "accessToken");
-
-    verify(testCaseService, times(0)).updateTestCase(any(TestCase.class), anyString(), anyString(), anyString());
-    verify(actionLogService, times(0)).logAction(anyString(), any(Class.class), any(ActionType.class), anyString(), anyString());
-    assertThat(result, is(notNullValue()));
-    assertThat(result.getModel(), is("FHIR"));
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            adminService.updateCodeSystem(
+                "measureId", "testUser", incorrectCodeSystemValue, codeSystemValue, "accessToken"));
   }
 
   @Test
-  void updateHCPCDoesNotUpdateTestCaseJsonWhenNoChangesAreRequired() {
+  void updateCodeSystemDoesNotUpdateTestCaseJsonWhenNoChangesAreRequired() {
     Measure measure =
         Measure.builder()
             .id("measureId")
             .model(ModelType.QDM_5_6.getValue())
             .testCases(
                 List.of(
-                    TestCase.builder().id("testCaseId").json("2.16.840.1.113883.6.285").build()))
+                    TestCase.builder()
+                        .id("testCaseId")
+                        .caseNumber(1)
+                        .json("2.16.840.1.113883.6.285")
+                        .build()))
             .build();
     when(measureService.findMeasureById("measureId")).thenReturn(measure);
 
-    Measure updatedMeasure = adminService.updateHcpcCodes("measureId", "testUser", "accessToken");
+    List<Integer> caseNumbers =
+        adminService.updateCodeSystem(
+            "measureId", "testUser", incorrectCodeSystemValue, codeSystemValue, "accessToken");
 
     verify(testCaseService, times(0))
         .updateTestCase(any(TestCase.class), anyString(), anyString(), anyString());
     verify(actionLogService, times(0))
         .logAction(anyString(), any(Class.class), any(ActionType.class), anyString(), anyString());
-    assertThat(updatedMeasure, is(notNullValue()));
+    assertThat(caseNumbers, is(notNullValue()));
+    assertThat(caseNumbers.size(), is(equalTo(0)));
   }
 }
