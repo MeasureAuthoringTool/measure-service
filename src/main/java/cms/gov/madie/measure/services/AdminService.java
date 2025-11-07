@@ -1,13 +1,18 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import gov.cms.madie.models.common.ActionType;
+import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Measure;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 @Slf4j
@@ -15,44 +20,50 @@ import java.util.Objects;
 @Service
 public class AdminService {
   private final MeasureService measureService;
-  private final TestCaseService testCaseService;
-  private final ActionLogService actionLogService;
+  private final MeasureRepository measureRepository;
 
-  public Measure updateHcpcCodes(String id, String username, String accessToken) {
+  public List<Integer> updateCodeSystem(
+      String id, String username, String incorrectCodeSystem, String correctCodeSystem) {
     Measure targetMeasure = measureService.findMeasureById(id);
+
+    if (StringUtils.isBlank(incorrectCodeSystem) || StringUtils.isBlank(correctCodeSystem)) {
+      throw new InvalidRequestException(
+          "Please provide both incorrect and correct code system values");
+    }
 
     if (targetMeasure == null) {
       throw new ResourceNotFoundException("Measure", id);
     }
 
     if (!Objects.equals(targetMeasure.getModel(), ModelType.QDM_5_6.getValue())) {
-      log.info("Measure with id: " + id + " is not a QDM measure. No HCPCSReleaseCodeSets updates made.");
-      return targetMeasure;
+      log.info(
+          "Measure with id: "
+              + id
+              + " is not a QDM measure. No HCPCSReleaseCodeSets updates made.");
+      throw new InvalidRequestException(
+          "Measure is not a QDM measure. No code system updates made.");
     }
 
+    List<Integer> caseNumbers = new ArrayList<>();
     targetMeasure
         .getTestCases()
         .forEach(
             testCase -> {
               String updatedJson =
-                  testCase
-                      .getJson()
-                      .replace(
-                          "http://www.cms.gov/Medicare/Coding/HCPCSReleaseCodeSets",
-                          "2.16.840.1.113883.6.285");
+                  testCase.getJson().replace(incorrectCodeSystem.trim(), correctCodeSystem.trim());
               if (!Objects.equals(testCase.getJson(), updatedJson)) {
-                log.info("Updating HCPCSReleaseCodeSets values in test case with id: " + testCase.getId());
-                testCase.setJson(updatedJson);
-                testCaseService.updateTestCase(testCase, id, username, accessToken);
-                actionLogService.logAction(
-                    id,
-                    Measure.class,
-                    ActionType.UPDATED,
+                log.info(
+                    "{} is updating the code system in the test case with id: {}",
                     username,
-                    "Admin Action: Overwrote HCPCSReleaseCodeSets Values.");
+                    testCase.getId());
+                testCase.setJson(updatedJson);
+                caseNumbers.add(testCase.getCaseNumber());
               }
             });
 
-    return measureService.findMeasureById(id);
+    if (CollectionUtils.isNotEmpty(caseNumbers)) {
+      measureRepository.save(targetMeasure);
+    }
+    return caseNumbers;
   }
 }
