@@ -792,7 +792,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testFindTestCasesByMeasureId() {
     measure.setTestCases(List.of(testCase));
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
-    List<TestCase> persistTestCase = testCaseService.findTestCasesByMeasureId(measure.getId());
+    List<TestCase> persistTestCase =
+        testCaseService.findTestCasesByMeasureId(measure.getId(), "test.user");
     assertEquals(1, persistTestCase.size());
     assertEquals(testCase.getId(), persistTestCase.get(0).getId());
   }
@@ -803,7 +804,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenThrow(new ResourceNotFoundException("Measure", measure.getId()));
     assertThrows(
         ResourceNotFoundException.class,
-        () -> testCaseService.findTestCasesByMeasureId(measure.getId()));
+        () -> testCaseService.findTestCasesByMeasureId(measure.getId(), "test.user"));
   }
 
   @Test

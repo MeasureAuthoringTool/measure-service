@@ -33,6 +33,7 @@ import java.util.*;
 
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import gov.cms.madie.models.access.AclOperation;
@@ -2656,5 +2657,51 @@ public class MeasureServiceTest implements ResourceUtil {
     verify(measureRepository).save(measureArgumentCaptor.capture());
     Measure savedMeasure = measureArgumentCaptor.getValue();
     assertThat(savedMeasure.isActive(), is(false));
+  }
+
+  @Test
+  public void testGetMeasureLockLockedByOtherUser() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.findByMeasureId(anyString()))
+        .thenReturn(MeasureLock.builder().id("testMeasureId").lockedBy("testUserName2").build());
+
+    gov.cms.madie.models.measure.MeasureLock measureLock =
+        measureService.getMeasureLock("testMeasureId", "testUserName");
+
+    assertNotNull(measureLock);
+    assertEquals("testUserName2", measureLock.getLockedBy());
+  }
+
+  @Test
+  public void testGetMeasureLockLockedBySelf() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.findByMeasureId(anyString()))
+        .thenReturn(MeasureLock.builder().id("testMeasureId").lockedBy("testUserName").build());
+
+    gov.cms.madie.models.measure.MeasureLock measureLock =
+        measureService.getMeasureLock("testMeasureId", "testUserName");
+
+    assertNull(measureLock);
+  }
+
+  @Test
+  public void testGetMeasureLockLockNotFound() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
+
+    gov.cms.madie.models.measure.MeasureLock measureLock =
+        measureService.getMeasureLock("testMeasureId", "testUserName");
+
+    assertNull(measureLock);
+  }
+
+  @Test
+  public void testGetMeasureLockFeatureFlagNotEnabled() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    gov.cms.madie.models.measure.MeasureLock measureLock =
+        measureService.getMeasureLock("testMeasureId", "testUserName");
+
+    assertNull(measureLock);
   }
 }
