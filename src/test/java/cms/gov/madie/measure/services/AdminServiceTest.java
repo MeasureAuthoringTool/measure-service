@@ -2,7 +2,7 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import gov.cms.madie.models.common.ActionType;
+import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCase;
@@ -18,16 +18,13 @@ import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class AdminServiceTest {
 
   @Mock private MeasureService measureService;
-  @Mock private TestCaseService testCaseService;
-  @Mock private ActionLogService actionLogService;
+  @Mock private MeasureRepository measureRepository;
   @InjectMocks private AdminService adminService;
 
   private final String incorrectCodeSystemValue =
@@ -49,20 +46,12 @@ class AdminServiceTest {
                         .build()))
             .build();
     when(measureService.findMeasureById("measureId")).thenReturn(measure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(measure);
 
     List<Integer> caseNumbers =
         adminService.updateCodeSystem(
-            "measureId", "testUser", incorrectCodeSystemValue, codeSystemValue, "accessToken");
+            "measureId", "testUser", incorrectCodeSystemValue, codeSystemValue);
 
-    verify(testCaseService, times(1))
-        .updateTestCase(any(TestCase.class), eq("measureId"), eq("testUser"), eq("accessToken"));
-    verify(actionLogService, times(1))
-        .logAction(
-            eq("measureId"),
-            eq(Measure.class),
-            eq(ActionType.UPDATED),
-            eq("testUser"),
-            eq("Admin Action: Corrected code system values."));
     assertThat(caseNumbers, is(notNullValue()));
     assertThat(caseNumbers.size(), is(equalTo(1)));
     assertThat(caseNumbers.get(0), is(equalTo(80)));
@@ -74,9 +63,7 @@ class AdminServiceTest {
 
     assertThrows(
         InvalidRequestException.class,
-        () ->
-            adminService.updateCodeSystem(
-                "invalidId", "testUser", "", codeSystemValue, "accessToken"));
+        () -> adminService.updateCodeSystem("invalidId", "testUser", "", codeSystemValue));
   }
 
   @Test
@@ -87,7 +74,7 @@ class AdminServiceTest {
         ResourceNotFoundException.class,
         () ->
             adminService.updateCodeSystem(
-                "invalidId", "testUser", incorrectCodeSystemValue, codeSystemValue, "accessToken"));
+                "invalidId", "testUser", incorrectCodeSystemValue, codeSystemValue));
   }
 
   @Test
@@ -99,7 +86,7 @@ class AdminServiceTest {
         InvalidRequestException.class,
         () ->
             adminService.updateCodeSystem(
-                "measureId", "testUser", incorrectCodeSystemValue, codeSystemValue, "accessToken"));
+                "measureId", "testUser", incorrectCodeSystemValue, codeSystemValue));
   }
 
   @Test
@@ -120,12 +107,8 @@ class AdminServiceTest {
 
     List<Integer> caseNumbers =
         adminService.updateCodeSystem(
-            "measureId", "testUser", incorrectCodeSystemValue, codeSystemValue, "accessToken");
+            "measureId", "testUser", incorrectCodeSystemValue, codeSystemValue);
 
-    verify(testCaseService, times(0))
-        .updateTestCase(any(TestCase.class), anyString(), anyString(), anyString());
-    verify(actionLogService, times(0))
-        .logAction(anyString(), any(Class.class), any(ActionType.class), anyString(), anyString());
     assertThat(caseNumbers, is(notNullValue()));
     assertThat(caseNumbers.size(), is(equalTo(0)));
   }
