@@ -1,13 +1,15 @@
-library CYBTestQDMMeasure3 version '0.0.000'
+library libraryName version '0.0.000'
 
 using QDM version '5.6'
 
-include MATGlobalCommonFunctionsQDM version '8.0.000' called Global
+include CQMCommonQDM version '9.0.000' called Global
 
 valueset "Ethnicity": 'urn:oid:2.16.840.1.114222.4.11.837'
-valueset "ONC Administrative Sex": 'urn:oid:2.16.840.1.113762.1.4.1'
+valueset "Federal Administrative Sex": 'urn:oid:2.16.840.1.113762.1.4.1021.121'
 valueset "Payer Type": 'urn:oid:2.16.840.1.114222.4.11.3591'
 valueset "Race": 'urn:oid:2.16.840.1.114222.4.11.836'
+
+parameter "Measurement Period" Interval<DateTime>
 
 context Patient
 
