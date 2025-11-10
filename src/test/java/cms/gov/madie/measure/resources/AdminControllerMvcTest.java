@@ -1418,8 +1418,7 @@ public class AdminControllerMvcTest {
 
   @Test
   public void updateCodeSystemInTestCaseJsonSuccessfully() throws Exception {
-    when(adminService.updateCodeSystem(
-            eq("measureId"), eq(TEST_USER_ID), anyString(), anyString(), anyString()))
+    when(adminService.updateCodeSystem(eq("measureId"), eq(TEST_USER_ID), anyString(), anyString()))
         .thenReturn(List.of(80));
 
     MvcResult result =
@@ -1436,15 +1435,14 @@ public class AdminControllerMvcTest {
             .andReturn();
 
     verify(adminService, times(1))
-        .updateCodeSystem(eq("measureId"), eq(TEST_USER_ID), anyString(), anyString(), anyString());
+        .updateCodeSystem(eq("measureId"), eq(TEST_USER_ID), anyString(), anyString());
     Assertions.assertThat(result.getResponse().getContentAsString()).contains("80");
   }
 
   @Test
   public void updateCodeSystemThrowsResourceNotFoundExceptionWhenMeasureNotFound()
       throws Exception {
-    when(adminService.updateCodeSystem(
-            eq("invalidId"), eq(TEST_USER_ID), anyString(), anyString(), anyString()))
+    when(adminService.updateCodeSystem(eq("invalidId"), eq(TEST_USER_ID), anyString(), anyString()))
         .thenThrow(new ResourceNotFoundException("Measure with id invalidId not found"));
     mockMvc
         .perform(
@@ -1458,6 +1456,6 @@ public class AdminControllerMvcTest {
         .andExpect(status().isNotFound());
 
     verify(adminService, times(1))
-        .updateCodeSystem(eq("invalidId"), eq(TEST_USER_ID), anyString(), anyString(), anyString());
+        .updateCodeSystem(eq("invalidId"), eq(TEST_USER_ID), anyString(), anyString());
   }
 }

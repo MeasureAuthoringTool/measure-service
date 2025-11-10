@@ -76,7 +76,7 @@ management:
 
 okta:
   oauth2:
-    issuer: ${OKTA_ISSUER:https://integrator-3514157.okta.com/oauth2/default}
+    issuer: ${OKTA_ISSUER:https://dev-madie.okta.com/oauth2/default}
     audience: ${OKTA_AUDIENCE:api://default}
 
 organizations-api-key: ${ORGANIZATIONS_API_KEY:fa9c193c}
