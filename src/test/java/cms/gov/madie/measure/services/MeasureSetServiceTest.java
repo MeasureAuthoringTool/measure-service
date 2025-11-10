@@ -852,7 +852,7 @@ public class MeasureSetServiceTest {
         assertThrows(
             ResourceNotFoundException.class,
             () -> measureSetService.changeOwnership("1", "testUser", true, "anotherUser"));
-    assertTrue(ex.getMessage().contains("measure set may not exist."));
+    assertThat(ex.getMessage(), is(equalTo("Could not find MeasureSet with id: 1")));
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, times(0))

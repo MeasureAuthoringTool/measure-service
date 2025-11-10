@@ -4,6 +4,7 @@ import cms.gov.madie.measure.dto.*;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.measure.*;
 import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
@@ -351,7 +352,7 @@ public class TestCaseService {
   }
 
   public TestCase getTestCase(
-      String measureId, String testCaseId, boolean validate, String accessToken) {
+      String measureId, String testCaseId, boolean validate, String accessToken, String username) {
     Measure measure = measureService.findActiveMeasureById(measureId);
     TestCase testCase =
         Optional.ofNullable(measure.getTestCases())
@@ -366,11 +367,37 @@ public class TestCaseService {
       return testCaseValidationService.validateTestCaseAsResource(
           testCase, ModelType.valueOfName(measure.getModel()), accessToken);
     }
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      TestCaseLock lock = testCaseLockService.findByTestCaseId(testCaseId);
+      testCase.setTestCaseLock(
+          lock != null && !username.equalsIgnoreCase(lock.getLockedBy())
+              ? TestCaseLockInfo.builder()
+                  .measureId(lock.getMeasureId())
+                  .testCaseId(lock.getTestCaseId())
+                  .lockedBy(lock.getLockedBy())
+                  .build()
+              : null);
+    }
     return testCase;
   }
 
-  public List<TestCase> findTestCasesByMeasureId(String measureId) {
-    return measureService.findActiveMeasureById(measureId).getTestCases();
+  public List<TestCase> findTestCasesByMeasureId(String measureId, String username) {
+    List<TestCase> testCases = measureService.findActiveMeasureById(measureId).getTestCases();
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING) && !isEmpty(testCases)) {
+      testCases.forEach(
+          testCase -> {
+            TestCaseLock lock = testCaseLockService.findByTestCaseId(testCase.getId());
+            testCase.setTestCaseLock(
+                lock != null && !username.equalsIgnoreCase(lock.getLockedBy())
+                    ? TestCaseLockInfo.builder()
+                        .measureId(lock.getMeasureId())
+                        .testCaseId(lock.getTestCaseId())
+                        .lockedBy(lock.getLockedBy())
+                        .build()
+                    : null);
+          });
+    }
+    return testCases;
   }
 
   public String deleteTestCases(String measureId, List<String> testCaseIds, String username) {

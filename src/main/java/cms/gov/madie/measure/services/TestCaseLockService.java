@@ -144,6 +144,33 @@ public class TestCaseLockService {
     return testCaseLockRepository.existsByMeasureIdAndLockedByNot(measureId, username);
   }
 
+  /**
+   * Get lock information for a specific test case.
+   *
+   * @param testCaseId the test case id
+   * @return Optional of TestCaseLock
+   */
+  public Optional<TestCaseLock> getLockByTestCaseId(String testCaseId) {
+    return testCaseLockRepository.findByTestCaseId(testCaseId);
+  }
+
+  /**
+   * Get all locks for a list of test case IDs.
+   *
+   * @param testCaseIds the list of test case ids
+   * @return list of TestCaseLocks
+   */
+  public List<TestCaseLock> getLocksByTestCaseIds(List<String> testCaseIds) {
+    if (CollectionUtils.isEmpty(testCaseIds)) {
+      return new ArrayList<>();
+    }
+    return testCaseIds.stream()
+        .map(testCaseLockRepository::findByTestCaseId)
+        .filter(Optional::isPresent)
+        .map(Optional::get)
+        .toList();
+  }
+
   private TestCaseLock makeNewLock(String measureId, String testCaseId, String userName) {
     Instant now = Instant.now();
     Instant expiresAt = now.plus(Duration.ofMinutes(15)); // 15 minute lock
@@ -184,5 +211,10 @@ public class TestCaseLockService {
     }
     log.info("lockTestCases: " + success);
     return success;
+  }
+
+  public TestCaseLock findByTestCaseId(String testCaseId) {
+    Optional<TestCaseLock> existingLock = testCaseLockRepository.findByTestCaseId(testCaseId);
+    return existingLock.isPresent() ? existingLock.get() : null;
   }
 }

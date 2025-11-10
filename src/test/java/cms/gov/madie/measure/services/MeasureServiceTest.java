@@ -33,6 +33,7 @@ import java.util.*;
 
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import gov.cms.madie.models.access.AclOperation;
@@ -1272,16 +1273,80 @@ public class MeasureServiceTest implements ResourceUtil {
             anyString(), anyString(), any(Boolean.class), anyString()))
         .thenReturn(new MeasureSet());
 
-    boolean result =
-        measureService.changeOwnership(measure.getId(), "updatedUserId", principal.getName());
-    assertTrue(result);
+    measureService.changeOwnership(measure.getId(), "updatedUserId", true, principal.getName());
+
+    verify(measureSetService, times(1))
+        .changeOwnership(measure.getMeasureSetId(), "updatedUserId", true, principal.getName());
   }
 
   @Test
   public void testChangeOwnershipPersistedMeasureDoesNotExist() {
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
-    boolean result = measureService.changeOwnership("testMeasureId", "user123", "admin");
-    assertFalse(result);
+
+    String username = "admin";
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> {
+          measureService.changeOwnership("testMeasureId", "user123", true, username);
+        });
+  }
+
+  @Test
+  public void testChangeOwnershipMeasureSetNotFound() {
+    Principal principal = mock(Principal.class);
+    MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("currentUserId").build();
+    Measure measure =
+        Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
+    Optional<Measure> persistedMeasure = Optional.of(measure);
+
+    when(principal.getName()).thenReturn("testUser");
+    when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
+
+    // Simulate ResourceNotFoundException thrown by measureSetService
+    doThrow(new ResourceNotFoundException("MeasureSet", "123"))
+        .when(measureSetService)
+        .changeOwnership(anyString(), anyString(), anyBoolean(), anyString());
+
+    ResourceNotFoundException exception =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () ->
+                measureService.changeOwnership(
+                    measure.getId(), "updatedUserId", true, principal.getName()));
+
+    assertEquals("Could not find MeasureSet with id: 123", exception.getMessage());
+
+    verify(measureSetService, times(1))
+        .changeOwnership(measure.getMeasureSetId(), "updatedUserId", true, principal.getName());
+  }
+
+  @Test
+  public void testChangeOwnershipRuntimeException() {
+    Principal principal = mock(Principal.class);
+    MeasureSet measureSet = MeasureSet.builder().measureSetId("123").owner("currentUserId").build();
+    Measure measure =
+        Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
+    Optional<Measure> persistedMeasure = Optional.of(measure);
+
+    when(principal.getName()).thenReturn("testUser");
+    when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
+
+    doThrow(new RuntimeException("Error occurred during measure ownership transfer"))
+        .when(measureSetService)
+        .changeOwnership(anyString(), anyString(), anyBoolean(), anyString());
+
+    RuntimeException exception =
+        assertThrows(
+            RuntimeException.class,
+            () ->
+                measureService.changeOwnership(
+                    measure.getId(), "updatedUserId", true, principal.getName()));
+
+    assertEquals("Error occurred during measure ownership transfer", exception.getMessage());
+
+    verify(measureSetService, times(1))
+        .changeOwnership(measure.getMeasureSetId(), "updatedUserId", true, principal.getName());
   }
 
   @Test
@@ -2299,23 +2364,27 @@ public class MeasureServiceTest implements ResourceUtil {
     Measure measure =
         Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
     Optional<Measure> persistedMeasure = Optional.of(measure);
+
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.changeOwnership(
             anyString(), anyString(), any(Boolean.class), anyString()))
         .thenReturn(new MeasureSet());
 
-    boolean result =
+    List<String> failed =
         measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
-    assertTrue(result);
+
+    assertTrue(failed.isEmpty());
   }
 
   @Test
   public void testTransferMeasuresNotFound() {
-    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
+    when(measureRepository.findById("123")).thenReturn(Optional.empty());
 
-    boolean result =
+    List<String> failed =
         measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser");
-    assertFalse(result);
+
+    assertEquals(1, failed.size());
+    assertTrue(failed.contains("123"));
   }
 
   @Test
@@ -2588,5 +2657,51 @@ public class MeasureServiceTest implements ResourceUtil {
     verify(measureRepository).save(measureArgumentCaptor.capture());
     Measure savedMeasure = measureArgumentCaptor.getValue();
     assertThat(savedMeasure.isActive(), is(false));
+  }
+
+  @Test
+  public void testGetMeasureLockLockedByOtherUser() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.findByMeasureId(anyString()))
+        .thenReturn(MeasureLock.builder().id("testMeasureId").lockedBy("testUserName2").build());
+
+    gov.cms.madie.models.measure.MeasureLock measureLock =
+        measureService.getMeasureLock("testMeasureId", "testUserName");
+
+    assertNotNull(measureLock);
+    assertEquals("testUserName2", measureLock.getLockedBy());
+  }
+
+  @Test
+  public void testGetMeasureLockLockedBySelf() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.findByMeasureId(anyString()))
+        .thenReturn(MeasureLock.builder().id("testMeasureId").lockedBy("testUserName").build());
+
+    gov.cms.madie.models.measure.MeasureLock measureLock =
+        measureService.getMeasureLock("testMeasureId", "testUserName");
+
+    assertNull(measureLock);
+  }
+
+  @Test
+  public void testGetMeasureLockLockNotFound() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
+
+    gov.cms.madie.models.measure.MeasureLock measureLock =
+        measureService.getMeasureLock("testMeasureId", "testUserName");
+
+    assertNull(measureLock);
+  }
+
+  @Test
+  public void testGetMeasureLockFeatureFlagNotEnabled() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    gov.cms.madie.models.measure.MeasureLock measureLock =
+        measureService.getMeasureLock("testMeasureId", "testUserName");
+
+    assertNull(measureLock);
   }
 }

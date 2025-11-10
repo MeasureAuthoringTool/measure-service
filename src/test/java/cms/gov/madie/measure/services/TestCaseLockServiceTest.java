@@ -297,4 +297,18 @@ public class TestCaseLockServiceTest {
         .thenReturn(true);
     assertTrue(service.isAnyTestCaseLockedByOthers("testMeasureId", "test.user"));
   }
+
+  @Test
+  public void testFindByTestCaseId() {
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.of(lock));
+    TestCaseLock testCaseLock = service.findByTestCaseId("testCaseId");
+    assertNotNull(testCaseLock);
+  }
+
+  @Test
+  public void testFindByTestCaseIdNotFound() {
+    when(testCaseLockRepository.findByTestCaseId(anyString())).thenReturn(Optional.empty());
+    TestCaseLock testCaseLock = service.findByTestCaseId("testCaseId");
+    assertNull(testCaseLock);
+  }
 }

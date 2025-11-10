@@ -1,16 +1,12 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.repositories.MeasureSetRepository;
-import cms.gov.madie.measure.repositories.TestCasePatchRepository;
+import cms.gov.madie.measure.repositories.*;
 import cms.gov.madie.measure.resources.DuplicateKeyException;
-import cms.gov.madie.measure.utils.MeasureServiceUtil;
-import cms.gov.madie.measure.utils.MeasureUtil;
-import gov.cms.madie.models.access.AclOperation;
-import gov.cms.madie.models.access.AclSpecification;
-import gov.cms.madie.models.access.RoleEnum;
+import cms.gov.madie.measure.utils.*;
+import gov.cms.madie.models.access.*;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
@@ -627,15 +623,32 @@ public class MeasureService {
         .toList();
   }
 
-  public boolean changeOwnership(String measureId, String userid, String username) {
-    boolean result = false;
-    Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
-    if (persistedMeasure.isPresent()) {
-      Measure measure = persistedMeasure.get();
-      measureSetService.changeOwnership(measure.getMeasureSetId(), userid, false, username);
-      result = true;
+  public void changeOwnership(
+      String measureId, String userid, boolean retainShareAccess, String username) {
+    Measure measure =
+        measureRepository
+            .findById(measureId)
+            .orElseThrow(
+                () -> {
+                  log.error(
+                      "Measure with measure id [{}] cannot change ownership to user [{}]. Measure may not exist.",
+                      measureId,
+                      userid);
+                  return new ResourceNotFoundException("Measure", measureId);
+                });
+
+    try {
+      measureSetService.changeOwnership(
+          measure.getMeasureSetId(), userid, retainShareAccess, username);
+    } catch (RuntimeException e) {
+      log.error(
+          "User [{}] failed to change ownership of measure [{}] to user [{}]",
+          username,
+          measureId,
+          userid,
+          e);
+      throw e;
     }
-    return result;
   }
 
   public Map<String, Boolean> getMeasureDrafts(List<String> measureSetIds) {
@@ -955,38 +968,53 @@ public class MeasureService {
     return measureRepository.countMeasuresByOwnership(isActive, userId, ownershipTypes);
   }
 
-  public boolean transferMeasures(
+  public List<String> transferMeasures(
       List<String> measureIds, String harpId, boolean retainShareAccess, String conductedBy) {
-    boolean result = true;
+    List<String> failedMeasures = new ArrayList<>();
+
     for (String measureId : measureIds) {
-      Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
-      if (persistedMeasure.isPresent()) {
-        measureSetService.changeOwnership(
-            persistedMeasure.get().getMeasureSetId(), harpId, retainShareAccess, conductedBy);
-      } else {
-        result = false;
+      try {
+        changeOwnership(measureId, harpId, retainShareAccess, conductedBy);
+      } catch (RuntimeException e) {
+        log.warn(
+            "Failed to transfer ownership of measure [{}] to [{}]: {}",
+            measureId,
+            harpId,
+            e.getMessage());
+        failedMeasures.add(measureId);
       }
     }
-    return result;
+    return failedMeasures;
   }
 
   public List<Action> getMeasureHistory(String measureId, String userName) {
     if (StringUtils.isBlank(measureId)) {
       throw new InvalidRequestException("Measure ID cannot be null or empty.");
     }
-
     Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
     if (persistedMeasure.isEmpty()) {
       throw new ResourceNotFoundException("Measure does not exist: " + measureId);
     }
-
     List<Action> measureHistory =
         actionLogService.findMeasureHistory(measureId, persistedMeasure.get().getMeasureSetId());
     log.info(
         "User [{}] successfully retrieved the history of the measure with ID [{}]",
         userName,
         measureId);
-
     return measureHistory;
+  }
+
+  public gov.cms.madie.models.measure.MeasureLock getMeasureLock(
+      String measureId, String username) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      MeasureLock lock = measureLockService.findByMeasureId(measureId);
+      if (lock != null && !username.equalsIgnoreCase(lock.getLockedBy())) {
+        return gov.cms.madie.models.measure.MeasureLock.builder()
+            .id(lock.getId())
+            .lockedBy(lock.getLockedBy())
+            .build();
+      }
+    }
+    return null;
   }
 }

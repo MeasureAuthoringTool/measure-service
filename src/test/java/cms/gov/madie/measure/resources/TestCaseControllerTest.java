@@ -42,6 +42,10 @@ public class TestCaseControllerTest {
   @Mock private MeasureService measureService;
   @Mock private QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
 
+  @Mock
+  private cms.gov.madie.measure.services.TestCaseLockEnrichmentService
+      testCaseLockEnrichmentService;
+
   @InjectMocks private TestCaseController controller;
 
   private TestCase testCase;
@@ -157,9 +161,14 @@ public class TestCaseControllerTest {
 
   @Test
   void getTestCases() {
-    doReturn(List.of(testCase)).when(testCaseService).findTestCasesByMeasureId(any(String.class));
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    doReturn(List.of(testCase))
+        .when(testCaseService)
+        .findTestCasesByMeasureId(any(String.class), anyString());
 
-    ResponseEntity<List<TestCase>> response = controller.getTestCasesByMeasureId(measure.getId());
+    ResponseEntity<List<TestCase>> response =
+        controller.getTestCasesByMeasureId(measure.getId(), principal);
     assertEquals(1, Objects.requireNonNull(response.getBody()).size());
     assertEquals("IPPPass", response.getBody().get(0).getName());
     assertEquals("BloodPressure>124", response.getBody().get(0).getSeries());
@@ -167,11 +176,13 @@ public class TestCaseControllerTest {
 
   @Test
   void getTestCase() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
     doReturn(testCase)
         .when(testCaseService)
-        .getTestCase(any(String.class), any(String.class), anyBoolean(), anyString());
+        .getTestCase(any(String.class), any(String.class), anyBoolean(), anyString(), anyString());
     ResponseEntity<TestCase> response =
-        controller.getTestCase(measure.getId(), testCase.getId(), true, "TOKEN");
+        controller.getTestCase(principal, measure.getId(), testCase.getId(), true, "TOKEN");
     assertNotNull(response.getBody());
     assertNotNull(response.getBody());
     assertEquals("IPPPass", response.getBody().getName());
@@ -512,7 +523,7 @@ public class TestCaseControllerTest {
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
-        .findTestCasesByMeasureId(anyString());
+        .findTestCasesByMeasureId(anyString(), anyString());
 
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -547,7 +558,7 @@ public class TestCaseControllerTest {
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
     doReturn(fhirMeasure.getTestCases())
         .when(testCaseService)
-        .findTestCasesByMeasureId(anyString());
+        .findTestCasesByMeasureId(anyString(), anyString());
 
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");

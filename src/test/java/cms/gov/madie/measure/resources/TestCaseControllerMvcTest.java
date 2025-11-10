@@ -49,6 +49,11 @@ public class TestCaseControllerMvcTest {
   @MockitoBean private MeasureRepository repository;
   @Autowired private MockMvc mockMvc;
   @MockitoBean private MeasureService measureService;
+
+  @MockitoBean
+  private cms.gov.madie.measure.services.TestCaseLockEnrichmentService
+      testCaseLockEnrichmentService;
+
   @Captor ArgumentCaptor<TestCase> testCaseCaptor;
   @Captor ArgumentCaptor<String> measureIdCaptor;
   @Captor ArgumentCaptor<String> testCaseIdCaptor;
@@ -226,7 +231,8 @@ public class TestCaseControllerMvcTest {
 
   @Test
   public void testGetTestCases() throws Exception {
-    when(testCaseService.findTestCasesByMeasureId(any(String.class))).thenReturn(List.of(testCase));
+    when(testCaseService.findTestCasesByMeasureId(any(String.class), any(String.class)))
+        .thenReturn(List.of(testCase));
 
     mockMvc
         .perform(get("/measures/1234/test-cases").with(user(TEST_USER_ID)).with(csrf()))
@@ -246,21 +252,23 @@ public class TestCaseControllerMvcTest {
                         + "\"validationTaskId\":null,"
                         + "\"testCaseLock\":null"
                         + "}]"));
-    verify(testCaseService, times(1)).findTestCasesByMeasureId(measureIdCaptor.capture());
+    verify(testCaseService, times(1))
+        .findTestCasesByMeasureId(measureIdCaptor.capture(), anyString());
     String measureId = measureIdCaptor.getValue();
     assertEquals("1234", measureId);
   }
 
   @Test
   public void testGetTestCasesWhenMeasureWithMeasureIdMissing() throws Exception {
-    when(testCaseService.findTestCasesByMeasureId(any(String.class)))
+    when(testCaseService.findTestCasesByMeasureId(any(String.class), any(String.class)))
         .thenThrow(new ResourceNotFoundException("Measure", "1234"));
 
     mockMvc
         .perform(get("/measures/1234/test-cases").with(user(TEST_USER_ID)).with(csrf()))
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.message").value("Could not find Measure with id: 1234"));
-    verify(testCaseService, times(1)).findTestCasesByMeasureId(measureIdCaptor.capture());
+    verify(testCaseService, times(1))
+        .findTestCasesByMeasureId(measureIdCaptor.capture(), anyString());
     String measureId = measureIdCaptor.getValue();
     assertEquals("1234", measureId);
   }
@@ -272,7 +280,7 @@ public class TestCaseControllerMvcTest {
   @Test
   public void getTestCase() throws Exception {
     when(testCaseService.getTestCase(
-            any(String.class), any(String.class), anyBoolean(), anyString()))
+            any(String.class), any(String.class), anyBoolean(), anyString(), anyString()))
         .thenReturn(testCase, null);
 
     mockMvc
@@ -299,7 +307,11 @@ public class TestCaseControllerMvcTest {
                         + "}"));
     verify(testCaseService, times(1))
         .getTestCase(
-            measureIdCaptor.capture(), testCaseIdCaptor.capture(), anyBoolean(), anyString());
+            measureIdCaptor.capture(),
+            testCaseIdCaptor.capture(),
+            anyBoolean(),
+            anyString(),
+            anyString());
     assertEquals("1234", measureIdCaptor.getValue());
     assertEquals("TESTID", testCaseIdCaptor.getValue());
   }

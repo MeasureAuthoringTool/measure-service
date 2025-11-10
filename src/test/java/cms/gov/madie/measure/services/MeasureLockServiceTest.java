@@ -280,4 +280,24 @@ class MeasureLockServiceTest {
         exception.getMessage(),
         is(equalTo("Unable to associate measure. Locked while being edited by another.user")));
   }
+
+  @Test
+  void testFindByMeasureId() {
+    MeasureLock lock = MeasureLock.builder().id(measureId).lockedBy(userName).build();
+    when(repository.findByMeasureId(anyString())).thenReturn(Optional.of(lock));
+    MeasureLock response = service.findByMeasureId(measureId);
+
+    verify(repository, times(1)).findByMeasureId(anyString());
+    assertNotNull(response);
+    assertThat(response.getLockedBy()).isEqualTo(userName);
+  }
+
+  @Test
+  void testFindByMeasureIdNotfound() {
+    when(repository.findByMeasureId(anyString())).thenReturn(Optional.empty());
+    MeasureLock response = service.findByMeasureId(measureId);
+
+    verify(repository, times(1)).findByMeasureId(anyString());
+    assertNull(response);
+  }
 }

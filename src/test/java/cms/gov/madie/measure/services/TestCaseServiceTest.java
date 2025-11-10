@@ -12,6 +12,7 @@ import cms.gov.madie.measure.exceptions.LockNotObtainedException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.SpecialCharacterException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
+import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
@@ -791,7 +792,8 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testFindTestCasesByMeasureId() {
     measure.setTestCases(List.of(testCase));
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
-    List<TestCase> persistTestCase = testCaseService.findTestCasesByMeasureId(measure.getId());
+    List<TestCase> persistTestCase =
+        testCaseService.findTestCasesByMeasureId(measure.getId(), "test.user");
     assertEquals(1, persistTestCase.size());
     assertEquals(testCase.getId(), persistTestCase.get(0).getId());
   }
@@ -802,7 +804,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenThrow(new ResourceNotFoundException("Measure", measure.getId()));
     assertThrows(
         ResourceNotFoundException.class,
-        () -> testCaseService.findTestCasesByMeasureId(measure.getId()));
+        () -> testCaseService.findTestCasesByMeasureId(measure.getId(), "test.user"));
   }
 
   @Test
@@ -1272,7 +1274,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         measure.toBuilder().testCases(Collections.singletonList(testCase)).build();
     when(measureService.findActiveMeasureById(anyString())).thenReturn(mockMeasure);
     TestCase output =
-        testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN");
+        testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN", "test-user");
     assertEquals(testCase, output);
   }
 
@@ -1290,7 +1292,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     Measure mockMeasure =
         measure.toBuilder().testCases(Collections.singletonList(testCase)).build();
     when(measureService.findActiveMeasureById(anyString())).thenReturn(mockMeasure);
-    TestCase output = testCaseService.getTestCase(measure.getId(), testCase.getId(), true, "TOKEN");
+    TestCase output =
+        testCaseService.getTestCase(measure.getId(), testCase.getId(), true, "TOKEN", "test-user");
     assertNotNull(output.getHapiOperationOutcome());
     assertEquals(200, output.getHapiOperationOutcome().getCode());
   }
@@ -1301,7 +1304,9 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenReturn(measure.toBuilder().testCases(List.of()).build());
     assertThrows(
         ResourceNotFoundException.class,
-        () -> testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN"));
+        () ->
+            testCaseService.getTestCase(
+                measure.getId(), testCase.getId(), false, "TOKEN", "test-user"));
   }
 
   @Test
@@ -1311,7 +1316,9 @@ public class TestCaseServiceTest implements ResourceUtil {
         .findActiveMeasureById(any(String.class));
     assertThrows(
         ResourceNotFoundException.class,
-        () -> testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN"));
+        () ->
+            testCaseService.getTestCase(
+                measure.getId(), testCase.getId(), false, "TOKEN", "test-user"));
   }
 
   @Test
@@ -1325,7 +1332,9 @@ public class TestCaseServiceTest implements ResourceUtil {
         .findActiveMeasureById(any(String.class));
     assertThrows(
         ResourceNotFoundException.class,
-        () -> testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN"));
+        () ->
+            testCaseService.getTestCase(
+                measure.getId(), testCase.getId(), false, "TOKEN", "test-user"));
   }
 
   @Test
@@ -3563,5 +3572,47 @@ public class TestCaseServiceTest implements ResourceUtil {
         () ->
             testCaseService.shiftQiCoreTestCaseDates(
                 List.of(testCase, testCase2), 1, "TOKEN", "measureId", "userName"));
+  }
+
+  @Test
+  public void testGetTestCaseReturnsTestCaseWithLock() {
+    testCase.setTestCaseLock(TestCaseLockInfo.builder().lockedBy("anotherUser").build());
+    Measure mockMeasure =
+        measure.toBuilder().testCases(Collections.singletonList(testCase)).build();
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(mockMeasure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(testCaseLockService.findByTestCaseId(anyString()))
+        .thenReturn(TestCaseLock.builder().lockedBy("anotherUser").build());
+    TestCase output =
+        testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN", "test-user");
+    assertEquals(testCase, output);
+    assertEquals("anotherUser", testCase.getTestCaseLock().getLockedBy());
+  }
+
+  @Test
+  public void testGetTestCaseReturnsTestCaseNoLock() {
+    Measure mockMeasure =
+        measure.toBuilder().testCases(Collections.singletonList(testCase)).build();
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(mockMeasure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(testCaseLockService.findByTestCaseId(anyString())).thenReturn(null);
+    TestCase output =
+        testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN", "test-user");
+    assertEquals(testCase, output);
+    assertNull(testCase.getTestCaseLock());
+  }
+
+  @Test
+  public void testGetTestCaseReturnsTestCaseNoLockUserNameSame() {
+    Measure mockMeasure =
+        measure.toBuilder().testCases(Collections.singletonList(testCase)).build();
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(mockMeasure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(testCaseLockService.findByTestCaseId(anyString()))
+        .thenReturn(TestCaseLock.builder().lockedBy("test-user").build());
+    TestCase output =
+        testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN", "test-user");
+    assertEquals(testCase, output);
+    assertNull(testCase.getTestCaseLock());
   }
 }
