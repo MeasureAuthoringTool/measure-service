@@ -109,8 +109,8 @@ public class TestCaseService {
 
     verifyUniqueTestCaseName(testCase, measure);
 
-    if (StringUtils.deleteWhitespace(testCase.getTitle() + testCase.getSeries()).length() > 255) {
-      throw new TestCaseNameLengthException();
+    if (StringUtils.join(testCase.getTitle(), testCase.getSeries()).length() > 250) {
+      throw new TestCaseNameLengthException(testCase.getId());
     }
     defaultTestCaseJsonForQdmMeasure(testCase, measure);
     checkTestCaseSpecialCharacters(testCase);
@@ -485,6 +485,7 @@ public class TestCaseService {
         TestCaseServiceUtil.getGroupsWithValidPopulations(targetMeasure.getGroups());
 
     boolean clearedExpectedValues = false;
+    List<TestCase> failedTestCases = new ArrayList<>();
     for (TestCase sourceTestCase : sourceTestCases) {
       TestCase dupTestCase = sourceTestCase.deepCopy();
 
@@ -510,19 +511,9 @@ public class TestCaseService {
       }
       Optional<TestCase> copiedTestCase = Optional.empty();
       try {
-        copiedTestCase =
-            Optional.of(persistTestCase(dupTestCase, targetMeasureId, username, accessToken));
-      } catch (DuplicateTestCaseNameException e) {
-        dupTestCase.setTitle(dupTestCase.getTitle() + "-" + new ObjectId());
-        copiedTestCase =
-            Optional.of(persistTestCase(dupTestCase, targetMeasureId, username, accessToken));
+        copiedTestCase = copyTestCaseToMeasure(targetMeasureId, dupTestCase, username, accessToken);
       } catch (TestCaseNameLengthException e) {
-        log.error(
-            "Unable to copy Test Case {} to Measure {}. "
-                + "Resulting Test Case Name would be too long.",
-            sourceTestCase.getId(),
-            targetMeasure,
-            e);
+        failedTestCases.add(sourceTestCase);
       } catch (Exception e) {
         log.error(
             "Failed to copy Test Case {} to Measure {}",
@@ -534,8 +525,19 @@ public class TestCaseService {
     }
     return CopyTestCaseResult.builder()
         .copiedTestCases(copiedTestCases)
+        .failedTestCases(failedTestCases)
         .didClearExpectedValues(Boolean.valueOf(clearedExpectedValues))
         .build();
+  }
+
+  private Optional<TestCase> copyTestCaseToMeasure(
+      String targetMeasureId, TestCase dupTestCase, String username, String accessToken) {
+    try {
+      return Optional.of(persistTestCase(dupTestCase, targetMeasureId, username, accessToken));
+    } catch (DuplicateTestCaseNameException e) {
+      dupTestCase.setTitle(dupTestCase.getTitle() + "-" + new ObjectId());
+      return Optional.of(persistTestCase(dupTestCase, targetMeasureId, username, accessToken));
+    }
   }
 
   private void clearExpectedValues(TestCase testCase) {
