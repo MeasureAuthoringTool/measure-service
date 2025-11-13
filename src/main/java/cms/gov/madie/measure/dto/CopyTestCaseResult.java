@@ -14,5 +14,6 @@ import java.util.List;
 @NoArgsConstructor
 public class CopyTestCaseResult {
   private List<TestCase> copiedTestCases;
+  private List<TestCase> failedTestCases;
   private Boolean didClearExpectedValues;
 }

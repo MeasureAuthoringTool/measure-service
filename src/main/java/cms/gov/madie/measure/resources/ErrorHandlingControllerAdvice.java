@@ -222,6 +222,13 @@ public class ErrorHandlingControllerAdvice {
     return getErrorAttributes(request, HttpStatus.BAD_REQUEST);
   }
 
+  @ExceptionHandler(TestCaseNameLengthException.class)
+  @ResponseStatus(HttpStatus.BAD_REQUEST)
+  @ResponseBody
+  Map<String, Object> onTestCaseNameTooLongException(WebRequest request) {
+    return getErrorAttributes(request, HttpStatus.BAD_REQUEST);
+  }
+
   private Map<String, Object> getErrorAttributes(WebRequest request, HttpStatus httpStatus) {
     // BINDING_ERRORS and STACK_TRACE are too detailed and confusing to parse
     // Let's just add a list of simplified validation errors
@@ -231,6 +238,9 @@ public class ErrorHandlingControllerAdvice {
         this.errorAttributes.getErrorAttributes(request, errorOptions);
     errorAttributes.put("status", httpStatus.value());
     errorAttributes.put("error", httpStatus.getReasonPhrase());
+    if (errorAttributes.containsKey("testCaseId")) {
+      errorAttributes.put("testCaseId", errorAttributes.get("testCaseId"));
+    }
     return errorAttributes;
   }
 }

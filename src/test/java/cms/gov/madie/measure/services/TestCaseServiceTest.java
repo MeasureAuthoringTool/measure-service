@@ -37,6 +37,7 @@ import gov.cms.madie.models.dto.TestCaseExportMetaData;
 import gov.cms.madie.models.measure.*;
 
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.junit.jupiter.api.BeforeEach;
@@ -3160,6 +3161,29 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertTrue(result.getCopiedTestCases().get(0).getTitle().contains("-"));
 
     assertThat(targetMeasure.getTestCases().size(), is(2));
+  }
+
+  @Test
+  void testCopyToAnotherMeasureNameTooLong() {
+    // Set-up
+    String longName = RandomStringUtils.insecure().next(240);
+    Measure targetMeasure =
+        measure.toBuilder()
+            .testCases(new ArrayList<>(List.of(testCase.toBuilder().title(longName).build())))
+            .build();
+    TestCase source = testCase.deepCopy().toBuilder().id(null).title(longName).build();
+    assertThat(targetMeasure.getTestCases().size(), is(1));
+
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
+    when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
+
+    CopyTestCaseResult result =
+        testCaseService.copyTestCasesToMeasure(
+            targetMeasure.getId(), List.of(source), "user.name", "accessToken");
+    assertThat(result.getCopiedTestCases().size(), is(0));
+    assertThat(result.getFailedTestCases().size(), is(1));
+    assertThat(result.getFailedTestCases().get(0).getTitle(), is(longName));
+    assertThat(targetMeasure.getTestCases().size(), is(1));
   }
 
   @Test
