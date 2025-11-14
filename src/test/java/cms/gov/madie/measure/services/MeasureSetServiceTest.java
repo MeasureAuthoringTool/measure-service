@@ -815,6 +815,14 @@ public class MeasureSetServiceTest {
             ActionType.OWNERSHIP_TRANSFER,
             "anotherUser",
             "Transferred from originalOwner to testUser");
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            updatedMeasureSet.getMeasureSetId(),
+            MeasureSet.class,
+            ActionType.SHARED,
+            "anotherUser",
+            "originalOwner",
+            "Shared with - originalOwner");
   }
 
   @Test
@@ -842,6 +850,52 @@ public class MeasureSetServiceTest {
             ActionType.OWNERSHIP_TRANSFER,
             "anotherUser",
             "Transferred from originalOwner to testUser");
+  }
+
+  @Test
+  public void testChangeOwnershipRemovePreviouslySharedRole() {
+    AclSpecification sharedAcl =
+        AclSpecification.builder()
+            .userId("newOwner")
+            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
+            .build();
+
+    measureSet.setAcls(new ArrayList<>(List.of(sharedAcl)));
+    measureSet.setOwner("originalOwner");
+
+    MeasureSet updatedMeasureSet =
+        MeasureSet.builder()
+            .id(measureSet.getId())
+            .measureSetId(measureSet.getMeasureSetId())
+            .owner("newOwner")
+            .acls(new ArrayList<>())
+            .build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result =
+        measureSetService.changeOwnership(measureSet.getMeasureSetId(), "newOwner", false, "admin");
+
+    assertThat(result.getOwner(), is(equalTo("newOwner")));
+    assertThat(result.getAcls().size(), is(0));
+
+    verify(actionLogService, times(1))
+        .logMeasureSetAction(
+            measureSet.getMeasureSetId(),
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "admin",
+            "Transferred from originalOwner to newOwner");
+
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            measureSet.getMeasureSetId(),
+            MeasureSet.class,
+            ActionType.UNSHARED,
+            "admin",
+            "newOwner",
+            "newOwner now has owner permissions instead of share permissions");
   }
 
   @Test

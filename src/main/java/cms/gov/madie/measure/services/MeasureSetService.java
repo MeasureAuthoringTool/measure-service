@@ -345,7 +345,32 @@ public class MeasureSetService {
 
     MeasureSet measureSet = optionalMeasureSet.get();
     String originalOwner = optionalMeasureSet.get().getOwner();
+
     measureSet.setOwner(userId);
+
+    boolean previouslyShared = false;
+
+    // Remove SHARED_WITH role from new owner if it exists
+    if (!CollectionUtils.isEmpty(measureSet.getAcls())) {
+      // Find the ACL for the user
+      AclSpecification userAcl =
+          measureSet.getAcls().stream()
+              .filter(acl -> acl.getUserId().equals(userId) && acl.getRoles() != null)
+              .findFirst()
+              .orElse(null);
+
+      if (userAcl != null) {
+        // Remove SHARED_WITH role
+        previouslyShared = userAcl.getRoles().remove(RoleEnum.SHARED_WITH);
+
+        // Remove ACL entirely if no roles remain
+        if (userAcl.getRoles().isEmpty()) {
+          measureSet.getAcls().remove(userAcl);
+        }
+      }
+    }
+
+    // Retain SHARED access for original owner if requested
     if (retainShareAccess) {
       List<AclSpecification> acls =
           !CollectionUtils.isEmpty(measureSet.getAcls()) ? measureSet.getAcls() : new ArrayList<>();
@@ -356,7 +381,9 @@ public class MeasureSetService {
               .build());
       measureSet.setAcls(acls);
     }
+
     MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
+
     log.info(
         "Measure set [{}] ownership transferred from original owner [{}] to new owner [{}] by user [{}].",
         updatedMeasureSet.getId(),
@@ -369,6 +396,37 @@ public class MeasureSetService {
         ActionType.OWNERSHIP_TRANSFER,
         conductedBy,
         String.format("Transferred from %s to %s", originalOwner, userId));
+
+    if (retainShareAccess) {
+      actionLogService.logShareAccessControlAction(
+          updatedMeasureSet.getMeasureSetId(),
+          MeasureSet.class,
+          ActionType.SHARED,
+          conductedBy,
+          originalOwner,
+          String.format("Shared with - %s", originalOwner));
+
+      log.info(
+          "Retained SHARED role for user [{}] on measure set [{}] after ownership transfer",
+          originalOwner,
+          updatedMeasureSet.getMeasureSetId());
+    }
+
+    if (previouslyShared) {
+      actionLogService.logShareAccessControlAction(
+          updatedMeasureSet.getMeasureSetId(),
+          MeasureSet.class,
+          ActionType.UNSHARED,
+          "admin",
+          userId,
+          String.format("%s now has owner permissions instead of share permissions", userId));
+
+      log.info(
+          "Removed SHARED role for user [{}] on measure set [{}] after ownership transfer",
+          userId,
+          updatedMeasureSet.getMeasureSetId());
+    }
+
     return updatedMeasureSet;
   }
 }
