@@ -363,9 +363,6 @@ public class TestCaseService {
             .orElse(null);
     if (testCase == null) {
       throw new ResourceNotFoundException("Test Case", testCaseId);
-    } else if (validate) {
-      return testCaseValidationService.validateTestCaseAsResource(
-          testCase, ModelType.valueOfName(measure.getModel()), accessToken);
     }
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
       TestCaseLock lock = testCaseLockService.findByTestCaseId(testCaseId);
@@ -377,6 +374,10 @@ public class TestCaseService {
                   .lockedBy(lock.getLockedBy())
                   .build()
               : null);
+    }
+    if (validate) {
+      return testCaseValidationService.validateTestCaseAsResource(
+          testCase, ModelType.valueOfName(measure.getModel()), accessToken);
     }
     return testCase;
   }
