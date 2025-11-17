@@ -17,7 +17,7 @@ define "SDE Ethnicity":
   ["Patient Characteristic Ethnicity": "Ethnicity"]
 
 define "SDE Sex":
-  ["Patient Characteristic Sex": "ONC Administrative Sex"]
+  ["Patient Characteristic Sex": "Federal Administrative Sex"]
 
 define "SDE Payer":
   ["Patient Characteristic Payer": "Payer Type"]
