@@ -1,12 +1,13 @@
 package cms.gov.madie.measure.resources;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.security.Principal;
 
+import cms.gov.madie.measure.dto.HtmlDiffResponse;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import cms.gov.madie.measure.services.HumanReadableService;
 import lombok.RequiredArgsConstructor;
@@ -30,5 +31,19 @@ public class HumanReadableController {
         "User [{}] is attempting to get human readable with CSS for measure [{}]", username, id);
     return ResponseEntity.ok(
         humanReadableService.getHumanReadableWithCSS(id, username, accessToken));
+  }
+
+  @GetMapping("/html-diff")
+  public HtmlDiffResponse compare() throws IOException {
+    // Load HTML files from resources
+    String oldHtml = loadHtmlFromResource("html/CMS1272-v0.0.000-FHIR Old.html");
+    String newHtml = loadHtmlFromResource("html/CMS1272-v0.0.000-FHIR - New.html");
+
+    return humanReadableService.compareHtml(oldHtml, newHtml);
+  }
+
+  private String loadHtmlFromResource(String path) throws IOException {
+    ClassPathResource resource = new ClassPathResource(path);
+    return Files.readString(resource.getFile().toPath());
   }
 }
