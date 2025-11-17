@@ -9,4 +9,8 @@ public class TestCaseNameLengthException extends RuntimeException {
   public TestCaseNameLengthException() {
     super(String.format(MESSAGE));
   }
+
+  public TestCaseNameLengthException(String testCaseId) {
+    super(String.format("%s TestCaseId: %s", MESSAGE, testCaseId));
+  }
 }

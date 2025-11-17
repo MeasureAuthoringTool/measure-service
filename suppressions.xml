@@ -6,6 +6,6 @@
 
 <suppressions>
   <suppress checks="FileLength"
-    files="ParameterHandler.java"
+    files="ParameterHandler.java,TestCaseService.java"
   />
 </suppressions>
