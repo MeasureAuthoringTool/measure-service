@@ -36,8 +36,8 @@ public class HumanReadableController {
   @GetMapping("/html-diff")
   public HtmlDiffResponse compare() throws IOException {
     // Load HTML files from resources
-    String oldHtml = loadHtmlFromResource("html/CMS1272-v0.0.000-FHIR Old.html");
-    String newHtml = loadHtmlFromResource("html/CMS1272-v0.0.000-FHIR - New.html");
+    String oldHtml = loadHtmlFromResource("html/CMS1272-v0.0.000-FHIR.html");
+    String newHtml = loadHtmlFromResource("html/CMS1272-v0.0.000-FHIR-New.html");
 
     return humanReadableService.compareHtml(oldHtml, newHtml);
   }

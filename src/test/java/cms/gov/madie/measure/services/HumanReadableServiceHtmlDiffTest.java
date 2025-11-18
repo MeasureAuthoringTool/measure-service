@@ -13,11 +13,11 @@ public class HumanReadableServiceHtmlDiffTest {
     String oldHtml =
         new String(
             Files.readAllBytes(
-                Paths.get("src/main/resources/html/CMS1272-v0.0.000-FHIR Old.html")));
+                Paths.get("src/main/resources/html/CMS1272-v0.0.000-FHIR-Old.html")));
     String newHtml =
         new String(
             Files.readAllBytes(
-                Paths.get("src/main/resources/html/CMS1272-v0.0.000-FHIR - New.html")));
+                Paths.get("src/main/resources/html/CMS1272-v0.0.000-FHIR-New.html")));
     HumanReadableService service = new HumanReadableService(null, null, null, null);
     HtmlDiffResponse response = service.compareHtml(oldHtml, newHtml);
     assertNotNull(response);

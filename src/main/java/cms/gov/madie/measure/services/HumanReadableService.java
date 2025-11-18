@@ -1,6 +1,5 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.HtmlDiffResponse;
 import cms.gov.madie.measure.factories.ModelValidatorFactory;
 import cms.gov.madie.measure.factories.PackageServiceFactory;
 import cms.gov.madie.measure.utils.MeasureUtil;
@@ -10,6 +9,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.springframework.stereotype.Service;
 
+import cms.gov.madie.measure.dto.HtmlDiffResponse;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Measure;
@@ -17,6 +17,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
+import com.github.difflib.DiffUtils;
+import com.github.difflib.patch.Patch;
 
 @Slf4j
 @AllArgsConstructor
@@ -52,13 +54,9 @@ public class HumanReadableService {
   public HtmlDiffResponse compareHtml(String oldHtml, String newHtml) {
     Document oldDoc = Jsoup.parse(oldHtml);
     Document newDoc = Jsoup.parse(newHtml);
-
     List<HtmlDiffResponse.DiffItem> diffs = new ArrayList<>();
-
-    // Build field name -> list of value elements for old and new
     Map<String, List<Element>> oldFieldMap = buildFieldMap(oldDoc);
     Map<String, List<Element>> newFieldMap = buildFieldMap(newDoc);
-
     for (Map.Entry<String, List<Element>> entry : oldFieldMap.entrySet()) {
       String fieldName = entry.getKey();
       List<Element> oldValues = entry.getValue();
@@ -67,20 +65,24 @@ public class HumanReadableService {
       for (int i = 0; i < max; i++) {
         Element oldValueCell = i < oldValues.size() ? oldValues.get(i) : null;
         Element newValueCell = i < newValues.size() ? newValues.get(i) : null;
-        String oldValueHtml = oldValueCell != null ? normalizeHtml(oldValueCell.html()) : "";
-        String newValueHtml = newValueCell != null ? normalizeHtml(newValueCell.html()) : "";
-        boolean changed = !oldValueHtml.equals(newValueHtml);
-        Map<String, Map<String, String>> styleDiff =
-            (oldValueCell != null && newValueCell != null)
-                ? computeStyleDiff(oldValueCell, newValueCell)
-                : Collections.emptyMap();
+        String oldText = oldValueCell != null ? normalizeText(oldValueCell.text()) : "";
+        String newText = newValueCell != null ? normalizeText(newValueCell.text()) : "";
+        boolean changed = false;
+        if (!oldText.equals(newText)) {
+          changed = true;
+        } else {
+          // If text is the same, check for visible formatting differences
+          String oldNormHtml = oldValueCell != null ? normalizeVisibleHtml(oldValueCell) : "";
+          String newNormHtml = newValueCell != null ? normalizeVisibleHtml(newValueCell) : "";
+          if (!oldNormHtml.equals(newNormHtml)) {
+            changed = true;
+          }
+        }
         if (changed) {
           HtmlDiffResponse.DiffItem item = new HtmlDiffResponse.DiffItem();
           item.setField(fieldName + (max > 1 ? " [" + (i + 1) + "]" : ""));
           item.setOldValue(oldValueCell != null ? oldValueCell.html() : "");
           item.setNewValue(newValueCell != null ? newValueCell.html() : "");
-          item.setStyleChange(!styleDiff.isEmpty());
-          item.setStyleDiff(styleDiff);
           diffs.add(item);
         }
       }
@@ -106,24 +108,26 @@ public class HumanReadableService {
     return map;
   }
 
-  // Helper to find row by <th> text
-  private Element findMatchingRowByTh(Document doc, String fieldName) {
-    for (Element row : doc.select("tr")) {
-      Element th = row.selectFirst("th.row-header");
-      if (th != null && th.text().equals(fieldName)) {
-        return row;
-      }
-    }
-    return null;
+  // Normalize text for comparison: trim, collapse whitespace
+  private String normalizeText(String text) {
+    if (text == null) return "";
+    return text.replaceAll("\\s+", " ").trim();
   }
 
-  // Normalize HTML for comparison: trim, remove empty <p/>, collapse whitespace
-  private String normalizeHtml(String html) {
-    if (html == null) return "";
-    // Remove empty <p> tags
-    html = html.replaceAll("<p>\\s*</p>", "");
-    // Collapse whitespace
-    html = html.replaceAll("\\s+", " ").trim();
+  // Normalize HTML for visible formatting: canonicalize tags, remove non-visible attrs, ignore whitespace
+  private String normalizeVisibleHtml(Element element) {
+    if (element == null) return "";
+    // Canonicalize visually equivalent tags
+    String html = element.html()
+      .replaceAll("<(b|strong)( [^>]*)?>", "<strong>")
+      .replaceAll("</(b|strong)>", "</strong>")
+      .replaceAll("<(i|em)( [^>]*)?>", "<em>")
+      .replaceAll("</(i|em)>", "</em>")
+      .replaceAll("<(u)( [^>]*)?>", "<u>")
+      .replaceAll("</u>", "</u>")
+      .replaceAll("\s+", " ") // collapse whitespace
+      .replaceAll(" style=\\\"[^\\\"]*\\\"", "") // remove inline style
+      .trim();
     return html;
   }
 
