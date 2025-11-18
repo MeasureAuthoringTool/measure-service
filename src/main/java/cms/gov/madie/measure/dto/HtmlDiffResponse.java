@@ -23,7 +23,5 @@ public class HtmlDiffResponse {
     private String field;
     private String oldValue;
     private String newValue;
-    private boolean styleChange;
-    private Map<String, Map<String, String>> styleDiff;
   }
 }
