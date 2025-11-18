@@ -76,6 +76,7 @@ public class AdminControllerMvcTest {
   @MockitoBean private MeasureLockService measureLockService;
   @MockitoBean private TestCaseLockService testCaseLockService;
   @MockitoBean private AdminService adminService;
+  @MockitoBean private AppConfigService appConfigService;
 
   @Autowired private MockMvc mockMvc;
 
@@ -179,6 +180,9 @@ public class AdminControllerMvcTest {
             .groups(List.of(group))
             .testCases(List.of(testCase2))
             .build();
+
+    // Mock appConfigService to return false for LOCKING feature flag by default
+    when(appConfigService.isFlagEnabled(any())).thenReturn(false);
   }
 
   @Test

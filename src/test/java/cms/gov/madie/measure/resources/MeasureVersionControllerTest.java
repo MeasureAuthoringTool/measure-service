@@ -21,9 +21,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.exceptions.BadVersionRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
+import cms.gov.madie.measure.services.AppConfigService;
+import cms.gov.madie.measure.services.MeasureService;
 import cms.gov.madie.measure.services.VersionService;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.Measure;
@@ -33,6 +36,10 @@ import gov.cms.madie.models.measure.MeasureMetaData;
 public class MeasureVersionControllerTest {
 
   @Mock VersionService versionService;
+
+  @Mock MeasureService measureService;
+
+  @Mock AppConfigService appConfigService;
 
   @InjectMocks MeasureVersionController measureVersionController;
 
@@ -51,6 +58,8 @@ public class MeasureVersionControllerTest {
   @Test
   public void testCreateVersionReturnsResourceNotFoundException() {
     when(principal.getName()).thenReturn("testUser");
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     when(versionService.createVersion(anyString(), anyString(), anyString(), anyString()))
         .thenThrow(new ResourceNotFoundException("Measure", measure.getId()));
     assertThrows(
@@ -63,6 +72,8 @@ public class MeasureVersionControllerTest {
   @Test
   public void testCreateVersionReturnsBadVersionRequestException() {
     when(principal.getName()).thenReturn("testUser");
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     doThrow(
             new BadVersionRequestException(
@@ -79,6 +90,8 @@ public class MeasureVersionControllerTest {
   @Test
   public void testCreateVersionReturnsUnauthorizedException() {
     when(principal.getName()).thenReturn("testUser");
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     doThrow(new UnauthorizedException("Measure", measure.getId(), principal.getName()))
         .when(versionService)
@@ -93,6 +106,8 @@ public class MeasureVersionControllerTest {
   @Test
   public void testCreateVersionSuccess() {
     when(principal.getName()).thenReturn("testUser");
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     Measure updatedMeasure = Measure.builder().id("testMeasureId").createdBy("testUser").build();
     Version updatedVersion = Version.builder().major(3).minor(0).revisionNumber(0).build();
     updatedMeasure.setVersion(updatedVersion);

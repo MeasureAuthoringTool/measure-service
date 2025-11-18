@@ -1,9 +1,12 @@
 package cms.gov.madie.measure.resources;
 
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
+import cms.gov.madie.measure.exceptions.LockNotObtainedException;
+import cms.gov.madie.measure.services.AppConfigService;
 import cms.gov.madie.measure.services.VersionService;
 import cms.gov.madie.measure.services.MeasureService;
-import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -23,6 +26,7 @@ public class MeasureVersionController {
 
   private final VersionService versionService;
   private final MeasureService measureService;
+  private final AppConfigService appConfigService;
 
   @PutMapping("/{id}/version")
   public ResponseEntity<Measure> createVersion(
@@ -30,8 +34,10 @@ public class MeasureVersionController {
       @RequestParam String versionType,
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
-    return ResponseEntity.ok(
-        versionService.createVersion(id, versionType, principal.getName(), accessToken));
+    final String username = principal.getName();
+    final Measure existingMeasure = measureService.findMeasureById(id);
+    checkMeasureLock(existingMeasure, username);
+    return ResponseEntity.ok(versionService.createVersion(id, versionType, username, accessToken));
   }
 
   @GetMapping("/{id}/version")
@@ -68,5 +74,29 @@ public class MeasureVersionController {
         versionService.createDraft(
             id, measure.getMeasureName(), measure.getModel(), principal.getName(), accessToken);
     return ResponseEntity.status(HttpStatus.CREATED).body(output);
+  }
+
+  /**
+   * Checks if a measure is locked by another user and throws LockNotObtainedException if so. This
+   * method only performs the check if the LOCKING feature flag is enabled.
+   *
+   * @param measure the measure to check
+   * @param username the username of the current user
+   * @throws LockNotObtainedException if the measure is locked by a different user
+   */
+  private void checkMeasureLock(Measure measure, String username) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      log.debug("Checking lock for measure [{}]", measure.getId());
+      if (measure.getMeasureLock() != null) {
+        log.debug(
+            "Measure Lock found for measure [{}] locked by user [{}]",
+            measure.getId(),
+            measure.getMeasureLock().getLockedBy());
+        if (!measure.getMeasureLock().getLockedBy().equalsIgnoreCase(username)) {
+          throw new LockNotObtainedException(
+              "Unable to update measure. Measure is locked by another user.");
+        }
+      }
+    }
   }
 }
