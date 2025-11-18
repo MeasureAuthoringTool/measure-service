@@ -97,10 +97,25 @@ public class MeasureService {
     return measureRepository
         .findById(id)
         .map(
-            m ->
-                m.toBuilder()
-                    .measureSet(measureSetService.findByMeasureSetId(m.getMeasureSetId()))
-                    .build())
+            m -> {
+              Measure.MeasureBuilder builder =
+                  m.toBuilder()
+                      .measureSet(measureSetService.findByMeasureSetId(m.getMeasureSetId()));
+
+              // Map measure lock if locking feature is enabled
+              if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+                MeasureLock lock = measureLockService.findByMeasureId(m.getId());
+                if (lock != null) {
+                  builder.measureLock(
+                      gov.cms.madie.models.measure.MeasureLock.builder()
+                          .id(lock.getId())
+                          .lockedBy(lock.getLockedBy())
+                          .build());
+                }
+              }
+
+              return builder.build();
+            })
         .orElse(null);
   }
 

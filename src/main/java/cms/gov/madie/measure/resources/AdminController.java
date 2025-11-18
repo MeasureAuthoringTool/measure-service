@@ -13,6 +13,7 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.MeasureNotDraftableException;
+import cms.gov.madie.measure.exceptions.LockNotObtainedException;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.services.*;
@@ -30,6 +31,7 @@ import org.springframework.util.StopWatch;
 import org.springframework.web.bind.annotation.*;
 
 import cms.gov.madie.measure.dto.ImpactedMeasureValidationReport;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReportSummary;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
@@ -58,6 +60,7 @@ public class AdminController {
   private final MeasureLockService measureLockService;
   private final TestCaseLockService testCaseLockService;
   private final AdminService adminService;
+  private final AppConfigService appConfigService;
 
   @Value("${madie.admin.concurrency-limit}")
   private int concurrencyLimit;
@@ -438,6 +441,8 @@ public class AdminController {
       throw new ResourceNotFoundException("Measure", id);
     }
 
+    checkMeasureLock(targetMeasure, principal.getName());
+
     if (!StringUtils.equals((sourceMeasure.getId()), targetMeasure.getId())
         && !isDirectAncestor(sourceMeasure, targetMeasure)) {
       throw new InvalidRequestException("Cannot overwrite differing measure versions.");
@@ -621,5 +626,29 @@ public class AdminController {
     return ResponseEntity.ok(
         adminService.updateCodeSystem(
             id, principal.getName(), incorrectCodeSystem, correctCodeSystem));
+  }
+
+  /**
+   * Checks if a measure is locked by another user and throws LockNotObtainedException if so. This
+   * method only performs the check if the LOCKING feature flag is enabled.
+   *
+   * @param measure the measure to check
+   * @param username the username of the current user
+   * @throws LockNotObtainedException if the measure is locked by a different user
+   */
+  private void checkMeasureLock(Measure measure, String username) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      log.debug("Checking lock for measure [{}]", measure.getId());
+      if (measure.getMeasureLock() != null) {
+        log.debug(
+            "Measure Lock found for measure [{}] locked by user [{}]",
+            measure.getId(),
+            measure.getMeasureLock().getLockedBy());
+        if (!measure.getMeasureLock().getLockedBy().equalsIgnoreCase(username)) {
+          throw new LockNotObtainedException(
+              "Unable to update measure. Measure is locked by another user.");
+        }
+      }
+    }
   }
 }

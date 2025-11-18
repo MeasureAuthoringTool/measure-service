@@ -4,6 +4,7 @@ import cms.gov.madie.measure.exceptions.BadVersionRequestException;
 import cms.gov.madie.measure.exceptions.MeasureNotDraftableException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
+import cms.gov.madie.measure.services.AppConfigService;
 import cms.gov.madie.measure.services.VersionService;
 import cms.gov.madie.measure.services.MeasureService;
 import gov.cms.madie.models.common.Version;
@@ -25,8 +26,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -47,6 +47,7 @@ public class MeasureVersionControllerMvcTest {
 
   @Autowired private VersionService versionService;
   @Autowired private MeasureService measureService;
+  @Autowired private AppConfigService appConfigService;
 
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
 
@@ -55,7 +56,13 @@ public class MeasureVersionControllerMvcTest {
 
   @BeforeEach
   void setUp() {
-    Mockito.reset(versionService, measureService);
+    Mockito.reset(versionService, measureService, appConfigService);
+
+    // Setup default mocks for lock check
+    Measure mockMeasure = new Measure();
+    mockMeasure.setId("testMeasureId");
+    when(measureService.findMeasureById(anyString())).thenReturn(mockMeasure);
+    when(appConfigService.isFlagEnabled(any())).thenReturn(false);
   }
 
   @TestConfiguration
@@ -68,6 +75,11 @@ public class MeasureVersionControllerMvcTest {
     @Bean
     MeasureService measureService() {
       return Mockito.mock(MeasureService.class);
+    }
+
+    @Bean
+    AppConfigService appConfigService() {
+      return Mockito.mock(AppConfigService.class);
     }
   }
 

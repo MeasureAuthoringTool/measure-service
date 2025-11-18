@@ -286,7 +286,7 @@ public class TestCaseController {
   }
 
   @PutMapping(ControllerUtil.TEST_CASES + "/copy-to")
-  public ResponseEntity<CopyTestCaseResult> copyTestCasesToMeasure(
+  public ResponseEntity<CopyTestCaseResult> e(
       @PathVariable String measureId,
       @RequestParam(name = "targetMeasureId") String targetMeasureId,
       @RequestBody List<String> testCaseIds,

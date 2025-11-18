@@ -147,6 +147,8 @@ public class MeasureController {
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
     final String username = principal.getName();
+    final Measure existingMeasure = measureService.findMeasureById(id);
+    checkMeasureLock(existingMeasure, username);
     Measure updatedMeasure =
         measureService.updateMeasureTestCaseConfiguration(username, id, testCaseConfig);
     actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
@@ -168,9 +170,8 @@ public class MeasureController {
 
     log.info("getMeasureId [{}]", id);
 
-    // TODO Verify Lock.
-
     final Measure existingMeasure = measureService.findMeasureById(id);
+    checkMeasureLock(existingMeasure, username);
 
     if (existingMeasure != null) {
       if (username != null && existingMeasure.getCreatedBy() != null) {
@@ -248,6 +249,8 @@ public class MeasureController {
       @PathVariable String id,
       @RequestBody @Validated AclOperation aclOperation,
       @Value("${admin-api-key}") String apiKey) {
+    final Measure existingMeasure = measureService.findMeasureById(id);
+    checkMeasureLock(existingMeasure, "admin");
     List<AclSpecification> aclSpecifications =
         measureService.updateAccessControlList(id, aclOperation, "admin");
     return ResponseEntity.ok().body(aclSpecifications);
@@ -265,13 +268,31 @@ public class MeasureController {
   @PutMapping("/measures/shared")
   public ResponseEntity<Map<String, List<AclSpecification>>> shareMeasures(
       @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
-    return ResponseEntity.ok(measureService.shareMeasures(measureUserIdMap, principal.getName()));
+    final String username = principal.getName();
+    // Check lock for each measure being shared
+    measureUserIdMap
+        .keySet()
+        .forEach(
+            measureId -> {
+              final Measure existingMeasure = measureService.findMeasureById(measureId);
+              checkMeasureLock(existingMeasure, username);
+            });
+    return ResponseEntity.ok(measureService.shareMeasures(measureUserIdMap, username));
   }
 
   @PutMapping("/measures/unshared")
   public ResponseEntity<Map<String, List<AclSpecification>>> unshareMeasures(
       @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
-    return ResponseEntity.ok(measureService.unshareMeasures(measureUserIdMap, principal.getName()));
+    final String username = principal.getName();
+    // Check lock for each measure being unshared
+    measureUserIdMap
+        .keySet()
+        .forEach(
+            measureId -> {
+              final Measure existingMeasure = measureService.findMeasureById(measureId);
+              checkMeasureLock(existingMeasure, username);
+            });
+    return ResponseEntity.ok(measureService.unshareMeasures(measureUserIdMap, username));
   }
 
   @PutMapping("/measures/{id}/ownership")
@@ -283,6 +304,8 @@ public class MeasureController {
       @Value("${admin-api-key}") String apiKey,
       Principal principal) {
     try {
+      final Measure existingMeasure = measureService.findMeasureById(id);
+      checkMeasureLock(existingMeasure, principal.getName());
       measureService.changeOwnership(id, userid, false, principal.getName());
       return ResponseEntity.ok(userid + " granted ownership to Measure successfully.");
     } catch (ResourceNotFoundException e) {
@@ -325,8 +348,10 @@ public class MeasureController {
       @RequestBody @Validated(Measure.ValidationSequence.class) Group group,
       @PathVariable String measureId,
       Principal principal) {
-    return ResponseEntity.ok(
-        groupService.createOrUpdateGroup(group, measureId, principal.getName()));
+    final String username = principal.getName();
+    final Measure existingMeasure = measureService.findMeasureById(measureId);
+    checkMeasureLock(existingMeasure, username);
+    return ResponseEntity.ok(groupService.createOrUpdateGroup(group, measureId, username));
   }
 
   @DeleteMapping("/measures/{measureId}/groups/{groupId}")
@@ -362,9 +387,11 @@ public class MeasureController {
       @PathVariable String measureId,
       @PathVariable String groupId,
       Principal principal) {
+    final String username = principal.getName();
+    final Measure existingMeasure = measureService.findMeasureById(measureId);
+    checkMeasureLock(existingMeasure, username);
     return ResponseEntity.ok(
-        groupService.createOrUpdateStratification(
-            groupId, measureId, stratification, principal.getName()));
+        groupService.createOrUpdateStratification(groupId, measureId, stratification, username));
   }
 
   @DeleteMapping("/measures/{measureId}/groups/{groupId}/stratification/{stratificationId}")
@@ -413,9 +440,13 @@ public class MeasureController {
   @PutMapping("/measures/{measureSetId}/create-cms-id")
   public ResponseEntity<MeasureSet> createCmsId(
       @PathVariable String measureSetId, Principal principal) {
-    measureService.verifyAuthorizationByMeasureSetId(principal.getName(), measureSetId, true);
+    final String username = principal.getName();
+    measureService.verifyAuthorizationByMeasureSetId(username, measureSetId, true);
+    // Check lock for all measures in the measure set
+    List<Measure> measuresInSet = repository.findAllByMeasureSetIdAndActive(measureSetId, true);
+    measuresInSet.forEach(measure -> checkMeasureLock(measure, username));
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(measureSetService.createAndUpdateCmsId(measureSetId, principal.getName()));
+        .body(measureSetService.createAndUpdateCmsId(measureSetId, username));
   }
 
   @DeleteMapping("/measures/{measureId}/delete-cms-id")
@@ -433,6 +464,8 @@ public class MeasureController {
         principal.getName(),
         cmsId,
         measureId);
+    final Measure existingMeasure = measureService.findMeasureById(measureId);
+    checkMeasureLock(existingMeasure, principal.getName());
     return ResponseEntity.status(HttpStatus.OK)
         .body(measureSetService.deleteCmsId(measureId, cmsId, harpId, principal.getName()));
   }
@@ -443,9 +476,14 @@ public class MeasureController {
       @RequestParam String qiCoreMeasureId,
       @RequestParam String qdmMeasureId,
       @RequestParam(defaultValue = "false") boolean copyMetaData) {
+    final String username = principal.getName();
+    // Check lock for both measures being associated
+    final Measure qiCoreMeasure = measureService.findMeasureById(qiCoreMeasureId);
+    final Measure qdmMeasure = measureService.findMeasureById(qdmMeasureId);
+    checkMeasureLock(qiCoreMeasure, username);
+    checkMeasureLock(qdmMeasure, username);
     return ResponseEntity.ok(
-        measureService.associateCmsId(
-            principal.getName(), qiCoreMeasureId, qdmMeasureId, copyMetaData));
+        measureService.associateCmsId(username, qiCoreMeasureId, qdmMeasureId, copyMetaData));
   }
 
   @GetMapping(
@@ -479,8 +517,15 @@ public class MeasureController {
     if (CollectionUtils.isEmpty(measureIds)) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.emptyList());
     }
+    final String username = principal.getName();
+    // Check lock for all measures being transferred
+    measureIds.forEach(
+        measureId -> {
+          final Measure existingMeasure = measureService.findMeasureById(measureId);
+          checkMeasureLock(existingMeasure, username);
+        });
     List<String> failedTransfers =
-        measureService.transferMeasures(measureIds, harpId, retainShareAccess, principal.getName());
+        measureService.transferMeasures(measureIds, harpId, retainShareAccess, username);
     if (CollectionUtils.isEmpty(failedTransfers)) {
       return ResponseEntity.ok().build();
     } else {
@@ -493,5 +538,29 @@ public class MeasureController {
       @PathVariable("id") String measureId, Principal principal) {
     return ResponseEntity.ok()
         .body(measureService.getMeasureHistory(measureId, principal.getName()));
+  }
+
+  /**
+   * Checks if a measure is locked by another user and throws LockNotObtainedException if so. This
+   * method only performs the check if the LOCKING feature flag is enabled.
+   *
+   * @param measure the measure to check
+   * @param username the username of the current user
+   * @throws LockNotObtainedException if the measure is locked by a different user
+   */
+  private void checkMeasureLock(Measure measure, String username) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      log.debug("Checking lock for measure [{}]", measure.getId());
+      if (measure.getMeasureLock() != null) {
+        log.debug(
+            "Measure Lock found for measure [{}] locked by user [{}]",
+            measure.getId(),
+            measure.getMeasureLock().getLockedBy());
+        if (!measure.getMeasureLock().getLockedBy().equalsIgnoreCase(username)) {
+          throw new LockNotObtainedException(
+              "Unable to update measure. Measure is locked by another user.");
+        }
+      }
+    }
   }
 }
