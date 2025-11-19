@@ -57,32 +57,63 @@ public class HumanReadableService {
     List<HtmlDiffResponse.DiffItem> diffs = new ArrayList<>();
     Map<String, List<Element>> oldFieldMap = buildFieldMap(oldDoc);
     Map<String, List<Element>> newFieldMap = buildFieldMap(newDoc);
-    for (Map.Entry<String, List<Element>> entry : oldFieldMap.entrySet()) {
-      String fieldName = entry.getKey();
-      List<Element> oldValues = entry.getValue();
+    Set<String> allFields = new HashSet<>();
+    allFields.addAll(oldFieldMap.keySet());
+    allFields.addAll(newFieldMap.keySet());
+    for (String fieldName : allFields) {
+      List<Element> oldValues = oldFieldMap.getOrDefault(fieldName, Collections.emptyList());
       List<Element> newValues = newFieldMap.getOrDefault(fieldName, Collections.emptyList());
-      int max = Math.max(oldValues.size(), newValues.size());
-      for (int i = 0; i < max; i++) {
-        Element oldValueCell = i < oldValues.size() ? oldValues.get(i) : null;
-        Element newValueCell = i < newValues.size() ? newValues.get(i) : null;
-        String oldText = oldValueCell != null ? normalizeText(oldValueCell.text()) : "";
-        String newText = newValueCell != null ? normalizeText(newValueCell.text()) : "";
-        boolean changed = false;
-        if (!oldText.equals(newText)) {
-          changed = true;
-        } else {
-          // If text is the same, check for visible formatting differences
-          String oldNormHtml = oldValueCell != null ? normalizeVisibleHtml(oldValueCell) : "";
-          String newNormHtml = newValueCell != null ? normalizeVisibleHtml(newValueCell) : "";
-          if (!oldNormHtml.equals(newNormHtml)) {
-            changed = true;
+      // Special handling for single-value fields
+      if (oldValues.size() == 1 && newValues.size() == 1) {
+        String oldNorm = normalizeVisibleHtml(oldValues.get(0));
+        String newNorm = normalizeVisibleHtml(newValues.get(0));
+        if (!oldNorm.equals(newNorm)) {
+          HtmlDiffResponse.DiffItem item = new HtmlDiffResponse.DiffItem();
+          item.setField(fieldName);
+          item.setOldValue(oldValues.get(0).html());
+          item.setNewValue(newValues.get(0).html());
+          diffs.add(item);
+        }
+        continue;
+      }
+      // Multi-value fields: order-agnostic matching
+      List<String> oldNorms = new ArrayList<>();
+      List<String> newNorms = new ArrayList<>();
+      List<String> oldHtmls = new ArrayList<>();
+      List<String> newHtmls = new ArrayList<>();
+      for (Element e : oldValues) {
+        oldNorms.add(e != null ? normalizeVisibleHtml(e) : "");
+        oldHtmls.add(e != null ? e.html() : "");
+      }
+      for (Element e : newValues) {
+        newNorms.add(e != null ? normalizeVisibleHtml(e) : "");
+        newHtmls.add(e != null ? e.html() : "");
+      }
+      boolean[] matched = new boolean[newNorms.size()];
+      for (int i = 0; i < oldNorms.size(); i++) {
+        String oldNorm = oldNorms.get(i);
+        int matchIdx = -1;
+        for (int j = 0; j < newNorms.size(); j++) {
+          if (!matched[j] && oldNorm.equals(newNorms.get(j))) {
+            matched[j] = true;
+            matchIdx = j;
+            break;
           }
         }
-        if (changed) {
+        if (matchIdx == -1) {
           HtmlDiffResponse.DiffItem item = new HtmlDiffResponse.DiffItem();
-          item.setField(fieldName + (max > 1 ? " [" + (i + 1) + "]" : ""));
-          item.setOldValue(oldValueCell != null ? oldValueCell.html() : "");
-          item.setNewValue(newValueCell != null ? newValueCell.html() : "");
+          item.setField(fieldName);
+          item.setOldValue(oldHtmls.get(i));
+          item.setNewValue("");
+          diffs.add(item);
+        }
+      }
+      for (int j = 0; j < newNorms.size(); j++) {
+        if (!matched[j]) {
+          HtmlDiffResponse.DiffItem item = new HtmlDiffResponse.DiffItem();
+          item.setField(fieldName);
+          item.setOldValue("");
+          item.setNewValue(newHtmls.get(j));
           diffs.add(item);
         }
       }
