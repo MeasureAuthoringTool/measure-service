@@ -37,7 +37,7 @@ import java.util.*;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
-public class MeasureController {
+public class MeasureController extends AbstractMeasureController {
 
   private final MeasureRepository repository;
   private final MeasureService measureService;
@@ -48,6 +48,11 @@ public class MeasureController {
   private final TestCaseService testCaseService;
   private final TestCaseLockService testCaseLockService;
   private final AppConfigService appConfigService;
+
+  @Override
+  protected AppConfigService getAppConfigService() {
+    return appConfigService;
+  }
 
   @PostMapping("/measures/draftstatus")
   public ResponseEntity<Map<String, Boolean>> getDraftStatuses(
@@ -538,29 +543,5 @@ public class MeasureController {
       @PathVariable("id") String measureId, Principal principal) {
     return ResponseEntity.ok()
         .body(measureService.getMeasureHistory(measureId, principal.getName()));
-  }
-
-  /**
-   * Checks if a measure is locked by another user and throws LockNotObtainedException if so. This
-   * method only performs the check if the LOCKING feature flag is enabled.
-   *
-   * @param measure the measure to check
-   * @param username the username of the current user
-   * @throws LockNotObtainedException if the measure is locked by a different user
-   */
-  private void checkMeasureLock(Measure measure, String username) {
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      log.debug("Checking lock for measure [{}]", measure.getId());
-      if (measure.getMeasureLock() != null) {
-        log.debug(
-            "Measure Lock found for measure [{}] locked by user [{}]",
-            measure.getId(),
-            measure.getMeasureLock().getLockedBy());
-        if (!measure.getMeasureLock().getLockedBy().equalsIgnoreCase(username)) {
-          throw new LockNotObtainedException(
-              "Unable to update measure. Measure is locked by another user.");
-        }
-      }
-    }
   }
 }
