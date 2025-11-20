@@ -5,9 +5,7 @@ import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.services.MeasureService;
-import cms.gov.madie.measure.services.QdmTestCaseShiftDatesService;
-import cms.gov.madie.measure.services.TestCaseService;
+import cms.gov.madie.measure.services.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.measure.*;
@@ -46,6 +44,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class TestCaseControllerMvcTest {
 
   @MockitoBean private TestCaseService testCaseService;
+  @MockitoBean private AppConfigService appConfigService;
+  @MockitoBean private TestCaseLockService testCaseLockService;
   @MockitoBean private MeasureRepository repository;
   @Autowired private MockMvc mockMvc;
   @MockitoBean private MeasureService measureService;
@@ -213,12 +213,14 @@ public class TestCaseControllerMvcTest {
                 .accept(MediaType.APPLICATION_JSON))
         .andDo(print())
         .andExpect(status().isCreated())
-        .andExpect(jsonPath("$[0].id").value("ID1"))
-        .andExpect(jsonPath("$[0].title").value("Test1"))
-        .andExpect(jsonPath("$[0].validResource").value(Boolean.TRUE))
-        .andExpect(jsonPath("$[1].id").value("ID2"))
-        .andExpect(jsonPath("$[1].title").value("Test2"))
-        .andExpect(jsonPath("$[1].validResource").value(Boolean.FALSE));
+        .andExpect(jsonPath("$.testCases[0].id").value("ID1"))
+        .andExpect(jsonPath("$.testCases[0].title").value("Test1"))
+        .andExpect(jsonPath("$.testCases[0].validResource").value(Boolean.TRUE))
+        .andExpect(jsonPath("$.testCases[1].id").value("ID2"))
+        .andExpect(jsonPath("$.testCases[1].title").value("Test2"))
+        .andExpect(jsonPath("$.testCases[1].validResource").value(Boolean.FALSE))
+        .andExpect(jsonPath("$.failed").isArray())
+        .andExpect(jsonPath("$.failed").isEmpty());
     verify(testCaseService, times(1))
         .persistTestCases(
             testCaseListCaptor.capture(),
