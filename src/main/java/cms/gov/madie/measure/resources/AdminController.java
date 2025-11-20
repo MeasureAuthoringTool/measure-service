@@ -43,7 +43,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
-public class AdminController {
+public class AdminController extends AbstractMeasureController {
   private final MeasureService measureService;
   private final TestCaseService testCaseService;
   private final TestCaseValidationService testCaseValidationService;
@@ -58,6 +58,12 @@ public class AdminController {
   private final MeasureLockService measureLockService;
   private final TestCaseLockService testCaseLockService;
   private final AdminService adminService;
+  private final AppConfigService appConfigService;
+
+  @Override
+  protected AppConfigService getAppConfigService() {
+    return appConfigService;
+  }
 
   @Value("${madie.admin.concurrency-limit}")
   private int concurrencyLimit;
@@ -437,6 +443,8 @@ public class AdminController {
     if (targetMeasure == null) {
       throw new ResourceNotFoundException("Measure", id);
     }
+
+    checkMeasureLock(targetMeasure, principal.getName());
 
     if (!StringUtils.equals((sourceMeasure.getId()), targetMeasure.getId())
         && !isDirectAncestor(sourceMeasure, targetMeasure)) {

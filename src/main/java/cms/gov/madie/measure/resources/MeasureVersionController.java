@@ -1,9 +1,10 @@
 package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.exceptions.InvalidIdException;
+import cms.gov.madie.measure.services.AppConfigService;
 import cms.gov.madie.measure.services.VersionService;
 import cms.gov.madie.measure.services.MeasureService;
-import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -19,10 +20,16 @@ import static cms.gov.madie.measure.services.VersionService.VersionValidationRes
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/measures")
-public class MeasureVersionController {
+public class MeasureVersionController extends AbstractMeasureController {
 
   private final VersionService versionService;
   private final MeasureService measureService;
+  private final AppConfigService appConfigService;
+
+  @Override
+  protected AppConfigService getAppConfigService() {
+    return appConfigService;
+  }
 
   @PutMapping("/{id}/version")
   public ResponseEntity<Measure> createVersion(
@@ -30,8 +37,10 @@ public class MeasureVersionController {
       @RequestParam String versionType,
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
-    return ResponseEntity.ok(
-        versionService.createVersion(id, versionType, principal.getName(), accessToken));
+    final String username = principal.getName();
+    final Measure existingMeasure = measureService.findMeasureById(id);
+    checkMeasureLock(existingMeasure, username);
+    return ResponseEntity.ok(versionService.createVersion(id, versionType, username, accessToken));
   }
 
   @GetMapping("/{id}/version")
