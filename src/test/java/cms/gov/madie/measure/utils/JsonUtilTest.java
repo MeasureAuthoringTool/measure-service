@@ -531,7 +531,7 @@ public class JsonUtilTest implements ResourceUtil {
 
   @Test
   public void testRemoveMeasureReportFromJsonThrowsException() {
-    assertThrows(RuntimeException.class, () -> JsonUtil.removeMeasureReportFromJson(null));
+    assertThrows(RuntimeException.class, () -> JsonUtil.processJson(null));
   }
 
   @Test
