@@ -363,7 +363,8 @@ public final class JsonUtil {
     return "";
   }
 
-  // Changes type to "collection" & removes request and measure report entries
+  // Change type to "collection" & removes "request" entries
+  // and excludes "MeasureReport" resource types
   public static String processJson(String testCaseJson) throws JsonProcessingException {
     if (!StringUtils.isEmpty(testCaseJson)) {
       ObjectMapper objectMapper = new ObjectMapper();
