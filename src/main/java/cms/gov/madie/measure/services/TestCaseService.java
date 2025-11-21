@@ -6,27 +6,23 @@ import gov.cms.madie.models.measure.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.utils.JsonUtil;
-import cms.gov.madie.measure.utils.TestCaseServiceUtil;
+import cms.gov.madie.measure.utils.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.ObjectUtils;
-import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.*;
 import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.*;
 import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.regex.*;
 import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
 import static cms.gov.madie.measure.utils.TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning;
 import static java.util.stream.Collectors.*;
-import static org.apache.commons.collections4.CollectionUtils.isEmpty;
-import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
+import static org.apache.commons.collections4.CollectionUtils.*;
 
 @Slf4j
 @Service
@@ -238,7 +234,7 @@ public class TestCaseService {
   // updateTestCase for QDM
   public TestCase updateTestCase(
       TestCase testCase, String measureId, String username, String accessToken) {
-    Measure measure = getAndCheckMeasure(measureId);
+    Measure measure = getAndCheckMeasure(measureId, testCase.getId(), username);
 
     handleTestCasesForUpdate(testCase, measureId, username, measure);
 
@@ -246,10 +242,17 @@ public class TestCaseService {
   }
 
   // common method 1 for two overloading updateTestCase() method
-  private Measure getAndCheckMeasure(String measureId) {
+  private Measure getAndCheckMeasure(String measureId, String testCaseId, String username) {
     Measure measure = measureService.findMeasureById(measureId);
     if (measure == null) {
       throw new ResourceNotFoundException("Measure", measureId);
+    }
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+      TestCaseLock lock = testCaseLockService.findByTestCaseId(testCaseId);
+      if (lock != null && !username.equalsIgnoreCase(lock.getLockedBy())) {
+        throw new LockNotObtainedException(
+            "Unable to update Test Case. Test Case is locked by: " + lock.getLockedBy());
+      }
     }
     return measure;
   }
@@ -309,7 +312,7 @@ public class TestCaseService {
   // overloading method
   public TestCase updateTestCase(
       TestCase testCase, String measureId, String username, String accessToken, String queueType) {
-    Measure measure = getAndCheckMeasure(measureId);
+    Measure measure = getAndCheckMeasure(measureId, testCase.getId(), username);
 
     handleTestCasesForUpdate(testCase, measureId, username, measure);
 
