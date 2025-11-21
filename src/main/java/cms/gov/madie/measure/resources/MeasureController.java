@@ -412,8 +412,8 @@ public class MeasureController extends AbstractMeasureController {
         groupId,
         measureId);
 
-  final Measure existingMeasure = measureService.findMeasureById(measureId);
-  checkMeasureLock(existingMeasure, principal.getName());
+    final Measure existingMeasure = measureService.findMeasureById(measureId);
+    checkMeasureLock(existingMeasure, principal.getName());
     return ResponseEntity.ok(
         groupService.deleteStratification(
             measureId, groupId, stratificationId, principal.getName()));
@@ -473,7 +473,7 @@ public class MeasureController extends AbstractMeasureController {
         cmsId,
         measureId);
     final Measure existingMeasure = measureService.findMeasureById(measureId);
-      checkMeasureLock(existingMeasure, principal.getName());
+    checkMeasureLock(existingMeasure, principal.getName());
     return ResponseEntity.status(HttpStatus.OK)
         .body(measureSetService.deleteCmsId(measureId, cmsId, harpId, principal.getName()));
   }

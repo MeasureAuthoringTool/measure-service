@@ -465,6 +465,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testValidateResourceAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -527,6 +528,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testPersistTestCasesThrowsNoExceptionForNonDraftMeasure() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -1247,6 +1249,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testUpdateTestCaseThrowsResourceNotFoundExceptionForUnknownMeasureId() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -3405,6 +3408,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testValidateTestCaseAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -3638,5 +3642,72 @@ public class TestCaseServiceTest implements ResourceUtil {
         testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN", "test-user");
     assertEquals(testCase, output);
     assertNull(testCase.getTestCaseLock());
+  }
+
+  @Test
+  public void testUpdateTestCaseThrowsLockNotObtainedExceptionWhenTestCaseIsLocked() {
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(testCaseLockService.findByTestCaseId(anyString()))
+        .thenReturn(TestCaseLock.builder().lockedBy("another.user").build());
+
+    //    when(testCaseValidationService.validateTestCaseAsResource(
+    //            any(TestCase.class), any(ModelType.class), anyString()))
+    //        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
+    //    measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
+    //    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    //    Mockito.doAnswer((args) -> args.getArgument(0))
+    //        .when(measureRepository)
+    //        .save(measureCaptor.capture());
+
+    // Should not throw exception - editing versioned measures is now always allowed
+    // testCaseService.updateTestCase(testCase, measure.getId(), "test.user", "TOKEN");
+
+    assertThrows(
+        LockNotObtainedException.class,
+        () -> testCaseService.updateTestCase(testCase, measure.getId(), "test.user", "TOKEN"));
+  }
+
+  @Test
+  public void testUpdateTestCaseNoLock() {
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(testCaseLockService.findByTestCaseId(anyString())).thenReturn(null);
+
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    Mockito.doAnswer((args) -> args.getArgument(0))
+        .when(measureRepository)
+        .save(measureCaptor.capture());
+
+    testCaseService.updateTestCase(testCase, measure.getId(), "test.user", "TOKEN");
+
+    // Verify the measure was saved
+    verify(measureRepository).save(any(Measure.class));
+  }
+
+  @Test
+  public void testUpdateTestCaseSelfLock() {
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(testCaseLockService.findByTestCaseId(anyString()))
+        .thenReturn(TestCaseLock.builder().lockedBy("test.user").build());
+
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    Mockito.doAnswer((args) -> args.getArgument(0))
+        .when(measureRepository)
+        .save(measureCaptor.capture());
+
+    testCaseService.updateTestCase(testCase, measure.getId(), "test.user", "TOKEN");
+
+    // Verify the measure was saved
+    verify(measureRepository).save(any(Measure.class));
   }
 }
