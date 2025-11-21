@@ -17,8 +17,8 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.*;
-import com.github.difflib.DiffUtils;
-import com.github.difflib.patch.Patch;
+import com.github.difflib.text.DiffRow;
+import com.github.difflib.text.DiffRowGenerator;
 
 @Slf4j
 @AllArgsConstructor
@@ -68,10 +68,12 @@ public class HumanReadableService {
         String oldNorm = normalizeVisibleHtml(oldValues.get(0));
         String newNorm = normalizeVisibleHtml(newValues.get(0));
         if (!oldNorm.equals(newNorm)) {
+          String[] highlighted =
+              generateHighlightedDiff(oldValues.get(0).html(), newValues.get(0).html());
           HtmlDiffResponse.DiffItem item = new HtmlDiffResponse.DiffItem();
           item.setField(fieldName);
-          item.setOldValue(oldValues.get(0).html());
-          item.setNewValue(newValues.get(0).html());
+          item.setOldValue(highlighted[0]);
+          item.setNewValue(highlighted[1]);
           diffs.add(item);
         }
         continue;
@@ -101,19 +103,21 @@ public class HumanReadableService {
           }
         }
         if (matchIdx == -1) {
+          String[] highlighted = generateHighlightedDiff(oldHtmls.get(i), "");
           HtmlDiffResponse.DiffItem item = new HtmlDiffResponse.DiffItem();
           item.setField(fieldName);
-          item.setOldValue(oldHtmls.get(i));
+          item.setOldValue(highlighted[0]);
           item.setNewValue("");
           diffs.add(item);
         }
       }
       for (int j = 0; j < newNorms.size(); j++) {
         if (!matched[j]) {
+          String[] highlighted = generateHighlightedDiff("", newHtmls.get(j));
           HtmlDiffResponse.DiffItem item = new HtmlDiffResponse.DiffItem();
           item.setField(fieldName);
           item.setOldValue("");
-          item.setNewValue(newHtmls.get(j));
+          item.setNewValue(highlighted[1]);
           diffs.add(item);
         }
       }
@@ -139,63 +143,43 @@ public class HumanReadableService {
     return map;
   }
 
-  // Normalize text for comparison: trim, collapse whitespace
-  private String normalizeText(String text) {
-    if (text == null) return "";
-    return text.replaceAll("\\s+", " ").trim();
-  }
-
-  // Normalize HTML for visible formatting: canonicalize tags, remove non-visible attrs, ignore whitespace
+  // Normalize HTML for visible formatting: canonicalize tags, remove non-visible attrs, ignore
+  // whitespace
   private String normalizeVisibleHtml(Element element) {
     if (element == null) return "";
-    // Canonicalize visually equivalent tags
-    String html = element.html()
-      .replaceAll("<(b|strong)( [^>]*)?>", "<strong>")
-      .replaceAll("</(b|strong)>", "</strong>")
-      .replaceAll("<(i|em)( [^>]*)?>", "<em>")
-      .replaceAll("</(i|em)>", "</em>")
-      .replaceAll("<(u)( [^>]*)?>", "<u>")
-      .replaceAll("</u>", "</u>")
-      .replaceAll("\s+", " ") // collapse whitespace
-      .replaceAll(" style=\\\"[^\\\"]*\\\"", "") // remove inline style
-      .trim();
-    return html;
+    return element.html()
+        .replaceAll("<(b|strong)( [^>]*)?>", "<strong>")
+        .replaceAll("</(b|strong)>", "</strong>")
+        .replaceAll("<(i|em)( [^>]*)?>", "<em>")
+        .replaceAll("</(i|em)>", "</em>")
+        .replaceAll("<(u)( [^>]*)?>", "<u>")
+        .replaceAll("</u>", "</u>")
+        .replaceAll("\s+", " ") // collapse whitespace
+        .replaceAll(" style=\"[^\"]*\"", "") // remove inline style
+        .trim();
   }
 
-  private Map<String, Map<String, String>> computeStyleDiff(
-      Element oldElement, Element newElement) {
-    Map<String, String> oldStyles = parseInlineStyle(oldElement.attr("style"));
-    Map<String, String> newStyles = parseInlineStyle(newElement.attr("style"));
-
-    Map<String, Map<String, String>> diff = new HashMap<>();
-    Set<String> allKeys = new HashSet<>();
-    allKeys.addAll(oldStyles.keySet());
-    allKeys.addAll(newStyles.keySet());
-
-    for (String key : allKeys) {
-      String oldVal = oldStyles.getOrDefault(key, "default");
-      String newVal = newStyles.getOrDefault(key, "default");
-      if (!oldVal.equals(newVal)) {
-        Map<String, String> change = new HashMap<>();
-        change.put("old", oldVal);
-        change.put("new", newVal);
-        diff.put(key, change);
-      }
+  // Helper to generate highlighted HTML diff for old and new values
+  private String[] generateHighlightedDiff(String oldHtml, String newHtml) {
+    // Strip tags for word diff, but keep original HTML for reconstruction
+    String oldText = Jsoup.parse(oldHtml).text();
+    String newText = Jsoup.parse(newHtml).text();
+    DiffRowGenerator generator =
+        DiffRowGenerator.create()
+            .showInlineDiffs(true)
+            .inlineDiffByWord(true)
+            .oldTag(f -> "<span style='background:#f7c5c5;text-decoration:line-through;'>")
+            .newTag(f -> "<span style='background:#c8f7c5;'>")
+            .build();
+    List<DiffRow> rows =
+        generator.generateDiffRows(
+            Arrays.asList(oldText.split("\n")), Arrays.asList(newText.split("\n")));
+    StringBuilder oldResult = new StringBuilder();
+    StringBuilder newResult = new StringBuilder();
+    for (DiffRow row : rows) {
+      oldResult.append(row.getOldLine());
+      newResult.append(row.getNewLine());
     }
-    return diff;
-  }
-
-  private Map<String, String> parseInlineStyle(String styleAttr) {
-    Map<String, String> styles = new HashMap<>();
-    if (styleAttr != null && !styleAttr.isEmpty()) {
-      String[] parts = styleAttr.split(";");
-      for (String part : parts) {
-        String[] kv = part.split(":");
-        if (kv.length == 2) {
-          styles.put(kv[0].trim(), kv[1].trim());
-        }
-      }
-    }
-    return styles;
+    return new String[] {oldResult.toString(), newResult.toString()};
   }
 }
