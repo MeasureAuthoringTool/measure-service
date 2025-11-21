@@ -3651,18 +3651,6 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(testCaseLockService.findByTestCaseId(anyString()))
         .thenReturn(TestCaseLock.builder().lockedBy("another.user").build());
 
-    //    when(testCaseValidationService.validateTestCaseAsResource(
-    //            any(TestCase.class), any(ModelType.class), anyString()))
-    //        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
-    //    measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
-    //    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
-    //    Mockito.doAnswer((args) -> args.getArgument(0))
-    //        .when(measureRepository)
-    //        .save(measureCaptor.capture());
-
-    // Should not throw exception - editing versioned measures is now always allowed
-    // testCaseService.updateTestCase(testCase, measure.getId(), "test.user", "TOKEN");
-
     assertThrows(
         LockNotObtainedException.class,
         () -> testCaseService.updateTestCase(testCase, measure.getId(), "test.user", "TOKEN"));
