@@ -531,7 +531,7 @@ public class JsonUtilTest implements ResourceUtil {
 
   @Test
   public void testRemoveMeasureReportFromJsonThrowsException() {
-    assertThrows(RuntimeException.class, () -> JsonUtil.removeMeasureReportFromJson(null));
+    assertThrows(RuntimeException.class, () -> JsonUtil.processJson(null));
   }
 
   @Test
@@ -895,5 +895,32 @@ public class JsonUtilTest implements ResourceUtil {
     assertThat(
         testCaseGroupPopulations.get(0).getPopulationValues().get(3).getExpected(),
         is(equalTo("4")));
+  }
+
+  @Test
+  public void processJsonChangesTypeToCollection() throws JsonProcessingException {
+    String json = "{ \"type\": \"transaction\", \"entry\": [] }";
+    String result = JsonUtil.processJson(json);
+    assertTrue(result.contains("\"type\":\"collection\""));
+  }
+
+  @Test
+  public void processJsonRemovesRequestEntries() throws JsonProcessingException {
+    String json =
+        "{ \"entry\": [ { \"request\": { \"method\": \"POST\" }, \"resource\": { \"resourceType\": \"Patient\" } } ] }";
+    String result = JsonUtil.processJson(json);
+    assertFalse(result.contains("\"request\""));
+  }
+
+  @Test
+  public void processJsonThrowsExceptionForEmptyJson() {
+    assertThrows(RuntimeException.class, () -> JsonUtil.processJson(""));
+  }
+
+  @Test
+  public void processJsonHandlesInvalidJson() {
+    String invalidJson =
+        "{ \"type\": \"transaction\", \"entry\": [ { \"resource\": { \"resourceType\": \"Patient\" } ";
+    assertThrows(JsonProcessingException.class, () -> JsonUtil.processJson(invalidJson));
   }
 }

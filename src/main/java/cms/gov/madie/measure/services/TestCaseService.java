@@ -881,7 +881,7 @@ public class TestCaseService {
   private String getJson(String model, String json) throws JsonProcessingException {
     String jsonFromImportRequest = null;
     if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
-      jsonFromImportRequest = JsonUtil.removeMeasureReportFromJson(json);
+      jsonFromImportRequest = JsonUtil.processJson(json);
     } else if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
       jsonFromImportRequest = JsonUtil.getTestCaseJson(json);
     }

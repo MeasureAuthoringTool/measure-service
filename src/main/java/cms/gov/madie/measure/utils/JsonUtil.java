@@ -363,23 +363,36 @@ public final class JsonUtil {
     return "";
   }
 
-  public static String removeMeasureReportFromJson(String testCaseJson)
-      throws JsonProcessingException {
+  // Change type to "collection" & removes "request" entries
+  // and excludes "MeasureReport" resource types
+  public static String processJson(String testCaseJson) throws JsonProcessingException {
     if (!StringUtils.isEmpty(testCaseJson)) {
       ObjectMapper objectMapper = new ObjectMapper();
-
       JsonNode rootNode = objectMapper.readTree(testCaseJson);
-      ArrayNode entryArray = (ArrayNode) rootNode.get("entry");
 
-      List<JsonNode> filteredList = new ArrayList<>();
-      for (JsonNode entryNode : entryArray) {
-        if (!"MeasureReport"
-            .equalsIgnoreCase(entryNode.get("resource").get("resourceType").asText())) {
-          filteredList.add(entryNode);
-        }
+      // Change type to "collection" if it is "transaction"
+      if (rootNode.has("type") && "transaction".equalsIgnoreCase(rootNode.get("type").asText())) {
+        ((ObjectNode) rootNode).put("type", "collection");
       }
-      entryArray.removeAll();
-      filteredList.forEach(entryArray::add);
+
+      // Remove "request" key from all entries
+      JsonNode entries = rootNode.get("entry");
+      if (entries != null && entries.isArray()) {
+        List<JsonNode> filteredEntries = new ArrayList<>();
+        for (JsonNode entry : entries) {
+          if (entry.has("request")) {
+            ((ObjectNode) entry).remove("request");
+          }
+          // Exclude entries with "MeasureReport" resource type
+          if (!"MeasureReport"
+              .equalsIgnoreCase(entry.get("resource").get("resourceType").asText())) {
+            filteredEntries.add(entry);
+          }
+        }
+        ((ArrayNode) entries).removeAll();
+        filteredEntries.forEach(((ArrayNode) entries)::add);
+      }
+
       return objectMapper.writeValueAsString(rootNode);
     } else {
       throw new RuntimeException("Unable to find Test case Json");
