@@ -443,7 +443,7 @@ public class TestCaseController {
     return false;
   }
 
-  private void checkTestCaseLock(String testCaseId, String measureId, String username) {
+  private void checkTestCaseLock(String testCaseId, String username) {
     var lock = testCaseLockService.findByTestCaseId(testCaseId);
     if (lock != null && !lock.getLockedBy().equals(username)) {
       throw new cms.gov.madie.measure.exceptions.LockNotObtainedException(
