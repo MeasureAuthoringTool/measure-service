@@ -364,8 +364,9 @@ public final class JsonUtil {
   }
 
   // Helper: Change type to "collection" if it is "transaction"
-  private static void updateTypeToCollection(JsonNode rootNode) {
+  private static void updateTypeToCollection(JsonNode rootNode, TestCase testCase) {
     if (rootNode.has("type") && "transaction".equalsIgnoreCase(rootNode.get("type").asText())) {
+      testCase.setBundleTypeUpdated(true);
       ((ObjectNode) rootNode).put("type", "collection");
     }
   }
@@ -408,12 +409,12 @@ public final class JsonUtil {
   }
 
   // Use Case 2: Only first two actions
-  public static String updateBundleTypeAndRemoveRequest(String testCaseJson)
+  public static String updateBundleTypeAndRemoveRequest(TestCase testCase)
       throws JsonProcessingException {
-    if (!StringUtils.isEmpty(testCaseJson)) {
+    if (!StringUtils.isEmpty(testCase.getJson())) {
       ObjectMapper objectMapper = new ObjectMapper();
-      JsonNode rootNode = objectMapper.readTree(testCaseJson);
-      updateTypeToCollection(rootNode);
+      JsonNode rootNode = objectMapper.readTree(testCase.getJson());
+      updateTypeToCollection(rootNode, testCase);
       JsonNode entries = rootNode.get("entry");
       removeRequestFromEntries(entries);
       return objectMapper.writeValueAsString(rootNode);

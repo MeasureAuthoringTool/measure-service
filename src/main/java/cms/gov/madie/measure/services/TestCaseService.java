@@ -327,10 +327,10 @@ public class TestCaseService {
       testCase.setJson(JsonUtil.updateResourceFullUrls(testCase, madieJsonResourcesBaseUri));
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
+      testCase.setBundleTypeUpdated(false);
       if (appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)) {
         try {
-          testCase.setJson(JsonUtil.updateBundleTypeAndRemoveRequest(testCase.getJson()));
-          testCase.setBundleTypeUpdated(true);
+          testCase.setJson(JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
         } catch (JsonProcessingException e) {
           log.error(
               "Error reading testCaseJson while updating TestCase with id: " + testCase.getId(), e);
