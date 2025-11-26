@@ -250,7 +250,8 @@ public class TestCaseControllerMvcTest {
                         + "\"groupPopulations\":null,"
                         + "\"validationStatus\":null,"
                         + "\"validationTaskId\":null,"
-                        + "\"testCaseLock\":null"
+                        + "\"testCaseLock\":null,"
+                        + "\"bundleTypeUpdated\":false"
                         + "}]"));
     verify(testCaseService, times(1))
         .findTestCasesByMeasureId(measureIdCaptor.capture(), anyString());
@@ -303,7 +304,8 @@ public class TestCaseControllerMvcTest {
                         + "\"groupPopulations\":null,"
                         + "\"validationStatus\":null,"
                         + "\"validationTaskId\":null,"
-                        + "\"testCaseLock\":null"
+                        + "\"testCaseLock\":null,"
+                        + "\"bundleTypeUpdated\":false"
                         + "}"));
     verify(testCaseService, times(1))
         .getTestCase(
@@ -356,7 +358,8 @@ public class TestCaseControllerMvcTest {
                         + "\"groupPopulations\":null,"
                         + "\"validationStatus\":null,"
                         + "\"validationTaskId\":null,"
-                        + "\"testCaseLock\":null"
+                        + "\"testCaseLock\":null,"
+                        + "\"bundleTypeUpdated\":false"
                         + "}"));
     verify(testCaseService, times(1))
         .updateTestCase(
