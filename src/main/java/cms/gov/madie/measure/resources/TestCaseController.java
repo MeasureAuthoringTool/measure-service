@@ -134,7 +134,7 @@ public class TestCaseController {
     sanitizeTestCase(testCase);
 
     // Check lock before updating
-    checkTestCaseLock(testCaseId, measureId, principal.getName());
+    checkTestCaseLock(testCaseId, principal.getName());
 
     return ResponseEntity.ok(
         testCaseService.updateTestCase(
