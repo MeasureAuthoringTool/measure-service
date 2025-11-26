@@ -363,27 +363,36 @@ public final class JsonUtil {
     return "";
   }
 
-  // Change type to "collection" & removes "request" entries
-  // and excludes "MeasureReport" resource types
-  public static String processJson(String testCaseJson) throws JsonProcessingException {
+  // Helper: Change type to "collection" if it is "transaction"
+  private static void updateTypeToCollection(JsonNode rootNode) {
+    if (rootNode.has("type") && "transaction".equalsIgnoreCase(rootNode.get("type").asText())) {
+      ((ObjectNode) rootNode).put("type", "collection");
+    }
+  }
+
+  // Helper: Remove "request" key from all entries
+  private static void removeRequestFromEntries(JsonNode entries) {
+    if (entries != null && entries.isArray()) {
+      for (JsonNode entry : entries) {
+        if (entry.has("request")) {
+          ((ObjectNode) entry).remove("request");
+        }
+      }
+    }
+  }
+
+  // Use Case 1: All three actions
+  public static String removeMeasureReportEntries(String testCaseJson)
+      throws JsonProcessingException {
     if (!StringUtils.isEmpty(testCaseJson)) {
       ObjectMapper objectMapper = new ObjectMapper();
       JsonNode rootNode = objectMapper.readTree(testCaseJson);
 
-      // Change type to "collection" if it is "transaction"
-      if (rootNode.has("type") && "transaction".equalsIgnoreCase(rootNode.get("type").asText())) {
-        ((ObjectNode) rootNode).put("type", "collection");
-      }
-
-      // Remove "request" key from all entries
       JsonNode entries = rootNode.get("entry");
+
       if (entries != null && entries.isArray()) {
         List<JsonNode> filteredEntries = new ArrayList<>();
         for (JsonNode entry : entries) {
-          if (entry.has("request")) {
-            ((ObjectNode) entry).remove("request");
-          }
-          // Exclude entries with "MeasureReport" resource type
           if (!"MeasureReport"
               .equalsIgnoreCase(entry.get("resource").get("resourceType").asText())) {
             filteredEntries.add(entry);
@@ -392,7 +401,21 @@ public final class JsonUtil {
         ((ArrayNode) entries).removeAll();
         filteredEntries.forEach(((ArrayNode) entries)::add);
       }
+      return objectMapper.writeValueAsString(rootNode);
+    } else {
+      throw new RuntimeException("Unable to find Test case Json");
+    }
+  }
 
+  // Use Case 2: Only first two actions
+  public static String updateBundleTypeAndRemoveRequest(String testCaseJson)
+      throws JsonProcessingException {
+    if (!StringUtils.isEmpty(testCaseJson)) {
+      ObjectMapper objectMapper = new ObjectMapper();
+      JsonNode rootNode = objectMapper.readTree(testCaseJson);
+      updateTypeToCollection(rootNode);
+      JsonNode entries = rootNode.get("entry");
+      removeRequestFromEntries(entries);
       return objectMapper.writeValueAsString(rootNode);
     } else {
       throw new RuntimeException("Unable to find Test case Json");
