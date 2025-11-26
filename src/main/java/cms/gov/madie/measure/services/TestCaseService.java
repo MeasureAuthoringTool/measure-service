@@ -18,7 +18,7 @@ import org.springframework.stereotype.Service;
 import java.time.Instant;
 import java.util.*;
 import java.util.function.Function;
-import java.util.regex.*;
+
 import static cms.gov.madie.measure.utils.JsonUtil.convertDateTimeToUTC;
 import static cms.gov.madie.measure.utils.TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning;
 import static java.util.stream.Collectors.*;
@@ -109,7 +109,7 @@ public class TestCaseService {
       throw new TestCaseNameLengthException(testCase.getId());
     }
     defaultTestCaseJsonForQdmMeasure(testCase, measure);
-    checkTestCaseSpecialCharacters(testCase);
+    TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase);
     TestCase enrichedTestCase = enrichNewTestCase(testCase, username, measureId);
     enrichedTestCase =
         testCaseValidationService.validateTestCaseAsResource(
@@ -145,7 +145,7 @@ public class TestCaseService {
 
     List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
     for (TestCase testCase : newTestCases) {
-      checkTestCaseSpecialCharacters(testCase);
+      TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase);
       TestCase enriched = enrichNewTestCase(testCase, username, measureId);
       enriched =
           testCaseValidationService.validateTestCaseAsResource(
@@ -260,7 +260,7 @@ public class TestCaseService {
   // common method 2 for two overloading updateTestCase() method
   private void handleTestCasesForUpdate(
       TestCase testCase, String measureId, String username, Measure measure) {
-    checkTestCaseSpecialCharacters(testCase);
+    TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase);
     if (measure.getTestCases() == null) {
       measure.setTestCases(new ArrayList<>());
     }
@@ -327,6 +327,15 @@ public class TestCaseService {
       testCase.setJson(JsonUtil.updateResourceFullUrls(testCase, madieJsonResourcesBaseUri));
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)) {
+        try {
+          testCase.setJson(JsonUtil.updateBundleTypeAndRemoveRequest(testCase.getJson()));
+          testCase.setBundleTypeUpdated(true);
+        } catch (JsonProcessingException e) {
+          log.error(
+              "Error reading testCaseJson while updating TestCase with id: " + testCase.getId(), e);
+        }
+      }
 
       if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)
           && ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
@@ -608,7 +617,8 @@ public class TestCaseService {
                     .message("Test Case file is missing.")
                     .build();
               }
-              TestCaseImportOutcome outCome = checkErrorSpecialChar(model, testCaseImportRequest);
+              TestCaseImportOutcome outCome =
+                  TestCaseServiceUtil.checkErrorSpecialChar(model, testCaseImportRequest);
               if (outCome != null) {
                 return outCome;
               }
@@ -881,7 +891,7 @@ public class TestCaseService {
   private String getJson(String model, String json) throws JsonProcessingException {
     String jsonFromImportRequest = null;
     if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
-      jsonFromImportRequest = JsonUtil.processJson(json);
+      jsonFromImportRequest = JsonUtil.removeMeasureReportEntries(json);
     } else if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
       jsonFromImportRequest = JsonUtil.getTestCaseJson(json);
     }
@@ -961,52 +971,6 @@ public class TestCaseService {
       String objectId = ObjectId.get().toHexString();
       testCase.setJson(QDM_PATIENT.replace("OBJECTID", objectId));
     }
-  }
-
-  protected void checkTestCaseSpecialCharacters(TestCase testCase) {
-    if (StringUtils.isBlank(testCase.getTitle())) {
-      throw new InvalidRequestException("Test Case title is required.");
-    }
-    Pattern alpahNumeric = Pattern.compile("^[a-zA-Z0-9\s_-]*$");
-    Matcher title = alpahNumeric.matcher(testCase.getTitle());
-    if (!title.matches()) {
-      throw new SpecialCharacterException("Title");
-    }
-    if (StringUtils.isNotBlank(testCase.getSeries())) {
-      Matcher group = alpahNumeric.matcher(testCase.getSeries());
-      if (!group.matches()) {
-        throw new SpecialCharacterException("Group");
-      }
-    }
-  }
-
-  protected TestCaseImportOutcome checkErrorSpecialChar(
-      String model, TestCaseImportRequest testCaseImportRequest) {
-    if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
-      try {
-        checkTestCaseSpecialCharacters(
-            TestCase.builder()
-                .title(
-                    testCaseImportRequest.getGivenNames() != null
-                        ? testCaseImportRequest.getGivenNames().get(0)
-                        : null)
-                .series(testCaseImportRequest.getFamilyName())
-                .build());
-      } catch (InvalidRequestException ex) {
-        return TestCaseImportOutcome.builder()
-            .patientId(testCaseImportRequest.getPatientId())
-            .successful(false)
-            .message(ex.getMessage())
-            .build();
-      } catch (SpecialCharacterException ex) {
-        return TestCaseImportOutcome.builder()
-            .patientId(testCaseImportRequest.getPatientId())
-            .successful(false)
-            .message("Test Cases Group or Title cannot contain special characters.")
-            .build();
-      }
-    }
-    return null;
   }
 
   private TestCaseImportOutcome buildTestCaseImportOutcome(

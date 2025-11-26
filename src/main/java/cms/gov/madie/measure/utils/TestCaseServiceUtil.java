@@ -13,19 +13,15 @@ import java.util.NoSuchElementException;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import cms.gov.madie.measure.exceptions.InvalidIdException;
+import cms.gov.madie.measure.exceptions.InvalidRequestException;
+import cms.gov.madie.measure.exceptions.SpecialCharacterException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.measure.Group;
-import gov.cms.madie.models.measure.MeasureObservation;
-import gov.cms.madie.models.measure.MeasureScoring;
-import gov.cms.madie.models.measure.Population;
-import gov.cms.madie.models.measure.PopulationType;
-import gov.cms.madie.models.measure.TestCase;
-import gov.cms.madie.models.measure.TestCaseGroupPopulation;
-import gov.cms.madie.models.measure.TestCasePopulationValue;
-import gov.cms.madie.models.measure.TestCaseStratificationValue;
+import gov.cms.madie.models.measure.*;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -644,5 +640,51 @@ public class TestCaseServiceUtil {
       patientGivenName = JsonUtil.getPatientNameQdm(json, "givenNames");
     }
     return patientGivenName;
+  }
+
+  public static TestCaseImportOutcome checkErrorSpecialChar(
+      String model, TestCaseImportRequest testCaseImportRequest) {
+    if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
+      try {
+        checkTestCaseSpecialCharacters(
+            TestCase.builder()
+                .title(
+                    testCaseImportRequest.getGivenNames() != null
+                        ? testCaseImportRequest.getGivenNames().get(0)
+                        : null)
+                .series(testCaseImportRequest.getFamilyName())
+                .build());
+      } catch (InvalidRequestException ex) {
+        return TestCaseImportOutcome.builder()
+            .patientId(testCaseImportRequest.getPatientId())
+            .successful(false)
+            .message(ex.getMessage())
+            .build();
+      } catch (SpecialCharacterException ex) {
+        return TestCaseImportOutcome.builder()
+            .patientId(testCaseImportRequest.getPatientId())
+            .successful(false)
+            .message("Test Cases Group or Title cannot contain special characters.")
+            .build();
+      }
+    }
+    return null;
+  }
+
+  public static void checkTestCaseSpecialCharacters(TestCase testCase) {
+    if (StringUtils.isBlank(testCase.getTitle())) {
+      throw new InvalidRequestException("Test Case title is required.");
+    }
+    Pattern alpahNumeric = Pattern.compile("^[a-zA-Z0-9\s_-]*$");
+    Matcher title = alpahNumeric.matcher(testCase.getTitle());
+    if (!title.matches()) {
+      throw new SpecialCharacterException("Title");
+    }
+    if (StringUtils.isNotBlank(testCase.getSeries())) {
+      Matcher group = alpahNumeric.matcher(testCase.getSeries());
+      if (!group.matches()) {
+        throw new SpecialCharacterException("Group");
+      }
+    }
   }
 }
