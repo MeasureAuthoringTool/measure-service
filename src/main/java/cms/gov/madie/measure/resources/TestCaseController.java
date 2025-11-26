@@ -158,7 +158,7 @@ public class TestCaseController {
 
     // Check locks for all test cases before deleting
     for (String testCaseId : testCaseIds) {
-      checkTestCaseLock(testCaseId, measureId, principal.getName());
+      checkTestCaseLock(testCaseId, principal.getName());
     }
 
     return ResponseEntity.ok(
