@@ -38,7 +38,8 @@ public abstract class AbstractMeasureController {
             measure.getMeasureLock().getLockedBy());
         if (!measure.getMeasureLock().getLockedBy().equalsIgnoreCase(username)) {
           throw new LockNotObtainedException(
-              "Unable to update measure. Measure is locked by another user.");
+              "Unable to update measure. Measure is locked by "
+                  + measure.getMeasureLock().getLockedBy());
         }
       }
     }
