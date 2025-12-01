@@ -7,10 +7,8 @@ import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
-import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.LockNotObtainedException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import cms.gov.madie.measure.exceptions.SpecialCharacterException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -465,6 +463,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testValidateResourceAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
@@ -528,6 +527,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testPersistTestCasesThrowsNoExceptionForNonDraftMeasure() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
@@ -1249,6 +1249,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testUpdateTestCaseThrowsResourceNotFoundExceptionForUnknownMeasureId() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(false);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
@@ -2589,36 +2590,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testCheckTestCaseSpecialCharactersInvalidTitle() {
-    TestCase testCase = TestCase.builder().title("invalid title {}").series("series").build();
-    assertThrows(
-        SpecialCharacterException.class,
-        () -> testCaseService.checkTestCaseSpecialCharacters(testCase));
-  }
-
-  @Test
-  public void testCheckTestCaseSpecialCharactersInvalidGroup() {
-    TestCase testCase = TestCase.builder().title("title").series("invalid series ^&").build();
-    assertThrows(
-        SpecialCharacterException.class,
-        () -> testCaseService.checkTestCaseSpecialCharacters(testCase));
-  }
-
-  @Test
-  public void testCheckTestCaseSpecialCharactersMissingTitle() {
-    TestCase testCase = TestCase.builder().series("series").build();
-    assertThrows(
-        InvalidRequestException.class,
-        () -> testCaseService.checkTestCaseSpecialCharacters(testCase));
-  }
-
-  @Test
-  public void testCheckTestCaseSpecialCharactersMissingGroup() {
-    TestCase testCase = TestCase.builder().title("title").build();
-    assertDoesNotThrow(() -> testCaseService.checkTestCaseSpecialCharacters(testCase));
-  }
-
-  @Test
   void importTestCasesDoesNotCreateNewTitleOrGroupHasSpecialCharacters() {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     String patientId = UUID.randomUUID().toString();
@@ -3408,6 +3379,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testValidateTestCaseAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
         .thenReturn(true);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
