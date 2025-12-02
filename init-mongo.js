@@ -20,7 +20,7 @@ db.runCommand( { rolesInfo: { role: "dbOwner", db: "playground" }, showPrivilege
 db.createUser(
   { user: "gakins",
     pwd: "E5press0",
-    roles: [{ db: "madiecqllibrary", role: "readWrite" }, { db: "madie", role: "readWrite" } ]
+    roles: [{ db: "user", role: "readWrite" }, { db: "madiecqllibrary", role: "readWrite" }, { db: "madie", role: "readWrite" } ]
   }
 );
 
