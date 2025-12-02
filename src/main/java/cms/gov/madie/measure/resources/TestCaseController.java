@@ -133,9 +133,6 @@ public class TestCaseController {
     }
     sanitizeTestCase(testCase);
 
-    // Check lock before updating
-    checkTestCaseLock(testCaseId, principal.getName());
-
     return ResponseEntity.ok(
         testCaseService.updateTestCase(
             testCase, measureId, principal.getName(), accessToken, TestCaseServiceUtil.SAVE));
@@ -155,11 +152,6 @@ public class TestCaseController {
         principal.getName(),
         String.join(", ", testCaseIds),
         measureId);
-
-    // Check locks for all test cases before deleting
-    for (String testCaseId : testCaseIds) {
-      checkTestCaseLock(testCaseId, principal.getName());
-    }
 
     return ResponseEntity.ok(
         testCaseService.deleteTestCases(
@@ -441,13 +433,5 @@ public class TestCaseController {
       return StringUtils.containsIgnoreCase(m2.getModel(), "QI-Core");
     }
     return false;
-  }
-
-  private void checkTestCaseLock(String testCaseId, String username) {
-    var lock = testCaseLockService.findByTestCaseId(testCaseId);
-    if (lock != null && !lock.getLockedBy().equals(username)) {
-      throw new cms.gov.madie.measure.exceptions.LockNotObtainedException(
-          "Test Case [" + testCaseId + "] is locked by another user: " + lock.getLockedBy());
-    }
   }
 }
