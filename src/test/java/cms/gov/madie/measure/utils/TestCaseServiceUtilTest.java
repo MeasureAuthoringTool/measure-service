@@ -15,6 +15,8 @@ import java.util.List;
 import java.util.UUID;
 
 import cms.gov.madie.measure.exceptions.InvalidIdException;
+import cms.gov.madie.measure.exceptions.InvalidRequestException;
+import cms.gov.madie.measure.exceptions.SpecialCharacterException;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
@@ -1458,5 +1460,35 @@ public class TestCaseServiceUtilTest {
         () ->
             TestCaseServiceUtil.checkIfAnyCreatedBeforeVersioning(
                 List.of(testCase), List.of("TESTID"), false));
+  }
+
+  @Test
+  public void testCheckTestCaseSpecialCharactersInvalidTitle() {
+    TestCase testCase = TestCase.builder().title("invalid title {}").series("series").build();
+    assertThrows(
+        SpecialCharacterException.class,
+        () -> TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase));
+  }
+
+  @Test
+  public void testCheckTestCaseSpecialCharactersInvalidGroup() {
+    TestCase testCase = TestCase.builder().title("title").series("invalid series ^&").build();
+    assertThrows(
+        SpecialCharacterException.class,
+        () -> TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase));
+  }
+
+  @Test
+  public void testCheckTestCaseSpecialCharactersMissingTitle() {
+    TestCase testCase = TestCase.builder().series("series").build();
+    assertThrows(
+        InvalidRequestException.class,
+        () -> TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase));
+  }
+
+  @Test
+  public void testCheckTestCaseSpecialCharactersMissingGroup() {
+    TestCase testCase = TestCase.builder().title("title").build();
+    assertDoesNotThrow(() -> TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase));
   }
 }

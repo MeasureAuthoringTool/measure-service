@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import gov.cms.madie.models.measure.TestCase;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureObservation;
@@ -11,7 +12,6 @@ import gov.cms.madie.models.measure.MeasureScoring;
 import gov.cms.madie.models.measure.Population;
 import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.QdmMeasure;
-import gov.cms.madie.models.measure.TestCase;
 import gov.cms.madie.models.measure.TestCaseGroupPopulation;
 import gov.cms.madie.models.measure.TestCasePopulationValue;
 import lombok.extern.slf4j.Slf4j;
@@ -530,11 +530,6 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  public void testRemoveMeasureReportFromJsonThrowsException() {
-    assertThrows(RuntimeException.class, () -> JsonUtil.processJson(null));
-  }
-
-  @Test
   public void testJsonNodeToString() {
     String str = JsonUtil.jsonNodeToString(null, null);
     assertTrue(StringUtils.isAllBlank(str));
@@ -898,29 +893,74 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  public void processJsonChangesTypeToCollection() throws JsonProcessingException {
-    String json = "{ \"type\": \"transaction\", \"entry\": [] }";
-    String result = JsonUtil.processJson(json);
-    assertTrue(result.contains("\"type\":\"collection\""));
+  public void testRemoveMeasureReportFromJsonThrowsException() {
+    assertThrows(RuntimeException.class, () -> JsonUtil.removeMeasureReportEntries(null));
   }
 
   @Test
-  public void processJsonRemovesRequestEntries() throws JsonProcessingException {
-    String json =
-        "{ \"entry\": [ { \"request\": { \"method\": \"POST\" }, \"resource\": { \"resourceType\": \"Patient\" } } ] }";
-    String result = JsonUtil.processJson(json);
-    assertFalse(result.contains("\"request\""));
+  public void removeMeasureReportEntriesThrowsExceptionForEmptyJson() {
+    assertThrows(RuntimeException.class, () -> JsonUtil.removeMeasureReportEntries(""));
   }
 
   @Test
-  public void processJsonThrowsExceptionForEmptyJson() {
-    assertThrows(RuntimeException.class, () -> JsonUtil.processJson(""));
-  }
-
-  @Test
-  public void processJsonHandlesInvalidJson() {
+  public void removeMeasureReportEntriesHandlesInvalidJson() {
     String invalidJson =
         "{ \"type\": \"transaction\", \"entry\": [ { \"resource\": { \"resourceType\": \"Patient\" } ";
-    assertThrows(JsonProcessingException.class, () -> JsonUtil.processJson(invalidJson));
+    assertThrows(
+        JsonProcessingException.class, () -> JsonUtil.removeMeasureReportEntries(invalidJson));
+  }
+
+  @Test
+  public void removeMeasureReportEntriesSuccessfullyRemovesMeasureReport()
+      throws JsonProcessingException {
+    String json =
+        "{ \"entry\": ["
+            + "{ \"resource\": { \"resourceType\": \"MeasureReport\", \"id\": \"mr1\" } },"
+            + "{ \"resource\": { \"resourceType\": \"Patient\", \"id\": \"p1\" } },"
+            + "{ \"resource\": { \"resourceType\": \"Observation\", \"id\": \"obs1\" } }"
+            + "] }";
+    String result = JsonUtil.removeMeasureReportEntries(json);
+    assertFalse(result.contains("\"MeasureReport\""));
+  }
+
+  @Test
+  public void updateBundleTypeAndRemoveRequestUpdatesTypeToCollection()
+      throws JsonProcessingException {
+    String json = "{ \"type\": \"transaction\", \"entry\": [] }";
+    TestCase testCase = new TestCase();
+    testCase.setJson(json);
+    String result = JsonUtil.updateBundleTypeAndRemoveRequest(testCase);
+    assertTrue(result.contains("\"type\":\"collection\""));
+    assertTrue(testCase.isBundleTypeUpdated());
+  }
+
+  @Test
+  public void updateBundleTypeAndRemoveRequestRemovesRequestEntries()
+      throws JsonProcessingException {
+    String json =
+        "{ \"entry\": [ { \"request\": { \"method\": \"POST\" }, \"resource\": { \"resourceType\": \"Patient\" } } ] }";
+    TestCase testCase = new TestCase();
+    testCase.setJson(json);
+    String result = JsonUtil.updateBundleTypeAndRemoveRequest(testCase);
+    assertFalse(result.contains("\"request\""));
+    // type is not updated, so flag should be false
+    assertFalse(testCase.isBundleTypeUpdated());
+  }
+
+  @Test
+  public void updateBundleTypeAndRemoveRequestThrowsExceptionForEmptyJson() {
+    TestCase testCase = new TestCase();
+    testCase.setJson("");
+    assertThrows(RuntimeException.class, () -> JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
+  }
+
+  @Test
+  public void processJsonWithoutMeasureReportRemovalHandlesInvalidJson() {
+    String invalidJson =
+        "{ \"type\": \"transaction\", \"entry\": [ { \"resource\": { \"resourceType\": \"Patient\" } ";
+    TestCase testCase = new TestCase();
+    testCase.setJson(invalidJson);
+    assertThrows(
+        JsonProcessingException.class, () -> JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
   }
 }
