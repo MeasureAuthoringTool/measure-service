@@ -22,7 +22,6 @@ import gov.cms.madie.models.cqm.datacriteria.RelatedPerson;
 import gov.cms.madie.models.cqm.datacriteria.Symptom;
 import gov.cms.madie.models.cqm.datacriteria.basetypes.DataElement;
 import gov.cms.madie.models.cqm.datacriteria.basetypes.Interval;
-import gov.cms.madie.models.measure.FhirMeasure;
 import gov.cms.madie.models.measure.QdmMeasure;
 import org.apache.commons.collections4.CollectionUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -50,8 +49,6 @@ public class TestCaseShiftDatesServiceQdmTest {
   private TestCase testCase;
   private static final String JSON =
       "{\"qdmVersion\":\"5.6\",\"dataElements\":[{\"dataElementCodes\":[{\"code\":\"14463-4\",\"system\":\"2.16.840.1.113883.6.1\",\"version\":null,\"display\":\"Chlamydia trachomatis [Presence] in Cervix by Organism specific culture\"}],\"_id\":\"666b3dda1d026b000017e20b\",\"performer\":[],\"relatedTo\":[],\"qdmTitle\":\"Laboratory Test, Performed\",\"hqmfOid\":\"2.16.840.1.113883.10.20.28.4.42\",\"qdmCategory\":\"laboratory_test\",\"qdmStatus\":\"performed\",\"qdmVersion\":\"5.6\",\"_type\":\"QDM::LaboratoryTestPerformed\",\"description\":\"Laboratory Test, Performed: Chlamydia Screening\",\"codeListId\":\"2.16.840.1.113883.3.464.1003.110.12.1052\",\"id\":\"666b3dda1d026b000017e20a\",\"components\":[{\"qdmVersion\":\"5.6\",\"_type\":\"QDM::Component\",\"_id\":\"666b3e2e1d026b000017e28d\",\"code\":{\"code\":\"105604006\",\"system\":\"2.16.840.1.113883.6.96\",\"version\":null,\"display\":\"Deficiency of naturally occurring coagulation factor inhibitor (disorder)\"}}],\"relevantPeriod\":{\"low\":\"2024-02-29T00:00:00.000+00:00\",\"high\":\"2024-06-28T00:00:00.000+00:00\",\"lowClosed\":true,\"highClosed\":true},\"relevantDatetime\":\"2024-06-29T00:00:00.000+00:00\",\"authorDatetime\":\"2024-02-29T00:00:00.000+00:00\",\"resultDatetime\":\"2024-02-29T00:00:00.000+00:00\"}],\"_id\":\"66698bcec3b50c0000acc383\"}";
-  private static final String JSON2 =
-      "\"qdmVersion\":\"5.6\",\"dataElements\":[{\"dataElementCodes\":[{\"code\":\"14463-4\",\"system\":\"2.16.840.1.113883.6.1\",\"version\":null,\"display\":\"Chlamydia trachomatis [Presence] in Cervix by Organism specific culture\"}],\"_id\":\"666b3dda1d026b000017e20b\",\"performer\":[],\"relatedTo\":[],\"qdmTitle\":\"Laboratory Test, Performed\",\"hqmfOid\":\"2.16.840.1.113883.10.20.28.4.42\",\"qdmCategory\":\"laboratory_test\",\"qdmStatus\":\"performed\",\"qdmVersion\":\"5.6\",\"_type\":\"QDM::LaboratoryTestPerformed\",\"description\":\"Laboratory Test, Performed: Chlamydia Screening\",\"codeListId\":\"2.16.840.1.113883.3.464.1003.110.12.1052\",\"id\":\"666b3dda1d026b000017e20a\",\"components\":[{\"qdmVersion\":\"5.6\",\"_type\":\"QDM::Component\",\"_id\":\"666b3e2e1d026b000017e28d\",\"code\":{\"code\":\"105604006\",\"system\":\"2.16.840.1.113883.6.96\",\"version\":null,\"display\":\"Deficiency of naturally occurring coagulation factor inhibitor (disorder)\"}}],\"relevantPeriod\":{\"low\":\"2024-02-29T00:00:00.000+00:00\",\"high\":\"2024-06-28T00:00:00.000+00:00\",\"lowClosed\":true,\"highClosed\":true},\"relevantDatetime\":\"2024-06-29T00:00:00.000+00:00\",\"authorDatetime\":\"2024-02-29T00:00:00.000+00:00\",\"resultDatetime\":\"2024-02-29T00:00:00.000+00:00\"}],\"_id\":\"66698bcec3b50c0000acc383\"}";
 
   private static final String dateTimeString = "2024-02-29T00:00:00.000Z";
 
@@ -60,33 +57,6 @@ public class TestCaseShiftDatesServiceQdmTest {
     testCase = new TestCase();
     testCase.setId("TESTID");
     testCase.setJson(JSON);
-  }
-
-  @Test
-  void shiftTestCaseDatesInvalidModelType() {
-    FhirMeasure fhirMeasure =
-        FhirMeasure.builder()
-            .id("ID")
-            .measureSetId("IDIDID")
-            .measureName("MSR01")
-            .version(new Version(0, 0, 1))
-            .createdBy("test.user")
-            .build();
-    fhirMeasure.setTestCases(List.of(testCase));
-    doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
-
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-
-    assertThrows(
-        ResourceNotFoundException.class,
-        () ->
-            qdmTestCaseShiftDatesService.shiftTestCaseDates(
-                fhirMeasure.getId(),
-                List.of(fhirMeasure.getTestCases().get(0).getId()),
-                1,
-                "TOKEN",
-                principal));
   }
 
   @Test
@@ -100,7 +70,6 @@ public class TestCaseShiftDatesServiceQdmTest {
             .createdBy("test.user")
             .build();
     qdmMeasure.setTestCases(List.of(testCase));
-    doReturn(qdmMeasure).when(measureService).findMeasureById(qdmMeasure.getId());
 
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -109,14 +78,10 @@ public class TestCaseShiftDatesServiceQdmTest {
         .when(testCaseService)
         .updateTestCase(any(), anyString(), anyString(), anyString());
 
-    List<String> failedTestCases =
+    List<String> shiftedTestCaseIds =
         qdmTestCaseShiftDatesService.shiftTestCaseDates(
-            qdmMeasure.getId(),
-            List.of(qdmMeasure.getTestCases().get(0).getId()),
-            1,
-            "TOKEN",
-            principal);
-    assertTrue(CollectionUtils.isEmpty(failedTestCases));
+            qdmMeasure, List.of(qdmMeasure.getTestCases().get(0).getId()), 1, "TOKEN", principal);
+    assertTrue(CollectionUtils.isNotEmpty(shiftedTestCaseIds));
   }
 
   @Test
@@ -182,51 +147,12 @@ public class TestCaseShiftDatesServiceQdmTest {
   }
 
   @Test
-  public void shiftAllTestCaseDates() {
-    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
-        .thenReturn(List.of(testCase));
-
-    List<TestCase> modified =
-        qdmTestCaseShiftDatesService.shiftAllTestCaseDates(
-            "TestMeasureId", 1, "test.user", "TOKEN");
-
-    assertNotNull(modified);
-    assertEquals(modified.size(), 1);
-    assertTrue(modified.get(0).getJson().contains("2025"));
-  }
-
-  @Test
-  public void shiftAllTestCaseDatesNoResourceFound() {
-    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
-        .thenReturn(Collections.emptyList());
-
-    assertThrows(
-        ResourceNotFoundException.class,
-        () ->
-            qdmTestCaseShiftDatesService.shiftAllTestCaseDates(
-                "TestMeasureId", 1, "test.user", "TOKEN"));
-  }
-
-  @Test
   public void shiftDatesForTestCaseNoJson() {
     assertThrows(
         CqmConversionException.class,
         () ->
             qdmTestCaseShiftDatesService.shiftDatesForTestCase(
                 TestCase.builder().id("testCaseId").build(), 1));
-  }
-
-  @Test
-  public void shiftAllTestCaseDatesWithError() {
-    TestCase testCase2 = TestCase.builder().id("TESTID2").json(JSON2).build();
-    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
-        .thenReturn(List.of(testCase, testCase2));
-
-    assertThrows(
-        CqmConversionException.class,
-        () ->
-            qdmTestCaseShiftDatesService.shiftAllTestCaseDates(
-                "TestMeasureId", 1, "test.user", "TOKEN"));
   }
 
   @Test
@@ -242,8 +168,6 @@ public class TestCaseShiftDatesServiceQdmTest {
             .testCases(List.of(testCase, testCase2))
             .build();
 
-    doReturn(qdmMeasure).when(measureService).findMeasureById(qdmMeasure.getId());
-
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
@@ -251,53 +175,18 @@ public class TestCaseShiftDatesServiceQdmTest {
         .thenReturn(testCase)
         .thenThrow(CqmConversionException.class);
 
-    List<String> failedTestCases =
+    List<String> shiftedTestCaseIds =
         qdmTestCaseShiftDatesService.shiftTestCaseDates(
-            qdmMeasure.getId(),
+            qdmMeasure,
             List.of(
                 qdmMeasure.getTestCases().get(0).getId(), qdmMeasure.getTestCases().get(1).getId()),
             1,
             "TOKEN",
             principal);
-    assertFalse(CollectionUtils.isEmpty(failedTestCases));
-    assertTrue(failedTestCases.size() == 1);
-    assertEquals("TITLE2", failedTestCases.get(0));
-  }
 
-  @Test
-  void testShiftTestCaseDatesHasSeries() {
-    TestCase testCase2 =
-        TestCase.builder().id("TESTID2").series("SERIES2").title("TITLE2").json(JSON).build();
-    QdmMeasure qdmMeasure =
-        QdmMeasure.builder()
-            .id("ID")
-            .measureSetId("IDIDID")
-            .measureName("MSR01")
-            .version(new Version(0, 0, 1))
-            .createdBy("test.user")
-            .testCases(List.of(testCase, testCase2))
-            .build();
-
-    doReturn(qdmMeasure).when(measureService).findMeasureById(qdmMeasure.getId());
-
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-
-    when(testCaseService.updateTestCase(any(), anyString(), anyString(), anyString()))
-        .thenReturn(testCase)
-        .thenThrow(CqmConversionException.class);
-
-    List<String> failedTestCases =
-        qdmTestCaseShiftDatesService.shiftTestCaseDates(
-            qdmMeasure.getId(),
-            List.of(
-                qdmMeasure.getTestCases().get(0).getId(), qdmMeasure.getTestCases().get(1).getId()),
-            1,
-            "TOKEN",
-            principal);
-    assertFalse(CollectionUtils.isEmpty(failedTestCases));
-    assertTrue(failedTestCases.size() == 1);
-    assertEquals("SERIES2 - TITLE2", failedTestCases.get(0));
+    assertFalse(CollectionUtils.isEmpty(shiftedTestCaseIds));
+    assertTrue(shiftedTestCaseIds.size() == 1);
+    assertEquals(testCase.getId(), shiftedTestCaseIds.get(0));
   }
 
   @Test
@@ -327,8 +216,6 @@ public class TestCaseShiftDatesServiceQdmTest {
             .testCases(List.of(testCase, testCase2))
             .build();
 
-    doReturn(qdmMeasure).when(measureService).findMeasureById(qdmMeasure.getId());
-
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
@@ -341,7 +228,7 @@ public class TestCaseShiftDatesServiceQdmTest {
 
     List<String> failedTestCases =
         qdmTestCaseShiftDatesService.shiftTestCaseDates(
-            qdmMeasure.getId(),
+            qdmMeasure,
             List.of(
                 qdmMeasure.getTestCases().get(0).getId(), qdmMeasure.getTestCases().get(1).getId()),
             1,
@@ -349,7 +236,7 @@ public class TestCaseShiftDatesServiceQdmTest {
             principal);
     assertFalse(CollectionUtils.isEmpty(failedTestCases));
     assertTrue(failedTestCases.size() == 1);
-    assertEquals("TITLE2", failedTestCases.get(0));
+    assertEquals("TESTID", failedTestCases.get(0));
   }
 
   @Test
@@ -367,8 +254,6 @@ public class TestCaseShiftDatesServiceQdmTest {
             .testCases(List.of(testCase, testCase2))
             .build();
 
-    doReturn(qdmMeasure).when(measureService).findMeasureById(qdmMeasure.getId());
-
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
@@ -381,7 +266,7 @@ public class TestCaseShiftDatesServiceQdmTest {
 
     List<String> failedTestCases =
         qdmTestCaseShiftDatesService.shiftTestCaseDates(
-            qdmMeasure.getId(),
+            qdmMeasure,
             List.of(
                 qdmMeasure.getTestCases().get(0).getId(), qdmMeasure.getTestCases().get(1).getId()),
             1,
@@ -389,7 +274,7 @@ public class TestCaseShiftDatesServiceQdmTest {
             principal);
     assertFalse(CollectionUtils.isEmpty(failedTestCases));
     assertTrue(failedTestCases.size() == 1);
-    assertEquals("SERIES2 - TITLE2", failedTestCases.get(0));
+    assertEquals("TESTID", failedTestCases.get(0));
   }
 
   @Test
@@ -406,8 +291,6 @@ public class TestCaseShiftDatesServiceQdmTest {
             .testCases(List.of(testCase, testCase2))
             .build();
 
-    doReturn(qdmMeasure).when(measureService).findMeasureById(qdmMeasure.getId());
-
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
@@ -420,48 +303,12 @@ public class TestCaseShiftDatesServiceQdmTest {
         LockNotObtainedException.class,
         () ->
             qdmTestCaseShiftDatesService.shiftTestCaseDates(
-                qdmMeasure.getId(),
+                qdmMeasure,
                 List.of(
                     qdmMeasure.getTestCases().get(0).getId(),
                     qdmMeasure.getTestCases().get(1).getId()),
                 1,
                 "TOKEN",
                 principal));
-  }
-
-  @Test
-  void testShiftAllTestCaseDatesWhenFeatureFlagOn() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
-    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
-        .thenReturn(List.of(testCase));
-    when(testCaseLockService.lockAllTestCases(anyString(), any(List.class), anyString()))
-        .thenReturn(Collections.emptyList());
-    when(testCaseLockService.unlockAllTestCases(any(List.class), anyString())).thenReturn(true);
-
-    List<TestCase> modified =
-        qdmTestCaseShiftDatesService.shiftAllTestCaseDates(
-            "TestMeasureId", 1, "test.user", "TOKEN");
-
-    assertNotNull(modified);
-    assertEquals(modified.size(), 1);
-    assertTrue(modified.get(0).getJson().contains("2025"));
-  }
-
-  @Test
-  void testShiftAllTestCaseDatesWhenLockingFails() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
-    TestCase testCase2 = TestCase.builder().id("TESTID2").title("TITLE2").json(JSON).build();
-    when(testCaseService.findTestCasesByMeasureId(anyString(), anyString()))
-        .thenReturn(List.of(testCase, testCase2));
-    LockInfo lock = LockInfo.builder().lockedId("TESTID2").lockedBy("another.user").build();
-    when(testCaseLockService.lockAllTestCases(anyString(), any(List.class), anyString()))
-        .thenReturn(List.of(lock));
-    when(testCaseLockService.unlockAllTestCases(any(List.class), anyString())).thenReturn(true);
-
-    assertThrows(
-        LockNotObtainedException.class,
-        () ->
-            qdmTestCaseShiftDatesService.shiftAllTestCaseDates(
-                "TestMeasureId", 1, "test.user", "TOKEN"));
   }
 }

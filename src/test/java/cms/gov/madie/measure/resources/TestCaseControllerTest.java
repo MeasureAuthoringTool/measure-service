@@ -4,6 +4,7 @@ import cms.gov.madie.measure.dto.BulkTestCaseResult;
 import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
+import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.MeasureService;
 import gov.cms.madie.models.measure.*;
@@ -388,11 +389,12 @@ public class TestCaseControllerTest {
   void shiftQdmTestCaseDates() {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
-
+    measure.setTestCases(List.of(testCase));
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
     doReturn(List.of(testCase.getId()))
         .when(qdmTestCaseShiftDatesService)
         .shiftTestCaseDates(
-            any(String.class), anyList(), any(Integer.class), any(String.class), any());
+            any(Measure.class), anyList(), any(Integer.class), any(String.class), any());
     ResponseEntity<Map<String, Object>> response =
         controller.shiftQdmTestCaseDates(
             measure.getId(), List.of(testCase.getId()), 1, "TOKEN", principal);
@@ -400,7 +402,7 @@ public class TestCaseControllerTest {
     assertNotNull(response.getBody());
     @SuppressWarnings("unchecked")
     List<String> shiftedIds = (List<String>) response.getBody().get("shifted");
-    assertEquals(testCase.getId(), shiftedIds.get(0));
+    assertEquals(testCase.getSeries() + " - " + testCase.getTitle(), shiftedIds.get(0));
 
     @SuppressWarnings("unchecked")
     List<String> failed = (List<String>) response.getBody().get("failed");
@@ -413,18 +415,25 @@ public class TestCaseControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     testCase.setJson("Date2");
-    TestCase testCase2 = TestCase.builder().json("Date3").build();
-    doReturn(List.of(testCase, testCase2))
+    TestCase testCase2 = TestCase.builder().id("testCaseId2").json("Date3").build();
+    measure.setTestCases(List.of(testCase, testCase2));
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    doReturn(List.of(testCase.getId(), testCase2.getId()))
         .when(qdmTestCaseShiftDatesService)
-        .shiftAllTestCaseDates(
-            any(String.class), any(Integer.class), any(String.class), anyString());
-    ResponseEntity<List<TestCase>> response =
+        .shiftTestCaseDates(
+            any(Measure.class), anyList(), any(Integer.class), any(String.class), any());
+
+    ResponseEntity<Map<String, Object>> response =
         controller.shiftAllQdmTestCaseDates(measure.getId(), 1, "TOKEN", principal);
 
     assertNotNull(response.getBody());
     assertEquals(response.getBody().size(), 2);
-    assertEquals("Date2", response.getBody().get(0).getJson());
-    assertEquals("Date3", response.getBody().get(1).getJson());
+
+    @SuppressWarnings("unchecked")
+    List<String> shiftedIds = (List<String>) response.getBody().get("shifted");
+    assertEquals(2, shiftedIds.size());
+    assertEquals(testCase.getSeries() + " - " + testCase.getTitle(), shiftedIds.get(0));
+    assertEquals(testCase2.getTitle(), shiftedIds.get(1));
   }
 
   @Test
@@ -521,7 +530,7 @@ public class TestCaseControllerTest {
     @SuppressWarnings("unchecked")
     List<String> failedIds = (List<String>) response.getBody().get("failed");
     assertEquals(1, failedIds.size());
-    assertEquals(testCase.getId(), failedIds.get(0));
+    assertEquals(testCase.getSeries() + " - " + testCase.getTitle(), failedIds.get(0));
   }
 
   @Test
@@ -557,9 +566,6 @@ public class TestCaseControllerTest {
             .build();
     fhirMeasure.setTestCases(List.of(testCase));
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
-    doReturn(fhirMeasure.getTestCases())
-        .when(testCaseService)
-        .findTestCasesByMeasureId(anyString(), anyString());
 
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -599,9 +605,6 @@ public class TestCaseControllerTest {
             testCase,
             TestCase.builder().id("7890").title("bad").series("testCase").json("").build()));
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
-    doReturn(fhirMeasure.getTestCases())
-        .when(testCaseService)
-        .findTestCasesByMeasureId(anyString(), anyString());
 
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -624,7 +627,7 @@ public class TestCaseControllerTest {
     @SuppressWarnings("unchecked")
     List<String> failedIds = (List<String>) response.getBody().get("failed");
     assertEquals(1, failedIds.size());
-    assertEquals("7890", failedIds.get(0));
+    assertEquals("testCase - bad", failedIds.get(0));
   }
 
   @Test
@@ -670,5 +673,100 @@ public class TestCaseControllerTest {
         () ->
             controller.shiftQiCoreTestCaseDates(
                 qdmMeasure.getId(), List.of(testCase.getId()), 1, "TOKEN", principal));
+  }
+
+  @Test
+  void shiftQdmTestCaseDatesThrowsResourceNotFoundException() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    FhirMeasure fhirMeasure =
+        FhirMeasure.builder()
+            .id("someId")
+            .measureSetId("setId")
+            .measureName("name")
+            .version(new Version(1, 0, 0))
+            .createdBy("user")
+            .build();
+    fhirMeasure.setTestCases(List.of(testCase));
+    when(measureService.findMeasureById(anyString())).thenReturn(fhirMeasure);
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () ->
+            controller.shiftQdmTestCaseDates(
+                measure.getId(), List.of(testCase.getId()), 1, "TOKEN", principal));
+  }
+
+  @Test
+  void shiftQdmTestCaseDatesLockedBySelf() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    measure.setTestCases(List.of(testCase));
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(testCaseLockService.findByTestCaseId(anyString()))
+        .thenReturn(TestCaseLock.builder().lockedBy("test.user").build());
+    doReturn(List.of(testCase.getId()))
+        .when(qdmTestCaseShiftDatesService)
+        .shiftTestCaseDates(
+            any(Measure.class), anyList(), any(Integer.class), any(String.class), any());
+    ResponseEntity<Map<String, Object>> response =
+        controller.shiftQdmTestCaseDates(
+            measure.getId(), List.of(testCase.getId()), 1, "TOKEN", principal);
+
+    assertNotNull(response.getBody());
+    @SuppressWarnings("unchecked")
+    List<String> shiftedIds = (List<String>) response.getBody().get("shifted");
+    assertEquals(testCase.getSeries() + " - " + testCase.getTitle(), shiftedIds.get(0));
+
+    @SuppressWarnings("unchecked")
+    List<String> failed = (List<String>) response.getBody().get("failed");
+    assertTrue(failed.isEmpty());
+  }
+
+  @Test
+  void shiftQdmTestCaseDatesWithLockeAndFailedTestCases() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    TestCase testCase2 = testCase.toBuilder().id("testCaseId2").build();
+    TestCase testCase3 =
+        testCase.toBuilder().id("testCaseId3").series(null).title("testCaseTitle3").build();
+    TestCase testCase4 =
+        testCase.toBuilder()
+            .id("testCaseId4")
+            .series("testCaseSeries4")
+            .title("testCaseTitle4")
+            .build();
+    testCase.setSeries(null);
+    measure.setTestCases(List.of(testCase, testCase2, testCase3, testCase4));
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(testCaseLockService.findByTestCaseId("TESTID")).thenReturn(null);
+    when(testCaseLockService.findByTestCaseId("testCaseId2"))
+        .thenReturn(TestCaseLock.builder().lockedBy("test.user2").build());
+    when(testCaseLockService.findByTestCaseId("testCaseId3")).thenReturn(null);
+    when(testCaseLockService.findByTestCaseId("testCaseId4")).thenReturn(null);
+    doReturn(List.of(testCase.getId()))
+        .when(qdmTestCaseShiftDatesService)
+        .shiftTestCaseDates(
+            any(Measure.class), anyList(), any(Integer.class), any(String.class), any());
+    ResponseEntity<Map<String, Object>> response =
+        controller.shiftQdmTestCaseDates(
+            measure.getId(),
+            List.of(testCase.getId(), testCase2.getId(), testCase3.getId(), testCase4.getId()),
+            1,
+            "TOKEN",
+            principal);
+
+    assertNotNull(response.getBody());
+    @SuppressWarnings("unchecked")
+    List<String> shiftedIds = (List<String>) response.getBody().get("shifted");
+    assertEquals(testCase.getTitle(), shiftedIds.get(0));
+
+    @SuppressWarnings("unchecked")
+    List<String> failed = (List<String>) response.getBody().get("failed");
+    assertFalse(failed.isEmpty());
+    assertEquals(testCase2.getSeries() + " - " + testCase2.getTitle(), failed.get(0));
+    assertEquals(testCase3.getTitle(), failed.get(1));
+    assertEquals(testCase4.getSeries() + " - " + testCase4.getTitle(), failed.get(2));
   }
 }
