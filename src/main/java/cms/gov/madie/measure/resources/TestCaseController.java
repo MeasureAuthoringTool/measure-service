@@ -208,8 +208,34 @@ public class TestCaseController {
       @RequestHeader("Authorization") String accessToken,
       Principal principal) {
 
-    final String username = principal.getName();
+    Measure measure = checkMeasure(measureId, principal);
 
+    List<String> unlockedIds = filterOutUnlocked(testCaseIds, principal.getName());
+
+    List<String> shiftedIds =
+        qdmTestCaseShiftDatesService.shiftTestCaseDates(
+            measure, unlockedIds, shifted, accessToken, principal);
+    List<String> failedIds =
+        testCaseIds.stream().filter(testCaseId -> !shiftedIds.contains(testCaseId)).toList();
+
+    List<TestCase> testCases =
+        measure.getTestCases().stream()
+            .filter(testCase -> testCaseIds.contains(testCase.getId()))
+            .toList();
+
+    return ResponseEntity.ok(populateShiftedAndFailed(testCases, shiftedIds, failedIds));
+  }
+
+  private Measure checkMeasure(String measureId, Principal principal) {
+    Measure measure = measureService.findMeasureById(measureId);
+    measureService.verifyAuthorization(principal.getName(), measure);
+    if (measure instanceof FhirMeasure) {
+      throw new ResourceNotFoundException("QDM Measure", measureId);
+    }
+    return measure;
+  }
+
+  private List<String> filterOutUnlocked(List<String> testCaseIds, String username) {
     // Filter out locked test cases
     List<String> unlocked = new ArrayList<>();
     List<String> failed = new ArrayList<>();
@@ -222,27 +248,63 @@ public class TestCaseController {
       }
       unlocked.add(testCaseId);
     }
+    return unlocked;
+  }
 
-    List<String> shiftedIds =
-        qdmTestCaseShiftDatesService.shiftTestCaseDates(
-            measureId, unlocked, shifted, accessToken, principal);
+  private Map<String, Object> populateShiftedAndFailed(
+      List<TestCase> allTestCases, List<String> shiftedIds, List<String> failedIds) {
+    List<String> shiftedTestCases =
+        new ArrayList<>(
+            allTestCases.stream()
+                .filter(testCase -> shiftedIds.contains(testCase.getId()))
+                .map(
+                    testCase ->
+                        StringUtils.isBlank(testCase.getSeries())
+                            ? testCase.getTitle()
+                            : testCase.getSeries() + " - " + testCase.getTitle())
+                .toList());
+
+    List<String> failedTestCases =
+        new ArrayList<>(
+            allTestCases.stream()
+                .filter(testCase -> failedIds.contains(testCase.getId()))
+                .map(
+                    testCase ->
+                        StringUtils.isBlank(testCase.getSeries())
+                            ? testCase.getTitle()
+                            : testCase.getSeries() + " - " + testCase.getTitle())
+                .toList());
 
     Map<String, Object> response = new HashMap<>();
-    response.put("shifted", shiftedIds);
-    response.put("failed", failed);
-
-    return ResponseEntity.ok(response);
+    response.put("shifted", shiftedTestCases);
+    response.put("failed", failedTestCases);
+    log.info("shift dates qdm shiftedTestCases: " + shiftedTestCases.toString());
+    log.info("shift dates qdm failedTestCases: " + failedTestCases.toString());
+    return response;
   }
 
   @GetMapping(ControllerUtil.TEST_CASES + "/qdm/shift-all-dates")
-  public ResponseEntity<List<TestCase>> shiftAllQdmTestCaseDates(
+  public ResponseEntity<Map<String, Object>> shiftAllQdmTestCaseDates(
       @PathVariable String measureId,
       @RequestParam(name = "shifted", defaultValue = "0") int shifted,
       @RequestHeader("Authorization") String accessToken,
       Principal principal) {
+
+    Measure measure = checkMeasure(measureId, principal);
+
+    List<String> testCaseIds =
+        measure.getTestCases().stream().map(testCase -> testCase.getId()).toList();
+
+    List<String> unlockedIds = filterOutUnlocked(testCaseIds, principal.getName());
+
+    List<String> shiftedIds =
+        qdmTestCaseShiftDatesService.shiftTestCaseDates(
+            measure, unlockedIds, shifted, accessToken, principal);
+    List<String> failedIds =
+        testCaseIds.stream().filter(testCaseId -> !shiftedIds.contains(testCaseId)).toList();
+
     return ResponseEntity.ok(
-        qdmTestCaseShiftDatesService.shiftAllTestCaseDates(
-            measureId, shifted, principal.getName(), accessToken));
+        populateShiftedAndFailed(measure.getTestCases(), shiftedIds, failedIds));
   }
 
   @PutMapping(ControllerUtil.TEST_CASES + "/qicore/shift-dates")
@@ -252,44 +314,51 @@ public class TestCaseController {
       @RequestParam(name = "shifted", defaultValue = "0") int shifted,
       @RequestHeader("Authorization") String accessToken,
       Principal principal) {
+
+    Measure measure = checkQiCoreMeasure(measureId, principal);
+
+    List<String> unlockedIds = filterOutUnlocked(testCaseIds, principal.getName());
+
+    return ResponseEntity.ok(
+        populateShiftedAndFailedQiCore(
+            measure, testCaseIds, unlockedIds, shifted, accessToken, principal.getName()));
+  }
+
+  private Measure checkQiCoreMeasure(String measureId, Principal principal) {
     Measure measure = measureService.findMeasureById(measureId);
     measureService.verifyAuthorization(principal.getName(), measure);
     if (measure instanceof QdmMeasure) {
       throw new ResourceNotFoundException("QICore Measure", measureId);
     }
+    return measure;
+  }
 
-    final String username = principal.getName();
-    List<String> lockedIds = new ArrayList<>();
-
-    // Filter out locked test cases
-    List<String> unlockedIds =
-        testCaseIds.stream()
-            .filter(
-                id -> {
-                  var lock = testCaseLockService.findByTestCaseId(id);
-                  boolean isLocked = lock != null && !lock.getLockedBy().equals(username);
-                  if (isLocked) {
-                    lockedIds.add(id);
-                  }
-                  return !isLocked;
-                })
+  private Map<String, Object> populateShiftedAndFailedQiCore(
+      Measure measure,
+      List<String> testCaseIds,
+      List<String> unlockedIds,
+      int shifted,
+      String accessToken,
+      String username) {
+    List<TestCase> testCasesToBeShifted =
+        measure.getTestCases().stream()
+            .filter(testCase -> testCaseIds.contains(testCase.getId()))
             .toList();
-
-    List<TestCase> testCases =
+    List<TestCase> unlockedTestCases =
         measure.getTestCases().stream()
             .filter(testCase -> unlockedIds.contains(testCase.getId()))
             .toList();
 
     List<TestCase> shiftedTestCases =
         testCaseService.shiftQiCoreTestCaseDates(
-            testCases, shifted, accessToken, measureId, username);
+            unlockedTestCases, shifted, accessToken, measure.getId(), username);
     List<String> savedTestCaseIds = new ArrayList<>();
 
     for (TestCase shiftedTestCase : shiftedTestCases) {
       try {
         TestCase updatedTestCase =
             testCaseService.updateTestCase(
-                shiftedTestCase, measureId, username, accessToken, TestCaseServiceUtil.SAVE);
+                shiftedTestCase, measure.getId(), username, accessToken, TestCaseServiceUtil.SAVE);
         savedTestCaseIds.add(updatedTestCase.getId());
       } catch (Exception e) {
         log.error(
@@ -298,20 +367,33 @@ public class TestCaseController {
             e);
       }
     }
-
+    List<String> shiftedTestCasesInfo =
+        new ArrayList<>(
+            shiftedTestCases.stream()
+                .filter(testCase -> savedTestCaseIds.contains(testCase.getId()))
+                .map(
+                    testCase ->
+                        testCase.getSeries() != null
+                            ? testCase.getSeries() + " - " + testCase.getTitle()
+                            : testCase.getTitle())
+                .toList());
     List<String> failedTestCases =
         new ArrayList<>(
-            testCases.stream()
+            testCasesToBeShifted.stream()
                 .filter(testCase -> !savedTestCaseIds.contains(testCase.getId()))
-                .map(TestCase::getId)
+                .map(
+                    testCase ->
+                        testCase.getSeries() != null
+                            ? testCase.getSeries() + " - " + testCase.getTitle()
+                            : testCase.getTitle())
                 .toList());
-    failedTestCases.addAll(lockedIds);
 
     Map<String, Object> response = new HashMap<>();
     response.put("shifted", savedTestCaseIds);
     response.put("failed", failedTestCases);
-
-    return ResponseEntity.ok(response);
+    log.info("shift dates qi-core shiftedTestCases: " + shiftedTestCasesInfo.toString());
+    log.info("shift dates qi-core failedTestCases: " + failedTestCases.toString());
+    return response;
   }
 
   /**
@@ -331,62 +413,16 @@ public class TestCaseController {
       @RequestParam(name = "shifted", defaultValue = "0") int shifted,
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
-    Measure measure = measureService.findMeasureById(measureId);
-    measureService.verifyAuthorization(principal.getName(), measure);
-    if (measure instanceof QdmMeasure) {
-      throw new ResourceNotFoundException("QICore Measure", measureId);
-    }
 
-    final String username = principal.getName();
-    List<TestCase> allTestCases = testCaseService.findTestCasesByMeasureId(measureId, username);
+    Measure measure = checkQiCoreMeasure(measureId, principal);
 
-    // Filter out locked test cases
-    List<String> lockedIds = new ArrayList<>();
-    List<TestCase> unlockedTestCases =
-        allTestCases.stream()
-            .filter(
-                tc -> {
-                  var lock = testCaseLockService.findByTestCaseId(tc.getId());
-                  boolean isLocked = lock != null && !lock.getLockedBy().equals(username);
-                  if (isLocked) {
-                    lockedIds.add(tc.getId());
-                  }
-                  return !isLocked;
-                })
-            .toList();
+    List<String> testCaseIds =
+        measure.getTestCases().stream().map(testCase -> testCase.getId()).toList();
+    List<String> unlockedIds = filterOutUnlocked(testCaseIds, principal.getName());
 
-    List<TestCase> shiftedTestCases =
-        testCaseService.shiftQiCoreTestCaseDates(
-            unlockedTestCases, shifted, accessToken, measureId, username);
-    List<String> savedTestCaseIds = new ArrayList<>();
-
-    for (TestCase shiftedTestCase : shiftedTestCases) {
-      try {
-        TestCase updatedTestCase =
-            testCaseService.updateTestCase(
-                shiftedTestCase, measureId, username, accessToken, TestCaseServiceUtil.SAVE);
-        savedTestCaseIds.add(updatedTestCase.getId());
-      } catch (Exception e) {
-        log.error(
-            "Unable to save Test Case [{}] after successfully shifting dates:",
-            shiftedTestCase.getId(),
-            e);
-      }
-    }
-
-    List<String> failedTestCases =
-        new ArrayList<>(
-            unlockedTestCases.stream()
-                .filter(testCase -> !savedTestCaseIds.contains(testCase.getId()))
-                .map(TestCase::getId)
-                .toList());
-    failedTestCases.addAll(lockedIds);
-
-    Map<String, Object> response = new HashMap<>();
-    response.put("shifted", savedTestCaseIds);
-    response.put("failed", failedTestCases);
-
-    return ResponseEntity.ok(response);
+    return ResponseEntity.ok(
+        populateShiftedAndFailedQiCore(
+            measure, testCaseIds, unlockedIds, shifted, accessToken, principal.getName()));
   }
 
   @PutMapping(ControllerUtil.TEST_CASES + "/copy-to")
