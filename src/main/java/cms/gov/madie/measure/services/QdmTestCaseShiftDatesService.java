@@ -3,15 +3,12 @@ package cms.gov.madie.measure.services;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 
 import java.security.Principal;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
-import gov.cms.madie.models.measure.FhirMeasure;
 import gov.cms.madie.models.measure.Measure;
 import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -23,7 +20,6 @@ import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.exceptions.CqmConversionException;
 import cms.gov.madie.measure.exceptions.LockNotObtainedException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 
 import gov.cms.madie.models.cqm.datacriteria.basetypes.DataElement;
 import gov.cms.madie.models.cqm.datacriteria.basetypes.TestCaseJson;
@@ -35,7 +31,6 @@ import lombok.extern.slf4j.Slf4j;
 public class QdmTestCaseShiftDatesService {
 
   private final TestCaseService testCaseService;
-  private final MeasureService measureService;
   private final TestCaseLockService testCaseLockService;
   private final AppConfigService appConfigService;
 
@@ -53,22 +48,16 @@ public class QdmTestCaseShiftDatesService {
       TestCaseLockService testCaseLockService,
       AppConfigService appConfigService) {
     this.testCaseService = testCaseService;
-    this.measureService = measureService;
     this.testCaseLockService = testCaseLockService;
     this.appConfigService = appConfigService;
   }
 
   public List<String> shiftTestCaseDates(
-      String measureId,
+      Measure measure,
       List<String> testCaseIds,
       int shifted,
       String accessToken,
       Principal principal) {
-    Measure measure = measureService.findMeasureById(measureId);
-    measureService.verifyAuthorization(principal.getName(), measure);
-    if (measure instanceof FhirMeasure) {
-      throw new ResourceNotFoundException("QDM Measure", measureId);
-    }
 
     List<TestCase> testCases =
         measure.getTestCases().stream()
@@ -77,29 +66,24 @@ public class QdmTestCaseShiftDatesService {
 
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
       List<TestCase> shiftedAndUpdatedTestCases =
-          shiftDatesWhenFeatureFlagOn(testCases, measureId, shifted, principal, accessToken);
+          shiftDatesWhenFeatureFlagOn(testCases, measure.getId(), shifted, principal, accessToken);
       List<String> savedTestCaseIds =
           shiftedAndUpdatedTestCases.stream().map(testCase -> testCase.getId()).toList();
+
+      // return shifted and saved test case ids
       return testCases.stream()
-          .filter(testCase -> !savedTestCaseIds.contains(testCase.getId()))
-          .map(
-              testCase ->
-                  StringUtils.isBlank(testCase.getSeries())
-                      ? testCase.getTitle()
-                      : testCase.getSeries() + " - " + testCase.getTitle())
+          .filter(testCase -> savedTestCaseIds.contains(testCase.getId()))
+          .map(testCase -> testCase.getId())
           .toList();
     } else {
       List<TestCase> shiftedAndUpdatedTestCases =
-          shiftAndUpdate(testCases, shifted, measureId, principal, accessToken);
+          shiftAndUpdate(testCases, shifted, measure.getId(), principal, accessToken);
       List<String> savedTestCaseIds =
           shiftedAndUpdatedTestCases.stream().map(testCase -> testCase.getId()).toList();
+
       return testCases.stream()
-          .filter(testCase -> !savedTestCaseIds.contains(testCase.getId()))
-          .map(
-              testCase ->
-                  StringUtils.isBlank(testCase.getSeries())
-                      ? testCase.getTitle()
-                      : testCase.getSeries() + " - " + testCase.getTitle())
+          .filter(testCase -> savedTestCaseIds.contains(testCase.getId()))
+          .map(testCase -> testCase.getId())
           .toList();
     }
   }
@@ -175,82 +159,6 @@ public class QdmTestCaseShiftDatesService {
       throw new CqmConversionException(
           "Unsupported data type: " + dataElement.toString() + SEPARATOR);
     }
-  }
-
-  public List<TestCase> shiftAllTestCaseDates(
-      String measureId, int shifted, String username, String accessToken) {
-    List<TestCase> testCases = testCaseService.findTestCasesByMeasureId(measureId, username);
-    if (CollectionUtils.isEmpty(testCases)) {
-      throw new ResourceNotFoundException("TestCases", measureId);
-    }
-
-    List<TestCase> allTestCases = new ArrayList<>();
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      List<String> testCaseIds = testCases.stream().map(testCase -> testCase.getId()).toList();
-      log.info(
-          "User: [{}] is trying to shift dates for measureId: [{}] - testCaseIds: {}",
-          username,
-          measureId,
-          testCaseIds);
-      List<LockInfo> failedLocks =
-          testCaseLockService.lockAllTestCases(measureId, testCaseIds, username);
-      // only when all locks are acquired can test cases' dates be shifted
-      if (isEmpty(failedLocks)) {
-        log.info("Locking all test cases for testCaseIds: {} successful", testCaseIds);
-        allTestCases = shiftAllTestCase(testCases, shifted, measureId, username, accessToken);
-        testCaseLockService.unlockAllTestCases(testCaseIds, username);
-      } else {
-        // otherwise, unlock previously locked test cases, and shift dates should not happen
-        List<String> failedIds =
-            failedLocks.stream().map(failedLock -> failedLock.getLockedId()).toList();
-        log.info("Failed locking test cases for testCaseIds: {}", failedIds);
-        List<String> successLocks =
-            testCaseIds.stream().filter(testCaseId -> !failedIds.contains(testCaseId)).toList();
-        log.info("Revert locking test cases for testCaseIds: {}", successLocks);
-        testCaseLockService.unlockAllTestCases(successLocks, username);
-        List<String> failedMsgs =
-            failedLocks.stream()
-                .map(
-                    failedLock ->
-                        "Test Case: "
-                            + failedLock.getLockedId()
-                            + " is locked by user: "
-                            + failedLock.getLockedBy()
-                            + ".\n")
-                .toList();
-        throw new LockNotObtainedException(failedMsgs.toString());
-      }
-    } else {
-      allTestCases = shiftAllTestCase(testCases, shifted, measureId, username, accessToken);
-    }
-
-    return allTestCases;
-  }
-
-  protected List<TestCase> shiftAllTestCase(
-      List<TestCase> testCases,
-      int shifted,
-      String measureId,
-      String username,
-      String accessToken) {
-    StringBuilder testCaseFailures = new StringBuilder();
-
-    List<TestCase> allTestCases = new ArrayList<>();
-    for (TestCase testCase : testCases) {
-      try {
-        TestCase shiftedTC = shiftDatesForTestCase(testCase, shifted);
-        allTestCases.add(shiftedTC);
-        testCaseService.updateTestCase(shiftedTC, measureId, username, accessToken);
-      } catch (CqmConversionException ex) {
-        testCaseFailures.append(ex.getMessage());
-        allTestCases.add(testCase);
-      }
-    }
-    if (StringUtils.isNotBlank(testCaseFailures.toString())) {
-      throw new CqmConversionException(
-          StringUtils.removeEndIgnoreCase(testCaseFailures.toString(), SEPARATOR));
-    }
-    return allTestCases;
   }
 
   protected List<TestCase> shiftDatesWhenFeatureFlagOn(
