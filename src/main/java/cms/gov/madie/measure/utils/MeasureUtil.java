@@ -8,6 +8,7 @@ import java.util.stream.Collectors;
 
 import gov.cms.madie.models.common.IncludedLibrary;
 import gov.cms.mat.cql.CqlTextParser;
+import gov.cms.mat.cql.elements.CodeProperties;
 import gov.cms.mat.cql.elements.IncludeProperties;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -254,6 +255,13 @@ public class MeasureUtil {
       return List.of();
     }
     CqlTextParser cqlTextParser = new CqlTextParser(cql);
+    return getIncludedLibraries(cqlTextParser);
+  }
+
+  public static List<IncludedLibrary> getIncludedLibraries(CqlTextParser cqlTextParser) {
+    if (cqlTextParser == null) {
+      return List.of();
+    }
     List<IncludeProperties> includeProperties = cqlTextParser.getIncludes();
     return includeProperties.stream()
         .map(
@@ -263,5 +271,13 @@ public class MeasureUtil {
                     .version(include.getVersion())
                     .build())
         .toList();
+  }
+
+  public static List<CodeProperties> getCodes(String cql) {
+    if (StringUtils.isBlank(cql)) {
+      return List.of();
+    }
+    CqlTextParser cqlTextParser = new CqlTextParser(cql);
+    return cqlTextParser.getCodes();
   }
 }

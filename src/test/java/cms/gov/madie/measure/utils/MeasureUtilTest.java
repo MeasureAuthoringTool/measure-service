@@ -1125,7 +1125,7 @@ class MeasureUtilTest {
 
   @Test
   public void testGetIncludedLibrariesBlankCql() {
-    List<IncludedLibrary> result = MeasureUtil.getIncludedLibraries(null);
+    List<IncludedLibrary> result = MeasureUtil.getIncludedLibraries("");
     assertThat(result.size(), is(0));
   }
 }

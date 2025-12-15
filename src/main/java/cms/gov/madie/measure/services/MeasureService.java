@@ -10,9 +10,12 @@ import gov.cms.madie.models.access.*;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
+import gov.cms.mat.cql.CqlTextParser;
+import gov.cms.mat.cql.elements.CodeProperties;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -228,10 +231,11 @@ public class MeasureService extends BaseMeasureService {
     if (StringUtils.isBlank(existingMeasure.getMeasureSetId())) {
       existingMeasure.setMeasureSetId(UUID.randomUUID().toString());
     }
-    // update the included libraries on cql change
-    if (!StringUtils.equals(updatingMeasure.getCql(), existingMeasure.getCql())) {
-      updatingMeasure.setIncludedLibraries(
-          MeasureUtil.getIncludedLibraries(updatingMeasure.getCql()));
+    // on cql change, update the included libraries & validate code suffixes
+    if (!Strings.CS.equals(updatingMeasure.getCql(), existingMeasure.getCql())) {
+      CqlTextParser parser = new CqlTextParser(updatingMeasure.getCql());
+      updatingMeasure.setIncludedLibraries(MeasureUtil.getIncludedLibraries(parser));
+      validateCodeSuffixes(parser, updatingMeasure.getId());
     }
     // remove stratifications that do not have associations or cql definitions
     boolean isQiCoreModel =
@@ -303,6 +307,21 @@ public class MeasureService extends BaseMeasureService {
     outputMeasure.setVersionId(existingMeasure.getVersionId());
     outputMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
     return measureRepository.findAndModify(outputMeasure);
+  }
+
+  private void validateCodeSuffixes(CqlTextParser parser, String measureId) {
+    List<CodeProperties> codes = parser.getCodes();
+    log.info("Validating {} codes for measure {}", codes.size(), measureId);
+    for (CodeProperties code : codes) {
+      log.info("Validating code suffix {} for code {}", code.getSuffix(), code.getName());
+      if (!code.getSuffix().isBlank() && code.getSuffix().length() > 4) {
+        throw new IllegalArgumentException(
+            "Code suffixes must be 4 characters or less. Please correct the code: "
+                + code.getName()
+                + " with suffix: "
+                + code.getSuffix());
+      }
+    }
   }
 
   public Measure deactivateMeasure(final String id, final String username) {

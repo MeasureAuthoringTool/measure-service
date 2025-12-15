@@ -150,12 +150,12 @@
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-java-models</artifactId>
-      <version>0.7.3-SNAPSHOT</version>
+      <version>0.7.4-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-rest-commons</artifactId>
-      <version>1.0.1-SNAPSHOT</version>
+      <version>1.0.4-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>info.cqframework</groupId>
