@@ -2,6 +2,7 @@ package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.dto.BulkTestCaseResult;
 import cms.gov.madie.measure.dto.CopyTestCaseResult;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
@@ -210,7 +211,10 @@ public class TestCaseController {
 
     Measure measure = checkMeasure(measureId, principal);
 
-    List<String> unlockedIds = filterOutUnlocked(testCaseIds, principal.getName());
+    List<String> unlockedIds =
+        appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
+            ? filterOutLocked(testCaseIds, principal.getName())
+            : testCaseIds;
 
     List<String> shiftedIds =
         qdmTestCaseShiftDatesService.shiftTestCaseDates(
@@ -235,15 +239,13 @@ public class TestCaseController {
     return measure;
   }
 
-  private List<String> filterOutUnlocked(List<String> testCaseIds, String username) {
+  private List<String> filterOutLocked(List<String> testCaseIds, String username) {
     // Filter out locked test cases
     List<String> unlocked = new ArrayList<>();
-    List<String> failed = new ArrayList<>();
 
     for (String testCaseId : testCaseIds) {
       var lock = testCaseLockService.findByTestCaseId(testCaseId);
       if (lock != null && !lock.getLockedBy().equals(username)) {
-        failed.add(testCaseId);
         continue;
       }
       unlocked.add(testCaseId);
@@ -278,8 +280,8 @@ public class TestCaseController {
     Map<String, Object> response = new HashMap<>();
     response.put("shifted", shiftedTestCases);
     response.put("failed", failedTestCases);
-    log.info("shift dates qdm shiftedTestCases: " + shiftedTestCases.toString());
-    log.info("shift dates qdm failedTestCases: " + failedTestCases.toString());
+    log.info("shift dates qdm shiftedTestCases: {}", shiftedTestCases.toString());
+    log.info("shift dates qdm failedTestCases: {}", failedTestCases.toString());
     return response;
   }
 
@@ -295,7 +297,10 @@ public class TestCaseController {
     List<String> testCaseIds =
         measure.getTestCases().stream().map(testCase -> testCase.getId()).toList();
 
-    List<String> unlockedIds = filterOutUnlocked(testCaseIds, principal.getName());
+    List<String> unlockedIds =
+        appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
+            ? filterOutLocked(testCaseIds, principal.getName())
+            : testCaseIds;
 
     List<String> shiftedIds =
         qdmTestCaseShiftDatesService.shiftTestCaseDates(
@@ -317,7 +322,10 @@ public class TestCaseController {
 
     Measure measure = checkQiCoreMeasure(measureId, principal);
 
-    List<String> unlockedIds = filterOutUnlocked(testCaseIds, principal.getName());
+    List<String> unlockedIds =
+        appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
+            ? filterOutLocked(testCaseIds, principal.getName())
+            : testCaseIds;
 
     return ResponseEntity.ok(
         populateShiftedAndFailedQiCore(
@@ -391,8 +399,8 @@ public class TestCaseController {
     Map<String, Object> response = new HashMap<>();
     response.put("shifted", savedTestCaseIds);
     response.put("failed", failedTestCases);
-    log.info("shift dates qi-core shiftedTestCases: " + shiftedTestCasesInfo.toString());
-    log.info("shift dates qi-core failedTestCases: " + failedTestCases.toString());
+    log.info("shift dates qi-core shiftedTestCases: {}", shiftedTestCasesInfo.toString());
+    log.info("shift dates qi-core failedTestCases: {}", failedTestCases.toString());
     return response;
   }
 
@@ -418,7 +426,10 @@ public class TestCaseController {
 
     List<String> testCaseIds =
         measure.getTestCases().stream().map(testCase -> testCase.getId()).toList();
-    List<String> unlockedIds = filterOutUnlocked(testCaseIds, principal.getName());
+    List<String> unlockedIds =
+        appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
+            ? filterOutLocked(testCaseIds, principal.getName())
+            : testCaseIds;
 
     return ResponseEntity.ok(
         populateShiftedAndFailedQiCore(

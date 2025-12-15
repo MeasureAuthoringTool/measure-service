@@ -41,7 +41,6 @@ import gov.cms.madie.models.measure.TestCase;
 @ExtendWith(MockitoExtension.class)
 public class TestCaseShiftDatesServiceQdmTest {
   @Mock private TestCaseService testCaseService;
-  @Mock private MeasureService measureService;
   @InjectMocks private QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
   @Mock private TestCaseLockService testCaseLockService;
   @Mock private AppConfigService appConfigService;
