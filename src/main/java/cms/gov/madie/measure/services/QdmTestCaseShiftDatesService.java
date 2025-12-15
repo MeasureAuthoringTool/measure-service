@@ -31,7 +31,6 @@ import lombok.extern.slf4j.Slf4j;
 public class QdmTestCaseShiftDatesService {
 
   private final TestCaseService testCaseService;
-  private final MeasureService measureService;
   private final TestCaseLockService testCaseLockService;
   private final AppConfigService appConfigService;
 
@@ -49,7 +48,6 @@ public class QdmTestCaseShiftDatesService {
       TestCaseLockService testCaseLockService,
       AppConfigService appConfigService) {
     this.testCaseService = testCaseService;
-    this.measureService = measureService;
     this.testCaseLockService = testCaseLockService;
     this.appConfigService = appConfigService;
   }

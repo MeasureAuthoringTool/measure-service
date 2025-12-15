@@ -1,11 +1,13 @@
 package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.dto.BulkTestCaseResult;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.services.AppConfigService;
 import cms.gov.madie.measure.services.MeasureService;
 import gov.cms.madie.models.measure.*;
 import gov.cms.madie.models.common.Version;
@@ -43,6 +45,7 @@ public class TestCaseControllerTest {
   @Mock private MeasureService measureService;
   @Mock private QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
   @Mock private cms.gov.madie.measure.services.TestCaseLockService testCaseLockService;
+  @Mock private AppConfigService appConfigService;
 
   @Mock
   private cms.gov.madie.measure.services.TestCaseLockEnrichmentService
@@ -448,7 +451,7 @@ public class TestCaseControllerTest {
             .build();
     fhirMeasure.setTestCases(List.of(testCase));
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
-
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
@@ -703,6 +706,7 @@ public class TestCaseControllerTest {
     when(principal.getName()).thenReturn("test.user");
     measure.setTestCases(List.of(testCase));
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId(anyString()))
         .thenReturn(TestCaseLock.builder().lockedBy("test.user").build());
     doReturn(List.of(testCase.getId()))
@@ -740,6 +744,7 @@ public class TestCaseControllerTest {
     testCase.setSeries(null);
     measure.setTestCases(List.of(testCase, testCase2, testCase3, testCase4));
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId("TESTID")).thenReturn(null);
     when(testCaseLockService.findByTestCaseId("testCaseId2"))
         .thenReturn(TestCaseLock.builder().lockedBy("test.user2").build());
@@ -768,5 +773,92 @@ public class TestCaseControllerTest {
     assertEquals(testCase2.getSeries() + " - " + testCase2.getTitle(), failed.get(0));
     assertEquals(testCase3.getTitle(), failed.get(1));
     assertEquals(testCase4.getSeries() + " - " + testCase4.getTitle(), failed.get(2));
+  }
+
+  @Test
+  void shiftAllQdmTestCaseDatesWithLockeAndFailedTestCases() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    TestCase testCase2 = testCase.toBuilder().id("testCaseId2").build();
+    TestCase testCase3 =
+        testCase.toBuilder().id("testCaseId3").series(null).title("testCaseTitle3").build();
+    TestCase testCase4 =
+        testCase.toBuilder()
+            .id("testCaseId4")
+            .series("testCaseSeries4")
+            .title("testCaseTitle4")
+            .build();
+    testCase.setSeries(null);
+    measure.setTestCases(List.of(testCase, testCase2, testCase3, testCase4));
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(testCaseLockService.findByTestCaseId("TESTID")).thenReturn(null);
+    when(testCaseLockService.findByTestCaseId("testCaseId2"))
+        .thenReturn(TestCaseLock.builder().lockedBy("test.user2").build());
+    when(testCaseLockService.findByTestCaseId("testCaseId3")).thenReturn(null);
+    when(testCaseLockService.findByTestCaseId("testCaseId4")).thenReturn(null);
+    doReturn(List.of(testCase.getId()))
+        .when(qdmTestCaseShiftDatesService)
+        .shiftTestCaseDates(
+            any(Measure.class), anyList(), any(Integer.class), any(String.class), any());
+    ResponseEntity<Map<String, Object>> response =
+        controller.shiftAllQdmTestCaseDates(measure.getId(), 1, "TOKEN", principal);
+
+    assertNotNull(response.getBody());
+    @SuppressWarnings("unchecked")
+    List<String> shiftedIds = (List<String>) response.getBody().get("shifted");
+    assertEquals(testCase.getTitle(), shiftedIds.get(0));
+
+    @SuppressWarnings("unchecked")
+    List<String> failed = (List<String>) response.getBody().get("failed");
+    assertFalse(failed.isEmpty());
+    assertEquals(testCase2.getSeries() + " - " + testCase2.getTitle(), failed.get(0));
+    assertEquals(testCase3.getTitle(), failed.get(1));
+    assertEquals(testCase4.getSeries() + " - " + testCase4.getTitle(), failed.get(2));
+  }
+
+  @Test
+  void shiftAllQiCoreTestCaseDatesWithLockedTestCases() {
+    FhirMeasure fhirMeasure =
+        FhirMeasure.builder()
+            .id(measure.getId())
+            .measureSetId("IDIDID")
+            .measureName("MSR01")
+            .version(new Version(0, 0, 1))
+            .createdBy("test.user")
+            .build();
+    testCase.setSeries(null);
+    TestCase testCase2 = testCase.toBuilder().id("testCaseId2").build();
+    fhirMeasure.setTestCases(List.of(testCase, testCase2));
+    doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
+
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+    when(testCaseLockService.findByTestCaseId("TESTID")).thenReturn(null);
+    when(testCaseLockService.findByTestCaseId("testCaseId2"))
+        .thenReturn(TestCaseLock.builder().lockedBy("test.user2").build());
+
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+
+    doReturn(testCase)
+        .when(testCaseService)
+        .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
+    doReturn(List.of(testCase))
+        .when(testCaseService)
+        .shiftQiCoreTestCaseDates(anyList(), anyInt(), anyString(), anyString(), anyString());
+
+    ResponseEntity<Map<String, Object>> response =
+        controller.shiftAllQiCoreTestCaseDates(fhirMeasure.getId(), 1, principal, "TOKEN");
+    assertThat(response.getStatusCode(), equalTo(HttpStatusCode.valueOf(200)));
+
+    @SuppressWarnings("unchecked")
+    List<String> shiftedIds = (List<String>) response.getBody().get("shifted");
+    assertEquals(1, shiftedIds.size());
+
+    @SuppressWarnings("unchecked")
+    List<String> failedIds = (List<String>) response.getBody().get("failed");
+    assertFalse(failedIds.isEmpty());
+    assertEquals(testCase2.getTitle(), failedIds.get(0));
   }
 }
