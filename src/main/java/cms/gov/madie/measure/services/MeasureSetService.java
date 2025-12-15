@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.*;
@@ -10,6 +12,7 @@ import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
@@ -20,10 +23,12 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -35,6 +40,8 @@ public class MeasureSetService {
   private final GeneratorRepository generatorRepository;
   private final ActionLogService actionLogService;
   private final MongoTemplate mongoTemplate;
+  private final UserServiceClient userServiceClient;
+  private final AppConfigService appConfigService;
 
   public void createMeasureSet(
       final String harpId, final String measureId, final String savedMeasureSetId, String cmsId) {
@@ -305,8 +312,57 @@ public class MeasureSetService {
       String measureSetId,
       boolean sortByLatestVersion,
       MeasureSearchCriteria measureSearchCriteria) {
-    return measureSetRepository.findMeasuresByMeasureSetId(
-        measureSetId, sortByLatestVersion, measureSearchCriteria);
+    List<MeasureListDTO> measures =
+        measureSetRepository.findMeasuresByMeasureSetId(
+            measureSetId, sortByLatestVersion, measureSearchCriteria);
+
+    // Enrich with user details if DisplayOwner feature flag is enabled
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)) {
+      enrichWithUserDetails(measures);
+    }
+
+    return measures;
+  }
+
+  /**
+   * Enriches a list of MeasureListDTO objects with owner details from user service.
+   *
+   * @param measures List of measures to enrich
+   */
+  private void enrichWithUserDetails(List<MeasureListDTO> measures) {
+    if (CollectionUtils.isEmpty(measures)) {
+      return;
+    }
+
+    // Extract unique owner HARP IDs
+    List<String> ownerIds =
+        measures.stream()
+            .map(m -> m.getMeasureSet() != null ? m.getMeasureSet().getOwner() : null)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+
+    if (ownerIds.isEmpty()) {
+      return;
+    }
+
+    // Fetch user details in bulk
+    Map<String, UserDetailsDto> userDetailsMap = userServiceClient.getBulkUserDetails(ownerIds);
+
+    // Enrich each measure with user details
+    measures.forEach(
+        measure -> {
+          if (measure.getMeasureSet() != null && measure.getMeasureSet().getOwner() != null) {
+            String ownerId = measure.getMeasureSet().getOwner();
+            UserDetailsDto userDetails = userDetailsMap.get(ownerId);
+
+            if (userDetails != null) {
+              measure.setOwnerFirstName(userDetails.getFirstName());
+              measure.setOwnerLastName(userDetails.getLastName());
+              measure.setOwnerEmail(userDetails.getEmail());
+            }
+          }
+        });
   }
 
   public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {

@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.HarpIdMismatchException;
@@ -31,6 +32,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 public class MeasureSetServiceTest {
@@ -40,12 +42,18 @@ public class MeasureSetServiceTest {
   @Mock MeasureSetRepository measureSetRepository;
   @Mock GeneratorRepository generatorRepository;
   @Mock private ActionLogService actionLogService;
+  @Mock private UserServiceClient userServiceClient;
+  @Mock private AppConfigService appConfigService;
   MeasureSet measureSet;
 
   private final String MEASURE_SET_ID = "measureSet1";
 
   @BeforeEach
   public void setUp() {
+    // Mock appConfigService to return false for DISPLAY_OWNER feature flag by default
+    // Using lenient() because not all tests use this method
+    lenient().when(appConfigService.isFlagEnabled(any())).thenReturn(false);
+
     AclSpecification aclSpec = new AclSpecification();
     aclSpec.setUserId("john");
     aclSpec.setRoles(

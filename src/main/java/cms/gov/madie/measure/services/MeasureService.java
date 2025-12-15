@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
@@ -9,6 +10,7 @@ import cms.gov.madie.measure.utils.*;
 import gov.cms.madie.models.access.*;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.*;
 import jakarta.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +41,7 @@ public class MeasureService extends BaseMeasureService {
   private final TerminologyValidationService terminologyValidationService;
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
+  private final UserServiceClient userServiceClient;
 
   @Autowired
   public MeasureService(
@@ -52,7 +55,8 @@ public class MeasureService extends BaseMeasureService {
       CqlTemplateConfigService cqlTemplateConfigService,
       TerminologyValidationService terminologyValidationService,
       AppConfigService appConfigService,
-      MeasureLockService measureLockService) {
+      MeasureLockService measureLockService,
+      UserServiceClient userServiceClient) {
     // Pass parent dependencies to BaseMeasureService constructor
     super(measureRepository, measureSetService, appConfigService, measureLockService);
     // Assign child-specific fields
@@ -67,6 +71,7 @@ public class MeasureService extends BaseMeasureService {
     this.terminologyValidationService = terminologyValidationService;
     this.appConfigService = appConfigService;
     this.measureLockService = measureLockService;
+    this.userServiceClient = userServiceClient;
   }
 
   public void verifyAuthorizationByMeasureSetId(
@@ -615,8 +620,72 @@ public class MeasureService extends BaseMeasureService {
       String username,
       // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource) {
-    return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, ownershipTypes, invocationSource);
+    Page<MeasureListDTO> measuresPage =
+        measureRepository.searchMeasuresByCriteria(
+            username, pageReq, searchCriteria, ownershipTypes, invocationSource);
+
+    // Enrich with user details if DisplayOwner feature flag is enabled
+    boolean displayOwnerEnabled = appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER);
+    log.debug("DisplayOwner feature flag is: {}", displayOwnerEnabled);
+    if (displayOwnerEnabled) {
+      log.debug("Enriching {} measures with user details", measuresPage.getContent().size());
+      enrichWithUserDetails(measuresPage.getContent());
+    }
+
+    return measuresPage;
+  }
+
+  /**
+   * Enriches a list of MeasureListDTO objects with owner details from user service.
+   *
+   * @param measures List of measures to enrich
+   */
+  private void enrichWithUserDetails(List<MeasureListDTO> measures) {
+    if (CollectionUtils.isEmpty(measures)) {
+      log.debug("No measures to enrich");
+      return;
+    }
+
+    // Extract unique owner HARP IDs
+    List<String> ownerIds =
+        measures.stream()
+            .map(m -> m.getMeasureSet() != null ? m.getMeasureSet().getOwner() : null)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+
+    log.debug("Found {} unique owner IDs: {}", ownerIds.size(), ownerIds);
+
+    if (ownerIds.isEmpty()) {
+      log.debug("No owner IDs found to fetch user details");
+      return;
+    }
+
+    // Fetch user details in bulk
+    Map<String, UserDetailsDto> userDetailsMap = userServiceClient.getBulkUserDetails(ownerIds);
+    log.debug("Received user details for {} owners", userDetailsMap.size());
+
+    // Enrich each measure with user details
+    measures.forEach(
+        measure -> {
+          if (measure.getMeasureSet() != null && measure.getMeasureSet().getOwner() != null) {
+            String ownerId = measure.getMeasureSet().getOwner();
+            UserDetailsDto userDetails = userDetailsMap.get(ownerId);
+
+            if (userDetails != null) {
+              measure.setOwnerFirstName(userDetails.getFirstName());
+              measure.setOwnerLastName(userDetails.getLastName());
+              measure.setOwnerEmail(userDetails.getEmail());
+              log.debug(
+                  "Enriched measure {} with owner: {} {}",
+                  measure.getId(),
+                  userDetails.getFirstName(),
+                  userDetails.getLastName());
+            } else {
+              log.debug("No user details found for owner ID: {}", ownerId);
+            }
+          }
+        });
   }
 
   protected void updateReferences(MeasureMetaData metaData) {

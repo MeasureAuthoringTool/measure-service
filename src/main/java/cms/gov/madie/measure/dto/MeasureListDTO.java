@@ -57,4 +57,9 @@ public class MeasureListDTO {
 
   private MeasureLock measureLock;
   private boolean hasLockedTestCases;
+
+  // Owner details - enriched from user service
+  private String ownerFirstName;
+  private String ownerLastName;
+  private String ownerEmail;
 }
