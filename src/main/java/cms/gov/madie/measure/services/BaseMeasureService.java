@@ -1,6 +1,8 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.InvalidMeasureStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.locks.MeasureLock;
@@ -9,16 +11,31 @@ import cms.gov.madie.measure.utils.MeasureServiceUtil;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureMetaData;
 import gov.cms.madie.models.measure.MeasureSet;
+import gov.cms.madie.models.measure.Reference;
 import lombok.AllArgsConstructor;
 import lombok.NoArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -29,6 +46,11 @@ public abstract class BaseMeasureService {
   private final MeasureSetService measureSetService;
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
+
+  // Abstract methods to be implemented by subclasses
+  abstract void enrichWithUserDetails(List<MeasureListDTO> measures);
+
+  abstract String getOwnerDisplayName(MeasureListDTO measure);
 
   AclOperation buildShareAclOperation(List<String> userIds) {
     return AclOperation.builder()
@@ -138,5 +160,101 @@ public abstract class BaseMeasureService {
     }
     MeasureServiceUtil.verifyMeasureSetAuthorization(
         username, "Measure", measure.getId(), roles, measureSet);
+  }
+
+  void extractUserDeets(Map<String, UserDetailsDto> userDetailsMap, MeasureListDTO measure) {
+    if (measure.getMeasureSet() != null && measure.getMeasureSet().getOwner() != null) {
+      String ownerId = measure.getMeasureSet().getOwner();
+      UserDetailsDto userDetails = userDetailsMap.get(ownerId);
+
+      if (userDetails != null) {
+        measure.setOwnerFirstName(userDetails.getFirstName());
+        measure.setOwnerLastName(userDetails.getLastName());
+        measure.setOwnerEmail(userDetails.getEmail());
+        log.debug(
+            "Enriched measure {} with owner: {} {}",
+            measure.getId(),
+            userDetails.getFirstName(),
+            userDetails.getLastName());
+      } else {
+        log.debug("No user details found for owner ID: {}", ownerId);
+      }
+    }
+  }
+
+  protected void updateReferences(MeasureMetaData metaData) {
+    if (metaData != null && !CollectionUtils.isEmpty(metaData.getReferences())) {
+      List<Reference> references =
+          metaData.getReferences().stream().map(this::updateReference).toList();
+      metaData.setReferences(references);
+    }
+  }
+
+  Reference updateReference(Reference reference) {
+    return Reference.builder()
+        .id(
+            StringUtils.isBlank(reference.getId())
+                ? UUID.randomUUID().toString()
+                : reference.getId())
+        .referenceText(reference.getReferenceText())
+        .referenceType(reference.getReferenceType())
+        .build();
+  }
+
+  Page<MeasureListDTO> getPageContent(
+      MeasureSearchCriteria searchCriteria,
+      List<OwnershipType> ownershipTypes,
+      Pageable pageReq,
+      String username,
+      String invocationSource) {
+    Page<MeasureListDTO> measuresPage;
+    // For owner sorting, we need to fetch all results, enrich, sort, then paginate
+    // Use a default sort by _id to avoid empty sort error in MongoDB
+    Pageable defaultSortPageable =
+        PageRequest.of(0, 10000, Sort.by(Sort.Direction.ASC, "_id")); // Fetch up to 10k measures
+    Page<MeasureListDTO> allMeasures =
+        measureRepository.searchMeasuresByCriteria(
+            username, defaultSortPageable, searchCriteria, ownershipTypes, invocationSource);
+
+    log.debug(
+        "Fetched {} measures for owner sorting and enrichment", allMeasures.getContent().size());
+
+    // Enrich all measures with user details
+    enrichWithUserDetails(allMeasures.getContent());
+
+    // Sort by owner display name
+    Sort.Order ownerSortOrder =
+        pageReq.getSort().stream()
+            .filter(order -> "ownerSortField".equals(order.getProperty()))
+            .findFirst()
+            .orElseThrow();
+
+    log.debug("Sorting by owner, direction: {}", ownerSortOrder.getDirection());
+
+    List<MeasureListDTO> sortedContent =
+        allMeasures.getContent().stream()
+            .sorted(
+                (m1, m2) -> {
+                  String name1 = getOwnerDisplayName(m1);
+                  String name2 = getOwnerDisplayName(m2);
+                  int comparison = name1.compareToIgnoreCase(name2);
+                  return ownerSortOrder.isAscending() ? comparison : -comparison;
+                })
+            .collect(Collectors.toList());
+
+    // Log first few results to verify sorting
+    log.debug("After sorting, first 5 measures:");
+    sortedContent.stream()
+        .limit(5)
+        .forEach(m -> log.debug("  {} - {}", getOwnerDisplayName(m), m.getMeasureName()));
+
+    // Apply pagination manually
+    int start = (int) pageReq.getOffset();
+    int end = Math.min(start + pageReq.getPageSize(), sortedContent.size());
+    List<MeasureListDTO> pageContent =
+        start < sortedContent.size() ? sortedContent.subList(start, end) : Collections.emptyList();
+
+    measuresPage = new PageImpl<>(pageContent, pageReq, allMeasures.getTotalElements());
+    return measuresPage;
   }
 }

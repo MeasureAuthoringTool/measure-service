@@ -31,6 +31,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.locks.MeasureLock;
@@ -39,6 +40,7 @@ import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.*;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
@@ -76,6 +78,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private TerminologyValidationService terminologyValidationService;
   @Mock private AppConfigService appConfigService;
   @Mock private MeasureLockService measureLockService;
+  @Mock private UserServiceClient userServiceClient;
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
 
@@ -2703,5 +2706,181 @@ public class MeasureServiceTest implements ResourceUtil {
         measureService.getMeasureLock("testMeasureId", "testUserName");
 
     assertNull(measureLock);
+  }
+
+  // Owner sorting tests
+  @Test
+  public void testEnrichWithUserDetails_EmptyList() {
+    List<MeasureListDTO> measures = new ArrayList<>();
+
+    // Should not throw exception
+    assertDoesNotThrow(() -> measureService.enrichWithUserDetails(measures));
+
+    // No interaction with userServiceClient
+    verifyNoInteractions(userServiceClient);
+  }
+
+  @Test
+  public void testEnrichWithUserDetails_WithOwners() {
+    // Setup
+    MeasureSet measureSet1 = MeasureSet.builder().owner("user1").build();
+    MeasureSet measureSet2 = MeasureSet.builder().owner("user2").build();
+    MeasureSet measureSet3 = MeasureSet.builder().owner("user1").build(); // Duplicate owner
+
+    MeasureListDTO measure1 = new MeasureListDTO();
+    measure1.setMeasureSet(measureSet1);
+
+    MeasureListDTO measure2 = new MeasureListDTO();
+    measure2.setMeasureSet(measureSet2);
+
+    MeasureListDTO measure3 = new MeasureListDTO();
+    measure3.setMeasureSet(measureSet3);
+
+    List<MeasureListDTO> measures = Arrays.asList(measure1, measure2, measure3);
+
+    UserDetailsDto userDetails1 =
+        UserDetailsDto.builder()
+            .harpId("user1")
+            .firstName("John")
+            .lastName("Doe")
+            .email("john@example.com")
+            .build();
+
+    UserDetailsDto userDetails2 =
+        UserDetailsDto.builder()
+            .harpId("user2")
+            .firstName("Jane")
+            .lastName("Smith")
+            .email("jane@example.com")
+            .build();
+
+    Map<String, UserDetailsDto> userDetailsMap =
+        Map.of("user1", userDetails1, "user2", userDetails2);
+
+    when(userServiceClient.getBulkUserDetails(anyList())).thenReturn(userDetailsMap);
+
+    // Execute
+    measureService.enrichWithUserDetails(measures);
+
+    // Verify
+    ArgumentCaptor<List<String>> ownerIdsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(userServiceClient).getBulkUserDetails(ownerIdsCaptor.capture());
+
+    // Should have 2 unique owner IDs
+    List<String> capturedOwnerIds = ownerIdsCaptor.getValue();
+    assertEquals(2, capturedOwnerIds.size());
+    assertTrue(capturedOwnerIds.contains("user1"));
+    assertTrue(capturedOwnerIds.contains("user2"));
+
+    // Check enrichment
+    assertEquals("John", measure1.getOwnerFirstName());
+    assertEquals("Doe", measure1.getOwnerLastName());
+    assertEquals("john@example.com", measure1.getOwnerEmail());
+
+    assertEquals("Jane", measure2.getOwnerFirstName());
+    assertEquals("Smith", measure2.getOwnerLastName());
+    assertEquals("jane@example.com", measure2.getOwnerEmail());
+
+    // measure3 should also have user1's details
+    assertEquals("John", measure3.getOwnerFirstName());
+    assertEquals("Doe", measure3.getOwnerLastName());
+  }
+
+  @Test
+  public void testEnrichWithUserDetails_WithNullOwners() {
+    MeasureSet measureSet1 = MeasureSet.builder().owner(null).build();
+
+    MeasureListDTO measure1 = new MeasureListDTO();
+    measure1.setMeasureSet(measureSet1);
+
+    MeasureListDTO measure2 = new MeasureListDTO();
+    measure2.setMeasureSet(null);
+
+    List<MeasureListDTO> measures = Arrays.asList(measure1, measure2);
+
+    // Execute
+    measureService.enrichWithUserDetails(measures);
+
+    // Should not call userServiceClient because no valid owner IDs
+    verifyNoInteractions(userServiceClient);
+
+    // No enrichment should occur
+    assertNull(measure1.getOwnerFirstName());
+    assertNull(measure1.getOwnerLastName());
+    assertNull(measure2.getOwnerFirstName());
+    assertNull(measure2.getOwnerLastName());
+  }
+
+  @Test
+  public void testGetOwnerDisplayName_WithBothNames() {
+    MeasureListDTO measure = new MeasureListDTO();
+    measure.setOwnerFirstName("John");
+    measure.setOwnerLastName("Doe");
+
+    String displayName = measureService.getOwnerDisplayName(measure);
+
+    assertEquals("John Doe", displayName);
+  }
+
+  @Test
+  public void testGetOwnerDisplayName_WithOnlyFirstName() {
+    MeasureListDTO measure = new MeasureListDTO();
+    measure.setOwnerFirstName("John");
+    measure.setOwnerLastName(null);
+
+    String displayName = measureService.getOwnerDisplayName(measure);
+
+    assertEquals("John", displayName);
+  }
+
+  @Test
+  public void testGetOwnerDisplayName_WithOnlyLastName() {
+    MeasureListDTO measure = new MeasureListDTO();
+    measure.setOwnerFirstName(null);
+    measure.setOwnerLastName("Doe");
+
+    String displayName = measureService.getOwnerDisplayName(measure);
+
+    assertEquals("Doe", displayName);
+  }
+
+  @Test
+  public void testGetOwnerDisplayName_FallbackToHarpId() {
+    MeasureSet measureSet = MeasureSet.builder().owner("test.user").build();
+
+    MeasureListDTO measure = new MeasureListDTO();
+    measure.setOwnerFirstName(null);
+    measure.setOwnerLastName(null);
+    measure.setMeasureSet(measureSet);
+
+    String displayName = measureService.getOwnerDisplayName(measure);
+
+    assertEquals("test.user", displayName);
+  }
+
+  @Test
+  public void testGetOwnerDisplayName_EmptyWhenNoData() {
+    MeasureListDTO measure = new MeasureListDTO();
+    measure.setOwnerFirstName(null);
+    measure.setOwnerLastName(null);
+    measure.setMeasureSet(null);
+
+    String displayName = measureService.getOwnerDisplayName(measure);
+
+    assertEquals("", displayName);
+  }
+
+  @Test
+  public void testGetOwnerDisplayName_EmptyWhenOwnerIsNull() {
+    MeasureSet measureSet = MeasureSet.builder().owner(null).build();
+
+    MeasureListDTO measure = new MeasureListDTO();
+    measure.setOwnerFirstName(null);
+    measure.setOwnerLastName(null);
+    measure.setMeasureSet(measureSet);
+
+    String displayName = measureService.getOwnerDisplayName(measure);
+
+    assertEquals("", displayName);
   }
 }

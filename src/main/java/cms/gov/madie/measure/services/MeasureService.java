@@ -620,19 +620,48 @@ public class MeasureService extends BaseMeasureService {
       String username,
       // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
       String invocationSource) {
-    Page<MeasureListDTO> measuresPage =
-        measureRepository.searchMeasuresByCriteria(
-            username, pageReq, searchCriteria, ownershipTypes, invocationSource);
 
-    // Enrich with user details if DisplayOwner feature flag is enabled
+    // Check if we're sorting by owner field and DisplayOwner flag is enabled
     boolean displayOwnerEnabled = appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER);
-    log.debug("DisplayOwner feature flag is: {}", displayOwnerEnabled);
-    if (displayOwnerEnabled) {
-      log.debug("Enriching {} measures with user details", measuresPage.getContent().size());
-      enrichWithUserDetails(measuresPage.getContent());
+    boolean sortByOwner =
+        displayOwnerEnabled
+            && pageReq.getSort().stream()
+                .anyMatch(order -> "ownerSortField".equals(order.getProperty()));
+
+    Page<MeasureListDTO> measuresPage;
+
+    if (sortByOwner) {
+      measuresPage =
+          getPageContent(searchCriteria, ownershipTypes, pageReq, username, invocationSource);
+
+    } else {
+      // Normal flow: MongoDB does the sorting
+      measuresPage =
+          measureRepository.searchMeasuresByCriteria(
+              username, pageReq, searchCriteria, ownershipTypes, invocationSource);
+
+      // Enrich with user details if DisplayOwner feature flag is enabled
+      log.debug("DisplayOwner feature flag is: {}", displayOwnerEnabled);
+      if (displayOwnerEnabled) {
+        log.debug("Enriching {} measures with user details", measuresPage.getContent().size());
+        enrichWithUserDetails(measuresPage.getContent());
+      }
     }
 
     return measuresPage;
+  }
+
+  /** Gets the display name for sorting: "FirstName LastName" if available, otherwise harpId */
+  String getOwnerDisplayName(MeasureListDTO measure) {
+    if (measure.getOwnerFirstName() != null || measure.getOwnerLastName() != null) {
+      String firstName = measure.getOwnerFirstName() != null ? measure.getOwnerFirstName() : "";
+      String lastName = measure.getOwnerLastName() != null ? measure.getOwnerLastName() : "";
+      return (firstName + " " + lastName).trim();
+    }
+    // Fall back to harpId
+    return measure.getMeasureSet() != null && measure.getMeasureSet().getOwner() != null
+        ? measure.getMeasureSet().getOwner()
+        : "";
   }
 
   /**
@@ -640,7 +669,7 @@ public class MeasureService extends BaseMeasureService {
    *
    * @param measures List of measures to enrich
    */
-  private void enrichWithUserDetails(List<MeasureListDTO> measures) {
+  void enrichWithUserDetails(List<MeasureListDTO> measures) {
     if (CollectionUtils.isEmpty(measures)) {
       log.debug("No measures to enrich");
       return;
@@ -668,32 +697,8 @@ public class MeasureService extends BaseMeasureService {
     // Enrich each measure with user details
     measures.forEach(
         measure -> {
-          if (measure.getMeasureSet() != null && measure.getMeasureSet().getOwner() != null) {
-            String ownerId = measure.getMeasureSet().getOwner();
-            UserDetailsDto userDetails = userDetailsMap.get(ownerId);
-
-            if (userDetails != null) {
-              measure.setOwnerFirstName(userDetails.getFirstName());
-              measure.setOwnerLastName(userDetails.getLastName());
-              measure.setOwnerEmail(userDetails.getEmail());
-              log.debug(
-                  "Enriched measure {} with owner: {} {}",
-                  measure.getId(),
-                  userDetails.getFirstName(),
-                  userDetails.getLastName());
-            } else {
-              log.debug("No user details found for owner ID: {}", ownerId);
-            }
-          }
+          extractUserDeets(userDetailsMap, measure);
         });
-  }
-
-  protected void updateReferences(MeasureMetaData metaData) {
-    if (metaData != null && !CollectionUtils.isEmpty(metaData.getReferences())) {
-      List<Reference> references =
-          metaData.getReferences().stream().map(this::updateReference).toList();
-      metaData.setReferences(references);
-    }
   }
 
   protected void updateMeasureDefinitions(MeasureMetaData metaData) {
@@ -712,17 +717,6 @@ public class MeasureService extends BaseMeasureService {
                 : definition.getId())
         .term(definition.getTerm())
         .definition(definition.getDefinition())
-        .build();
-  }
-
-  private Reference updateReference(Reference reference) {
-    return Reference.builder()
-        .id(
-            StringUtils.isBlank(reference.getId())
-                ? UUID.randomUUID().toString()
-                : reference.getId())
-        .referenceText(reference.getReferenceText())
-        .referenceType(reference.getReferenceType())
         .build();
   }
 

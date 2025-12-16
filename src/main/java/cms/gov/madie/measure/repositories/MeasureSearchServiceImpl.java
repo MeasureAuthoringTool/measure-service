@@ -8,6 +8,7 @@ import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.Measure;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -26,6 +27,7 @@ import java.util.stream.Collectors;
 
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
+@Slf4j
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
   private final MongoTemplate mongoTemplate;
@@ -116,10 +118,47 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
 
+    // Add computed field for owner sorting: concatenate firstName and lastName, fallback to harpId
+    // Owner firstName/lastName are denormalized in measureSet collection for sorting
+    AggregationOperation addOwnerSortField =
+        context ->
+            context.getMappedObject(
+                new org.bson.Document(
+                    "$addFields",
+                    new org.bson.Document()
+                        .append(
+                            "ownerSortField",
+                            new org.bson.Document(
+                                "$cond",
+                                new org.bson.Document()
+                                    .append(
+                                        "if",
+                                        new org.bson.Document(
+                                            "$and",
+                                            Arrays.asList(
+                                                new org.bson.Document(
+                                                    "$ne",
+                                                    Arrays.asList(
+                                                        "$measureSet.ownerFirstName", null)),
+                                                new org.bson.Document(
+                                                    "$ne",
+                                                    Arrays.asList(
+                                                        "$measureSet.ownerLastName", null)))))
+                                    .append(
+                                        "then",
+                                        new org.bson.Document(
+                                            "$concat",
+                                            Arrays.asList(
+                                                "$measureSet.ownerFirstName",
+                                                " ",
+                                                "$measureSet.ownerLastName")))
+                                    .append("else", "$measureSet.owner")))));
+
     // Project only needed fields from Measure to improve performance
     ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
     aggregationOperations.add(lookupOperation);
     aggregationOperations.add(unwindOperation);
+    aggregationOperations.add(addOwnerSortField);
     aggregationOperations.add(initialProjection);
 
     Criteria measureCriteria = Criteria.where("active").is(true);
@@ -226,6 +265,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       List<AggregationOperation> postMatchPipeline = new ArrayList<>();
       postMatchPipeline.add(lookupOperation);
       postMatchPipeline.add(unwindOperation);
+      postMatchPipeline.add(addOwnerSortField);
       postMatchPipeline.add(initialProjection);
 
       MatchOperation matchMeasureSetIds =
@@ -254,6 +294,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       Aggregation pipeline = newAggregation(postMatchPipeline);
       List<FacetDTO> results =
           mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
+
       for (MeasureListDTO dto : results.get(0).getQueryResults()) {
         MeasureSetMatchCountDTO matchInfo = matchInfoMap.get(dto.getMeasureSetId());
 
@@ -271,12 +312,19 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           dto.setHasAssociatedMeasures(false);
         }
       }
+
       long totalSize = matchInfoMap.size();
       return new PageImpl<>(results.get(0).getQueryResults(), pageable, totalSize);
 
     } else {
-      Aggregation pipeline =
-          newAggregation(lookupOperation, unwindOperation, matchOperation, facets);
+      aggregationOperations.add(matchOperation);
+      // lock stages
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
+        aggregationOperations.addAll(getLockStages(userId));
+      }
+      aggregationOperations.add(facets);
+
+      Aggregation pipeline = newAggregation(aggregationOperations);
       List<FacetDTO> results =
           mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
       return new PageImpl<>(
@@ -360,8 +408,11 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         newAggregation(
             lookupOperation, matchOperation, groupOperation, group().count().as("count"));
 
-    List<Map> results =
-        mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
+    @SuppressWarnings("unchecked")
+    List<Map<String, Object>> results =
+        (List<Map<String, Object>>)
+            (List<?>)
+                mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
 
     return results.isEmpty() ? 0 : Integer.parseInt(results.get(0).get("count").toString());
   }
