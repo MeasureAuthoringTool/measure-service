@@ -530,7 +530,9 @@ public class MeasureController extends AbstractMeasureController {
     measureIds.forEach(
         measureId -> {
           final Measure existingMeasure = measureService.findMeasureById(measureId);
-          checkMeasureLock(existingMeasure, username);
+          if (existingMeasure != null) {
+            checkMeasureLock(existingMeasure, username);
+          }
         });
     List<String> failedTransfers =
         measureService.transferMeasures(measureIds, harpId, retainShareAccess, username);

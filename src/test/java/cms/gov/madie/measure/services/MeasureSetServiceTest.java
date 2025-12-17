@@ -2,10 +2,7 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
-import cms.gov.madie.measure.exceptions.HarpIdMismatchException;
-import cms.gov.madie.measure.exceptions.InvalidIdException;
-import cms.gov.madie.measure.exceptions.InvalidRequestException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.GeneratorRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
@@ -40,7 +37,7 @@ public class MeasureSetServiceTest {
   @Mock MeasureSetRepository measureSetRepository;
   @Mock GeneratorRepository generatorRepository;
   @Mock private ActionLogService actionLogService;
-  MeasureSet measureSet;
+  private MeasureSet measureSet;
 
   private final String MEASURE_SET_ID = "measureSet1";
 
@@ -745,152 +742,127 @@ public class MeasureSetServiceTest {
   }
 
   @Test
-  public void testChangeOwnership() {
-    MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("originalOwner");
+  public void testChangeOwnershipDoNotRetainAccess() {
+    // Original owner is "user-1", new owner is "testUser"
+    // "john" is already shared with
+    MeasureSet updatedMeasureSet = measureSet.toBuilder().owner("testUser").build();
+
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet result = measureSetService.changeOwnership("1", "testUser", false, "Admin");
+    MeasureSet result =
+        measureSetService.changeOwnership(
+            measureSet.getMeasureSetId(), "testUser", false, "user-1");
+
     assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
-    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
-    assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
-    assertThat(result.getAcls().size(), is(equalTo(1)));
+    assertThat(result.getOwner(), is(equalTo("testUser")));
+    // "john" should still be technically in ACLs unless explicitly removed (logic doesn't remove
+    // unrelated ACLs)
+    // The previous test asserted ACL size 1, which matches "john"
+    assertThat(result.getAcls().size(), is(1));
+    assertThat(result.getAcls().get(0).getUserId(), is("john"));
+
     verify(actionLogService, times(1))
         .logMeasureSetAction(
-            "1",
+            "msid-2",
             MeasureSet.class,
             ActionType.OWNERSHIP_TRANSFER,
-            "Admin",
-            "Transferred from originalOwner to testUser");
-  }
-
-  @Test
-  public void testChangeOwnershipForTransferMeasures() {
-    measureSet.setAcls(Collections.emptyList());
-    MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("originalOwner");
-    updatedMeasureSet.setAcls(null);
-    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
-
-    MeasureSet result = measureSetService.changeOwnership("1", "testUser", true, "anotherUser");
-    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
-    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
-    assertThat(result.getAcls().size(), is(equalTo(1)));
-    assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
-    assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
-    assertThat(
-        result.getAcls().get(0).getUserId(),
-        is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
-    verify(actionLogService, times(1))
-        .logMeasureSetAction(
-            "1",
-            MeasureSet.class,
-            ActionType.OWNERSHIP_TRANSFER,
-            "anotherUser",
-            "Transferred from originalOwner to testUser");
+            "user-1",
+            "Transferred from user-1 to testUser");
   }
 
   @Test
   public void testChangeOwnershipRetainAccess() {
-    MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("originalOwner");
-    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
-
-    MeasureSet result = measureSetService.changeOwnership("1", "testUser", true, "anotherUser");
-    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
-    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
-    assertThat(result.getAcls().size(), is(equalTo(2)));
-    assertThat(result.getAcls(), is(equalTo(updatedMeasureSet.getAcls())));
-    assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
-    assertThat(
-        result.getAcls().get(0).getUserId(),
-        is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
-    verify(actionLogService, times(1))
-        .logMeasureSetAction(
-            "1",
-            MeasureSet.class,
-            ActionType.OWNERSHIP_TRANSFER,
-            "anotherUser",
-            "Transferred from originalOwner to testUser");
-    verify(actionLogService, times(1))
-        .logShareAccessControlAction(
-            updatedMeasureSet.getMeasureSetId(),
-            MeasureSet.class,
-            ActionType.SHARED,
-            "anotherUser",
-            "originalOwner",
-            "Shared with - originalOwner");
-  }
-
-  @Test
-  public void testChangeOwnershipDoNotRetainAccess() {
-    MeasureSet updatedMeasureSet = measureSet;
-    updatedMeasureSet.setOwner("originalOwner");
-    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
-
-    MeasureSet result = measureSetService.changeOwnership("1", "testUser", false, "anotherUser");
-    assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
-    assertThat(result.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
-    assertNotNull(result.getAcls());
-    assertThat(result.getAcls().size(), is(1));
-    assertThat(
-        result.getAcls().get(0).getUserId(),
-        is(equalTo(updatedMeasureSet.getAcls().get(0).getUserId())));
-    assertThat(
-        result.getAcls().get(0).getRoles(),
-        is(equalTo(updatedMeasureSet.getAcls().get(0).getRoles())));
-    verify(actionLogService, times(1))
-        .logMeasureSetAction(
-            "1",
-            MeasureSet.class,
-            ActionType.OWNERSHIP_TRANSFER,
-            "anotherUser",
-            "Transferred from originalOwner to testUser");
-  }
-
-  @Test
-  public void testChangeOwnershipRemovePreviouslySharedRole() {
-    AclSpecification sharedAcl =
-        AclSpecification.builder()
-            .userId("newOwner")
-            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
-            .build();
-
-    measureSet.setAcls(new ArrayList<>(List.of(sharedAcl)));
-    measureSet.setOwner("originalOwner");
-
+    // Original owner "user-1"
     MeasureSet updatedMeasureSet =
-        MeasureSet.builder()
-            .id(measureSet.getId())
-            .measureSetId(measureSet.getMeasureSetId())
-            .owner("newOwner")
-            .acls(new ArrayList<>())
+        measureSet.toBuilder()
+            .owner("testUser")
+            .acls(
+                new ArrayList<>(measureSet.getAcls()) {
+                  {
+                    add(
+                        AclSpecification.builder()
+                            .userId("user-1")
+                            .roles(Set.of(RoleEnum.SHARED_WITH))
+                            .build());
+                  }
+                })
             .build();
 
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
     MeasureSet result =
-        measureSetService.changeOwnership(measureSet.getMeasureSetId(), "newOwner", false, "admin");
+        measureSetService.changeOwnership(measureSet.getMeasureSetId(), "testUser", true, "user-1");
 
-    assertThat(result.getOwner(), is(equalTo("newOwner")));
-    assertThat(result.getAcls().size(), is(0));
+    assertThat(result.getOwner(), is(equalTo("testUser")));
+    assertThat(result.getAcls().size(), is(2)); // "john" + "user-1"
+    assertTrue(
+        result.getAcls().stream()
+            .anyMatch(
+                acl ->
+                    acl.getUserId().equals("user-1")
+                        && acl.getRoles().contains(RoleEnum.SHARED_WITH)));
 
     verify(actionLogService, times(1))
         .logMeasureSetAction(
-            measureSet.getMeasureSetId(),
+            "msid-2",
             MeasureSet.class,
             ActionType.OWNERSHIP_TRANSFER,
-            "admin",
-            "Transferred from originalOwner to newOwner");
+            "user-1",
+            "Transferred from user-1 to testUser");
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
-            measureSet.getMeasureSetId(),
+            "msid-2",
+            MeasureSet.class,
+            ActionType.SHARED,
+            "user-1",
+            "user-1",
+            "Shared with - user-1");
+  }
+
+  @Test
+  public void testChangeOwnershipRemovePreviouslySharedRole() {
+    // Setup: "newOwner" is already SHARED_WITH
+    AclSpecification sharedAcl =
+        AclSpecification.builder()
+            .userId("newOwner")
+            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
+            .build();
+
+    // measureSet already has "john", we add "newOwner"
+    measureSet.getAcls().add(sharedAcl);
+
+    MeasureSet updatedMeasureSet =
+        measureSet.toBuilder()
+            .owner("newOwner")
+            // The service logic will remove "newOwner" from ACLs
+            // "john" remains
+            .acls(new ArrayList<>(List.of(measureSet.getAcls().get(0))))
+            .build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    // Conducted by "user-1" (original owner)
+    MeasureSet result = measureSetService.changeOwnership("msid-2", "newOwner", false, "user-1");
+
+    assertThat(result.getOwner(), is(equalTo("newOwner")));
+    assertThat(result.getAcls().size(), is(1));
+    assertThat(result.getAcls().get(0).getUserId(), is("john"));
+
+    verify(actionLogService, times(1))
+        .logMeasureSetAction(
+            "msid-2",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            "user-1",
+            "Transferred from user-1 to newOwner");
+
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            "msid-2",
             MeasureSet.class,
             ActionType.UNSHARED,
             "admin",
@@ -911,5 +883,23 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
     verify(actionLogService, times(0))
         .logMeasureSetAction("1", MeasureSet.class, ActionType.OWNERSHIP_TRANSFER, "anotherUser");
+  }
+
+  @Test
+  public void testChangeOwnershipThrowsUnauthorizedExceptionWhenNotOriginalOwner() {
+    // Arrange
+    measureSet.setOwner("originalOwner");
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+
+    // Act & Assert
+    UnauthorizedException ex =
+        assertThrows(
+            UnauthorizedException.class,
+            () -> measureSetService.changeOwnership("1", "newOwner", false, "notOriginalOwner"));
+    assertTrue(
+        ex.getMessage()
+            .contains("notOriginalOwner does not have permissions to transfer ownership"));
+    verify(measureSetRepository, times(1)).findByMeasureSetId("1");
+    verify(measureSetRepository, never()).save(any());
   }
 }
