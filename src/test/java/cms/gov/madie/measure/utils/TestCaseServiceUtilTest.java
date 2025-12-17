@@ -381,6 +381,11 @@ public class TestCaseServiceUtilTest {
     boolean result =
         TestCaseServiceUtil.matchCriteriaGroups(List.of(groupPopulation), List.of(group), testCase);
     assertTrue(result);
+    List<TestCasePopulationValue> tcPopulationValues = groupPopulation.getPopulationValues();
+    assertEquals(3, tcPopulationValues.size());
+    assertEquals(
+        PopulationType.MEASURE_POPULATION_OBSERVATION, tcPopulationValues.get(2).getName());
+    assertEquals("testCriteriaReference", tcPopulationValues.get(2).getCriteriaReference());
   }
 
   @Test
