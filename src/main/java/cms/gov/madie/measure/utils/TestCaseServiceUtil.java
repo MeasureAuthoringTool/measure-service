@@ -217,6 +217,12 @@ public class TestCaseServiceUtil {
     if (!isEmpty(observationPopulationTypes) && !isEmpty(importedGroup.getPopulationValues())) {
       for (TestCasePopulationValue tcPopVal : importedGroup.getPopulationValues()) {
         if (observationPopulationTypes.contains(tcPopVal.getName())) {
+          List<MeasureObservation> measureObservations = measrueGroup.getMeasureObservations();
+          if (CollectionUtils.isNotEmpty(measureObservations)) {
+            // assign CriteriaReference from  the target measure group's measure observation to
+            // population value
+            tcPopVal.setCriteriaReference(measureObservations.get(0).getCriteriaReference());
+          }
           observationPopVals.add(tcPopVal);
         }
       }
