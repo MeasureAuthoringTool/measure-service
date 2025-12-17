@@ -211,13 +211,13 @@ public class TestCaseServiceUtil {
   }
 
   private static List<TestCasePopulationValue> mapObservations(
-      TestCaseGroupPopulation importedGroup, Group measrueGroup) {
+      TestCaseGroupPopulation importedGroup, Group measureGroup) {
     List<TestCasePopulationValue> observationPopVals = new ArrayList<>();
-    Set<PopulationType> observationPopulationTypes = getObservationTypesForGroup(measrueGroup);
+    Set<PopulationType> observationPopulationTypes = getObservationTypesForGroup(measureGroup);
     if (!isEmpty(observationPopulationTypes) && !isEmpty(importedGroup.getPopulationValues())) {
       for (TestCasePopulationValue tcPopVal : importedGroup.getPopulationValues()) {
         if (observationPopulationTypes.contains(tcPopVal.getName())) {
-          List<MeasureObservation> measureObservations = measrueGroup.getMeasureObservations();
+          List<MeasureObservation> measureObservations = measureGroup.getMeasureObservations();
           if (isNotEmpty(measureObservations)) {
             // assign CriteriaReference from  the target measure group's measure observation to
             // population value
