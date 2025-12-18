@@ -571,19 +571,8 @@ public class MeasureService extends BaseMeasureService {
                       userid);
                   return new ResourceNotFoundException("Measure", measureId);
                 });
-
-    try {
-      measureSetService.changeOwnership(
-          measure.getMeasureSetId(), userid, retainShareAccess, username);
-    } catch (RuntimeException e) {
-      log.error(
-          "User [{}] failed to change ownership of measure [{}] to user [{}]",
-          username,
-          measureId,
-          userid,
-          e);
-      throw e;
-    }
+    measureSetService.changeOwnership(
+        measure.getMeasureSetId(), userid, retainShareAccess, username);
   }
 
   public Map<String, Boolean> getMeasureDrafts(List<String> measureSetIds) {

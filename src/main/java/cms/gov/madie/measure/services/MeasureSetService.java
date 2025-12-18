@@ -402,6 +402,19 @@ public class MeasureSetService {
     MeasureSet measureSet = optionalMeasureSet.get();
     String originalOwner = optionalMeasureSet.get().getOwner();
 
+    // Only the original owner can transfer ownership
+    if (!originalOwner.equals(conductedBy)) {
+      log.error(
+          "User [{}] attempted to transfer ownership of measure set [{}] but is not the original owner [{}].",
+          conductedBy,
+          measureSetId,
+          originalOwner);
+      throw new UnauthorizedException(
+          String.format(
+              "User %s does not have permissions to transfer ownership of the measure Set with ID: %s.",
+              conductedBy, measureSetId));
+    }
+
     measureSet.setOwner(userId);
 
     boolean previouslyShared = false;
