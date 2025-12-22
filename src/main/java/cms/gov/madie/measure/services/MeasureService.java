@@ -309,13 +309,13 @@ public class MeasureService extends BaseMeasureService {
     return measureRepository.findAndModify(outputMeasure);
   }
 
-  private void validateCodeSuffixes(CqlTextParser parser, String measureId) {
+  void validateCodeSuffixes(CqlTextParser parser, String measureId) {
     List<CodeProperties> codes = parser.getCodes();
     log.info("Validating {} codes for measure {}", codes.size(), measureId);
     for (CodeProperties code : codes) {
       log.info("Validating code suffix {} for code {}", code.getSuffix(), code.getName());
       if (!code.getSuffix().isBlank() && code.getSuffix().length() > 4) {
-        throw new IllegalArgumentException(
+        throw new InvalidRequestException(
             "Code suffixes must be 4 characters or less. Please correct the code: "
                 + code.getName()
                 + " with suffix: "

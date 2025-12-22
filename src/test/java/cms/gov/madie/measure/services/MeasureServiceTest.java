@@ -40,6 +40,7 @@ import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
+import gov.cms.mat.cql.CqlTextParser;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -2703,5 +2704,24 @@ public class MeasureServiceTest implements ResourceUtil {
         measureService.getMeasureLock("testMeasureId", "testUserName");
 
     assertNull(measureLock);
+  }
+
+  @Test
+  void validateCodeSuffixes() {
+    String cql =
+        "code \"Therapy Appropriate (1234)\": '1' from \"ActCode\" display 'Therapy Appropriate'";
+    assertDoesNotThrow(() -> measureService.validateCodeSuffixes(new CqlTextParser(cql), "mId"));
+
+    String cqlWithInvalidCodeSuffix =
+        "code \"Therapy Appropriate (12345)\": '1' from \"ActCode\" display 'Therapy Appropriate'";
+    InvalidRequestException exception =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                measureService.validateCodeSuffixes(
+                    new CqlTextParser(cqlWithInvalidCodeSuffix), "mId"));
+    assertEquals(
+        "Code suffixes must be 4 characters or less. Please correct the code: Therapy Appropriate (12345) with suffix: 12345",
+        exception.getMessage());
   }
 }
