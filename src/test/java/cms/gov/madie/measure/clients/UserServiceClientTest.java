@@ -1,0 +1,241 @@
+package cms.gov.madie.measure.clients;
+
+import gov.cms.madie.models.dto.DetailsRequestDto;
+import gov.cms.madie.models.dto.UserDetailsDto;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+
+import static org.hamcrest.CoreMatchers.*;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+
+@ExtendWith(MockitoExtension.class)
+class UserServiceClientTest {
+
+  @Mock private RestTemplate userServiceRestTemplate;
+  @InjectMocks private UserServiceClient userServiceClient;
+
+  @BeforeEach
+  void setUp() {
+    ReflectionTestUtils.setField(userServiceClient, "userServiceBaseUrl", "http://test-url");
+  }
+
+  @Test
+  void testGetBulkUserDetailsSuccess() {
+    // Arrange
+    List<String> harpIds = List.of("user1", "user2");
+    UserDetailsDto user1 = UserDetailsDto.builder().harpId("user1").build();
+    UserDetailsDto user2 = UserDetailsDto.builder().harpId("user2").build();
+    Map<String, UserDetailsDto> expectedUsers = Map.of("user1", user1, "user2", user2);
+
+    ResponseEntity<Map<String, UserDetailsDto>> responseEntity = ResponseEntity.ok(expectedUsers);
+
+    when(userServiceRestTemplate.exchange(
+            anyString(),
+            eq(HttpMethod.POST),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class)))
+        .thenReturn(responseEntity);
+
+    // Act
+    Map<String, UserDetailsDto> result = userServiceClient.getBulkUserDetails(harpIds);
+
+    // Assert
+    assertThat(result, is(notNullValue()));
+    assertThat(result.size(), is(2));
+    assertThat(result.get("user1").getHarpId(), is("user1"));
+    assertThat(result.get("user2").getHarpId(), is("user2"));
+
+    verify(userServiceRestTemplate, times(1))
+        .exchange(
+            anyString(),
+            eq(HttpMethod.POST),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class));
+  }
+
+  @Test
+  void testGetBulkUserDetailsWithNullInput() {
+    // Act
+    Map<String, UserDetailsDto> result = userServiceClient.getBulkUserDetails(null);
+
+    // Assert
+    assertThat(result, is(notNullValue()));
+    assertThat(result.isEmpty(), is(true));
+    verify(userServiceRestTemplate, never())
+        .exchange(
+            anyString(),
+            any(HttpMethod.class),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class));
+  }
+
+  @Test
+  void testGetBulkUserDetailsWithEmptyInput() {
+    // Act
+    Map<String, UserDetailsDto> result =
+        userServiceClient.getBulkUserDetails(Collections.emptyList());
+
+    // Assert
+    assertThat(result, is(notNullValue()));
+    assertThat(result.isEmpty(), is(true));
+    verify(userServiceRestTemplate, never())
+        .exchange(
+            anyString(),
+            any(HttpMethod.class),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class));
+  }
+
+  @Test
+  void testGetBulkUserDetailsWithNullResponseBody() {
+    // Arrange
+    List<String> harpIds = List.of("user1");
+    ResponseEntity<Map<String, UserDetailsDto>> responseEntity = ResponseEntity.ok(null);
+
+    when(userServiceRestTemplate.exchange(
+            anyString(),
+            eq(HttpMethod.POST),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class)))
+        .thenReturn(responseEntity);
+
+    // Act
+    Map<String, UserDetailsDto> result = userServiceClient.getBulkUserDetails(harpIds);
+
+    // Assert
+    assertThat(result, is(notNullValue()));
+    assertThat(result.isEmpty(), is(true));
+  }
+
+  @Test
+  void testGetBulkUserDetailsWithRestClientException() {
+    // Arrange
+    List<String> harpIds = List.of("user1");
+
+    when(userServiceRestTemplate.exchange(
+            anyString(),
+            eq(HttpMethod.POST),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class)))
+        .thenThrow(new RestClientException("Connection error"));
+
+    // Act
+    Map<String, UserDetailsDto> result = userServiceClient.getBulkUserDetails(harpIds);
+
+    // Assert
+    assertThat(result, is(notNullValue()));
+    assertThat(result.isEmpty(), is(true));
+  }
+
+  @Test
+  void testGetBulkUserDetailsWithGenericException() {
+    // Arrange
+    List<String> harpIds = List.of("user1");
+
+    when(userServiceRestTemplate.exchange(
+            anyString(),
+            eq(HttpMethod.POST),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class)))
+        .thenThrow(new RuntimeException("Unexpected error"));
+
+    // Act
+    Map<String, UserDetailsDto> result = userServiceClient.getBulkUserDetails(harpIds);
+
+    // Assert
+    assertThat(result, is(notNullValue()));
+    assertThat(result.isEmpty(), is(true));
+  }
+
+  @Test
+  void testGetBulkUserDetailsUrl() {
+    // Arrange
+    List<String> harpIds = List.of("user1");
+    ResponseEntity<Map<String, UserDetailsDto>> responseEntity =
+        ResponseEntity.ok(Collections.emptyMap());
+
+    ArgumentCaptor<String> urlCaptor = ArgumentCaptor.forClass(String.class);
+
+    when(userServiceRestTemplate.exchange(
+            anyString(),
+            eq(HttpMethod.POST),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class)))
+        .thenReturn(responseEntity);
+
+    // Act
+    userServiceClient.getBulkUserDetails(harpIds);
+
+    // Assert
+    verify(userServiceRestTemplate)
+        .exchange(
+            urlCaptor.capture(),
+            eq(HttpMethod.POST),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class));
+
+    assertThat(urlCaptor.getValue(), is("http://test-url/users/details"));
+  }
+
+  @Test
+  void testGetBulkUserDetailsRequestBody() {
+    // Arrange
+    List<String> harpIds = List.of("user1", "user2");
+    ResponseEntity<Map<String, UserDetailsDto>> responseEntity =
+        ResponseEntity.ok(Collections.emptyMap());
+
+    ArgumentCaptor<HttpEntity> entityCaptor = ArgumentCaptor.forClass(HttpEntity.class);
+
+    when(userServiceRestTemplate.exchange(
+            anyString(),
+            eq(HttpMethod.POST),
+            any(HttpEntity.class),
+            any(ParameterizedTypeReference.class)))
+        .thenReturn(responseEntity);
+
+    // Act
+    userServiceClient.getBulkUserDetails(harpIds);
+
+    // Assert
+    verify(userServiceRestTemplate)
+        .exchange(
+            anyString(),
+            eq(HttpMethod.POST),
+            entityCaptor.capture(),
+            any(ParameterizedTypeReference.class));
+
+    HttpEntity<?> capturedEntity = entityCaptor.getValue();
+    assertThat(capturedEntity, is(notNullValue()));
+    assertThat(capturedEntity.getBody(), is(notNullValue()));
+
+    @SuppressWarnings("unchecked")
+    DetailsRequestDto requestBody = (DetailsRequestDto) capturedEntity.getBody();
+    assertThat(requestBody.getHarpIds().size(), is(2));
+    assertThat(requestBody.getHarpIds().contains("user1"), is(true));
+    assertThat(requestBody.getHarpIds().contains("user2"), is(true));
+
+    assertThat(capturedEntity.getHeaders(), is(notNullValue()));
+    assertThat(capturedEntity.getHeaders().getContentType().toString(), is("application/json"));
+  }
+}

@@ -1,12 +1,15 @@
 package cms.gov.madie.measure.repositories;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureSet;
 import org.bson.Document;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +40,7 @@ public class MeasureSearchServiceImplTest {
 
   @Mock MongoTemplate mongoTemplate;
   @Mock AppConfigService appConfigService;
+  @Mock UserServiceClient userServiceClient;
   @InjectMocks MeasureSearchServiceImpl measureAclRepository;
 
   private MeasureListDTO measure1;
@@ -538,5 +542,326 @@ public class MeasureSearchServiceImplTest {
     assertEquals("test-measure-name", page1Measures.get(0).getMeasureName());
     assertEquals("Jane", page1Measures.get(0).getMeasureLock().getLockedBy());
     assertTrue(page1Measures.get(0).isHasLockedTestCases());
+  }
+
+  @Test
+  public void testSearchMeasuresPopulatesOwnerDisplayNames() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureSet measureSet1 = MeasureSet.builder().owner("harpId1").build();
+    MeasureSet measureSet2 = MeasureSet.builder().owner("harpId2").build();
+
+    MeasureListDTO measure1 =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("measure1")
+            .measureSetId("set1")
+            .measureSet(measureSet1)
+            .build();
+
+    MeasureListDTO measure2 =
+        MeasureListDTO.builder()
+            .id("2")
+            .measureName("measure2")
+            .measureSetId("set2")
+            .measureSet(measureSet2)
+            .build();
+
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(List.of(measure1, measure2))
+            .count(Arrays.asList(measure1, measure2))
+            .build();
+
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+
+    // Mock user service to return user details
+    Map<String, UserDetailsDto> userDetailsMap = new HashMap<>();
+    userDetailsMap.put(
+        "harpId1", UserDetailsDto.builder().firstName("John").lastName("Doe").build());
+    userDetailsMap.put(
+        "harpId2", UserDetailsDto.builder().firstName("Jane").lastName("Smith").build());
+
+    when(userServiceClient.getBulkUserDetails(any())).thenReturn(userDetailsMap);
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(2, page.getContent().size());
+    assertEquals("John Doe", page.getContent().get(0).getOwnerDisplayName());
+    assertEquals("Jane Smith", page.getContent().get(1).getOwnerDisplayName());
+  }
+
+  @Test
+  public void testPopulateOwnerDisplayNamesWithFirstNameOnly() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureSet measureSet = MeasureSet.builder().owner("harpId1").build();
+    MeasureListDTO measure =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("measure1")
+            .measureSetId("set1")
+            .measureSet(measureSet)
+            .build();
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure)).count(Arrays.asList(measure)).build();
+
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+
+    Map<String, UserDetailsDto> userDetailsMap = new HashMap<>();
+    userDetailsMap.put("harpId1", UserDetailsDto.builder().firstName("John").build());
+
+    when(userServiceClient.getBulkUserDetails(any())).thenReturn(userDetailsMap);
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("John", page.getContent().get(0).getOwnerDisplayName());
+  }
+
+  @Test
+  public void testPopulateOwnerDisplayNamesWithLastNameOnly() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureSet measureSet = MeasureSet.builder().owner("harpId1").build();
+    MeasureListDTO measure =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("measure1")
+            .measureSetId("set1")
+            .measureSet(measureSet)
+            .build();
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure)).count(Arrays.asList(measure)).build();
+
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+
+    Map<String, UserDetailsDto> userDetailsMap = new HashMap<>();
+    userDetailsMap.put("harpId1", UserDetailsDto.builder().lastName("Doe").build());
+
+    when(userServiceClient.getBulkUserDetails(any())).thenReturn(userDetailsMap);
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("Doe", page.getContent().get(0).getOwnerDisplayName());
+  }
+
+  @Test
+  public void testPopulateOwnerDisplayNamesWithEmptyNames() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureSet measureSet = MeasureSet.builder().owner("harpId1").build();
+    MeasureListDTO measure =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("measure1")
+            .measureSetId("set1")
+            .measureSet(measureSet)
+            .build();
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure)).count(Arrays.asList(measure)).build();
+
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+
+    Map<String, UserDetailsDto> userDetailsMap = new HashMap<>();
+    userDetailsMap.put("harpId1", UserDetailsDto.builder().firstName("").lastName("").build());
+
+    when(userServiceClient.getBulkUserDetails(any())).thenReturn(userDetailsMap);
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("-", page.getContent().get(0).getOwnerDisplayName());
+  }
+
+  @Test
+  public void testPopulateOwnerDisplayNamesWithUserNotFound() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureSet measureSet = MeasureSet.builder().owner("harpId1").build();
+    MeasureListDTO measure =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("measure1")
+            .measureSetId("set1")
+            .measureSet(measureSet)
+            .build();
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure)).count(Arrays.asList(measure)).build();
+
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+
+    // Return empty map - user not found
+    when(userServiceClient.getBulkUserDetails(any())).thenReturn(new HashMap<>());
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("-", page.getContent().get(0).getOwnerDisplayName());
+  }
+
+  @Test
+  public void testPopulateOwnerDisplayNamesWithNullMeasureSet() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measure =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("measure1")
+            .measureSetId("set1")
+            .measureSet(null)
+            .build();
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure)).count(Arrays.asList(measure)).build();
+
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(1, page.getContent().size());
+    // Should not call userServiceClient when measureSet is null
+  }
+
+  @Test
+  public void testPopulateOwnerDisplayNamesWithNullOwner() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureSet measureSet = MeasureSet.builder().owner(null).build();
+    MeasureListDTO measure =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("measure1")
+            .measureSetId("set1")
+            .measureSet(measureSet)
+            .build();
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure)).count(Arrays.asList(measure)).build();
+
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(1, page.getContent().size());
+    // Should not call userServiceClient when owner is null
+  }
+
+  @Test
+  public void testPopulateOwnerDisplayNamesWithEmptyList() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of()).count(List.of()).build();
+
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(0, page.getContent().size());
+    // Should not call userServiceClient when list is empty
+  }
+
+  @Test
+  public void testPopulateOwnerDisplayNamesDeduplicatesOwners() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureSet measureSet1 = MeasureSet.builder().owner("harpId1").build();
+    MeasureSet measureSet2 = MeasureSet.builder().owner("harpId1").build(); // Same owner
+
+    MeasureListDTO measure1 =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("measure1")
+            .measureSetId("set1")
+            .measureSet(measureSet1)
+            .build();
+
+    MeasureListDTO measure2 =
+        MeasureListDTO.builder()
+            .id("2")
+            .measureName("measure2")
+            .measureSetId("set2")
+            .measureSet(measureSet2)
+            .build();
+
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(List.of(measure1, measure2))
+            .count(Arrays.asList(measure1, measure2))
+            .build();
+
+    AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(pagedResults);
+
+    Map<String, UserDetailsDto> userDetailsMap = new HashMap<>();
+    userDetailsMap.put(
+        "harpId1", UserDetailsDto.builder().firstName("John").lastName("Doe").build());
+
+    when(userServiceClient.getBulkUserDetails(ArgumentMatchers.argThat(list -> list.size() == 1)))
+        .thenReturn(userDetailsMap);
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), "measures");
+
+    assertEquals(2, page.getContent().size());
+    assertEquals("John Doe", page.getContent().get(0).getOwnerDisplayName());
+    assertEquals("John Doe", page.getContent().get(1).getOwnerDisplayName());
   }
 }
