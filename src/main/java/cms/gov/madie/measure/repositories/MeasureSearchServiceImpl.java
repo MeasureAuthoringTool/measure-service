@@ -343,7 +343,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
               dto.setOwnerDisplayName(StringUtils.isNotBlank(displayName) ? displayName : "-");
             } else {
-              // Fallback to harp ID if user details not found
+              // Fallback to '-' if user details not found
               dto.setOwnerDisplayName("-");
             }
           }
