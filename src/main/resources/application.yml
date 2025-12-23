@@ -53,6 +53,8 @@ madie:
     create-qrda-urn: /qdm/measures/package/qrda
     human-readable: /qdm/measures/human-readable
     retrieve-cqmmeasure-urn: /qdm/measures/cqm
+  user-service:
+    base-url: ${USER_SERVICE_URL:http://localhost:8088/api}
   excel-export-service:
     base-url: ${EXCEL_EXPORT_SERVICE:http://localhost:3000/api}
     get-excel-urn: /excel
