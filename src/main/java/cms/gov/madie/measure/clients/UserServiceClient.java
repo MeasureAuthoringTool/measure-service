@@ -63,7 +63,7 @@ public class UserServiceClient {
 
       log.debug("Received response from user service: {}", response);
 
-      if (response != null) {
+      if (response != null && log.isDebugEnabled()) {
         response.forEach(
             (harpId, details) -> {
               log.debug(
