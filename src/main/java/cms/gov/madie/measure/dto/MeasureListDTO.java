@@ -57,4 +57,5 @@ public class MeasureListDTO {
 
   private MeasureLock measureLock;
   private boolean hasLockedTestCases;
+  private String ownerDisplayName;
 }

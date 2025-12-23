@@ -1,11 +1,13 @@
 package cms.gov.madie.measure.repositories;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.services.AppConfigService;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
 
 import org.apache.commons.collections4.CollectionUtils;
@@ -30,10 +32,15 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 public class MeasureSearchServiceImpl implements MeasureSearchService {
   private final MongoTemplate mongoTemplate;
   private final AppConfigService appConfigService;
+  private final UserServiceClient userServiceClient;
 
-  public MeasureSearchServiceImpl(MongoTemplate mongoTemplate, AppConfigService appConfigService) {
+  public MeasureSearchServiceImpl(
+      MongoTemplate mongoTemplate,
+      AppConfigService appConfigService,
+      UserServiceClient userServiceClient) {
     this.mongoTemplate = mongoTemplate;
     this.appConfigService = appConfigService;
+    this.userServiceClient = userServiceClient;
   }
 
   private LookupOperation getLookupOperation() {
@@ -272,16 +279,75 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         }
       }
       long totalSize = matchInfoMap.size();
-      return new PageImpl<>(results.get(0).getQueryResults(), pageable, totalSize);
+      List<MeasureListDTO> queryResults = results.get(0).getQueryResults();
+      populateOwnerDisplayNames(queryResults);
+      return new PageImpl<>(queryResults, pageable, totalSize);
 
     } else {
       Aggregation pipeline =
           newAggregation(lookupOperation, unwindOperation, matchOperation, facets);
       List<FacetDTO> results =
           mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
-      return new PageImpl<>(
-          results.get(0).getQueryResults(), pageable, results.get(0).getCount().size());
+      List<MeasureListDTO> queryResults = results.get(0).getQueryResults();
+      populateOwnerDisplayNames(queryResults);
+      return new PageImpl<>(queryResults, pageable, results.get(0).getCount().size());
     }
+  }
+
+  /**
+   * Populates the ownerDisplayName field for each MeasureListDTO by fetching user details from
+   * user-service.
+   *
+   * @param measureListDTOs List of MeasureListDTO objects to populate
+   */
+  private void populateOwnerDisplayNames(List<MeasureListDTO> measureListDTOs) {
+    if (CollectionUtils.isEmpty(measureListDTOs)) {
+      return;
+    }
+
+    // Collect unique owner harp IDs
+    List<String> ownerHarpIds =
+        measureListDTOs.stream()
+            .map(dto -> dto.getMeasureSet() != null ? dto.getMeasureSet().getOwner() : null)
+            .filter(Objects::nonNull)
+            .distinct()
+            .collect(Collectors.toList());
+
+    if (ownerHarpIds.isEmpty()) {
+      return;
+    }
+
+    // Fetch user details from user-service
+    Map<String, UserDetailsDto> userDetailsMap = userServiceClient.getBulkUserDetails(ownerHarpIds);
+
+    // Populate ownerDisplayName for each DTO
+    measureListDTOs.forEach(
+        dto -> {
+          if (dto.getMeasureSet() != null && dto.getMeasureSet().getOwner() != null) {
+            String ownerHarpId = dto.getMeasureSet().getOwner();
+            UserDetailsDto userDetails = userDetailsMap.get(ownerHarpId);
+
+            if (userDetails != null) {
+              String firstName = userDetails.getFirstName();
+              String lastName = userDetails.getLastName();
+
+              // Concatenate firstName and lastName
+              String displayName = "";
+              if (StringUtils.isNotBlank(firstName) && StringUtils.isNotBlank(lastName)) {
+                displayName = firstName + " " + lastName;
+              } else if (StringUtils.isNotBlank(firstName)) {
+                displayName = firstName;
+              } else if (StringUtils.isNotBlank(lastName)) {
+                displayName = lastName;
+              }
+
+              dto.setOwnerDisplayName(StringUtils.isNotBlank(displayName) ? displayName : "-");
+            } else {
+              // Fallback to '-' if user details not found
+              dto.setOwnerDisplayName("-");
+            }
+          }
+        });
   }
 
   private Criteria buildMeasureSetCriteria(String userId, List<OwnershipType> ownershipTypes) {
