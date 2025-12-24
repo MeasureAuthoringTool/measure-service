@@ -26,6 +26,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static cms.gov.madie.measure.dto.MadieFeatureFlag.DISPLAY_OWNER;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Repository
@@ -301,6 +302,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
    * @param measureListDTOs List of MeasureListDTO objects to populate
    */
   private void populateOwnerDisplayNames(List<MeasureListDTO> measureListDTOs) {
+    if (!appConfigService.isFlagEnabled(DISPLAY_OWNER)) {
+      return;
+    }
     if (CollectionUtils.isEmpty(measureListDTOs)) {
       return;
     }
