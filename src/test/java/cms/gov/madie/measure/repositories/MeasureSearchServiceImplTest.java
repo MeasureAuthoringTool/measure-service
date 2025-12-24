@@ -547,6 +547,7 @@ public class MeasureSearchServiceImplTest {
   @Test
   public void testSearchMeasuresPopulatesOwnerDisplayNames() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureSet measureSet1 = MeasureSet.builder().owner("harpId1").build();
@@ -600,6 +601,7 @@ public class MeasureSearchServiceImplTest {
   @Test
   public void testPopulateOwnerDisplayNamesWithFirstNameOnly() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureSet measureSet = MeasureSet.builder().owner("harpId1").build();
@@ -635,6 +637,7 @@ public class MeasureSearchServiceImplTest {
   @Test
   public void testPopulateOwnerDisplayNamesWithLastNameOnly() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureSet measureSet = MeasureSet.builder().owner("harpId1").build();
@@ -670,6 +673,7 @@ public class MeasureSearchServiceImplTest {
   @Test
   public void testPopulateOwnerDisplayNamesWithEmptyNames() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureSet measureSet = MeasureSet.builder().owner("harpId1").build();
@@ -705,6 +709,7 @@ public class MeasureSearchServiceImplTest {
   @Test
   public void testPopulateOwnerDisplayNamesWithUserNotFound() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureSet measureSet = MeasureSet.builder().owner("harpId1").build();
@@ -817,6 +822,7 @@ public class MeasureSearchServiceImplTest {
   @Test
   public void testPopulateOwnerDisplayNamesDeduplicatesOwners() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.MEASURE_SEARCH)).thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureSet measureSet1 = MeasureSet.builder().owner("harpId1").build();
