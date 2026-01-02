@@ -19,7 +19,7 @@ public class CqlDifferentiatorServiceTest {
   }
 
   @Test
-  void testCompareLibraries_withSimpleCql() {
+  void testCompareLibrariesWithSimpleCql() {
     Map<String, String> oldLibraries = new HashMap<>();
     Map<String, String> newLibraries = new HashMap<>();
 
@@ -66,7 +66,7 @@ public class CqlDifferentiatorServiceTest {
   }
 
   @Test
-  void testCompareLibraries_withoutReordering() {
+  void testCompareLibrariesWithoutReordering() {
     Map<String, String> oldLibraries = new HashMap<>();
     Map<String, String> newLibraries = new HashMap<>();
 
@@ -96,7 +96,7 @@ public class CqlDifferentiatorServiceTest {
   }
 
   @Test
-  void testCompareLibraries_withNewFiles() {
+  void testCompareLibrariesWithNewFiles() {
     Map<String, String> oldLibraries = new HashMap<>();
     Map<String, String> newLibraries = new HashMap<>();
 
@@ -132,7 +132,7 @@ public class CqlDifferentiatorServiceTest {
   }
 
   @Test
-  void testCompareLibraries_withEmptyLibraries() {
+  void testCompareLibrariesWithEmptyLibraries() {
     Map<String, String> oldLibraries = new HashMap<>();
     Map<String, String> newLibraries = new HashMap<>();
 
@@ -143,7 +143,7 @@ public class CqlDifferentiatorServiceTest {
   }
 
   @Test
-  void testCompareLibraries_normalizesTabsAndCarriageReturns() {
+  void testCompareLibrariesNormalizesTabsAndCarriageReturns() {
     Map<String, String> oldLibraries = new HashMap<>();
     Map<String, String> newLibraries = new HashMap<>();
 
