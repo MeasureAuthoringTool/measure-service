@@ -1178,8 +1178,6 @@ class MeasureControllerTest {
 
   @Test
   void compareMeasuresReturnsCqlDiffResultForValidMeasureIds() {
-    when(principal.getName()).thenReturn("test.user");
-
     Measure oldMeasure =
         Measure.builder()
             .id("oldMeasureId")
@@ -1209,7 +1207,7 @@ class MeasureControllerTest {
         .thenReturn(comparisons);
 
     ResponseEntity<CqlDiffResultDTO> response =
-        controller.compareMeasures("oldMeasureId", "newMeasureId", true, principal);
+        controller.compareMeasures("oldMeasureId", "newMeasureId", true);
 
     assertNotNull(response.getBody());
     assertEquals("oldMeasureId", response.getBody().getOldMeasureId());
@@ -1227,19 +1225,15 @@ class MeasureControllerTest {
 
   @Test
   void compareMeasuresThrowsResourceNotFoundExceptionForInvalidOldMeasureId() {
-    when(principal.getName()).thenReturn("test.user");
-
     when(measureService.findMeasureById("oldMeasureId")).thenReturn(null);
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> controller.compareMeasures("oldMeasureId", "newMeasureId", true, principal));
+        () -> controller.compareMeasures("oldMeasureId", "newMeasureId", true));
   }
 
   @Test
   void compareMeasuresThrowsResourceNotFoundExceptionForInvalidNewMeasureId() {
-    when(principal.getName()).thenReturn("test.user");
-
     Measure oldMeasure =
         Measure.builder()
             .id("oldMeasureId")
@@ -1252,13 +1246,11 @@ class MeasureControllerTest {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> controller.compareMeasures("oldMeasureId", "newMeasureId", true, principal));
+        () -> controller.compareMeasures("oldMeasureId", "newMeasureId", true));
   }
 
   @Test
   void compareMeasuresReturnsEmptyComparisonsForMeasuresWithoutCql() {
-    when(principal.getName()).thenReturn("test.user");
-
     Measure oldMeasure =
         Measure.builder().id("oldMeasureId").cql(null).cqlLibraryName("OldLibrary").build();
 
@@ -1269,7 +1261,7 @@ class MeasureControllerTest {
     when(measureService.findMeasureById("newMeasureId")).thenReturn(newMeasure);
 
     ResponseEntity<CqlDiffResultDTO> response =
-        controller.compareMeasures("oldMeasureId", "newMeasureId", true, principal);
+        controller.compareMeasures("oldMeasureId", "newMeasureId", true);
 
     assertNotNull(response.getBody());
     assertEquals("oldMeasureId", response.getBody().getOldMeasureId());

@@ -566,8 +566,7 @@ public class MeasureController extends AbstractMeasureController {
   public ResponseEntity<CqlDiffResultDTO> compareMeasures(
       @PathVariable("oldMeasureId") String oldMeasureId,
       @PathVariable("newMeasureId") String newMeasureId,
-      @RequestParam(required = false, defaultValue = "true") boolean autoReorder,
-      Principal principal) {
+      @RequestParam(required = false, defaultValue = "true") boolean autoReorder) {
 
     log.info(
         "Comparing measures: old={}, new={}, autoReorder={}",

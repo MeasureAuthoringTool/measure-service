@@ -101,11 +101,8 @@ public class CqlDifferentiatorService {
     if (text == null) {
       return "";
     }
-    // Remove carriage returns
-    text = text.replace("\r", "");
-    // Replace tabs with 2 spaces (handles inconsistencies between 2019/2020)
-    text = text.replace("\t", "  ");
-    return text;
+    // Remove carriage returns and replace tabs with 2 spaces
+    return text.replace("\r", "").replace("\t", "  ");
   }
 
   /**
