@@ -155,23 +155,12 @@
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-rest-commons</artifactId>
-      <version>1.0.4-SNAPSHOT</version>
+      <version>1.0.5-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>info.cqframework</groupId>
       <artifactId>cql-to-elm</artifactId>
       <version>${cqframework.version}</version>
-    </dependency>
-    <dependency>
-      <groupId>ca.uhn.hapi.fhir</groupId>
-      <artifactId>hapi-fhir-structures-r4</artifactId>
-      <version>8.4.0</version>
-      <exclusions>
-        <exclusion>
-          <artifactId>okhttp</artifactId>
-          <groupId>com.squareup.okhttp3</groupId>
-        </exclusion>
-      </exclusions>
     </dependency>
     <dependency>
       <groupId>io.mongock</groupId>
@@ -184,7 +173,7 @@
     <dependency>
       <groupId>gov.cms.madie.packaging</groupId>
       <artifactId>packaging-utility</artifactId>
-      <version>0.2.12-SNAPSHOT</version>
+      <version>0.2.13-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.springdoc</groupId>
