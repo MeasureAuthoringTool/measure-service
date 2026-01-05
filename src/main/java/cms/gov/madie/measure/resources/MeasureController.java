@@ -48,6 +48,7 @@ public class MeasureController extends AbstractMeasureController {
   private final TestCaseService testCaseService;
   private final TestCaseLockService testCaseLockService;
   private final AppConfigService appConfigService;
+  private final CqlDifferentiatorService cqlDifferentiatorService;
 
   @Override
   protected AppConfigService getAppConfigService() {
@@ -548,5 +549,70 @@ public class MeasureController extends AbstractMeasureController {
       @PathVariable("id") String measureId, Principal principal) {
     return ResponseEntity.ok()
         .body(measureService.getMeasureHistory(measureId, principal.getName()));
+  }
+
+  /**
+   * Compare two measures' CQL content and return normalized/reordered text for diffing. Uses
+   * Levenshtein edit distance to match similar code blocks and reorder the new measure to align
+   * with the old measure structure, making diffs more meaningful.
+   *
+   * @param oldMeasureId ID of the old measure to compare from
+   * @param newMeasureId ID of the new measure to compare to
+   * @param autoReorder Whether to auto-reorder the new measure CQL (default: true)
+   * @param principal Current user principal
+   * @return CqlDiffResult containing normalized/reordered text ready for diff display
+   */
+  @GetMapping(value = "/measures/{oldMeasureId}/compare/{newMeasureId}")
+  public ResponseEntity<CqlDiffResultDTO> compareMeasures(
+      @PathVariable("oldMeasureId") String oldMeasureId,
+      @PathVariable("newMeasureId") String newMeasureId,
+      @RequestParam(required = false, defaultValue = "true") boolean autoReorder) {
+
+    log.info(
+        "Comparing measures: old={}, new={}, autoReorder={}",
+        oldMeasureId,
+        newMeasureId,
+        autoReorder);
+
+    // Fetch both measures
+    final Measure oldMeasure = measureService.findMeasureById(oldMeasureId);
+    final Measure newMeasure = measureService.findMeasureById(newMeasureId);
+
+    // Verify user has access to both measures
+    if (oldMeasure == null) {
+      throw new ResourceNotFoundException("Measure", oldMeasureId);
+    }
+    if (newMeasure == null) {
+      throw new ResourceNotFoundException("Measure", newMeasureId);
+    }
+
+    // Extract CQL content - for now, treating single CQL file as a "library"
+    // In future, this could be extended to handle multiple CQL libraries if needed
+    Map<String, String> oldLibraries = new HashMap<>();
+    Map<String, String> newLibraries = new HashMap<>();
+
+    if (StringUtils.isNotBlank(oldMeasure.getCql())) {
+      String oldFileName = oldMeasure.getCqlLibraryName() + ".cql";
+      oldLibraries.put(oldFileName, oldMeasure.getCql());
+    }
+
+    if (StringUtils.isNotBlank(newMeasure.getCql())) {
+      String newFileName = newMeasure.getCqlLibraryName() + ".cql";
+      newLibraries.put(newFileName, newMeasure.getCql());
+    }
+
+    // Perform comparison
+    List<CqlFileComparisonDTO> comparisons =
+        cqlDifferentiatorService.compareLibraries(oldLibraries, newLibraries, autoReorder);
+
+    CqlDiffResultDTO result =
+        CqlDiffResultDTO.builder()
+            .comparisons(comparisons)
+            .oldMeasureId(oldMeasureId)
+            .newMeasureId(newMeasureId)
+            .build();
+
+    log.info("Comparison complete: {} file comparison(s)", comparisons.size());
+    return ResponseEntity.ok(result);
   }
 }
