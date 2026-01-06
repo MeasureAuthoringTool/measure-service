@@ -457,8 +457,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateResourceAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
-        .thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
@@ -521,8 +519,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCasesThrowsNoExceptionForNonDraftMeasure() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
-        .thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
@@ -1243,8 +1239,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testUpdateTestCaseThrowsResourceNotFoundExceptionForUnknownMeasureId() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
-        .thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(false);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
@@ -3373,8 +3367,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateTestCaseAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
-        .thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());

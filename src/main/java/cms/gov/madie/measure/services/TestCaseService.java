@@ -337,8 +337,7 @@ public class TestCaseService {
         }
       }
 
-      if (appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION)
-          && ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
+      if (ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
         Measure updatedMeasure = measureRepository.addOrUpdateTestCase(measureId, testCase);
 
         if (updatedMeasure == null) {

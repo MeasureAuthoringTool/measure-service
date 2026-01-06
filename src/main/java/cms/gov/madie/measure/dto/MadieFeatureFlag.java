@@ -5,9 +5,6 @@ public enum MadieFeatureFlag {
   QDM_EXPORT("qdmExport"),
   QDM_TEST_CASES("qdmTestCases"),
   IMPORT_TEST_CASES("importTestCases"),
-  MEASURE_SEARCH("MeasureSearch"),
-  EDIT_TESTS_ON_VERSIONED_MEASURES("EditTestsOnVersionedMeasures"),
-  STU_6_TEST_CASE_VALIDATION("stu6TestCaseValidation"),
   LOCKING("Locking"),
   QICORE_ELEMENTS_TAB("qiCoreElementsTab"),
   DISPLAY_OWNER("DisplayOwner");

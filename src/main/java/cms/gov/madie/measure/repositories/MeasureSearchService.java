@@ -21,9 +21,7 @@ public interface MeasureSearchService {
       String userId,
       Pageable pageable,
       MeasureSearchCriteria searchCriteria,
-      List<OwnershipType> ownershipTypes,
-      // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
-      String invocationSource);
+      List<OwnershipType> ownershipTypes);
 
   /**
    * Get all the measures(name, version and owner) if they include any version of given library name

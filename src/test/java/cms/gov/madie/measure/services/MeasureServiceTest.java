@@ -382,15 +382,10 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.OWNED)),
-            eq("testCase"));
+            eq(List.of(OwnershipType.OWNED)));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria,
-            List.of(OwnershipType.OWNED),
-            initialPage,
-            "test.user",
-            "testCase");
+            measureSearchCriteria, List.of(OwnershipType.OWNED), initialPage, "test.user");
     assertNotNull(measures);
   }
 
@@ -408,15 +403,10 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.SHARED)),
-            eq("testCase"));
+            eq(List.of(OwnershipType.SHARED)));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria,
-            List.of(OwnershipType.SHARED),
-            initialPage,
-            "test.user",
-            "testCase");
+            measureSearchCriteria, List.of(OwnershipType.SHARED), initialPage, "test.user");
     assertNotNull(measures);
   }
 
@@ -434,15 +424,10 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.ALL)),
-            eq("measures"));
+            eq(List.of(OwnershipType.ALL)));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria,
-            List.of(OwnershipType.ALL),
-            initialPage,
-            "test.user",
-            "measures");
+            measureSearchCriteria, List.of(OwnershipType.ALL), initialPage, "test.user");
     assertNotNull(measures);
   }
 
