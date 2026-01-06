@@ -245,7 +245,7 @@ public class TestCaseController {
             .toList();
 
     Map<String, Object> response =
-        testCaseService.updateJsonWithGroupAndTitle(
+        testCaseService.updateQiCoreJsonWithGroupAndTitle(
             testCasesToBeUpdated, principal.getName(), measureId, accessToken);
 
     return ResponseEntity.ok(response);

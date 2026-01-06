@@ -740,4 +740,22 @@ public class TestCaseServiceUtil {
   public static String getTestCaseDisplayName(String series, String title) {
     return StringUtils.isBlank(series) ? title : series + " - " + title;
   }
+
+  public static String getJson(String model, String json) throws JsonProcessingException {
+    String jsonFromImportRequest = null;
+    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
+      jsonFromImportRequest = JsonUtil.removeMeasureReportEntries(json);
+    } else if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
+      jsonFromImportRequest = JsonUtil.getTestCaseJson(json);
+    }
+    return jsonFromImportRequest;
+  }
+
+  public static String formatErrorMessage(Exception e) {
+    return e.getClass().getSimpleName().equals("DuplicateTestCaseNameException")
+        ? "The Test Case Group and Title are already used in another test case on this "
+            + "measure. The combination must be unique (case insensitive,"
+            + " spaces ignored) across all test cases associated with the measure."
+        : e.getMessage();
+  }
 }

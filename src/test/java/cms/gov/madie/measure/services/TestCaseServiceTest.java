@@ -3691,12 +3691,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(testCaseService.updateTestCase(testCase1, "measure1", "user1", "accessToken"))
         .thenReturn(updatedTestCase);
 
-    when(testCaseLockService.lockTestCase(anyString(), anyString(), anyString()))
-        .thenReturn(new LockInfo());
-    when(testCaseLockService.unlockTestCase(anyString(), anyString())).thenReturn(new LockInfo());
-
     Map<String, Object> response =
-        testCaseService.updateJsonWithGroupAndTitle(testCases, "user1", "measure1", "accessToken");
+        testCaseService.updateQiCoreJsonWithGroupAndTitle(
+            testCases, "user1", "measure1", "accessToken");
 
     assertTrue(((List<String>) response.get("updated")).contains("Group1 - Title1"));
     assertTrue(((List<String>) response.get("failed")).isEmpty());
@@ -3713,7 +3710,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     testCases.add(testCase1);
 
     Map<String, Object> response =
-        testCaseService.updateJsonWithGroupAndTitle(testCases, "user1", "measure1", "accessToken");
+        testCaseService.updateQiCoreJsonWithGroupAndTitle(
+            testCases, "user1", "measure1", "accessToken");
 
     assertTrue(((List<String>) response.get("failed")).contains("Group1 - Title1"));
     assertTrue(((List<String>) response.get("updated")).isEmpty());
