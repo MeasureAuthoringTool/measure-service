@@ -371,8 +371,9 @@ public class MeasureController extends AbstractMeasureController {
         principal.getName(),
         groupId,
         measureId);
-    return ResponseEntity.ok(
-        groupService.deleteMeasureGroup(measureId, groupId, principal.getName()));
+    Measure measure = groupService.deleteMeasureGroup(measureId, groupId, principal.getName());
+    measure.setMeasureLock(measureService.getMeasureLock(measureId, principal.getName()));
+    return ResponseEntity.ok(measure);
   }
 
   @PostMapping("/measures/{measureId}/groups/{groupId}/stratification")
