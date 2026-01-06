@@ -230,6 +230,27 @@ public class TestCaseController {
     return ResponseEntity.ok(populateShiftedAndFailed(testCases, shiftedIds, failedIds));
   }
 
+  @PutMapping(ControllerUtil.TEST_CASES + "/update-json-metadata")
+  public ResponseEntity<Map<String, Object>> updateQiCoreJsonWithGroupAndTitle(
+      @PathVariable String measureId,
+      @RequestBody List<String> testCaseIds,
+      @RequestHeader("Authorization") String accessToken,
+      Principal principal) {
+
+    Measure measure = checkQiCoreMeasure(measureId, principal);
+
+    List<TestCase> testCasesToBeUpdated =
+        measure.getTestCases().stream()
+            .filter(testCase -> testCaseIds.contains(testCase.getId()))
+            .toList();
+
+    Map<String, Object> response =
+        testCaseService.updateJsonWithGroupAndTitle(
+            testCasesToBeUpdated, principal.getName(), measureId, accessToken);
+
+    return ResponseEntity.ok(response);
+  }
+
   private Measure checkMeasure(String measureId, Principal principal) {
     Measure measure = measureService.findMeasureById(measureId);
     measureService.verifyAuthorization(principal.getName(), measure);

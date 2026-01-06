@@ -20,6 +20,10 @@ import cms.gov.madie.measure.exceptions.InvalidIdException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.SpecialCharacterException;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.*;
 
@@ -692,5 +696,48 @@ public class TestCaseServiceUtil {
         throw new SpecialCharacterException("Group");
       }
     }
+  }
+
+  public static String parseAndUpdateJsonWithGroupAndTitle(String json, String group, String title)
+      throws JsonProcessingException {
+    ObjectMapper objectMapper = new ObjectMapper();
+    JsonNode rootNode = objectMapper.readTree(json);
+
+    if (rootNode.has("entry") && rootNode.get("entry").isArray()) {
+      ArrayNode entryArray = (ArrayNode) rootNode.get("entry");
+      for (JsonNode entryNode : entryArray) {
+        if (entryNode.has("resource") && entryNode.get("resource").has("resourceType")) {
+          JsonNode resourceNode = entryNode.get("resource");
+          if (resourceNode.has("name") && resourceNode.get("name").isArray()) {
+            ArrayNode nameArray = (ArrayNode) resourceNode.get("name");
+            for (JsonNode nameNode : nameArray) {
+              if (nameNode.has("family")) {
+                ((ObjectNode) nameNode).put("family", group);
+              }
+              if (nameNode.has("given") && nameNode.get("given").isArray()) {
+                ArrayNode givenArray = (ArrayNode) nameNode.get("given");
+                givenArray.removeAll();
+                givenArray.add(title);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return objectMapper.writeValueAsString(rootNode);
+  }
+
+  public static TestCaseImportOutcome buildTestCaseImportOutcome(
+      UUID patientId, boolean successful, String message) {
+    return TestCaseImportOutcome.builder()
+        .patientId(patientId)
+        .successful(successful)
+        .message(message)
+        .build();
+  }
+
+  public static String getTestCaseDisplayName(String series, String title) {
+    return StringUtils.isBlank(series) ? title : series + " - " + title;
   }
 }

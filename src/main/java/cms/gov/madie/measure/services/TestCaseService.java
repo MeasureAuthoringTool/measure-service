@@ -662,7 +662,7 @@ public class TestCaseService {
           TestCaseServiceUtil.getPatientGivenNameFromJson(model, testCaseImportRequest.getJson());
       log.info("Test Case title + Test Case Group:  {}", givenName + " " + familyName);
       if (StringUtils.isBlank(givenName)) {
-        return buildTestCaseImportOutcome(
+        return TestCaseServiceUtil.buildTestCaseImportOutcome(
             testCaseImportRequest.getPatientId(), false, "Test Case Title is required.");
       }
       TestCase newTestCase =
@@ -721,7 +721,7 @@ public class TestCaseService {
               + ex.getMessage(),
           userName,
           testCaseImportRequest.getPatientId());
-      return buildTestCaseImportOutcome(
+      return TestCaseServiceUtil.buildTestCaseImportOutcome(
           testCaseImportRequest.getPatientId(),
           false,
           "Error while processing Test Case JSON. Please make sure Test Case JSON is valid.");
@@ -973,12 +973,39 @@ public class TestCaseService {
     }
   }
 
-  private TestCaseImportOutcome buildTestCaseImportOutcome(
-      UUID patientId, boolean successful, String message) {
-    return TestCaseImportOutcome.builder()
-        .patientId(patientId)
-        .successful(successful)
-        .message(message)
-        .build();
+  public Map<String, Object> updateJsonWithGroupAndTitle(
+      List<TestCase> testCases, String userName, String measureId, String accessToken) {
+    Map<String, Object> response = new HashMap<>();
+    List<String> updatedTestCases = new ArrayList<>();
+    List<String> failedTestCases = new ArrayList<>();
+
+    for (TestCase testCase : testCases) {
+      try {
+        if (testCase.getTestCaseLock() != null) {
+          failedTestCases.add(
+              TestCaseServiceUtil.getTestCaseDisplayName(
+                  testCase.getSeries(), testCase.getTitle()));
+          continue;
+        }
+        testCaseLockService.lockTestCase(measureId, testCase.getId(), userName);
+        String updatedJson =
+            TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(
+                testCase.getJson(), testCase.getSeries(), testCase.getTitle());
+        testCase.setJson(updatedJson);
+
+        updateTestCase(testCase, measureId, userName, accessToken);
+        updatedTestCases.add(
+            TestCaseServiceUtil.getTestCaseDisplayName(testCase.getSeries(), testCase.getTitle()));
+      } catch (Exception e) {
+        log.error("Failed to update Test Case [{}]: {}", testCase.getId(), e.getMessage());
+        failedTestCases.add(
+            TestCaseServiceUtil.getTestCaseDisplayName(testCase.getSeries(), testCase.getTitle()));
+      } finally {
+        testCaseLockService.unlockTestCase(testCase.getId(), userName);
+      }
+    }
+    response.put("updated", updatedTestCases);
+    response.put("failed", failedTestCases);
+    return response;
   }
 }
