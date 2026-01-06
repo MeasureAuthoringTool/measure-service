@@ -1388,4 +1388,187 @@ public class HumanReadableServiceTest {
     assertTrue(diff.getNewValue().contains("This measure includes:"));
     assertTrue(diff.getNewValue().contains("Additional criteria apply."));
   }
+
+  @Test
+  void testCompareHtml_ListInValue_EmptyLists() {
+    // Test that empty lists are handled correctly
+    String oldHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Data</th>"
+            + "<td class='content-container'>"
+            + "<ul></ul>"
+            + "</td></tr>"
+            + "</table>";
+
+    String newHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Data</th>"
+            + "<td class='content-container'>"
+            + "<ul></ul>"
+            + "</td></tr>"
+            + "</table>";
+
+    var result = humanReadableService.compareHtml(oldHtml, newHtml);
+
+    assertThat(result.getDifferences().isEmpty(), is(true));
+  }
+
+  @Test
+  void testCompareHtml_ListRemoved() {
+    // Test when an entire list is removed
+    String oldHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Data</th>"
+            + "<td class='content-container'>"
+            + "<ul>"
+            + "<li>Item 1</li>"
+            + "<li>Item 2</li>"
+            + "</ul>"
+            + "</td></tr>"
+            + "</table>";
+
+    String newHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Data</th>"
+            + "<td class='content-container'>"
+            + "<p>No list here</p>"
+            + "</td></tr>"
+            + "</table>";
+
+    var result = humanReadableService.compareHtml(oldHtml, newHtml);
+
+    assertThat(result.getDifferences().size(), is(equalTo(1)));
+    var diff = result.getDifferences().get(0);
+    assertThat(diff.getField(), is(equalTo("Data")));
+    // List removed - old items should be highlighted as deleted
+    assertTrue(diff.getOldValue().contains("Item 1"));
+    assertTrue(diff.getOldValue().contains("Item 2"));
+  }
+
+  @Test
+  void testCompareHtml_ListAdded() {
+    // Test when an entire list is added
+    String oldHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Data</th>"
+            + "<td class='content-container'>"
+            + "<p>No list here</p>"
+            + "</td></tr>"
+            + "</table>";
+
+    String newHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Data</th>"
+            + "<td class='content-container'>"
+            + "<ul>"
+            + "<li>Item 1</li>"
+            + "<li>Item 2</li>"
+            + "</ul>"
+            + "</td></tr>"
+            + "</table>";
+
+    var result = humanReadableService.compareHtml(oldHtml, newHtml);
+
+    assertThat(result.getDifferences().size(), is(equalTo(1)));
+    var diff = result.getDifferences().get(0);
+    assertThat(diff.getField(), is(equalTo("Data")));
+    // List added - new items should be highlighted
+    assertTrue(diff.getNewValue().contains("Item 1"));
+    assertTrue(diff.getNewValue().contains("Item 2"));
+    assertTrue(diff.getNewValue().contains("#90EE90"));
+  }
+
+  @Test
+  void testCompareHtml_ValueWithNoListsButContainsCheck() {
+    // Test the fallback when HTML has no lists
+    String oldHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Field</th>"
+            + "<td class='content-container'>"
+            + "<p>Just paragraph text</p>"
+            + "</td></tr>"
+            + "</table>";
+
+    String newHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Field</th>"
+            + "<td class='content-container'>"
+            + "<p>Modified paragraph text</p>"
+            + "</td></tr>"
+            + "</table>";
+
+    var result = humanReadableService.compareHtml(oldHtml, newHtml);
+
+    assertThat(result.getDifferences().size(), is(equalTo(1)));
+    var diff = result.getDifferences().get(0);
+    assertThat(diff.getField(), is(equalTo("Field")));
+  }
+
+  @Test
+  void testCompareHtml_ListWithAllItemsUnchangedButDifferentOrder() {
+    // Test when all items exist but in different order
+    String oldHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Items</th>"
+            + "<td class='content-container'>"
+            + "<ul>"
+            + "<li>Apple</li>"
+            + "<li>Banana</li>"
+            + "<li>Cherry</li>"
+            + "</ul>"
+            + "</td></tr>"
+            + "</table>";
+
+    String newHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Items</th>"
+            + "<td class='content-container'>"
+            + "<ul>"
+            + "<li>Cherry</li>"
+            + "<li>Apple</li>"
+            + "<li>Banana</li>"
+            + "</ul>"
+            + "</td></tr>"
+            + "</table>";
+
+    var result = humanReadableService.compareHtml(oldHtml, newHtml);
+
+    // All items exist, just reordered - should match in phase 1
+    assertThat(result.getDifferences().isEmpty(), is(true));
+  }
+
+  @Test
+  void testCompareHtml_ListItemWithLowSimilarity() {
+    // Test when similarity is below 40% threshold
+    String oldHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Data</th>"
+            + "<td class='content-container'>"
+            + "<ul>"
+            + "<li>Apple</li>"
+            + "</ul>"
+            + "</td></tr>"
+            + "</table>";
+
+    String newHtml =
+        "<table class='narrative-table'>"
+            + "<tr><th class='row-header'>Data</th>"
+            + "<td class='content-container'>"
+            + "<ul>"
+            + "<li>Zebra</li>"
+            + "</ul>"
+            + "</td></tr>"
+            + "</table>";
+
+    var result = humanReadableService.compareHtml(oldHtml, newHtml);
+
+    // Similarity too low - should be deletion + addition (2 diffs shown as 1 field change with
+    // highlights)
+    assertThat(result.getDifferences().size(), is(equalTo(1)));
+    var diff = result.getDifferences().get(0);
+    assertThat(diff.getField(), is(equalTo("Data")));
+    // Should show both deletion and addition styling
+    assertTrue(diff.getOldValue().contains("Apple"));
+    assertTrue(diff.getNewValue().contains("Zebra"));
+  }
 }

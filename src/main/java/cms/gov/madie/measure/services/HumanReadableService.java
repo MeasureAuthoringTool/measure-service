@@ -521,12 +521,8 @@ public class HumanReadableService {
       }
 
       if (!hasChanges) {
-        // Check if there are differences outside the lists
-        String oldNormalized = normalizeHtml(oldDoc.body());
-        String newNormalized = normalizeHtml(newDoc.body());
-        if (oldNormalized.equals(newNormalized)) {
-          return null; // No differences
-        }
+        // All list items matched exactly - no differences
+        return null;
       }
 
       return new String[] {oldDoc.body().html(), newDoc.body().html()};
