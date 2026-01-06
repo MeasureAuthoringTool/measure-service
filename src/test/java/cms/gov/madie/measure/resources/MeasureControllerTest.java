@@ -673,6 +673,27 @@ class MeasureControllerTest {
 
     assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
     assertNull(output.getBody().getGroups());
+    assertNull(output.getBody().getMeasureLock());
+  }
+
+  @Test
+  void deleteGroupWithMeasureLocked() {
+    when(principal.getName()).thenReturn("test.user");
+
+    Measure updatedMeasure =
+        Measure.builder().id("measure-id").createdBy("test.user").groups(null).build();
+    when(measureService.getMeasureLock(anyString(), anyString()))
+        .thenReturn(MeasureLock.builder().lockedBy("anotherUser").build());
+    doReturn(updatedMeasure)
+        .when(groupService)
+        .deleteMeasureGroup(any(String.class), any(String.class), any(String.class));
+
+    ResponseEntity<Measure> output =
+        controller.deleteMeasureGroup("measure-id", "testgroupid", principal);
+
+    assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
+    assertNull(output.getBody().getGroups());
+    assertEquals("anotherUser", output.getBody().getMeasureLock().getLockedBy());
   }
 
   @Test
