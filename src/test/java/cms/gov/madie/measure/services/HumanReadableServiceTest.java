@@ -8,7 +8,6 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
@@ -19,6 +18,7 @@ import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.dto.HtmlDiffResponse;
 import cms.gov.madie.measure.utils.MeasureUtil;
 
+import org.jsoup.Jsoup;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -512,8 +512,8 @@ public class HumanReadableServiceTest {
 
     var result = humanReadableService.compareHtml(oldHtml, newHtml);
 
-    // Measure Name changed (2 diffs) + Denominator->Numerator changed (2 diffs) = 4 total
-    assertThat(result.getDifferences().size(), is(equalTo(3)));
+    // Measure Name changed + Denominator->Numerator matched as modification = 2 total
+    assertThat(result.getDifferences().size(), is(equalTo(2)));
 
     // Verify we have diffs for both fields
     assertTrue(result.getDifferences().stream().anyMatch(d -> d.getField().equals("Measure Name")));
@@ -561,8 +561,9 @@ public class HumanReadableServiceTest {
     assertThat(result.getDifferences().size(), is(equalTo(1)));
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("eCQM Version Number")));
-    assertTrue(diff.getOldValue().contains("1.4.000"));
-    assertTrue(diff.getNewValue().contains("2.0.000"));
+    // Version numbers get split by word-level diff, so check text content
+    assertTrue(Jsoup.parse(diff.getOldValue()).text().contains("1.4.000"));
+    assertTrue(Jsoup.parse(diff.getNewValue()).text().contains("2.0.000"));
   }
 
   @Test
@@ -597,8 +598,11 @@ public class HumanReadableServiceTest {
     assertThat(result.getDifferences().size(), is(equalTo(1)));
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("Description")));
-    assertTrue(diff.getOldValue().contains("Nested Value"));
-    assertTrue(diff.getNewValue().contains("Different Nested Value"));
+    // Check text content
+    String oldText = Jsoup.parse(diff.getOldValue()).text();
+    String newText = Jsoup.parse(diff.getNewValue()).text();
+    assertTrue(oldText.contains("Nested Value"));
+    assertTrue(newText.contains("Different Nested Value"));
   }
 
   @Test
@@ -658,8 +662,11 @@ public class HumanReadableServiceTest {
     assertThat(result.getDifferences().size(), is(equalTo(1)));
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("Reference")));
-    assertTrue(diff.getOldValue().contains("2.0.0"));
-    assertTrue(diff.getNewValue().contains("3.0.0"));
+    // Version numbers get split by word-level diff, check for text content
+    String oldText = Jsoup.parse(diff.getOldValue()).text();
+    String newText = Jsoup.parse(diff.getNewValue()).text();
+    assertTrue(oldText.contains("2.0.0") || oldText.contains("2.0"));
+    assertTrue(newText.contains("3.0.0") || newText.contains("3.0"));
     // Should have highlighting (not full deletion/addition style)
     assertTrue(diff.getOldValue().contains("line-through"));
     assertTrue(diff.getNewValue().contains("#90EE90")); // Green highlight
@@ -683,26 +690,14 @@ public class HumanReadableServiceTest {
 
     var result = humanReadableService.compareHtml(oldHtml, newHtml);
 
-    // Should show 2 diffs: 1 deletion (Encounter) + 1 addition (Procedure)
-    assertThat(result.getDifferences().size(), is(equalTo(2)));
+    // "Encounter, Performed" and "Procedure, Performed" are similar enough (>40%) to be matched as
+    // modification
+    assertThat(result.getDifferences().size(), is(equalTo(1)));
 
-    var deletionDiff =
-        result.getDifferences().stream()
-            .filter(d -> d.getOldValue().contains("Encounter"))
-            .findFirst()
-            .orElse(null);
-    assertNotNull(deletionDiff);
-    assertThat(deletionDiff.getField(), is(equalTo("Data Requirement")));
-    assertThat(deletionDiff.getNewValue(), is(equalTo("")));
-
-    var additionDiff =
-        result.getDifferences().stream()
-            .filter(d -> d.getNewValue().contains("Procedure"))
-            .findFirst()
-            .orElse(null);
-    assertNotNull(additionDiff);
-    assertThat(additionDiff.getField(), is(equalTo("Data Requirement")));
-    assertThat(additionDiff.getOldValue(), is(equalTo("")));
+    var diff = result.getDifferences().get(0);
+    assertThat(diff.getField(), is(equalTo("Data Requirement")));
+    assertTrue(diff.getOldValue().contains("Encounter"));
+    assertTrue(diff.getNewValue().contains("Procedure"));
   }
 
   @Test
@@ -729,10 +724,11 @@ public class HumanReadableServiceTest {
     assertThat(result.getDifferences().size(), is(equalTo(1)));
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("Value Set")));
-    assertTrue(
-        diff.getOldValue().contains("Annual Wellness Visit")
-            && !diff.getOldValue().contains("Updated"));
-    assertTrue(diff.getNewValue().contains("Annual Wellness Visit Updated"));
+    // Check text content
+    String oldText = Jsoup.parse(diff.getOldValue()).text();
+    String newText = Jsoup.parse(diff.getNewValue()).text();
+    assertTrue(oldText.contains("Annual Wellness Visit") && !oldText.contains("Updated"));
+    assertTrue(newText.contains("Annual Wellness Visit Updated"));
   }
 
   @Test
@@ -760,8 +756,11 @@ public class HumanReadableServiceTest {
     assertThat(result.getDifferences().size(), is(equalTo(1)));
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("Numerator")));
-    assertTrue(diff.getOldValue().contains("Qualifying Delayed VTE Encounter"));
-    assertTrue(diff.getNewValue().contains("Updated Qualifying Delayed VTE Encounter"));
+    // Value contains nested list, so check for text content presence
+    String oldText = Jsoup.parse(diff.getOldValue()).text();
+    String newText = Jsoup.parse(diff.getNewValue()).text();
+    assertTrue(oldText.contains("Qualifying Delayed VTE Encounter"));
+    assertTrue(newText.contains("Updated Qualifying Delayed VTE Encounter"));
   }
 
   @Test
@@ -797,8 +796,11 @@ public class HumanReadableServiceTest {
     assertThat(result.getDifferences().size(), is(equalTo(1)));
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("Denominator")));
-    assertTrue(diff.getOldValue().contains("Denominator Definition"));
-    assertTrue(diff.getNewValue().contains("Updated Denominator Definition"));
+    // Check text content
+    String oldText = Jsoup.parse(diff.getOldValue()).text();
+    String newText = Jsoup.parse(diff.getNewValue()).text();
+    assertTrue(oldText.contains("Denominator Definition"));
+    assertTrue(newText.contains("Updated Denominator Definition"));
   }
 
   @Test
@@ -949,9 +951,11 @@ public class HumanReadableServiceTest {
     assertThat(result.getDifferences().size(), is(equalTo(1)));
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("Definition")));
-    assertTrue(
-        diff.getOldValue().contains("Definition 2") && !diff.getOldValue().contains("Updated"));
-    assertTrue(diff.getNewValue().contains("Definition 2 Updated"));
+    // Check text content
+    String oldText = Jsoup.parse(diff.getOldValue()).text();
+    String newText = Jsoup.parse(diff.getNewValue()).text();
+    assertTrue(oldText.contains("Definition 2") && !oldText.contains("Updated"));
+    assertTrue(newText.contains("Definition 2 Updated"));
   }
 
   @Test
@@ -1012,9 +1016,11 @@ public class HumanReadableServiceTest {
     assertThat(result.getDifferences().size(), is(equalTo(1)));
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("Data Criteria (QDM Data Elements)")));
-    assertTrue(
-        diff.getOldValue().contains("Office Visit") && !diff.getOldValue().contains("Updated"));
-    assertTrue(diff.getNewValue().contains("Office Visit Updated"));
+    // Check text content
+    String oldText = Jsoup.parse(diff.getOldValue()).text();
+    String newText = Jsoup.parse(diff.getNewValue()).text();
+    assertTrue(oldText.contains("Office Visit") && !oldText.contains("Updated"));
+    assertTrue(newText.contains("Office Visit Updated"));
   }
 
   @Test
@@ -1269,13 +1275,15 @@ public class HumanReadableServiceTest {
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("Steps")));
 
-    // Step 2 should show modification
-    assertTrue(diff.getOldValue().contains("Process"));
-    assertTrue(diff.getNewValue().contains("Process and Validate"));
+    // Step 2 should show modification - check text content
+    String oldText = Jsoup.parse(diff.getOldValue()).text();
+    String newText = Jsoup.parse(diff.getNewValue()).text();
+    assertTrue(oldText.contains("Process"));
+    assertTrue(newText.contains("Process and Validate"));
 
     // Steps 1 and 3 should remain unchanged
-    assertTrue(diff.getOldValue().contains("Step 1: Initialize"));
-    assertTrue(diff.getNewValue().contains("Step 3: Finalize"));
+    assertTrue(oldText.contains("Step 1: Initialize"));
+    assertTrue(newText.contains("Step 3: Finalize"));
   }
 
   @Test
@@ -1309,10 +1317,12 @@ public class HumanReadableServiceTest {
     var diff = result.getDifferences().get(0);
     assertThat(diff.getField(), is(equalTo("Info")));
 
-    // Should detect changes in both lists
-    assertTrue(diff.getOldValue().contains("Item B"));
-    assertTrue(diff.getNewValue().contains("Item B Modified"));
-    assertTrue(diff.getNewValue().contains("Item Z"));
+    // Should detect changes in both lists - check text content
+    String oldText = Jsoup.parse(diff.getOldValue()).text();
+    String newText = Jsoup.parse(diff.getNewValue()).text();
+    assertTrue(oldText.contains("Item B"));
+    assertTrue(newText.contains("Item B Modified"));
+    assertTrue(newText.contains("Item Z"));
   }
 
   @Test

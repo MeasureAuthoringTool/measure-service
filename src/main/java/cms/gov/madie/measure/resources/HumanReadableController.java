@@ -1,11 +1,9 @@
 package cms.gov.madie.measure.resources;
 
 import java.io.IOException;
-import java.nio.file.Files;
 import java.security.Principal;
 
 import cms.gov.madie.measure.dto.HtmlDiffResponse;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 

@@ -364,7 +364,9 @@ public class HumanReadableService {
 
     // Phase 1: Exact matching - find unchanged values
     for (int i = 0; i < oldValues.size(); i++) {
-      if (matchedOldValues[i]) continue;
+      if (matchedOldValues[i]) {
+        continue;
+      }
 
       String oldNormalized = normalizeHtml(oldValues.get(i));
 
@@ -385,7 +387,9 @@ public class HumanReadableService {
     // Phase 2: Fuzzy matching - detect modifications (not just deletions/additions)
     // For each unmatched old value, find the best matching new value
     for (int i = 0; i < oldValues.size(); i++) {
-      if (matchedOldValues[i]) continue; // Already matched exactly
+      if (matchedOldValues[i]) {
+        continue;
+      } // Already matched exactly
 
       Element oldValue = oldValues.get(i);
       String oldNormalized = normalizeHtml(oldValue);
@@ -395,7 +399,9 @@ public class HumanReadableService {
 
       // Find the most similar unmatched new value
       for (int j = 0; j < newValues.size(); j++) {
-        if (matchedNewValues[j]) continue; // Already matched
+        if (matchedNewValues[j]) {
+          continue;
+        } // Already matched
 
         String newNormalized = normalizeHtml(newValues.get(j));
         double similarity = calculateSimilarity(oldNormalized, newNormalized);
@@ -547,12 +553,16 @@ public class HumanReadableService {
 
     // Phase 1: Exact matching
     for (int i = 0; i < oldItems.size(); i++) {
-      if (matchedOld[i]) continue;
+      if (matchedOld[i]) {
+        continue;
+      }
 
       String oldNormalized = normalizeHtml(oldItems.get(i));
 
       for (int j = 0; j < newItems.size(); j++) {
-        if (matchedNew[j]) continue;
+        if (matchedNew[j]) {
+          continue;
+        }
 
         String newNormalized = normalizeHtml(newItems.get(j));
 
@@ -567,7 +577,9 @@ public class HumanReadableService {
 
     // Phase 2: Fuzzy matching for modifications
     for (int i = 0; i < oldItems.size(); i++) {
-      if (matchedOld[i]) continue;
+      if (matchedOld[i]) {
+        continue;
+      }
 
       Element oldItem = oldItems.get(i);
       String oldNormalized = normalizeHtml(oldItem);
@@ -576,7 +588,9 @@ public class HumanReadableService {
       int bestMatchIndex = -1;
 
       for (int j = 0; j < newItems.size(); j++) {
-        if (matchedNew[j]) continue;
+        if (matchedNew[j]) {
+          continue;
+        }
 
         String newNormalized = normalizeHtml(newItems.get(j));
         double similarity = calculateSimilarity(oldNormalized, newNormalized);
@@ -662,8 +676,12 @@ public class HumanReadableService {
     int len2 = str2.length();
 
     // Optimization: if one string is empty, distance is the length of the other
-    if (len1 == 0) return len2;
-    if (len2 == 0) return len1;
+    if (len1 == 0) {
+      return len2;
+    }
+    if (len2 == 0) {
+      return len1;
+    }
 
     // Create a matrix to store distances
     int[][] dp = new int[len1 + 1][len2 + 1];
