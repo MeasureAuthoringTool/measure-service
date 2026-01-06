@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.resources;
 
+import cms.gov.madie.measure.dto.CqlDiffResultDTO;
+import cms.gov.madie.measure.dto.CqlFileComparisonDTO;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.*;
@@ -54,6 +56,7 @@ class MeasureControllerTest {
   @Mock private TestCaseService testCaseService;
   @Mock private TestCaseLockService testCaseLockService;
   @Mock private AppConfigService appConfigService;
+  @Mock private CqlDifferentiatorService cqlDifferentiatorService;
   @InjectMocks private MeasureController controller;
   @Mock private Principal principal;
 
@@ -1138,5 +1141,98 @@ class MeasureControllerTest {
     assertNotNull(Objects.requireNonNull(response.getBody()).getMeasureLock());
     assertEquals(
         "another.user", Objects.requireNonNull(response.getBody()).getMeasureLock().getLockedBy());
+  }
+
+  @Test
+  void compareMeasuresReturnsCqlDiffResultForValidMeasureIds() {
+    Measure oldMeasure =
+        Measure.builder()
+            .id("oldMeasureId")
+            .cql("library OldLibrary { define: 'Old CQL' }")
+            .cqlLibraryName("OldLibrary")
+            .build();
+
+    Measure newMeasure =
+        Measure.builder()
+            .id("newMeasureId")
+            .cql("library NewLibrary { define: 'New CQL' }")
+            .cqlLibraryName("NewLibrary")
+            .build();
+
+    List<CqlFileComparisonDTO> comparisons =
+        List.of(
+            CqlFileComparisonDTO.builder()
+                .oldFileName("OldLibrary.cql")
+                .newFileName("NewLibrary.cql")
+                .oldText("library OldLibrary { define: 'Old CQL' }")
+                .newText("library NewLibrary { define: 'New CQL' }")
+                .build());
+
+    when(measureService.findMeasureById("oldMeasureId")).thenReturn(oldMeasure);
+    when(measureService.findMeasureById("newMeasureId")).thenReturn(newMeasure);
+    when(cqlDifferentiatorService.compareLibraries(anyMap(), anyMap(), eq(true)))
+        .thenReturn(comparisons);
+
+    ResponseEntity<CqlDiffResultDTO> response =
+        controller.compareMeasures("oldMeasureId", "newMeasureId", true);
+
+    assertNotNull(response.getBody());
+    assertEquals("oldMeasureId", response.getBody().getOldMeasureId());
+    assertEquals("newMeasureId", response.getBody().getNewMeasureId());
+    assertEquals(1, response.getBody().getComparisons().size());
+    assertEquals("OldLibrary.cql", response.getBody().getComparisons().get(0).getOldFileName());
+    assertEquals("NewLibrary.cql", response.getBody().getComparisons().get(0).getNewFileName());
+    assertEquals(
+        "library OldLibrary { define: 'Old CQL' }",
+        response.getBody().getComparisons().get(0).getOldText());
+    assertEquals(
+        "library NewLibrary { define: 'New CQL' }",
+        response.getBody().getComparisons().get(0).getNewText());
+  }
+
+  @Test
+  void compareMeasuresThrowsResourceNotFoundExceptionForInvalidOldMeasureId() {
+    when(measureService.findMeasureById("oldMeasureId")).thenReturn(null);
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> controller.compareMeasures("oldMeasureId", "newMeasureId", true));
+  }
+
+  @Test
+  void compareMeasuresThrowsResourceNotFoundExceptionForInvalidNewMeasureId() {
+    Measure oldMeasure =
+        Measure.builder()
+            .id("oldMeasureId")
+            .cql("library OldLibrary { define: 'Old CQL' }")
+            .cqlLibraryName("OldLibrary")
+            .build();
+
+    when(measureService.findMeasureById("oldMeasureId")).thenReturn(oldMeasure);
+    when(measureService.findMeasureById("newMeasureId")).thenReturn(null);
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () -> controller.compareMeasures("oldMeasureId", "newMeasureId", true));
+  }
+
+  @Test
+  void compareMeasuresReturnsEmptyComparisonsForMeasuresWithoutCql() {
+    Measure oldMeasure =
+        Measure.builder().id("oldMeasureId").cql(null).cqlLibraryName("OldLibrary").build();
+
+    Measure newMeasure =
+        Measure.builder().id("newMeasureId").cql(null).cqlLibraryName("NewLibrary").build();
+
+    when(measureService.findMeasureById("oldMeasureId")).thenReturn(oldMeasure);
+    when(measureService.findMeasureById("newMeasureId")).thenReturn(newMeasure);
+
+    ResponseEntity<CqlDiffResultDTO> response =
+        controller.compareMeasures("oldMeasureId", "newMeasureId", true);
+
+    assertNotNull(response.getBody());
+    assertEquals("oldMeasureId", response.getBody().getOldMeasureId());
+    assertEquals("newMeasureId", response.getBody().getNewMeasureId());
+    assertTrue(response.getBody().getComparisons().isEmpty());
   }
 }
