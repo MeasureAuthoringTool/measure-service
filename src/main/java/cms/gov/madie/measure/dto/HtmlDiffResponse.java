@@ -18,6 +18,9 @@ public class HtmlDiffResponse {
   private List<DiffItem> differences;
 
   @Data
+  @Builder
+  @NoArgsConstructor
+  @AllArgsConstructor
   public static class DiffItem {
     private String field;
     private String oldValue;
