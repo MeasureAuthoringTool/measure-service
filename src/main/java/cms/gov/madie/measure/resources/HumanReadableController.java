@@ -34,16 +34,13 @@ public class HumanReadableController {
   }
 
   @GetMapping("/html-diff")
-  public HtmlDiffResponse compare() throws IOException {
-    // Load HTML files from resources
-    String oldHtml = loadHtmlFromResource("html/CMS1272-v0.0.000-FHIR.html");
-    String newHtml = loadHtmlFromResource("html/CMS1272-v0.0.000-FHIR-New.html");
-
-    return humanReadableService.compareHtml(oldHtml, newHtml);
-  }
-
-  private String loadHtmlFromResource(String path) throws IOException {
-    ClassPathResource resource = new ClassPathResource(path);
-    return Files.readString(resource.getFile().toPath());
+  public HtmlDiffResponse compare(
+      Principal principal,
+      @RequestParam String newMeasureId,
+      @RequestParam String oldMeasureId,
+      @RequestHeader("Authorization") String accessToken)
+      throws IOException {
+    final String username = principal.getName();
+    return humanReadableService.compareHtml(newMeasureId, oldMeasureId, username, accessToken);
   }
 }
