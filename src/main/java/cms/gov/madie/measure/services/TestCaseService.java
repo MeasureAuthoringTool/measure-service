@@ -962,7 +962,7 @@ public class TestCaseService {
     List<String> failedTestCases = new ArrayList<>();
     List<String> testCaseIds = testCases.stream().map(TestCase::getId).toList();
     log.info(
-        "User: [{}} is trying to update json with group and title: [{}] - testCaseIds: {}",
+        "User: [{}] is trying to update json with group and title: [{}] - testCaseIds: {}",
         userName,
         measureId,
         testCaseIds);
