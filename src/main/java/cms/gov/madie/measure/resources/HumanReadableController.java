@@ -2,11 +2,9 @@ package cms.gov.madie.measure.resources;
 
 import java.security.Principal;
 
+import cms.gov.madie.measure.dto.HtmlDiffResponse;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import cms.gov.madie.measure.services.HumanReadableService;
 import lombok.RequiredArgsConstructor;
@@ -30,5 +28,15 @@ public class HumanReadableController {
         "User [{}] is attempting to get human readable with CSS for measure [{}]", username, id);
     return ResponseEntity.ok(
         humanReadableService.getHumanReadableWithCSS(id, username, accessToken));
+  }
+
+  @GetMapping("/html-diff")
+  public HtmlDiffResponse compare(
+      Principal principal,
+      @RequestParam String newMeasureId,
+      @RequestParam String oldMeasureId,
+      @RequestHeader("Authorization") String accessToken) {
+    final String username = principal.getName();
+    return humanReadableService.compareHtml(newMeasureId, oldMeasureId, username, accessToken);
   }
 }
