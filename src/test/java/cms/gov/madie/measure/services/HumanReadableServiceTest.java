@@ -129,7 +129,7 @@ public class HumanReadableServiceTest {
   // ========== HTML Diff Tests ==========
 
   @Test
-  void testCompareHtml_IdenticalHtml_NoDifferences() {
+  void testCompareHtmlIdenticalHtmlNoDifferences() {
     String html =
         "<table>"
             + "<tr><th class='row-header'>Measure Name</th><td class='content-container'>Test Measure</td></tr>"
@@ -144,7 +144,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_SingleFieldDifference() {
+  void testCompareHtmlSingleFieldDifference() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Measure Name</th><td class='content-container'>Old Measure Name</td></tr>"
@@ -166,7 +166,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MultipleFieldDifferences() {
+  void testCompareHtmlMultipleFieldDifferences() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Measure Name</th><td class='content-container'>Old Name</td></tr>"
@@ -191,7 +191,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_FieldAddedInNewHtml() {
+  void testCompareHtmlFieldAddedInNewHtml() {
     String oldHtml = "<table>" + "</table>";
     String newHtml =
         "<table>"
@@ -209,7 +209,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_FieldRemovedInNewHtml() {
+  void testCompareHtmlFieldRemovedInNewHtml() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Old Field</th><td class='content-container'>Old Value</td></tr>"
@@ -228,7 +228,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_FormattingDifferencesIgnored() {
+  void testCompareHtmlFormattingDifferencesIgnored() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Description</th><td class='content-container'><b>Bold Text</b></td></tr>"
@@ -245,7 +245,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_WhitespaceDifferencesIgnored() {
+  void testCompareHtmlWhitespaceDifferencesIgnored() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Description</th><td class='content-container'>Text    with   spaces</td></tr>"
@@ -262,7 +262,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MultiValueField_ItemAdded() {
+  void testCompareHtmlMultiValueFieldItemAdded() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Population</th><td class='content-container'>Initial Population</td></tr>"
@@ -283,7 +283,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MultiValueField_ItemRemoved() {
+  void testCompareHtmlMultiValueFieldItemRemoved() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Population</th><td class='content-container'>Initial Population</td></tr>"
@@ -304,7 +304,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MultiValueField_OrderAgnostic() {
+  void testCompareHtmlMultiValueFieldOrderAgnostic() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Population</th><td class='content-container'>Initial Population</td></tr>"
@@ -323,7 +323,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_EmptyHtmlDocuments() {
+  void testCompareHtmlEmptyHtmlDocuments() {
     String oldHtml = "<table></table>";
     String newHtml = "<table></table>";
 
@@ -333,7 +333,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_HtmlWithInlineStyles() {
+  void testCompareHtmlHtmlWithInlineStyles() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Description</th><td class='content-container' style='color:red;'>Red Text</td></tr>"
@@ -350,7 +350,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_PartialDateModification() {
+  void testCompareHtmlPartialDateModification() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Measurement Period</th><td class='content-container'>January 1, 2027 through December 31, 2027</td></tr>"
@@ -371,7 +371,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ComplexAdditionHighlighting() {
+  void testCompareHtmlComplexAdditionHighlighting() {
     String oldHtml = "<table></table>";
     String newHtml =
         "<table>"
@@ -389,7 +389,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_RichTextUnderlineAdded() {
+  void testCompareHtmlRichTextUnderlineAdded() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Description</th><td class='content-container'><b>Old Bold Text</b></td></tr>"
@@ -406,7 +406,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_NullOldHtml() {
+  void testCompareHtmlNullOldHtml() {
     String newHtml =
         "<table>"
             + "<tr><th class='row-header'>Field</th><td class='content-container'>Value</td></tr>"
@@ -421,7 +421,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_NullNewHtml() {
+  void testCompareHtmlNullNewHtml() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Field</th><td class='content-container'>Value</td></tr>"
@@ -436,7 +436,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MultipleAuthors_OrderAgnostic() {
+  void testCompareHtmlMultipleAuthorsOrderAgnostic() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Author</th><td class='content-container'>John Doe</td></tr>"
@@ -457,7 +457,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ItalicAndEmEquivalent() {
+  void testCompareHtmlItalicAndEmEquivalent() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Description</th><td class='content-container'><i>Italic Text</i></td></tr>"
@@ -474,7 +474,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_PartialTextModification() {
+  void testCompareHtmlPartialTextModification() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Measure Name</th><td class='content-container'>A Change in Severity of the Level of Food Insecurity</td></tr>"
@@ -494,7 +494,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ComplexScenario() {
+  void testCompareHtmlComplexScenario() {
     String oldHtml =
         "<table>"
             + "<tr><th class='row-header'>Measure Name</th><td class='content-container'>Old Measure</td></tr>"
@@ -521,7 +521,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_QdmStructure_MultiplePairsPerRow() {
+  void testCompareHtmlQdmStructureMultiplePairsPerRow() {
     // QDM HTML structure has multiple th-td pairs per row
     String oldHtml =
         "<table class='header_table'>"
@@ -567,7 +567,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ValueWithNestedTable_OnlyTopLevelFieldsExtracted() {
+  void testCompareHtmlValueWithNestedTableOnlyTopLevelFieldsExtracted() {
     // Test that th/td elements nested inside a value cell are not treated as top-level fields
     String oldHtml =
         "<table class='narrative-table'>"
@@ -606,7 +606,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_QdmWithRichTextValues_DetectsDifferences() {
+  void testCompareHtmlQdmWithRichTextValuesDetectsDifferences() {
     // Test QDM structure with rich text (bold, italic, etc.) in values
     String oldHtml =
         "<table class='header_table'>"
@@ -639,7 +639,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MultiValueField_ModificationDetectedWithFuzzyMatching() {
+  void testCompareHtmlMultiValueFieldModificationDetectedWithFuzzyMatching() {
     // Test that when a multi-value field has a value modified,
     // it shows as a modification (not deletion + addition)
     String oldHtml =
@@ -673,7 +673,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MultiValueField_TrueAdditionAndDeletion() {
+  void testCompareHtmlMultiValueFieldTrueAdditionAndDeletion() {
     // Test that true additions and deletions are still detected
     // (when similarity is too low to be considered a modification)
     String oldHtml =
@@ -701,7 +701,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MultiValueField_OrderChangedWithModification() {
+  void testCompareHtmlMultiValueFieldOrderChangedWithModification() {
     // Test that order changes + modifications are handled correctly
     String oldHtml =
         "<table class='narrative-table'>"
@@ -732,7 +732,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListFormat_LabelAndPreExtraction() {
+  void testCompareHtmlListFormatLabelAndPreExtraction() {
     // Test extraction of fields in label.list-header + pre.cql-definition-body format
     String oldHtml =
         "<ul>"
@@ -764,7 +764,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListFormat_MultipleFields() {
+  void testCompareHtmlListFormatMultipleFields() {
     // Test multiple fields in list format
     String oldHtml =
         "<ul>"
@@ -804,7 +804,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MixedFormat_TableAndList() {
+  void testCompareHtmlMixedFormatTableAndList() {
     // Test that both table and list formats can coexist
     String oldHtml =
         "<table class='narrative-table'>"
@@ -837,7 +837,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListFormat_NoChangeDetected() {
+  void testCompareHtmlListFormatNoChangeDetected() {
     // Test that identical list format fields don't show differences
     String html =
         "<ul>"
@@ -853,7 +853,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListFormat_FieldAdded() {
+  void testCompareHtmlListFormatFieldAdded() {
     // Test adding a new field in list format
     String oldHtml =
         "<ul>"
@@ -886,7 +886,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListFormat_FieldRemoved() {
+  void testCompareHtmlListFormatFieldRemoved() {
     // Test removing a field in list format
     String oldHtml =
         "<ul>"
@@ -919,7 +919,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListFormat_DuplicateFieldNames() {
+  void testCompareHtmlListFormatDuplicateFieldNames() {
     // Test that duplicate field names in list format are handled correctly
     String oldHtml =
         "<ul>"
@@ -959,7 +959,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_SectionFormat_Terminology() {
+  void testCompareHtmlSectionFormatTerminology() {
     // Test extraction of Terminology section (h3 + div with list)
     String oldHtml =
         "<h3><a name=\"d1e555\" href=\"#toc\">Terminology</a></h3>"
@@ -990,7 +990,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_SectionFormat_DataCriteria() {
+  void testCompareHtmlSectionFormatDataCriteria() {
     // Test extraction of Data Criteria section
     String oldHtml =
         "<h3><a name=\"d1e647\" href=\"#toc\">Data Criteria (QDM Data Elements)</a></h3>"
@@ -1024,7 +1024,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_SectionFormat_NoChange() {
+  void testCompareHtmlSectionFormatNoChange() {
     // Test that identical section content shows no differences
     String html =
         "<h3><a name=\"d1e555\" href=\"#toc\">Terminology</a></h3>"
@@ -1040,7 +1040,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_SectionFormat_ItemRemoved() {
+  void testCompareHtmlSectionFormatItemRemoved() {
     // Test removal of an item from Terminology section
     String oldHtml =
         "<h3><a name=\"d1e555\" href=\"#toc\">Terminology</a></h3>"
@@ -1070,7 +1070,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MixedFormats_TableListAndSection() {
+  void testCompareHtmlMixedFormatsTableListAndSection() {
     // Test all three formats together
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1117,7 +1117,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListInValue_ItemAdded() {
+  void testCompareHtmlListInValueItemAdded() {
     // Test that when a value contains a list, only the added item is highlighted
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1158,7 +1158,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListInValue_ItemRemoved() {
+  void testCompareHtmlListInValueItemRemoved() {
     // Test that when an item is removed from a list, only that item is highlighted
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1200,7 +1200,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListInValue_ItemModified() {
+  void testCompareHtmlListInValueItemModified() {
     // Test that when a list item is modified, only that item shows word-level diff
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1243,7 +1243,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_OrderedListInValue() {
+  void testCompareHtmlOrderedListInValue() {
     // Test that ordered lists (<ol>) are also handled correctly
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1287,7 +1287,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MultipleListsInValue() {
+  void testCompareHtmlMultipleListsInValue() {
     // Test value with multiple lists
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1326,7 +1326,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListInValue_NoChanges() {
+  void testCompareHtmlListInValueNoChanges() {
     // Test that identical lists don't trigger false differences
     String html =
         "<table class='narrative-table'>"
@@ -1345,7 +1345,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_MixedContent_ListAndText() {
+  void testCompareHtmlMixedContentListAndText() {
     // Test value with both regular text and lists
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1390,7 +1390,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListInValue_EmptyLists() {
+  void testCompareHtmlListInValueEmptyLists() {
     // Test that empty lists are handled correctly
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1414,7 +1414,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListRemoved() {
+  void testCompareHtmlListRemoved() {
     // Test when an entire list is removed
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1446,7 +1446,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListAdded() {
+  void testCompareHtmlListAdded() {
     // Test when an entire list is added
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1479,7 +1479,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ValueWithNoListsButContainsCheck() {
+  void testCompareHtmlValueWithNoListsButContainsCheck() {
     // Test the fallback when HTML has no lists
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1505,7 +1505,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListWithAllItemsUnchangedButDifferentOrder() {
+  void testCompareHtmlListWithAllItemsUnchangedButDifferentOrder() {
     // Test when all items exist but in different order
     String oldHtml =
         "<table class='narrative-table'>"
@@ -1538,7 +1538,7 @@ public class HumanReadableServiceTest {
   }
 
   @Test
-  void testCompareHtml_ListItemWithLowSimilarity() {
+  void testCompareHtmlListItemWithLowSimilarity() {
     // Test when similarity is below 40% threshold
     String oldHtml =
         "<table class='narrative-table'>"
