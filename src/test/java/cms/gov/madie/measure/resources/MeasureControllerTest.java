@@ -110,11 +110,7 @@ class MeasureControllerTest {
   void getMeasuresWithOwnedOwnershipType() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
     when(measureService.getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.OWNED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures")))
+            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq("test.user")))
         .thenReturn(measures);
     when(principal.getName()).thenReturn("test.user");
 
@@ -123,11 +119,7 @@ class MeasureControllerTest {
             principal, List.of(OwnershipType.OWNED), 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.OWNED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq("test.user"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
@@ -139,11 +131,7 @@ class MeasureControllerTest {
   void getMeasuresWithSharedOwnershipType() {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
     when(measureService.getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.SHARED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures")))
+            eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq("test.user")))
         .thenReturn(measures);
     when(principal.getName()).thenReturn("test.user");
 
@@ -152,11 +140,7 @@ class MeasureControllerTest {
             principal, List.of(OwnershipType.SHARED), 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.SHARED)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq("test.user"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
@@ -169,22 +153,14 @@ class MeasureControllerTest {
     Page<MeasureListDTO> measures = new PageImpl<>(List.of(measureList));
     when(principal.getName()).thenReturn("test.user");
     when(measureService.getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.ALL)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures")))
+            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq("test.user")))
         .thenReturn(measures);
     ResponseEntity<Page<MeasureListDTO>> response =
         controller.getMeasures(
             principal, List.of(OwnershipType.ALL), 10, 0, "lastModifiedAt", "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.ALL)),
-            any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq("test.user"));
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody());
     assertNotNull(response.getBody().getContent());
@@ -697,6 +673,27 @@ class MeasureControllerTest {
 
     assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
     assertNull(output.getBody().getGroups());
+    assertNull(output.getBody().getMeasureLock());
+  }
+
+  @Test
+  void deleteGroupWithMeasureLocked() {
+    when(principal.getName()).thenReturn("test.user");
+
+    Measure updatedMeasure =
+        Measure.builder().id("measure-id").createdBy("test.user").groups(null).build();
+    when(measureService.getMeasureLock(anyString(), anyString()))
+        .thenReturn(MeasureLock.builder().lockedBy("anotherUser").build());
+    doReturn(updatedMeasure)
+        .when(groupService)
+        .deleteMeasureGroup(any(String.class), any(String.class), any(String.class));
+
+    ResponseEntity<Measure> output =
+        controller.deleteMeasureGroup("measure-id", "testgroupid", principal);
+
+    assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
+    assertNull(output.getBody().getGroups());
+    assertEquals("anotherUser", output.getBody().getMeasureLock().getLockedBy());
   }
 
   @Test
@@ -741,8 +738,7 @@ class MeasureControllerTest {
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.OWNED)),
             any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            eq("test.user"));
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test criteria").build();
@@ -754,15 +750,13 @@ class MeasureControllerTest {
             10,
             0,
             "lastModifiedAt",
-            "DESC",
-            "measures");
+            "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.OWNED)),
             any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            eq("test.user"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
@@ -782,8 +776,7 @@ class MeasureControllerTest {
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.SHARED)),
             any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            eq("test.user"));
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test criteria").build();
@@ -795,15 +788,13 @@ class MeasureControllerTest {
             10,
             0,
             "lastModifiedAt",
-            "DESC",
-            "measures");
+            "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.SHARED)),
             any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            eq("test.user"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody().getContent());
@@ -823,8 +814,7 @@ class MeasureControllerTest {
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.ALL)),
             any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            eq("test.user"));
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder().searchField("test criteria").build();
@@ -836,15 +826,13 @@ class MeasureControllerTest {
             10,
             0,
             "lastModifiedAt",
-            "DESC",
-            "measures");
+            "DESC");
     verify(measureService, times(1))
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.ALL)),
             any(Pageable.class),
-            eq("test.user"),
-            eq("measures"));
+            eq("test.user"));
 
     verifyNoMoreInteractions(repository);
     assertNotNull(response.getBody());

@@ -1636,8 +1636,6 @@ public class VersionServiceTest {
     when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
         .thenReturn(true);
 
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.STU_6_TEST_CASE_VALIDATION))
-        .thenReturn(true);
     // Mocks a validation request awaiting execution.
     when(testCaseValidationService.validateResourceAsynchronously(
             any(), any(TestCase.class), eq(TestCaseServiceUtil.IMPORT), anyString()))

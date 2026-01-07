@@ -620,11 +620,9 @@ public class MeasureService extends BaseMeasureService {
       MeasureSearchCriteria searchCriteria,
       List<OwnershipType> ownershipTypes,
       Pageable pageReq,
-      String username,
-      // TODO Remove parameter when either measureSearch or EditTestsOnVersionedMeasure is removed.
-      String invocationSource) {
+      String username) {
     return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, ownershipTypes, invocationSource);
+        username, pageReq, searchCriteria, ownershipTypes);
   }
 
   protected void updateReferences(MeasureMetaData metaData) {
