@@ -22,6 +22,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.util.*;
 import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 
 @Slf4j
 @AllArgsConstructor
@@ -653,57 +654,8 @@ public class HumanReadableService {
       return 1.0;
     }
 
-    int distance = levenshteinDistance(str1, str2);
+    int distance = LevenshteinDistance.getDefaultInstance().apply(str1, str2);
     return 1.0 - ((double) distance / maxLength);
-  }
-
-  /**
-   * Calculates the Levenshtein distance between two strings.
-   *
-   * <p>This is the minimum number of single-character edits (insertions, deletions, or
-   * substitutions) required to change one string into the other.
-   *
-   * @param str1 First string
-   * @param str2 Second string
-   * @return The Levenshtein distance
-   */
-  private int levenshteinDistance(String str1, String str2) {
-    int len1 = str1.length();
-    int len2 = str2.length();
-
-    // Optimization: if one string is empty, distance is the length of the other
-    if (len1 == 0) {
-      return len2;
-    }
-    if (len2 == 0) {
-      return len1;
-    }
-
-    // Create a matrix to store distances
-    int[][] dp = new int[len1 + 1][len2 + 1];
-
-    // Initialize first row and column
-    for (int i = 0; i <= len1; i++) {
-      dp[i][0] = i;
-    }
-    for (int j = 0; j <= len2; j++) {
-      dp[0][j] = j;
-    }
-
-    // Calculate distances
-    for (int i = 1; i <= len1; i++) {
-      for (int j = 1; j <= len2; j++) {
-        int cost = (str1.charAt(i - 1) == str2.charAt(j - 1)) ? 0 : 1;
-        dp[i][j] =
-            Math.min(
-                Math.min(
-                    dp[i - 1][j] + 1, // deletion
-                    dp[i][j - 1] + 1), // insertion
-                dp[i - 1][j - 1] + cost); // substitution
-      }
-    }
-
-    return dp[len1][len2];
   }
 
   /**
