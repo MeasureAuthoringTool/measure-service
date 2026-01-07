@@ -56,8 +56,8 @@ public class HumanReadableService {
   }
 
   /**
-   * @param newMeasureId The ID of the first measure (old)
-   * @param oldMeasureId The ID of the second measure (new)
+   * @param newMeasureId New Measure Id
+   * @param oldMeasureId Old Measure Id
    * @param username The username for fetching the draft measure's content
    * @param accessToken The access token for fetching the draft measure's content
    * @return HtmlDiffResponse containing the original HTML documents and a list of differences

@@ -1,6 +1,5 @@
 package cms.gov.madie.measure.resources;
 
-import java.io.IOException;
 import java.security.Principal;
 
 import cms.gov.madie.measure.dto.HtmlDiffResponse;
@@ -36,8 +35,7 @@ public class HumanReadableController {
       Principal principal,
       @RequestParam String newMeasureId,
       @RequestParam String oldMeasureId,
-      @RequestHeader("Authorization") String accessToken)
-      throws IOException {
+      @RequestHeader("Authorization") String accessToken) {
     final String username = principal.getName();
     return humanReadableService.compareHtml(newMeasureId, oldMeasureId, username, accessToken);
   }
