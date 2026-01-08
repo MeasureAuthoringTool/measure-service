@@ -200,6 +200,16 @@ public class MeasureUtil {
             persistedMeasure.getMeasurementPeriodEnd(), measure.getMeasurementPeriodEnd());
   }
 
+  public static boolean isMeasureGroupsChanged(Measure changed, Measure original) {
+    if (CollectionUtils.isEmpty(original.getGroups())) {
+      return !CollectionUtils.isEmpty(changed.getGroups());
+    }
+    if (CollectionUtils.isEmpty(changed.getGroups())) {
+      return !CollectionUtils.isEmpty(original.getGroups());
+    }
+    return !CollectionUtils.isEqualCollection(changed.getGroups(), original.getGroups());
+  }
+
   public boolean isSupplementalDataChanged(Measure changed, Measure original) {
     if (CollectionUtils.isEmpty(original.getSupplementalData())) {
       return !CollectionUtils.isEmpty(changed.getSupplementalData());
