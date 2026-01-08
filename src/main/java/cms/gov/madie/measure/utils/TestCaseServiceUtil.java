@@ -39,6 +39,7 @@ public class TestCaseServiceUtil {
 
   public static final String SAVE = "saveTestCase";
   public static final String IMPORT = "importTestCase";
+  private static final ObjectMapper objectMapper = new ObjectMapper();
 
   private static final List<PopulationType> EXPECTED_VALUE_ORDER =
       List.of(
@@ -700,7 +701,7 @@ public class TestCaseServiceUtil {
 
   public static String parseAndUpdateJsonWithGroupAndTitle(String json, String group, String title)
       throws JsonProcessingException {
-    ObjectMapper objectMapper = new ObjectMapper();
+
     JsonNode rootNode = objectMapper.readTree(json);
 
     if (rootNode.has("entry") && rootNode.get("entry").isArray()) {
