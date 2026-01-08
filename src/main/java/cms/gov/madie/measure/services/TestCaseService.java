@@ -30,7 +30,6 @@ public class TestCaseService {
   private final MeasureRepository measureRepository;
   private final ActionLogService actionLogService;
   private final FhirServicesClient fhirServicesClient;
-
   private final MeasureService measureService;
   private final TestCaseSequenceService sequenceService;
   private final AppConfigService appConfigService;
@@ -161,7 +160,6 @@ public class TestCaseService {
     } else {
       measure.getTestCases().addAll(enrichedTestCases);
     }
-
     measureRepository.save(measure);
     log.info(
         "User [{}] successfully imported [{}] test cases to the measure with ID[{}] ",
@@ -336,7 +334,6 @@ public class TestCaseService {
               "Error reading testCaseJson while updating TestCase with id: " + testCase.getId(), e);
         }
       }
-
       if (ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
         Measure updatedMeasure = measureRepository.addOrUpdateTestCase(measureId, testCase);
 
@@ -989,6 +986,12 @@ public class TestCaseService {
       // Process the remaining test cases
       for (TestCase testCase : testCases) {
         try {
+          if (StringUtils.isBlank(testCase.getJson())) {
+            failedTestCases.add(
+                TestCaseServiceUtil.getTestCaseDisplayName(
+                    testCase.getSeries(), testCase.getTitle()));
+            continue;
+          }
           String updatedJson =
               TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(
                   testCase.getJson(), testCase.getSeries(), testCase.getTitle());
