@@ -30,7 +30,6 @@ public class TestCaseService {
   private final MeasureRepository measureRepository;
   private final ActionLogService actionLogService;
   private final FhirServicesClient fhirServicesClient;
-
   private final MeasureService measureService;
   private final TestCaseSequenceService sequenceService;
   private final AppConfigService appConfigService;
@@ -161,7 +160,6 @@ public class TestCaseService {
     } else {
       measure.getTestCases().addAll(enrichedTestCases);
     }
-
     measureRepository.save(measure);
     log.info(
         "User [{}] successfully imported [{}] test cases to the measure with ID[{}] ",
@@ -336,7 +334,6 @@ public class TestCaseService {
               "Error reading testCaseJson while updating TestCase with id: " + testCase.getId(), e);
         }
       }
-
       if (ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
         Measure updatedMeasure = measureRepository.addOrUpdateTestCase(measureId, testCase);
 
@@ -661,7 +658,7 @@ public class TestCaseService {
           TestCaseServiceUtil.getPatientGivenNameFromJson(model, testCaseImportRequest.getJson());
       log.info("Test Case title + Test Case Group:  {}", givenName + " " + familyName);
       if (StringUtils.isBlank(givenName)) {
-        return buildTestCaseImportOutcome(
+        return TestCaseServiceUtil.buildTestCaseImportOutcome(
             testCaseImportRequest.getPatientId(), false, "Test Case Title is required.");
       }
       TestCase newTestCase =
@@ -720,7 +717,7 @@ public class TestCaseService {
               + ex.getMessage(),
           userName,
           testCaseImportRequest.getPatientId());
-      return buildTestCaseImportOutcome(
+      return TestCaseServiceUtil.buildTestCaseImportOutcome(
           testCaseImportRequest.getPatientId(),
           false,
           "Error while processing Test Case JSON. Please make sure Test Case JSON is valid.");
@@ -786,7 +783,7 @@ public class TestCaseService {
     try {
       existingTestCase.setDescription(
           getDescription(model, testCaseImportRequest.getJson(), testCaseImportRequest));
-      existingTestCase.setJson(getJson(model, testCaseImportRequest.getJson()));
+      existingTestCase.setJson(TestCaseServiceUtil.getJson(model, testCaseImportRequest.getJson()));
       TestCase updatedTestCase =
           updateTestCase(
               existingTestCase, measureId, userName, accessToken, TestCaseServiceUtil.IMPORT);
@@ -842,8 +839,8 @@ public class TestCaseService {
           "User {} is unable to import test case with patient id : {}; Error Message : {}",
           userName,
           testCaseImportRequest.getPatientId(),
-          formatErrorMessage(e));
-      failureOutcome.setMessage(formatErrorMessage(e));
+          TestCaseServiceUtil.formatErrorMessage(e));
+      failureOutcome.setMessage(TestCaseServiceUtil.formatErrorMessage(e));
       return failureOutcome;
     } catch (Exception e) {
       log.info(
@@ -885,24 +882,6 @@ public class TestCaseService {
       description = JsonUtil.getTestDescriptionQdm(json);
     }
     return description;
-  }
-
-  private String getJson(String model, String json) throws JsonProcessingException {
-    String jsonFromImportRequest = null;
-    if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
-      jsonFromImportRequest = JsonUtil.removeMeasureReportEntries(json);
-    } else if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
-      jsonFromImportRequest = JsonUtil.getTestCaseJson(json);
-    }
-    return jsonFromImportRequest;
-  }
-
-  private String formatErrorMessage(Exception e) {
-    return e.getClass().getSimpleName().equals("DuplicateTestCaseNameException")
-        ? "The Test Case Group and Title are already used in another test case on this "
-            + "measure. The combination must be unique (case insensitive,"
-            + " spaces ignored) across all test cases associated with the measure."
-        : e.getMessage();
   }
 
   public List<String> findTestCaseSeriesByMeasureId(String measureId) {
@@ -972,12 +951,70 @@ public class TestCaseService {
     }
   }
 
-  private TestCaseImportOutcome buildTestCaseImportOutcome(
-      UUID patientId, boolean successful, String message) {
-    return TestCaseImportOutcome.builder()
-        .patientId(patientId)
-        .successful(successful)
-        .message(message)
-        .build();
+  public Map<String, Object> updateQiCoreJsonWithGroupAndTitle(
+      List<TestCase> testCases, String userName, String measureId, String accessToken) {
+    Map<String, Object> response = new HashMap<>();
+    List<String> updatedTestCases = new ArrayList<>();
+    List<String> failedTestCases = new ArrayList<>();
+    List<String> testCaseIds = testCases.stream().map(TestCase::getId).toList();
+    log.info(
+        "User: [{}] is trying to update json with group and title: [{}] - testCaseIds: {}",
+        userName,
+        measureId,
+        testCaseIds);
+    try {
+      List<LockInfo> failedLocks =
+          testCaseLockService.lockAllTestCases(measureId, testCaseIds, userName);
+      if (!failedLocks.isEmpty()) {
+        // Handle failed locks
+        testCases =
+            testCases.stream()
+                .filter(
+                    tc -> {
+                      boolean isNotFailedLock =
+                          failedLocks.stream()
+                              .noneMatch(lock -> lock.getLockedId().equals(tc.getId()));
+                      if (!isNotFailedLock) {
+                        failedTestCases.add(
+                            TestCaseServiceUtil.getTestCaseDisplayName(
+                                tc.getSeries(), tc.getTitle()));
+                      }
+                      return isNotFailedLock;
+                    })
+                .toList();
+      }
+      // Process remaining test cases
+      for (TestCase testCase : testCases) {
+        try {
+          if (StringUtils.isBlank(testCase.getJson())) {
+            failedTestCases.add(
+                TestCaseServiceUtil.getTestCaseDisplayName(
+                    testCase.getSeries(), testCase.getTitle()));
+            continue;
+          }
+          String updatedJson =
+              TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(
+                  testCase.getJson(), testCase.getSeries(), testCase.getTitle());
+          testCase.setJson(updatedJson);
+
+          updateTestCase(testCase, measureId, userName, accessToken);
+          updatedTestCases.add(
+              TestCaseServiceUtil.getTestCaseDisplayName(
+                  testCase.getSeries(), testCase.getTitle()));
+        } catch (Exception e) {
+          log.error("Failed to update Test Case [{}]: {}", testCase.getId(), e.getMessage());
+          failedTestCases.add(
+              TestCaseServiceUtil.getTestCaseDisplayName(
+                  testCase.getSeries(), testCase.getTitle()));
+        }
+      }
+    } finally {
+      testCaseLockService.unlockAllTestCases(testCaseIds, userName);
+    }
+    response.put("updated", updatedTestCases);
+    response.put("failed", failedTestCases);
+    log.info("Updated test cases JSON with group and title: {}", updatedTestCases);
+    log.info("Failed updating test cases JSON with group and title: {}", failedTestCases);
+    return response;
   }
 }

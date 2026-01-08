@@ -45,11 +45,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -3661,5 +3657,56 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     // Verify the measure was saved
     verify(measureRepository).save(any(Measure.class));
+  }
+
+  @Test
+  void testUpdateJsonWithGroupAndTitle_AllTestCasesUpdatedSuccessfully() throws Exception {
+    List<TestCase> testCases = new ArrayList<>();
+    TestCase testCase1 = new TestCase();
+    testCase1.setId("1");
+    testCase1.setJson(
+        "{\"entry\": [{\"resource\": {\"resourceType\": \"Patient\", \"name\": [{\"family\": \"oldGroup\", \"given\": [\"oldTitle\"]}]}}]}");
+    testCase1.setSeries("Group1");
+    testCase1.setTitle("Title1");
+    testCase1.setTestCaseLock(null);
+    testCases.add(testCase1);
+
+    TestCase updatedTestCase = new TestCase();
+    updatedTestCase.setId("1");
+    updatedTestCase.setJson(
+        "{\"entry\": [{\"resource\": {\"resourceType\": \"Patient\", \"name\": [{\"family\": \"Group1\", \"given\": [\"Title1\"]}]}}]}");
+    measure.toBuilder()
+        .model(ModelType.QI_CORE_6_0_0.getValue())
+        .testCases(List.of(testCase))
+        .build();
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(testCaseService.updateTestCase(testCase1, "measure1", "user1", "accessToken"))
+        .thenReturn(updatedTestCase);
+
+    Map<String, Object> response =
+        testCaseService.updateQiCoreJsonWithGroupAndTitle(
+            testCases, "user1", "measure1", "accessToken");
+
+    assertTrue(((List<String>) response.get("updated")).contains("Group1 - Title1"));
+    assertTrue(((List<String>) response.get("failed")).isEmpty());
+  }
+
+  @Test
+  void testUpdateJsonWithGroupAndTitle_TestCaseLockExists() {
+    List<TestCase> testCases = new ArrayList<>();
+    TestCase testCase1 = new TestCase();
+    testCase1.setId("1");
+    testCase1.setTestCaseLock(new TestCaseLockInfo());
+    testCase1.setSeries("Group1");
+    testCase1.setTitle("Title1");
+    testCases.add(testCase1);
+
+    Map<String, Object> response =
+        testCaseService.updateQiCoreJsonWithGroupAndTitle(
+            testCases, "user1", "measure1", "accessToken");
+
+    assertTrue(((List<String>) response.get("failed")).contains("Group1 - Title1"));
+    assertTrue(((List<String>) response.get("updated")).isEmpty());
+    verify(testCaseLockService, never()).lockTestCase(anyString(), anyString(), anyString());
   }
 }
