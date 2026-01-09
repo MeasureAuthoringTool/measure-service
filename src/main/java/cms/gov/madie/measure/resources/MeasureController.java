@@ -378,6 +378,7 @@ public class MeasureController extends AbstractMeasureController {
     return ResponseEntity.ok(measure);
   }
 
+  @Deprecated
   @PostMapping("/measures/{measureId}/groups/{groupId}/stratification")
   public ResponseEntity<Stratification> createStratification(
       @RequestBody Stratification stratification,
@@ -390,6 +391,7 @@ public class MeasureController extends AbstractMeasureController {
                 groupId, measureId, stratification, principal.getName()));
   }
 
+  @Deprecated
   @PutMapping("/measures/{measureId}/groups/{groupId}/stratification")
   public ResponseEntity<Stratification> updateStratification(
       @RequestBody Stratification stratification,
@@ -403,6 +405,7 @@ public class MeasureController extends AbstractMeasureController {
         groupService.createOrUpdateStratification(groupId, measureId, stratification, username));
   }
 
+  @Deprecated
   @DeleteMapping("/measures/{measureId}/groups/{groupId}/stratification/{stratificationId}")
   public ResponseEntity<Measure> deleteStratification(
       @RequestBody @PathVariable String measureId,
