@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.factories.ModelValidatorFactory;
+import gov.cms.madie.models.measure.*;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,22 +46,6 @@ import cms.gov.madie.measure.validations.CqlDefinitionReturnTypeService;
 import cms.gov.madie.measure.validations.CqlObservationFunctionService;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
-import gov.cms.madie.models.measure.AggregateMethodType;
-import gov.cms.madie.models.measure.Group;
-import gov.cms.madie.models.measure.Measure;
-import gov.cms.madie.models.measure.MeasureGroupTypes;
-import gov.cms.madie.models.measure.MeasureMetaData;
-import gov.cms.madie.models.measure.MeasureObservation;
-import gov.cms.madie.models.measure.MeasureScoring;
-import gov.cms.madie.models.measure.MeasureSet;
-import gov.cms.madie.models.measure.Population;
-import gov.cms.madie.models.measure.PopulationType;
-import gov.cms.madie.models.measure.QdmMeasure;
-import gov.cms.madie.models.measure.Stratification;
-import gov.cms.madie.models.measure.TestCase;
-import gov.cms.madie.models.measure.TestCaseGroupPopulation;
-import gov.cms.madie.models.measure.TestCasePopulationValue;
-import gov.cms.madie.models.measure.TestCaseStratificationValue;
 
 @ExtendWith(MockitoExtension.class)
 public class GroupServiceTest implements ResourceUtil {
@@ -1915,5 +1900,129 @@ public class GroupServiceTest implements ResourceUtil {
         () ->
             groupService.deleteStratification(
                 measure.getId(), group2.getId(), strata1.getId(), "test.user"));
+  }
+
+  @Test
+  void testAddCompositeGroup() {
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .build();
+
+    List<Group> groups = new ArrayList<>();
+    groups.add(group2);
+
+    Measure measure =
+        this.measure.toBuilder()
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(groups)
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+
+    assertEquals(1, measure.getGroups().size());
+
+    Group updatedGroup =
+        groupService.createOrUpdateGroup(compositeGroup, measure.getId(), "test.user");
+
+    assertEquals(2, measure.getGroups().size());
+    assertEquals(measure.getGroups().get(0).getId(), group2.getId());
+    assertEquals(MeasureScoring.COMPOSITE.toString(), updatedGroup.getScoring());
+    assertEquals(
+        CompositeMeasureScoring.OPPORTUNITY.toString(), updatedGroup.getCompositeScoring());
+  }
+
+  @Test
+  void testUpdateCompositeGroup() {
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .build();
+
+    Group modifiedCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.LINEAR.toString())
+            .populations(new ArrayList<>())
+            .build();
+
+    Measure measureWithCompositeGroup =
+        measure.toBuilder()
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(List.of(compositeGroup))
+            .build();
+
+    when(measureRepository.findById(anyString()))
+        .thenReturn(Optional.of(measureWithCompositeGroup));
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+
+    Group updatedGroup =
+        groupService.createOrUpdateGroup(
+            modifiedCompositeGroup, measureWithCompositeGroup.getId(), "test.user");
+
+    assertEquals(MeasureScoring.COMPOSITE.toString(), updatedGroup.getScoring());
+    assertEquals(CompositeMeasureScoring.LINEAR.toString(), updatedGroup.getCompositeScoring());
+    assertEquals(1, measureWithCompositeGroup.getGroups().size());
+  }
+
+  @Test
+  void testThrowsWhenAddingCompositeGroupToNonCompositeMeasure() {
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .build();
+
+    Measure measureWithCompositeGroup =
+        measure.toBuilder()
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(false).build())
+            .groups(new ArrayList<>())
+            .build();
+
+    when(measureRepository.findById(anyString()))
+        .thenReturn(Optional.of(measureWithCompositeGroup));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            groupService.createOrUpdateGroup(
+                compositeGroup, measureWithCompositeGroup.getId(), "test.user"));
+  }
+
+  @Test
+  void testThrowsWhenAddingCompositeGroupWithNoCompositeScoring() {
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .populations(new ArrayList<>())
+            .build();
+
+    Measure measureWithCompositeGroup =
+        measure.toBuilder()
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(new ArrayList<>())
+            .build();
+
+    when(measureRepository.findById(anyString()))
+        .thenReturn(Optional.of(measureWithCompositeGroup));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            groupService.createOrUpdateGroup(
+                compositeGroup, measureWithCompositeGroup.getId(), "test.user"));
   }
 }
