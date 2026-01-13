@@ -815,4 +815,55 @@ public final class JsonUtil {
     }
     return obs;
   }
+
+  // update profiles for non-patient resources
+  public static String updateResourceProfile(TestCase testCase) {
+    ObjectMapper mapper = new ObjectMapper();
+    boolean jsonValid = false;
+    try {
+      JsonNode rootNode = mapper.readTree(testCase.getJson());
+      JsonNode entry = rootNode.get("entry");
+      if (entry != null) {
+        for (JsonNode theNode : entry) {
+          var resourceNode = theNode.get("resource");
+          if (resourceNode != null) {
+            var resourceType =
+                resourceNode.get("resourceType") != null
+                    ? resourceNode.get("resourceType").asText()
+                    : null;
+            if (resourceType != null) {
+              JsonNode metaNode = resourceNode.get("meta");
+              if (metaNode != null && metaNode.has("profile")) {
+                ArrayNode profileArray = (ArrayNode) metaNode.get("profile");
+                for (int i = 0; i < profileArray.size(); i++) {
+                  String oldProfile = profileArray.get(i).asText();
+                  /* if profile does not match resourceType:
+                   * e.g. if meta.profile has: "http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient"
+                   * but resourceType is: "Practitioner"
+                   * then, meta.profile needs to be updated by: "http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-practitioner"
+                   */
+                  if (!oldProfile.contains(resourceType.toLowerCase())) {
+                    String newProfile =
+                        oldProfile.replaceAll(
+                            "(?<=StructureDefinition/)qicore-[^/]+",
+                            "qicore-" + resourceType.toLowerCase());
+                    profileArray.set(i, profileArray.textNode(newProfile));
+                    jsonValid = true;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+      if (!jsonValid) {
+        return testCase.getJson();
+      } else {
+        return jsonNodeToString(mapper, rootNode);
+      }
+    } catch (JsonProcessingException ex) {
+      log.error("Error reading testCaseJson testCaseId = " + testCase.getId(), ex);
+    }
+    return testCase.getJson();
+  }
 }

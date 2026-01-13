@@ -311,7 +311,6 @@ public class TestCaseService {
   public TestCase updateTestCase(
       TestCase testCase, String measureId, String username, String accessToken, String queueType) {
     Measure measure = getAndCheckMeasure(measureId, testCase.getId(), username);
-
     handleTestCasesForUpdate(testCase, measureId, username, measure);
 
     boolean isQiCoreModel =
@@ -325,6 +324,7 @@ public class TestCaseService {
       testCase.setJson(JsonUtil.updateResourceFullUrls(testCase, madieJsonResourcesBaseUri));
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
+      testCase.setJson(JsonUtil.updateResourceProfile(testCase));
       testCase.setBundleTypeUpdated(false);
       if (appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)) {
         try {

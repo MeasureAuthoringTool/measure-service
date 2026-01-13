@@ -963,4 +963,159 @@ public class JsonUtilTest implements ResourceUtil {
     assertThrows(
         JsonProcessingException.class, () -> JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
   }
+
+  @Test
+  public void testUpdateResourceProfile() {
+    String json =
+        """
+	      {
+            "entry": [
+              {
+                "fullUrl": "https://madie.cms.gov/Practitioner/aa12aa5b-e428-419f-b486-748fd20852b5",
+                "resource": {
+                "resourceType": "Practitioner",
+                "id": "aa12aa5b-e428-419f-b486-748fd20852b5",
+                "meta": {
+                  "profile": [
+                    "http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient"
+                  ]
+                }
+              }
+            }
+          ]
+        }
+	  """;
+    String expectedProfile =
+        "http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-practitioner";
+    TestCase testCase = TestCase.builder().json(json).build();
+    String result = JsonUtil.updateResourceProfile(testCase);
+    assertTrue(result.contains(expectedProfile));
+  }
+
+  @Test
+  public void testUpdateResourceProfileWhenEntryIsNull() {
+    TestCase testCase = TestCase.builder().json(json_noEntries).build();
+    String result = JsonUtil.updateResourceProfile(testCase);
+    assertEquals(json_noEntries, result);
+  }
+
+  @Test
+  public void testUpdateResourceProfileWhenResourceNodeIsMissing() {
+    TestCase testCase = TestCase.builder().json(json_noResource).build();
+    String result = JsonUtil.updateResourceProfile(testCase);
+    assertEquals(json_noResource, result);
+  }
+
+  @Test
+  public void testUpdateResourceProfileWhenResourceTypeIsNull() {
+    TestCase testCase = TestCase.builder().json(json_noResourceType).build();
+    String result = JsonUtil.updateResourceProfile(testCase);
+    assertEquals(json_noResourceType, result);
+  }
+
+  @Test
+  public void testUpdateResourceProfileWhenMetaIsNull() {
+    String json =
+        """
+		  {
+		    "entry": [
+		      {
+		        "fullUrl": "https://madie.cms.gov/patient/aa12aa5b-e428-419f-b486-748fd20852b5",
+		        "resource": {
+		          "resourceType": "patient",
+		          "id": "aa12aa5b-e428-419f-b486-748fd20852b5"
+		          }
+		        }
+		      ]
+		    }
+		  """;
+    TestCase testCase = TestCase.builder().json(json).build();
+    String result = JsonUtil.updateResourceProfile(testCase);
+    assertEquals(json, result);
+  }
+
+  @Test
+  public void testUpdateResourceProfileWhenMetaDoesNotHaveProfile() {
+    String json =
+        """
+		  {
+		    "entry": [
+		      {
+		        "fullUrl": "https://madie.cms.gov/patient/aa12aa5b-e428-419f-b486-748fd20852b5",
+		        "resource": {
+		          "resourceType": "patient",
+		          "id": "aa12aa5b-e428-419f-b486-748fd20852b5",
+		          "meta": {
+                    "wrong": [
+                      "http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient"
+                    ]
+                  }
+		        }
+		      }
+		    ]
+		  }
+		  """;
+    TestCase testCase = TestCase.builder().json(json).build();
+    String result = JsonUtil.updateResourceProfile(testCase);
+    assertEquals(json, result);
+  }
+
+  @Test
+  public void testUpdateResourceProfileWhenResourceTypeIsPatient() {
+    String json =
+        """
+          {
+            "entry": [
+              {
+                "fullUrl": "https://madie.cms.gov/patient/aa12aa5b-e428-419f-b486-748fd20852b5",
+                "resource": {
+                  "resourceType": "patient",
+                  "id": "aa12aa5b-e428-419f-b486-748fd20852b5",
+                  "meta": {
+                    "profile": [
+                      "http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-patient"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        """;
+    TestCase testCase = TestCase.builder().json(json).build();
+    String result = JsonUtil.updateResourceProfile(testCase);
+    assertEquals(json, result);
+  }
+
+  @Test
+  public void testUpdateResourceProfileWhenJsonIsInvalid() {
+    TestCase testCase = TestCase.builder().json(malformedJson).build();
+    String result = JsonUtil.updateResourceProfile(testCase);
+    assertEquals(malformedJson, result);
+  }
+
+  @Test
+  public void testUpdateResourceProfileWhenProfileHasResourceType() {
+    String json =
+        """
+          {
+            "entry": [
+              {
+                "fullUrl": "https://madie.cms.gov/Condition/non-behavioral-health-dx-without-SUD-8a64",
+                "resource": {
+                  "resourceType": "Condition",
+                  "id": "non-behavioral-health-dx-without-SUD-8a64",
+                  "meta": {
+                    "profile": [
+                      "http://hl7.org/fhir/us/qicore/StructureDefinition/qicore-condition-encounter-diagnosis"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        """;
+    TestCase testCase = TestCase.builder().json(json).build();
+    String result = JsonUtil.updateResourceProfile(testCase);
+    assertEquals(json, result);
+  }
 }
