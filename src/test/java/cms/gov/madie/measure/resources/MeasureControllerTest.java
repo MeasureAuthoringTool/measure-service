@@ -33,11 +33,7 @@ import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -568,7 +564,7 @@ class MeasureControllerTest {
   }
 
   @Test
-  void testUpdateMeasureReturnsExceptionForLockedTestCases() {
+  void testUpdateMeasureReturnsExceptionForLockedTestCasesWhenUpdatingGroups() {
     Measure m1234 =
         measure1.toBuilder()
             .id("ID1234")
@@ -581,9 +577,54 @@ class MeasureControllerTest {
     when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(true);
 
+    Measure updatedMeasure =
+        m1234.toBuilder().groups(List.of(Group.builder().id("group_1").build())).build();
+
     assertThrows(
         LockNotObtainedException.class,
-        () -> controller.updateMeasure("ID1234", m1234, principal, "Bearer TOKEN"));
+        () -> controller.updateMeasure("ID1234", updatedMeasure, principal, "Bearer TOKEN"));
+  }
+
+  @Test
+  void testTopLevelUpdateMeasureSuccessfulWhenTestCaseLocked() {
+    Measure m1234 =
+        measure1.toBuilder()
+            .id("ID1234")
+            .createdBy("test.user2")
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .groups(List.of(Group.builder().id("group_1").build()))
+            .build();
+    when(principal.getName()).thenReturn("test.user2");
+    when(measureService.findMeasureById(anyString())).thenReturn(m1234);
+    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
+        .thenReturn(true);
+
+    Measure updatedMeasure = m1234.toBuilder().measureName("New Name").build();
+
+    assertDoesNotThrow(
+        () -> controller.updateMeasure("ID1234", updatedMeasure, principal, "Bearer TOKEN"));
+  }
+
+  @Test
+  void testUpdateMeasureSuccessfulWhenNoTestCasesLocked() {
+    Measure m1234 =
+        measure1.toBuilder()
+            .id("ID1234")
+            .createdBy("test.user2")
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .groups(List.of(Group.builder().id("group_1").build()))
+            .build();
+    when(principal.getName()).thenReturn("test.user2");
+    when(measureService.findMeasureById(anyString())).thenReturn(m1234);
+    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
+        .thenReturn(false);
+
+    Measure updatedMeasure = m1234.toBuilder().measureName("New Name").build();
+
+    assertDoesNotThrow(
+        () -> controller.updateMeasure("ID1234", updatedMeasure, principal, "Bearer TOKEN"));
   }
 
   @Test
