@@ -75,7 +75,7 @@ public class GroupService {
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
         && testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username)) {
       throw new LockNotObtainedException(
-          "Unable to update measure.  One or more test cases are locked by another user.");
+          "Unable to create or update measure groups. One or more test cases are locked by another user.");
     }
 
     if (measure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())) {
