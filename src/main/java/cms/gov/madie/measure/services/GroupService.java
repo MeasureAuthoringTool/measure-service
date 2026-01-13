@@ -102,6 +102,7 @@ public class GroupService {
         existingGroup.setScoringPrecision(group.getScoringPrecision());
         existingGroup.setStratifications(group.getStratifications());
         existingGroup.setPopulationBasis(group.getPopulationBasis());
+        existingGroup.setCompositeScoring(group.getCompositeScoring());
       } else { // if not present, add into groups collection
         group.setId(ObjectId.get().toString());
         measure.getGroups().add(group);

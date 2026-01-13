@@ -645,4 +645,27 @@ class GroupScoringPopulationValidatorTest {
                 .build(),
             false));
   }
+
+  @Test
+  public void testValidatorReturnsTrueForCompositeScoringWithNullPopulations() {
+    Group group =
+        Group.builder().scoring(MeasureScoring.COMPOSITE.toString()).populations(null).build();
+    boolean output = validator.isValid(group, validatorContext);
+    assertTrue(output);
+  }
+
+  @Test
+  public void testValidatorReturnsTrueForCompositeScoringWithEmptyPopulations() {
+    Group group =
+        Group.builder().scoring(MeasureScoring.COMPOSITE.toString()).populations(List.of()).build();
+    boolean output = validator.isValid(group, validatorContext);
+    assertTrue(output);
+  }
+
+  @Test
+  public void testValidatorReturnsFalseForNonCompositeScoring() {
+    Group group = Group.builder().scoring(MeasureScoring.COHORT.toString()).build();
+    boolean output = validator.isValid(group, validatorContext);
+    assertFalse(output);
+  }
 }
