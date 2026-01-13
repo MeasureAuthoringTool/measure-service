@@ -1,10 +1,7 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
-import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
-import cms.gov.madie.measure.exceptions.InvalidIdException;
-import cms.gov.madie.measure.exceptions.LockNotObtainedException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.factories.ModelValidatorFactory;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.GroupPopulationUtil;
@@ -62,6 +59,12 @@ public class GroupService {
     }
     if (!measure.getMeasureMetaData().isDraft()) {
       throw new InvalidDraftStatusException(measure.getId());
+    }
+
+    if (group.getScoring().equalsIgnoreCase(MeasureScoring.COMPOSITE.toString())
+        && !measure.getMeasureMetaData().isComposite()) {
+      throw new InvalidRequestException(
+          "Cannot set group scoring to COMPOSITE for non-composite measure.");
     }
 
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
