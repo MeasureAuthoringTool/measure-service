@@ -61,10 +61,15 @@ public class GroupService {
       throw new InvalidDraftStatusException(measure.getId());
     }
 
-    if (group.getScoring().equalsIgnoreCase(MeasureScoring.COMPOSITE.toString())
-        && !measure.getMeasureMetaData().isComposite()) {
-      throw new InvalidRequestException(
-          "Cannot set group scoring to COMPOSITE for non-composite measure.");
+    if (MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(group.getScoring())) {
+      if (!measure.getMeasureMetaData().isComposite()) {
+        throw new InvalidRequestException(
+            "Cannot set group scoring to COMPOSITE for non-composite measure.");
+      }
+      if (group.getCompositeScoring() == null) {
+        throw new InvalidRequestException(
+            "Composite scoring is required when group scoring is set to COMPOSITE.");
+      }
     }
 
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)

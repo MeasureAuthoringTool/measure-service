@@ -2000,4 +2000,29 @@ public class GroupServiceTest implements ResourceUtil {
             groupService.createOrUpdateGroup(
                 compositeGroup, measureWithCompositeGroup.getId(), "test.user"));
   }
+
+  @Test
+  void testThrowsWhenAddingCompositeGroupWithNoCompositeScoring() {
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .populations(new ArrayList<>())
+            .build();
+
+    Measure measureWithCompositeGroup =
+        measure.toBuilder()
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(new ArrayList<>())
+            .build();
+
+    when(measureRepository.findById(anyString()))
+        .thenReturn(Optional.of(measureWithCompositeGroup));
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            groupService.createOrUpdateGroup(
+                compositeGroup, measureWithCompositeGroup.getId(), "test.user"));
+  }
 }
