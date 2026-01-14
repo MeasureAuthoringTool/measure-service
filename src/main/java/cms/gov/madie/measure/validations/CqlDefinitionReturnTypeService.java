@@ -6,6 +6,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import gov.cms.madie.models.measure.*;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
@@ -19,10 +20,6 @@ import cms.gov.madie.measure.exceptions.InvalidFhirGroupException;
 import cms.gov.madie.measure.exceptions.InvalidGroupException;
 import cms.gov.madie.measure.exceptions.InvalidReturnTypeException;
 import cms.gov.madie.measure.exceptions.InvalidReturnTypeForQdmException;
-import gov.cms.madie.models.measure.DefDescPair;
-import gov.cms.madie.models.measure.Group;
-import gov.cms.madie.models.measure.Population;
-import gov.cms.madie.models.measure.Stratification;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -35,6 +32,9 @@ public class CqlDefinitionReturnTypeService {
    */
   public void validateCqlDefinitionReturnTypes(Group group, String elmJson)
       throws JsonProcessingException {
+    if (group.getScoring().equals(MeasureScoring.COMPOSITE.toString())) {
+      return;
+    }
     Map<String, String> cqlDefinitionReturnTypes = getCqlDefinitionReturnTypes(elmJson);
     if (cqlDefinitionReturnTypes.isEmpty()) {
       throw new IllegalArgumentException("No definitions found.");

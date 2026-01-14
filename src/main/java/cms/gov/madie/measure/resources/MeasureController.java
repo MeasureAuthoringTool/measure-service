@@ -5,6 +5,7 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
+import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.common.Action;
@@ -16,6 +17,7 @@ import gov.cms.madie.models.measure.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -26,7 +28,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.util.CollectionUtils;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -198,10 +199,12 @@ public class MeasureController extends AbstractMeasureController {
           measureService.verifyAuthorization(username, measure, null);
         }
 
+        // Group changes are not allowed if any test case is locked by another user
         if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            && testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username)) {
+            && testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username)
+            && MeasureUtil.isMeasureGroupsChanged(measure, existingMeasure)) {
           throw new LockNotObtainedException(
-              "Unable to update measure.  One or more test cases are locked by another user.");
+              "Unable to update measure groups. One or more test cases are locked by another user.");
         }
 
         // clear testcase groups for qdm when scoring or patient basis is changed.
@@ -375,6 +378,7 @@ public class MeasureController extends AbstractMeasureController {
     return ResponseEntity.ok(measure);
   }
 
+  @Deprecated
   @PostMapping("/measures/{measureId}/groups/{groupId}/stratification")
   public ResponseEntity<Stratification> createStratification(
       @RequestBody Stratification stratification,
@@ -387,6 +391,7 @@ public class MeasureController extends AbstractMeasureController {
                 groupId, measureId, stratification, principal.getName()));
   }
 
+  @Deprecated
   @PutMapping("/measures/{measureId}/groups/{groupId}/stratification")
   public ResponseEntity<Stratification> updateStratification(
       @RequestBody Stratification stratification,
@@ -400,6 +405,7 @@ public class MeasureController extends AbstractMeasureController {
         groupService.createOrUpdateStratification(groupId, measureId, stratification, username));
   }
 
+  @Deprecated
   @DeleteMapping("/measures/{measureId}/groups/{groupId}/stratification/{stratificationId}")
   public ResponseEntity<Measure> deleteStratification(
       @RequestBody @PathVariable String measureId,
@@ -552,7 +558,6 @@ public class MeasureController extends AbstractMeasureController {
    * @param oldMeasureId ID of the old measure to compare from
    * @param newMeasureId ID of the new measure to compare to
    * @param autoReorder Whether to auto-reorder the new measure CQL (default: true)
-   * @param principal Current user principal
    * @return CqlDiffResult containing normalized/reordered text ready for diff display
    */
   @GetMapping(value = "/measures/{oldMeasureId}/compare/{newMeasureId}")

@@ -1128,4 +1128,58 @@ class MeasureUtilTest {
     List<IncludedLibrary> result = MeasureUtil.getIncludedLibraries("");
     assertThat(result.size(), is(0));
   }
+
+  @Test
+  public void testIsMeasureGroupChangedReturnsFalseForNullObjects() {
+    Measure updatingMeasure = Measure.builder().groups(null).build();
+    Measure existingMeasure = Measure.builder().groups(null).build();
+    assertFalse(MeasureUtil.isMeasureGroupsChanged(updatingMeasure, existingMeasure));
+  }
+
+  @Test
+  public void testIsMeasureGroupChangedReturnsTrueWhenNewGroupIsAdded() {
+    Group group =
+        Group.builder()
+            .id("Group1")
+            .scoring(MeasureScoring.PROPORTION.toString())
+            .populations(
+                List.of(
+                    Population.builder().definition("IPP").build(),
+                    Population.builder().definition("DENOM").build(),
+                    Population.builder().definition("NUMER").build()))
+            .build();
+    Measure newGroup = Measure.builder().groups(List.of(group)).build();
+    Measure nullGroup = Measure.builder().groups(null).build();
+    boolean existingIsNull = MeasureUtil.isMeasureGroupsChanged(newGroup, nullGroup);
+    assertTrue(existingIsNull);
+
+    boolean modifiedIsNull = MeasureUtil.isMeasureGroupsChanged(nullGroup, newGroup);
+    assertTrue(modifiedIsNull);
+  }
+
+  @Test
+  public void testIsMeasureGroupChangedReturnsTrueWhenGroupModified() {
+    Group group =
+      Group.builder()
+        .id("Group1")
+        .scoring(MeasureScoring.PROPORTION.toString())
+        .populations(
+          List.of(
+            Population.builder().definition("IPP").build(),
+            Population.builder().definition("DENOM").build(),
+            Population.builder().definition("NUMER").build()))
+        .build();
+    Group modifiedGroup =
+      Group.builder()
+        .id("Group1")
+        .scoring(MeasureScoring.COHORT.toString())
+        .populations(
+          List.of(
+            Population.builder().definition("IPP").build()))
+        .build();
+    Measure updatingMeasure = Measure.builder().groups(List.of(modifiedGroup)).build();
+    Measure existingMeasure = Measure.builder().groups(List.of(group)).build();
+    boolean result = MeasureUtil.isMeasureGroupsChanged(updatingMeasure, existingMeasure);
+    assertTrue(result);
+  }
 }

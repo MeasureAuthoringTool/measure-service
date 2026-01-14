@@ -1,10 +1,7 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
-import cms.gov.madie.measure.exceptions.InvalidDraftStatusException;
-import cms.gov.madie.measure.exceptions.InvalidIdException;
-import cms.gov.madie.measure.exceptions.LockNotObtainedException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.factories.ModelValidatorFactory;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.GroupPopulationUtil;
@@ -64,10 +61,21 @@ public class GroupService {
       throw new InvalidDraftStatusException(measure.getId());
     }
 
+    if (MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(group.getScoring())) {
+      if (!measure.getMeasureMetaData().isComposite()) {
+        throw new InvalidRequestException(
+            "Cannot set group scoring to COMPOSITE for non-composite measure.");
+      }
+      if (group.getCompositeScoring() == null) {
+        throw new InvalidRequestException(
+            "Composite scoring is required when group scoring is set to COMPOSITE.");
+      }
+    }
+
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
         && testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username)) {
       throw new LockNotObtainedException(
-          "Unable to update measure.  One or more test cases are locked by another user.");
+          "Unable to create or update measure groups. One or more test cases are locked by another user.");
     }
 
     if (measure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())) {
@@ -102,6 +110,7 @@ public class GroupService {
         existingGroup.setScoringPrecision(group.getScoringPrecision());
         existingGroup.setStratifications(group.getStratifications());
         existingGroup.setPopulationBasis(group.getPopulationBasis());
+        existingGroup.setCompositeScoring(group.getCompositeScoring());
       } else { // if not present, add into groups collection
         group.setId(ObjectId.get().toString());
         measure.getGroups().add(group);
