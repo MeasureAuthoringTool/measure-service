@@ -694,7 +694,7 @@ public class TestCaseServiceUtil {
       String json, String group, String title) throws JsonProcessingException {
 
     JsonNode rootNode = OBJECT_MAPPER.readTree(json);
-    boolean isUpdated = false; // Flag to track updates
+    boolean isUpdated = false; // Flag to track if any updates are done
 
     if (rootNode.has("entry") && rootNode.get("entry").isArray()) {
       ArrayNode entryArray = (ArrayNode) rootNode.get("entry");
