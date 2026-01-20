@@ -690,7 +690,7 @@ public class TestCaseServiceUtil {
     }
   }
 
-  public static Map<String, Object> parseAndUpdateJsonWithGroupAndTitle1(
+  public static Map<String, Object> parseAndUpdateJsonWithGroupAndTitle(
       String json, String group, String title) throws JsonProcessingException {
 
     JsonNode rootNode = OBJECT_MAPPER.readTree(json);

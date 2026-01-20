@@ -986,7 +986,7 @@ public class TestCaseService {
             continue;
           }
           Map<String, Object> updatedJson =
-              TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle1(
+              TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(
                   testCase.getJson(), testCase.getSeries(), testCase.getTitle());
           if (updatedJson.get("isUpdated") != null && (Boolean) updatedJson.get("isUpdated")) {
             testCase.setJson((String) updatedJson.get("updatedJson"));
