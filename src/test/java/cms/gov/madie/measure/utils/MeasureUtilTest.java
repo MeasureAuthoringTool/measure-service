@@ -1160,23 +1160,21 @@ class MeasureUtilTest {
   @Test
   public void testIsMeasureGroupChangedReturnsTrueWhenGroupModified() {
     Group group =
-      Group.builder()
-        .id("Group1")
-        .scoring(MeasureScoring.PROPORTION.toString())
-        .populations(
-          List.of(
-            Population.builder().definition("IPP").build(),
-            Population.builder().definition("DENOM").build(),
-            Population.builder().definition("NUMER").build()))
-        .build();
+        Group.builder()
+            .id("Group1")
+            .scoring(MeasureScoring.PROPORTION.toString())
+            .populations(
+                List.of(
+                    Population.builder().definition("IPP").build(),
+                    Population.builder().definition("DENOM").build(),
+                    Population.builder().definition("NUMER").build()))
+            .build();
     Group modifiedGroup =
-      Group.builder()
-        .id("Group1")
-        .scoring(MeasureScoring.COHORT.toString())
-        .populations(
-          List.of(
-            Population.builder().definition("IPP").build()))
-        .build();
+        Group.builder()
+            .id("Group1")
+            .scoring(MeasureScoring.COHORT.toString())
+            .populations(List.of(Population.builder().definition("IPP").build()))
+            .build();
     Measure updatingMeasure = Measure.builder().groups(List.of(modifiedGroup)).build();
     Measure existingMeasure = Measure.builder().groups(List.of(group)).build();
     boolean result = MeasureUtil.isMeasureGroupsChanged(updatingMeasure, existingMeasure);
