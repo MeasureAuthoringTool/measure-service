@@ -988,18 +988,14 @@ public class TestCaseService {
           Map<String, Object> updatedJson =
               TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(
                   testCase.getJson(), testCase.getSeries(), testCase.getTitle());
-          if (updatedJson.get("isUpdated") != null && (Boolean) updatedJson.get("isUpdated")) {
-            testCase.setJson((String) updatedJson.get("updatedJson"));
-            updateTestCase(testCase, measureId, userName, accessToken);
-            updatedTestCases.add(
-                TestCaseServiceUtil.getTestCaseDisplayName(
-                    testCase.getSeries(), testCase.getTitle()));
-          } else {
-            // No update needed
-            failedTestCases.add(
-                TestCaseServiceUtil.getTestCaseDisplayName(
-                    testCase.getSeries(), testCase.getTitle()));
+          if (updatedJson.get("isUpdated") != null && !(Boolean) updatedJson.get("isUpdated")) {
+            throw new Exception();
           }
+          testCase.setJson((String) updatedJson.get("updatedJson"));
+          updateTestCase(testCase, measureId, userName, accessToken);
+          updatedTestCases.add(
+              TestCaseServiceUtil.getTestCaseDisplayName(
+                  testCase.getSeries(), testCase.getTitle()));
         } catch (Exception e) {
           log.error("Failed to update Test Case [{}]: {}", testCase.getId(), e.getMessage());
           failedTestCases.add(

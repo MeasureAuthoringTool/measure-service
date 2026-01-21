@@ -720,7 +720,6 @@ public class TestCaseServiceUtil {
       }
     }
 
-    log.info("JSON updated: {}", isUpdated);
     Map<String, Object> result = new HashMap<>();
     result.put("isUpdated", isUpdated);
     result.put("updatedJson", OBJECT_MAPPER.writeValueAsString(rootNode));
