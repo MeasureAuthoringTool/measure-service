@@ -989,7 +989,7 @@ public class TestCaseService {
               TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(
                   testCase.getJson(), testCase.getSeries(), testCase.getTitle());
           if (updatedJson.get("isUpdated") != null && !(Boolean) updatedJson.get("isUpdated")) {
-            throw new Exception("Test Case has no family or group.");
+            throw new IllegalArgumentException("Test Case JSON does not contain either a family or a group.");
           }
           testCase.setJson((String) updatedJson.get("updatedJson"));
           updateTestCase(testCase, measureId, userName, accessToken);
