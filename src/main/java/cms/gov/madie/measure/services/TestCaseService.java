@@ -86,7 +86,6 @@ public class TestCaseService {
     }
     // ignore spaces
     final String newName = StringUtils.deleteWhitespace(testCase.getTitle() + testCase.getSeries());
-
     boolean matchesExistingTestCaseName =
         measure.getTestCases().stream()
             // exclude the current test case
@@ -103,7 +102,6 @@ public class TestCaseService {
     final Measure measure = measureService.findActiveMeasureById(measureId);
 
     verifyUniqueTestCaseName(testCase, measure);
-
     if (StringUtils.join(testCase.getTitle(), testCase.getSeries()).length() > 250) {
       throw new TestCaseNameLengthException(testCase.getId());
     }
@@ -124,7 +122,6 @@ public class TestCaseService {
     }
 
     measureRepository.save(measure);
-
     actionLogService.logAction(
         enrichedTestCase.getId(), TestCase.class, ActionType.CREATED, username);
     log.info(
@@ -141,7 +138,6 @@ public class TestCaseService {
       return newTestCases;
     }
     final Measure measure = measureService.findActiveMeasureById(measureId);
-
     List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
     for (TestCase testCase : newTestCases) {
       TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase);
@@ -208,11 +204,9 @@ public class TestCaseService {
                     testCaseMap.get(report.getTestCaseId()).isValidResource()));
         measureReport.setTestCaseValidationReports(reports);
       }
-
       measureReport.setJobStatus(JobStatus.COMPLETED);
       return measureReport;
     }
-
     return MeasureTestCaseValidationReport.builder()
         .measureId(measureId)
         .jobStatus(JobStatus.SKIPPED)
@@ -235,7 +229,6 @@ public class TestCaseService {
     Measure measure = getAndCheckMeasure(measureId, testCase.getId(), username);
 
     handleTestCasesForUpdate(testCase, measureId, username, measure);
-
     return validateAndSave(testCase, measure, username, accessToken);
   }
 
@@ -996,7 +989,6 @@ public class TestCaseService {
               TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(
                   testCase.getJson(), testCase.getSeries(), testCase.getTitle());
           testCase.setJson(updatedJson);
-
           updateTestCase(testCase, measureId, userName, accessToken);
           updatedTestCases.add(
               TestCaseServiceUtil.getTestCaseDisplayName(

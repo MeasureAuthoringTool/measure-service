@@ -3,16 +3,7 @@ package cms.gov.madie.measure.utils;
 import static org.apache.commons.collections4.CollectionUtils.isEmpty;
 import static org.apache.commons.collections4.CollectionUtils.isNotEmpty;
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.List;
-import java.util.NoSuchElementException;
-import java.util.Optional;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -703,6 +694,7 @@ public class TestCaseServiceUtil {
       throws JsonProcessingException {
 
     JsonNode rootNode = OBJECT_MAPPER.readTree(json);
+    boolean isUpdated = false; // Flag to track if any updates are done
 
     if (rootNode.has("entry") && rootNode.get("entry").isArray()) {
       ArrayNode entryArray = (ArrayNode) rootNode.get("entry");
@@ -714,11 +706,13 @@ public class TestCaseServiceUtil {
             for (JsonNode nameNode : nameArray) {
               if (nameNode.has("family")) {
                 ((ObjectNode) nameNode).put("family", group);
+                isUpdated = true;
               }
               if (nameNode.has("given") && nameNode.get("given").isArray()) {
                 ArrayNode givenArray = (ArrayNode) nameNode.get("given");
                 givenArray.removeAll();
                 givenArray.add(title);
+                isUpdated = true;
               }
             }
           }
@@ -726,6 +720,10 @@ public class TestCaseServiceUtil {
       }
     }
 
+    if (!isUpdated) {
+      throw new IllegalArgumentException(
+          "Test Case JSON does not contain either a family or a group.");
+    }
     return OBJECT_MAPPER.writeValueAsString(rootNode);
   }
 
