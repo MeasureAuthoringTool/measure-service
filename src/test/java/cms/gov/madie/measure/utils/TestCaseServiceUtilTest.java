@@ -1593,4 +1593,26 @@ public class TestCaseServiceUtilTest {
         () ->
             TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(null, "NewGroup", "NewTitle"));
   }
+
+  @Test
+  public void parseAndUpdateJsonWithGroupAndTitleHandlesMissingFamilyAndGiven() {
+    String json =
+        """
+    {
+      "entry": [
+        {
+          "resource": {
+            "resourceType": "Patient",
+            "name": [{}]
+          }
+        }
+      ]
+    }
+    """;
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(json, "NewGroup", "NewTitle"),
+        "Test Case JSON does not contain either a family or a group.");
+  }
 }
