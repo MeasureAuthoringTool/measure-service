@@ -17,6 +17,9 @@ import java.util.UUID;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.SpecialCharacterException;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
@@ -41,6 +44,7 @@ public class TestCaseServiceUtilTest {
   private Population population5;
   private Population measurePopulation;
   private Group group;
+  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   List<TestCasePopulationValue> populationValues = new ArrayList<>();
   TestCasePopulationValue testCasePopulationValue1 =
@@ -1495,5 +1499,98 @@ public class TestCaseServiceUtilTest {
   public void testCheckTestCaseSpecialCharactersMissingGroup() {
     TestCase testCase = TestCase.builder().title("title").build();
     assertDoesNotThrow(() -> TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase));
+  }
+
+  @Test
+  public void parseAndUpdateJsonWithGroupAndTitleUpdatesFamilyAndGivenName()
+      throws JsonProcessingException {
+    String json =
+        """
+      {
+        "entry": [
+          {
+            "resource": {
+              "resourceType": "Patient",
+              "name": [
+                {
+                  "family": "OldFamily",
+                  "given": ["OldGiven"]
+                }
+              ]
+            }
+          }
+        ]
+      }
+      """;
+
+    String updatedJson =
+        TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(json, "NewGroup", "NewTitle");
+
+    JsonNode updatedNode = OBJECT_MAPPER.readTree(updatedJson);
+    assertThat(
+        updatedNode.get("entry").get(0).get("resource").get("name").get(0).get("family").asText(),
+        is("NewGroup"));
+    assertThat(
+        updatedNode
+            .get("entry")
+            .get(0)
+            .get("resource")
+            .get("name")
+            .get(0)
+            .get("given")
+            .get(0)
+            .asText(),
+        is("NewTitle"));
+  }
+
+  @Test
+  public void parseAndUpdateJsonWithGroupAndTitleHandlesEmptyEntryArray()
+      throws JsonProcessingException {
+    String json = """
+      {
+        "entry": []
+      }
+      """;
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(json, "NewGroup", "NewTitle"));
+  }
+
+  @Test
+  public void parseAndUpdateJsonWithGroupAndTitleHandlesMissingEntryField()
+      throws JsonProcessingException {
+    String json =
+        """
+      {
+        "resource": {
+          "resourceType": "Patient"
+        }
+      }
+      """;
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(json, "NewGroup", "NewTitle"));
+  }
+
+  @Test
+  public void parseAndUpdateJsonWithGroupAndTitleHandlesEmptyJson() {
+    String json = "{}";
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(json, "NewGroup", "NewTitle"));
+  }
+
+  @Test
+  public void parseAndUpdateJsonWithGroupAndTitleHandlesNullJson() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(null, "NewGroup", "NewTitle"));
   }
 }
