@@ -985,13 +985,10 @@ public class TestCaseService {
                     testCase.getSeries(), testCase.getTitle()));
             continue;
           }
-          Map<String, Object> updatedJson =
+          String updatedJson =
               TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(
                   testCase.getJson(), testCase.getSeries(), testCase.getTitle());
-          if (updatedJson.get("isUpdated") != null && !(Boolean) updatedJson.get("isUpdated")) {
-            throw new IllegalArgumentException("Test Case JSON does not contain either a family or a group.");
-          }
-          testCase.setJson((String) updatedJson.get("updatedJson"));
+          testCase.setJson(updatedJson);
           updateTestCase(testCase, measureId, userName, accessToken);
           updatedTestCases.add(
               TestCaseServiceUtil.getTestCaseDisplayName(

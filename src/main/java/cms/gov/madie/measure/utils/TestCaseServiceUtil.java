@@ -690,8 +690,8 @@ public class TestCaseServiceUtil {
     }
   }
 
-  public static Map<String, Object> parseAndUpdateJsonWithGroupAndTitle(
-      String json, String group, String title) throws JsonProcessingException {
+  public static String parseAndUpdateJsonWithGroupAndTitle(String json, String group, String title)
+      throws JsonProcessingException {
 
     JsonNode rootNode = OBJECT_MAPPER.readTree(json);
     boolean isUpdated = false; // Flag to track if any updates are done
@@ -720,10 +720,11 @@ public class TestCaseServiceUtil {
       }
     }
 
-    Map<String, Object> result = new HashMap<>();
-    result.put("isUpdated", isUpdated);
-    result.put("updatedJson", OBJECT_MAPPER.writeValueAsString(rootNode));
-    return result;
+    if (!isUpdated) {
+      throw new IllegalArgumentException(
+          "Test Case JSON does not contain either a family or a group.");
+    }
+    return OBJECT_MAPPER.writeValueAsString(rootNode);
   }
 
   public static TestCaseImportOutcome buildTestCaseImportOutcome(
