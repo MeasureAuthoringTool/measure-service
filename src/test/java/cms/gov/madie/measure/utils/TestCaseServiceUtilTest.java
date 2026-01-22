@@ -1609,7 +1609,6 @@ public class TestCaseServiceUtilTest {
       ]
     }
     """;
-
     assertThrows(
         IllegalArgumentException.class,
         () -> TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(json, "NewGroup", "NewTitle"),
