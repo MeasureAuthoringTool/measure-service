@@ -29,6 +29,12 @@ jobs:
           
       - name: Upload coverage reports to Codecov
         uses: codecov/codecov-action@v4
+        with:
+          file: 
+            target/site/jacoco-merged-test-coverage-report/jacoco.xml
+            target/site/jacoco-unit-test-coverage-report/jacoco.xml
+          fail_ci_if_error: true
+          token: ${{ secrets.CODECOV_TOKEN }} # required
 
       - name: Cache local Maven repository
         uses: actions/cache@v4
