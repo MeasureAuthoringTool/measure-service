@@ -31,12 +31,6 @@ jobs:
         uses: codecov/codecov-action@v5
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-        #with:
-        #  file: 
-        #    target/site/jacoco-merged-test-coverage-report/jacoco.xml
-        #    target/site/jacoco-unit-test-coverage-report/jacoco.xml
-        #  token: ${{ secrets.CODECOV_TOKEN }} # required
-        #  fail_ci_if_error: true
 
       - name: Cache local Maven repository
         uses: actions/cache@v4
