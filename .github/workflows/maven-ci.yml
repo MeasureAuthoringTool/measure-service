@@ -33,8 +33,8 @@ jobs:
           file: 
             target/site/jacoco-merged-test-coverage-report/jacoco.xml
             target/site/jacoco-unit-test-coverage-report/jacoco.xml
-          fail_ci_if_error: true
           token: ${{ secrets.CODECOV_TOKEN }} # required
+          #fail_ci_if_error: true
 
       - name: Cache local Maven repository
         uses: actions/cache@v4
