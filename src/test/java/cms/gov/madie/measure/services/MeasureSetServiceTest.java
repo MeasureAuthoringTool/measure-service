@@ -902,4 +902,18 @@ public class MeasureSetServiceTest {
     verify(measureSetRepository, times(1)).findByMeasureSetId("1");
     verify(measureSetRepository, never()).save(any());
   }
+
+  @Test
+  public void testChangeOwnershipDoesNotThrowUnauthorizedExceptionIfConductedByAdmin() {
+    // Arrange
+    measureSet.setOwner("originalOwner");
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    MeasureSet updatedMeasureSet = measureSet.toBuilder().owner("newOwner").build();
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    // Act & Assert
+    assertDoesNotThrow(() -> measureSetService.changeOwnership("1", "newOwner", false, "admin"));
+    verify(measureSetRepository, times(1)).findByMeasureSetId("1");
+    verify(measureSetRepository, times(1)).save(any());
+  }
 }

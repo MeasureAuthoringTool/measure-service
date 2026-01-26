@@ -24,6 +24,7 @@ import jakarta.validation.Valid;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StopWatch;
@@ -629,5 +630,65 @@ public class AdminController extends AbstractMeasureController {
     return ResponseEntity.ok(
         adminService.updateCodeSystem(
             id, principal.getName(), incorrectCodeSystem, correctCodeSystem));
+  }
+
+  /**
+   * Admin API that handles transfer of multiple measures to a new owner (identified by harpId).
+   *
+   * <p>Validates the input list of measure IDs. Delegates transfer logic to measureService, which
+   * attempts to reassign each measure. Returns:
+   *
+   * <ul>
+   *   <li>200 OK if all transfers succeed and returns all success measure IDs
+   *   <li>400 BAD REQUEST if the input list is empty.
+   *   <li>207 MULTI_STATUS if some transfers fail, returning only the failed measure IDs in the
+   *       body.
+   * </ul>
+   */
+  @PutMapping("/measures/ownership")
+  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  public ResponseEntity<List<String>> changeOwnership(
+      HttpServletRequest request,
+      @RequestBody List<String> measureIds,
+      @RequestParam(required = true, name = "harpId") String harpId,
+      @Value("${admin-api-key}") String apiKey,
+      Principal principal) {
+    log.info(
+        "User [{}] - Starting admin task [changeOwnership] to [{}] for measureIds: [{}]",
+        principal.getName(),
+        harpId,
+        measureIds);
+    if (CollectionUtils.isEmpty(measureIds)) {
+      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.emptyList());
+    }
+    List<String> validMeasureIds = new ArrayList<>();
+    List<String> failedTransfers = new ArrayList<>();
+    // Check lock for all measures being transferred
+    measureIds.forEach(
+        measureId -> {
+          cms.gov.madie.measure.locks.MeasureLock measureLock =
+              measureLockService.findByMeasureId(measureId);
+          if (measureLock == null) {
+            validMeasureIds.add(measureId);
+          } else {
+            failedTransfers.add(measureId);
+          }
+        });
+
+    if (CollectionUtils.isNotEmpty(validMeasureIds)) {
+      // retainShareAccess = false, conductedBy = "admin"
+      failedTransfers.addAll(
+          measureService.transferMeasures(validMeasureIds, harpId, false, "admin"));
+    }
+    List<String> successMeasureIds =
+        measureIds.stream().filter(measureId -> !failedTransfers.contains(measureId)).toList();
+
+    if (CollectionUtils.isEmpty(failedTransfers)) {
+      log.info("Successful measureIds: [{}]", successMeasureIds);
+      return ResponseEntity.ok().body(successMeasureIds);
+    } else {
+      log.info("Failed transfer measureIds: [{}]", failedTransfers);
+      return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(failedTransfers);
+    }
   }
 }

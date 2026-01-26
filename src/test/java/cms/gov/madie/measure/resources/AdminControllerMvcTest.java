@@ -43,6 +43,7 @@ import java.util.UUID;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -1461,5 +1462,110 @@ public class AdminControllerMvcTest {
 
     verify(adminService, times(1))
         .updateCodeSystem(eq("invalidId"), eq(TEST_USER_ID), anyString(), anyString());
+  }
+
+  @Test
+  public void testChangeOwnershipSuccess() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+    String newOwner = "updatedUserId";
+
+    when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
+    when(measureService.transferMeasures(
+            any(List.class), anyString(), any(Boolean.class), anyString()))
+        .thenReturn(Collections.emptyList());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/ownership?harpId=" + newOwner)
+                    .with(csrf())
+                    .with(user(TEST_USER_ID))
+                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .header("Authorization", "test-okta")
+                    .content(toJsonString(List.of(measureId)))
+                    .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isOk())
+            .andReturn();
+
+    assertTrue(result.getResponse().getContentAsString().contains(measureId));
+    verify(measureService, times(1))
+        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(false), eq("admin"));
+  }
+
+  @Test
+  public void testChangeOwnershipBadRequest() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+    String newOwner = "updatedUserId";
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/ownership?harpId=" + newOwner)
+                    .with(csrf())
+                    .with(user(TEST_USER_ID))
+                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .header("Authorization", "test-okta")
+                    .content(toJsonString(Collections.emptyList()))
+                    .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+
+    assertFalse(result.getResponse().getContentAsString().contains(measureId));
+    verify(measureService, never())
+        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(false), eq("admin"));
+  }
+
+  @Test
+  public void testChangeOwnershipFailDueToLocked() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+    String newOwner = "updatedUserId";
+
+    when(measureLockService.findByMeasureId(anyString()))
+        .thenReturn(cms.gov.madie.measure.locks.MeasureLock.builder().build());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/ownership?harpId=" + newOwner)
+                    .with(csrf())
+                    .with(user(TEST_USER_ID))
+                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .header("Authorization", "test-okta")
+                    .content(toJsonString(List.of(measureId)))
+                    .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().is2xxSuccessful())
+            .andReturn();
+
+    assertTrue(result.getResponse().getContentAsString().contains(measureId));
+    verify(measureService, times(0))
+        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(false), eq("admin"));
+  }
+
+  @Test
+  public void testChangeOwnershipFailDueToTransferError() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+    String newOwner = "updatedUserId";
+
+    when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
+    when(measureService.transferMeasures(
+            any(List.class), anyString(), any(Boolean.class), anyString()))
+        .thenReturn(List.of(measureId));
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/ownership?harpId=" + newOwner)
+                    .with(csrf())
+                    .with(user(TEST_USER_ID))
+                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .header("Authorization", "test-okta")
+                    .content(toJsonString(List.of(measureId)))
+                    .contentType(MediaType.APPLICATION_JSON))
+            .andExpect(status().is2xxSuccessful())
+            .andReturn();
+
+    assertTrue(result.getResponse().getContentAsString().contains(measureId));
+    verify(measureService, times(1))
+        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(false), eq("admin"));
   }
 }
