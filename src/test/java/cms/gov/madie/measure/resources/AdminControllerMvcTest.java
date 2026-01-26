@@ -1554,7 +1554,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                put("/admin/measures/ownership?harpId=" + newOwner)
+                put("/admin/measures/ownership?harpId=" + newOwner + "&retainShareAccess=true")
                     .with(csrf())
                     .with(user(TEST_USER_ID))
                     .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
@@ -1566,6 +1566,6 @@ public class AdminControllerMvcTest {
 
     assertTrue(result.getResponse().getContentAsString().contains(measureId));
     verify(measureService, times(1))
-        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(false), eq("admin"));
+        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(true), eq("admin"));
   }
 }

@@ -651,6 +651,7 @@ public class AdminController extends AbstractMeasureController {
       HttpServletRequest request,
       @RequestBody List<String> measureIds,
       @RequestParam(required = true, name = "harpId") String harpId,
+      @RequestParam(defaultValue = "false") boolean retainShareAccess,
       @Value("${admin-api-key}") String apiKey,
       Principal principal) {
     log.info(
@@ -678,7 +679,7 @@ public class AdminController extends AbstractMeasureController {
     if (CollectionUtils.isNotEmpty(validMeasureIds)) {
       // retainShareAccess = false, conductedBy = "admin"
       failedTransfers.addAll(
-          measureService.transferMeasures(validMeasureIds, harpId, false, "admin"));
+          measureService.transferMeasures(validMeasureIds, harpId, retainShareAccess, "admin"));
     }
     List<String> successMeasureIds =
         measureIds.stream().filter(measureId -> !failedTransfers.contains(measureId)).toList();
