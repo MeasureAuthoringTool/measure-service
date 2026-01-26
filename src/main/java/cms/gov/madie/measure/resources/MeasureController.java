@@ -303,33 +303,6 @@ public class MeasureController extends AbstractMeasureController {
     return ResponseEntity.ok(measureService.unshareMeasures(measureUserIdMap, username));
   }
 
-  @PutMapping("/measures/{id}/ownership")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
-  public ResponseEntity<String> changeOwnership(
-      HttpServletRequest request,
-      @PathVariable("id") String id,
-      @RequestParam(required = true, name = "userid") String userid,
-      @Value("${admin-api-key}") String apiKey,
-      Principal principal) {
-    try {
-      final Measure existingMeasure = measureService.findMeasureById(id);
-      checkMeasureLock(existingMeasure, principal.getName());
-      measureService.changeOwnership(id, userid, false, principal.getName());
-      return ResponseEntity.ok(userid + " granted ownership to Measure successfully.");
-    } catch (ResourceNotFoundException e) {
-      return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Measure does not exist.");
-    } catch (RuntimeException e) {
-      log.error(
-          "Failed to change ownership for measure [{}] to user [{}]: {}",
-          id,
-          userid,
-          e.getMessage(),
-          e);
-      return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-          .body("Failed to grant ownership.");
-    }
-  }
-
   @GetMapping("/measures/{measureId}/groups")
   public ResponseEntity<List<Group>> getGroups(@PathVariable String measureId) {
     return repository

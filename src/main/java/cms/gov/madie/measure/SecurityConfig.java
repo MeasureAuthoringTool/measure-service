@@ -15,14 +15,10 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
   private static final String[] CSRF_WHITELIST = {
-    "/measure-transfer/**",
-    "/log/**",
-    "/measures/*/grant",
-    "/organizations/**",
-    "/measures/*/ownership"
+    "/log/**", "/measures/*/grant", "/organizations/**", "/measures/ownership"
   };
   private static final String[] AUTH_WHITELIST = {
-    "/measure-transfer/**", "/actuator/**", "/log/**", "/measures/*/grant", "/measures/*/ownership"
+    "/actuator/**", "/log/**", "/measures/*/grant", "/measures/ownership"
   };
 
   @Bean

@@ -328,7 +328,8 @@ public class MeasureSetService {
    * @param userId - new owner
    * @param retainShareAccess - add SHARED_WITH for the original owner if true, otherwise keep the
    *     current Acls
-   * @param conductedBy - the user that performs the ownership change
+   * @param conductedBy - the user that performs the ownership change, if the user is admin, then we
+   *     don't check if the user is the original owner.
    * @return
    */
   public MeasureSet changeOwnership(
@@ -346,8 +347,9 @@ public class MeasureSetService {
     MeasureSet measureSet = optionalMeasureSet.get();
     String originalOwner = optionalMeasureSet.get().getOwner();
 
-    // Only the original owner can transfer ownership
-    if (!originalOwner.equals(conductedBy)) {
+    // Only the original owner can transfer ownership for non-admin users that conduct the
+    // changeOwnership action
+    if (!originalOwner.equals(conductedBy) && !"admin".equalsIgnoreCase(conductedBy)) {
       log.error(
           "User [{}] attempted to transfer ownership of measure set [{}] but is not the original owner [{}].",
           conductedBy,
