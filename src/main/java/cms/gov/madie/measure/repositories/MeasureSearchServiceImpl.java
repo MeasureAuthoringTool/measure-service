@@ -218,10 +218,16 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     // filter measures that contains only the allowed scoring types in all their groups
     if (measureSearchCriteria != null
-        && Boolean.TRUE.equals(measureSearchCriteria.getIsFromCompositeMeasureComponents())
-        && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
-      postMatchPipeline.add(
-          createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+        && Boolean.TRUE.equals(measureSearchCriteria.getIsFromCompositeMeasureComponents())) {
+      if (measureSearchCriteria.getDraft() != null) {
+        Criteria postCriteria =
+            Criteria.where("measureMetaData.draft").is(measureSearchCriteria.getDraft());
+        postMatchPipeline.add(match(postCriteria));
+      }
+      if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+        postMatchPipeline.add(
+            createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+      }
     }
 
     // Group all measures that has same measureSetId and get the count and also first document
