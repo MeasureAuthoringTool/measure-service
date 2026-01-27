@@ -1491,6 +1491,7 @@ public class MeasureSearchServiceImplTest {
         MeasureSearchCriteria.builder()
             .isFromCompositeMeasureComponents(true)
             .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable", "Ratio"))
+                .draft(true)
             .build();
 
     Page<MeasureListDTO> page =
