@@ -30,10 +30,9 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 
 import java.util.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @EnableMongoRepositories(basePackages = "com.gov.madie.measure.repository")
@@ -1114,39 +1113,35 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measureWithAllowedScoring =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("measure1")
-                    .measureSetId("set1")
-                    .build();
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
 
     FacetDTO facetDTO =
-            FacetDTO.builder()
-                    .queryResults(List.of(measureWithAllowedScoring))
-                    .count(List.of(1))
-                    .build();
+        FacetDTO.builder()
+            .queryResults(List.of(measureWithAllowedScoring))
+            .count(List.of(1))
+            .build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder()
-                    .isFromCompositeMeasureComponents(true)
-                    .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
-                    .build();
+        MeasureSearchCriteria.builder()
+            .isFromCompositeMeasureComponents(true)
+            .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
+            .build();
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1159,36 +1154,32 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measureWithCohort =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("cohort-measure")
-                    .measureSetId("set1")
-                    .build();
+        MeasureListDTO.builder().id("1").measureName("cohort-measure").measureSetId("set1").build();
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
 
     FacetDTO facetDTO =
-            FacetDTO.builder().queryResults(List.of(measureWithCohort)).count(List.of(1)).build();
+        FacetDTO.builder().queryResults(List.of(measureWithCohort)).count(List.of(1)).build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder()
-                    .isFromCompositeMeasureComponents(true)
-                    .allowedScoringTypes(List.of("Cohort"))
-                    .build();
+        MeasureSearchCriteria.builder()
+            .isFromCompositeMeasureComponents(true)
+            .allowedScoringTypes(List.of("Cohort"))
+            .build();
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getContent().size());
     assertEquals("cohort-measure", page.getContent().get(0).getMeasureName());
@@ -1201,35 +1192,32 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measure1 =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("measure1")
-                    .measureSetId("set1")
-                    .build();
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
 
-    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder()
-                    .isFromCompositeMeasureComponents(true)
-                    .allowedScoringTypes(Collections.emptyList())
-                    .build();
+        MeasureSearchCriteria.builder()
+            .isFromCompositeMeasureComponents(true)
+            .allowedScoringTypes(Collections.emptyList())
+            .build();
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1242,35 +1230,32 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measure1 =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("measure1")
-                    .measureSetId("set1")
-                    .build();
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
 
-    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder()
-                    .isFromCompositeMeasureComponents(true)
-                    .allowedScoringTypes(null)
-                    .build();
+        MeasureSearchCriteria.builder()
+            .isFromCompositeMeasureComponents(true)
+            .allowedScoringTypes(null)
+            .build();
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1283,35 +1268,32 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measure1 =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("measure1")
-                    .measureSetId("set1")
-                    .build();
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
 
-    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder()
-                    .isFromCompositeMeasureComponents(false)
-                    .allowedScoringTypes(Arrays.asList("Proportion", "Ratio"))
-                    .build();
+        MeasureSearchCriteria.builder()
+            .isFromCompositeMeasureComponents(false)
+            .allowedScoringTypes(Arrays.asList("Proportion", "Ratio"))
+            .build();
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1324,35 +1306,32 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measure1 =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("measure1")
-                    .measureSetId("set1")
-                    .build();
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
 
-    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder()
-                    .isFromCompositeMeasureComponents(null)
-                    .allowedScoringTypes(Arrays.asList("Cohort"))
-                    .build();
+        MeasureSearchCriteria.builder()
+            .isFromCompositeMeasureComponents(null)
+            .allowedScoringTypes(Arrays.asList("Cohort"))
+            .build();
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
   }
@@ -1364,18 +1343,10 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measure1 =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("measure1")
-                    .measureSetId("set1")
-                    .build();
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
 
     MeasureListDTO measure2 =
-            MeasureListDTO.builder()
-                    .id("2")
-                    .measureName("measure2")
-                    .measureSetId("set2")
-                    .build();
+        MeasureListDTO.builder().id("2").measureName("measure2").measureSetId("set2").build();
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
@@ -1383,28 +1354,25 @@ public class MeasureSearchServiceImplTest {
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
 
     FacetDTO facetDTO =
-            FacetDTO.builder()
-                    .queryResults(List.of(measure1, measure2))
-                    .count(List.of(1, 2))
-                    .build();
+        FacetDTO.builder().queryResults(List.of(measure1, measure2)).count(List.of(1, 2)).build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder()
-                    .isFromCompositeMeasureComponents(true)
-                    .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable", "Ratio"))
-                    .build();
+        MeasureSearchCriteria.builder()
+            .isFromCompositeMeasureComponents(true)
+            .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable", "Ratio"))
+            .build();
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
     assertEquals(2, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1418,29 +1386,26 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measure1 =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("measure1")
-                    .measureSetId("set1")
-                    .build();
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
 
-    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1453,79 +1418,91 @@ public class MeasureSearchServiceImplTest {
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measure1 =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("measure1")
-                    .measureSetId("set1")
-                    .build();
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
 
-    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder()
-                    .isFromCompositeMeasureComponents(true)
-                    .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
-                    .build();
+        MeasureSearchCriteria.builder()
+            .isFromCompositeMeasureComponents(true)
+            .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
+            .build();
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
   }
 
   @Test
-  public void testSearchMeasuresVerifiesCorrectSortingWithScoringFilter() {
+  public void testSearchMeasuresByCriteriaExecutesCreateScoringTypeFilterCompletely() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
-
     PageRequest pageRequest = PageRequest.of(0, 10);
+    MeasureListDTO measureWithAllowedScoring =
+        MeasureListDTO.builder()
+            .id("measure-1")
+            .measureName("Cohort Measure")
+            .measureSetId("set-1")
+            .version(Version.builder().major(1).minor(0).revisionNumber(0).build())
+            .measureSet(MeasureSet.builder().measureSetId("set-1").owner("testUser").build())
+            .build();
 
-    MeasureListDTO measure1 =
-            MeasureListDTO.builder()
-                    .id("1")
-                    .measureName("measure1")
-                    .measureSetId("set1")
-                    .version(Version.builder().major(2).minor(0).revisionNumber(0).build())
-                    .build();
+    MeasureSetMatchCountDTO matchCountDTO =
+        MeasureSetMatchCountDTO.builder()
+            .measureSetId("set-1")
+            .matchCount(1)
+            .matchedMeasureId("measure-1")
+            .build();
 
-    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(matchCountDTO), new Document()));
 
-    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(List.of(measureWithAllowedScoring))
+            .count(List.of(1))
+            .build();
+
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class)))
-            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     MeasureSearchCriteria measureSearchCriteria =
-            MeasureSearchCriteria.builder()
-                    .isFromCompositeMeasureComponents(true)
-                    .allowedScoringTypes(Arrays.asList("Cohort"))
-                    .build();
+        MeasureSearchCriteria.builder()
+            .isFromCompositeMeasureComponents(true)
+            .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable", "Ratio"))
+            .build();
 
     Page<MeasureListDTO> page =
-            measureAclRepository.searchMeasuresByCriteria(
-                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+        measureAclRepository.searchMeasuresByCriteria(
+            "testUser", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
+    assertNotNull(page);
     assertEquals(1, page.getContent().size());
-    assertEquals(Version.builder().major(2).minor(0).revisionNumber(0).build(), page.getContent().get(0).getVersion());
+    assertEquals("Cohort Measure", page.getContent().get(0).getMeasureName());
+    assertEquals("set-1", page.getContent().get(0).getMeasureSetId());
+
+    verify(mongoTemplate, times(2))
+        .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
   }
 }
