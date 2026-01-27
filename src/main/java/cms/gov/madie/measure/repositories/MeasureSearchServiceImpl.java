@@ -27,6 +27,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static cms.gov.madie.measure.dto.MadieFeatureFlag.DISPLAY_OWNER;
+import static cms.gov.madie.measure.utils.SearchUtils.createScoringTypeFilter;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Repository
@@ -210,15 +211,14 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version
     SortOperation sortByVersionAndDraft =
-        measureSearchCriteria != null
-                && Boolean.TRUE.equals(measureSearchCriteria.isFromCompositeMeasureComponents())
+        measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponents()
             ? sort(Sort.by(Sort.Direction.DESC, "active", "version"))
             : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
 
-    // filter measures that contains only the allowed scoring types in all their groups
-    if (measureSearchCriteria != null
-        && Boolean.TRUE.equals(measureSearchCriteria.isFromCompositeMeasureComponents())) {
+    // filter measures that contains only the allowed scoring types in all their groups for
+    // composite measure components search
+    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponents()) {
       if (measureSearchCriteria.getDraft() != null) {
         Criteria postCriteria =
             Criteria.where("measureMetaData.draft").is(measureSearchCriteria.getDraft());
@@ -323,24 +323,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             }
           }
         });
-  }
-
-  // aggregation operation to filter measures based on allowed scoring types
-  private AggregationOperation createScoringTypeFilter(List<String> allowedScoringTypes) {
-    AggregationExpression expr =
-        context ->
-            new org.bson.Document(
-                "$allElementsTrue",
-                Collections.singletonList(
-                    new org.bson.Document(
-                        "$map",
-                        new org.bson.Document("input", "$groups")
-                            .append("as", "g")
-                            .append(
-                                "in",
-                                new org.bson.Document(
-                                    "$in", Arrays.asList("$$g.scoring", allowedScoringTypes))))));
-    return match(Criteria.where("$expr").is(expr));
   }
 
   private Criteria buildMeasureSetCriteria(String userId, List<OwnershipType> ownershipTypes) {

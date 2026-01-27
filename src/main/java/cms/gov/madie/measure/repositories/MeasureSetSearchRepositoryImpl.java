@@ -51,8 +51,23 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
       SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
     }
 
+    // Add draft filter for composite measure components search
+    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponents()) {
+      measureCriteria.and("measureMetaData.draft").is(false);
+    }
+
     MatchOperation matchOperation = match(measureCriteria);
     aggregationOperations.add(matchOperation);
+
+    // filter measures that contains only the allowed scoring types in all their groups for
+    // composite measure components search
+    if (measureSearchCriteria != null
+        && measureSearchCriteria.isFromCompositeMeasureComponents()
+        && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+      aggregationOperations.add(
+          SearchUtils.createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+    }
+
     Aggregation aggregation;
     if (sortByLatestVersion) {
       SortOperation sortOperation =

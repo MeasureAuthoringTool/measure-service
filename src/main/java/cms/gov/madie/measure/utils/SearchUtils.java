@@ -4,15 +4,18 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import gov.cms.madie.models.common.Version;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.Document;
+import org.springframework.data.mongodb.core.aggregation.AggregationExpression;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.regex.Pattern;
 
 import static org.apache.commons.lang3.StringUtils.isNumeric;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.match;
 
 public class SearchUtils {
   public static void appendAdditionalSearchCriteria(
@@ -105,5 +108,23 @@ public class SearchUtils {
                             "$concat",
                             List.of(new Document("$toString", "$measureSet.cmsId"), "FHIR")),
                         new Document("$toString", "$measureSet.cmsId")))));
+  }
+
+  // aggregation operation to filter measures based on allowed scoring types
+  public static AggregationOperation createScoringTypeFilter(List<String> allowedScoringTypes) {
+    AggregationExpression expr =
+        context ->
+            new org.bson.Document(
+                "$allElementsTrue",
+                Collections.singletonList(
+                    new org.bson.Document(
+                        "$map",
+                        new org.bson.Document("input", "$groups")
+                            .append("as", "g")
+                            .append(
+                                "in",
+                                new org.bson.Document(
+                                    "$in", Arrays.asList("$$g.scoring", allowedScoringTypes))))));
+    return match(Criteria.where("$expr").is(expr));
   }
 }
