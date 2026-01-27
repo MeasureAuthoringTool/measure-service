@@ -16,6 +16,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 import java.time.Instant;
+import java.util.List;
 
 @Data
 @SuperBuilder(toBuilder = true)
@@ -47,6 +48,7 @@ public class MeasureListDTO {
   private String model;
 
   private MeasureSet measureSet;
+  private List<Group> groups;
 
   private boolean active;
   private String ecqmTitle;

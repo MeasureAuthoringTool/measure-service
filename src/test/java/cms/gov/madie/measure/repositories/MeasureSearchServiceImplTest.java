@@ -6,6 +6,7 @@ import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
@@ -1104,5 +1105,427 @@ public class MeasureSearchServiceImplTest {
     assertEquals(2, page.getContent().size());
     assertEquals("John Doe", page.getContent().get(0).getOwnerDisplayName());
     assertEquals("John Doe", page.getContent().get(1).getOwnerDisplayName());
+  }
+
+  @Test
+  public void testSearchMeasuresWithAllowedScoringTypesFilter() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measureWithAllowedScoring =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("measure1")
+                    .measureSetId("set1")
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO =
+            FacetDTO.builder()
+                    .queryResults(List.of(measureWithAllowedScoring))
+                    .count(List.of(1))
+                    .build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+            MeasureSearchCriteria.builder()
+                    .isFromCompositeMeasureComponents(true)
+                    .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
+                    .build();
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("measure1", page.getContent().get(0).getMeasureName());
+  }
+
+  @Test
+  public void testSearchMeasuresWithSingleAllowedScoringType() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measureWithCohort =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("cohort-measure")
+                    .measureSetId("set1")
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO =
+            FacetDTO.builder().queryResults(List.of(measureWithCohort)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+            MeasureSearchCriteria.builder()
+                    .isFromCompositeMeasureComponents(true)
+                    .allowedScoringTypes(List.of("Cohort"))
+                    .build();
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("cohort-measure", page.getContent().get(0).getMeasureName());
+  }
+
+  @Test
+  public void testSearchMeasuresWithEmptyAllowedScoringTypes() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measure1 =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("measure1")
+                    .measureSetId("set1")
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+            MeasureSearchCriteria.builder()
+                    .isFromCompositeMeasureComponents(true)
+                    .allowedScoringTypes(Collections.emptyList())
+                    .build();
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("measure1", page.getContent().get(0).getMeasureName());
+  }
+
+  @Test
+  public void testSearchMeasuresWithNullAllowedScoringTypes() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measure1 =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("measure1")
+                    .measureSetId("set1")
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+            MeasureSearchCriteria.builder()
+                    .isFromCompositeMeasureComponents(true)
+                    .allowedScoringTypes(null)
+                    .build();
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("measure1", page.getContent().get(0).getMeasureName());
+  }
+
+  @Test
+  public void testSearchMeasuresWithIsFromCompositeMeasureComponentsFalse() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measure1 =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("measure1")
+                    .measureSetId("set1")
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+            MeasureSearchCriteria.builder()
+                    .isFromCompositeMeasureComponents(false)
+                    .allowedScoringTypes(Arrays.asList("Proportion", "Ratio"))
+                    .build();
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("measure1", page.getContent().get(0).getMeasureName());
+  }
+
+  @Test
+  public void testSearchMeasuresWithIsFromCompositeMeasureComponentsNull() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measure1 =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("measure1")
+                    .measureSetId("set1")
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+            MeasureSearchCriteria.builder()
+                    .isFromCompositeMeasureComponents(null)
+                    .allowedScoringTypes(Arrays.asList("Cohort"))
+                    .build();
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+    assertEquals(1, page.getContent().size());
+    assertEquals("measure1", page.getContent().get(0).getMeasureName());
+  }
+
+  @Test
+  public void testSearchMeasuresWithMultipleAllowedScoringTypes() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measure1 =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("measure1")
+                    .measureSetId("set1")
+                    .build();
+
+    MeasureListDTO measure2 =
+            MeasureListDTO.builder()
+                    .id("2")
+                    .measureName("measure2")
+                    .measureSetId("set2")
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1, dto2), new Document()));
+
+    FacetDTO facetDTO =
+            FacetDTO.builder()
+                    .queryResults(List.of(measure1, measure2))
+                    .count(List.of(1, 2))
+                    .build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+            MeasureSearchCriteria.builder()
+                    .isFromCompositeMeasureComponents(true)
+                    .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable", "Ratio"))
+                    .build();
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(2, page.getContent().size());
+    assertEquals("measure1", page.getContent().get(0).getMeasureName());
+    assertEquals("measure2", page.getContent().get(1).getMeasureName());
+  }
+
+  @Test
+  public void testSearchMeasuresWithNullMeasureSearchCriteria() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measure1 =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("measure1")
+                    .measureSetId("set1")
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("measure1", page.getContent().get(0).getMeasureName());
+  }
+
+  @Test
+  public void testSearchMeasuresWithScoringFilterAndLocking() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measure1 =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("measure1")
+                    .measureSetId("set1")
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+            MeasureSearchCriteria.builder()
+                    .isFromCompositeMeasureComponents(true)
+                    .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
+                    .build();
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("measure1", page.getContent().get(0).getMeasureName());
+  }
+
+  @Test
+  public void testSearchMeasuresVerifiesCorrectSortingWithScoringFilter() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
+
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO measure1 =
+            MeasureListDTO.builder()
+                    .id("1")
+                    .measureName("measure1")
+                    .measureSetId("set1")
+                    .version(Version.builder().major(2).minor(0).revisionNumber(0).build())
+                    .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+            .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+            MeasureSearchCriteria.builder()
+                    .isFromCompositeMeasureComponents(true)
+                    .allowedScoringTypes(Arrays.asList("Cohort"))
+                    .build();
+
+    Page<MeasureListDTO> page =
+            measureAclRepository.searchMeasuresByCriteria(
+                    "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    assertEquals(Version.builder().major(2).minor(0).revisionNumber(0).build(), page.getContent().get(0).getVersion());
   }
 }

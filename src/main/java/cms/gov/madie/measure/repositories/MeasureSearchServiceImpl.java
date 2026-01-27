@@ -210,8 +210,19 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version
     SortOperation sortByVersionAndDraft =
-        sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
+        measureSearchCriteria != null
+                && Boolean.TRUE.equals(measureSearchCriteria.getIsFromCompositeMeasureComponents())
+            ? sort(Sort.by(Sort.Direction.DESC, "active", "version"))
+            : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
+
+    // filter measures that contains only the allowed scoring types in all their groups
+    if (measureSearchCriteria != null
+        && Boolean.TRUE.equals(measureSearchCriteria.getIsFromCompositeMeasureComponents())
+        && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+      postMatchPipeline.add(
+          createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+    }
 
     // Group all measures that has same measureSetId and get the count and also first document
     // which will be the latest measure in the MeasureSet
@@ -306,6 +317,24 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             }
           }
         });
+  }
+
+  // aggregation operation to filter measures based on allowed scoring types
+  private AggregationOperation createScoringTypeFilter(List<String> allowedScoringTypes) {
+    AggregationExpression expr =
+        context ->
+            new org.bson.Document(
+                "$allElementsTrue",
+                Collections.singletonList(
+                    new org.bson.Document(
+                        "$map",
+                        new org.bson.Document("input", "$groups")
+                            .append("as", "g")
+                            .append(
+                                "in",
+                                new org.bson.Document(
+                                    "$in", Arrays.asList("$$g.scoring", allowedScoringTypes))))));
+    return match(Criteria.where("$expr").is(expr));
   }
 
   private Criteria buildMeasureSetCriteria(String userId, List<OwnershipType> ownershipTypes) {
