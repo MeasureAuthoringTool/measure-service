@@ -346,7 +346,11 @@ public class MeasureController extends AbstractMeasureController {
         principal.getName(),
         groupId,
         measureId);
-    Measure measure = groupService.deleteMeasureGroup(measureId, groupId, principal.getName());
+    checkMeasureLock(measureService.findMeasureById(measureId), principal.getName().toLowerCase());
+    Measure measure =
+        groupService.deleteMeasureGroup(measureId, groupId, principal.getName().toLowerCase());
+    // Setting measure.measureLock to null prevents the UI from deleting the existing measure lock.
+    // Which is its own problem.
     measure.setMeasureLock(measureService.getMeasureLock(measureId, principal.getName()));
     return ResponseEntity.ok(measure);
   }
@@ -387,8 +391,9 @@ public class MeasureController extends AbstractMeasureController {
       Principal principal) {
 
     log.info(
-        "User [{}] is attempting to delete a group with Id [{}] from measure [{}]",
+        "User [{}] is attempting to delete a stratification with Id [{}] from group with Id [{}] from measure [{}]",
         principal.getName(),
+        stratificationId,
         groupId,
         measureId);
 

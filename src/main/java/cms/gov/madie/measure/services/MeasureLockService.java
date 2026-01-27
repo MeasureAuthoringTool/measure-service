@@ -133,6 +133,6 @@ public class MeasureLockService {
 
   public MeasureLock findByMeasureId(String measureId) {
     Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
-    return existingLock.isPresent() ? existingLock.get() : null;
+    return existingLock.orElse(null);
   }
 }

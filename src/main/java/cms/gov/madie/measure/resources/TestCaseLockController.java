@@ -33,6 +33,7 @@ public class TestCaseLockController {
   public ResponseEntity<Boolean> isTestCaseLockedByOtherUser(
       @PathVariable String measureId, Principal principal) {
     return ResponseEntity.ok(
-        testCaseLockService.isAnyTestCaseLockedByOthers(measureId, principal.getName()));
+        testCaseLockService.isAnyTestCaseLockedByOthers(
+            measureId, principal.getName().toLowerCase()));
   }
 }
