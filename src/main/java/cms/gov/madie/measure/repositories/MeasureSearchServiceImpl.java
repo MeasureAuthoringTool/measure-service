@@ -211,14 +211,14 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     // Active measures should come first, then draft measures, then by version
     SortOperation sortByVersionAndDraft =
         measureSearchCriteria != null
-                && Boolean.TRUE.equals(measureSearchCriteria.getIsFromCompositeMeasureComponents())
+                && Boolean.TRUE.equals(measureSearchCriteria.isFromCompositeMeasureComponents())
             ? sort(Sort.by(Sort.Direction.DESC, "active", "version"))
             : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
 
     // filter measures that contains only the allowed scoring types in all their groups
     if (measureSearchCriteria != null
-        && Boolean.TRUE.equals(measureSearchCriteria.getIsFromCompositeMeasureComponents())) {
+        && Boolean.TRUE.equals(measureSearchCriteria.isFromCompositeMeasureComponents())) {
       if (measureSearchCriteria.getDraft() != null) {
         Criteria postCriteria =
             Criteria.where("measureMetaData.draft").is(measureSearchCriteria.getDraft());

@@ -1135,7 +1135,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .isFromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponents(true)
             .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
             .build();
 
@@ -1173,7 +1173,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .isFromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponents(true)
             .allowedScoringTypes(List.of("Cohort"))
             .build();
 
@@ -1211,7 +1211,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .isFromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponents(true)
             .allowedScoringTypes(Collections.emptyList())
             .build();
 
@@ -1249,7 +1249,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .isFromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponents(true)
             .allowedScoringTypes(null)
             .build();
 
@@ -1287,7 +1287,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .isFromCompositeMeasureComponents(false)
+            .fromCompositeMeasureComponents(false)
             .allowedScoringTypes(Arrays.asList("Proportion", "Ratio"))
             .build();
 
@@ -1295,43 +1295,6 @@ public class MeasureSearchServiceImplTest {
         measureAclRepository.searchMeasuresByCriteria(
             "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
 
-    assertEquals(1, page.getContent().size());
-    assertEquals("measure1", page.getContent().get(0).getMeasureName());
-  }
-
-  @Test
-  public void testSearchMeasuresWithIsFromCompositeMeasureComponentsNull() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
-
-    PageRequest pageRequest = PageRequest.of(0, 10);
-
-    MeasureListDTO measure1 =
-        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
-
-    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
-    when(mongoTemplate.aggregate(
-            any(Aggregation.class),
-            ArgumentMatchers.eq(Measure.class),
-            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
-        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
-
-    FacetDTO facetDTO =
-        FacetDTO.builder().queryResults(List.of(measure1)).count(List.of(1)).build();
-    when(mongoTemplate.aggregate(
-            any(Aggregation.class),
-            ArgumentMatchers.eq(Measure.class),
-            ArgumentMatchers.eq(FacetDTO.class)))
-        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
-
-    MeasureSearchCriteria measureSearchCriteria =
-        MeasureSearchCriteria.builder()
-            .isFromCompositeMeasureComponents(null)
-            .allowedScoringTypes(Arrays.asList("Cohort"))
-            .build();
-
-    Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
   }
@@ -1366,7 +1329,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .isFromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponents(true)
             .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable", "Ratio"))
             .build();
 
@@ -1437,7 +1400,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .isFromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponents(true)
             .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
             .build();
 
@@ -1489,9 +1452,9 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .isFromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponents(true)
             .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable", "Ratio"))
-                .draft(true)
+            .draft(true)
             .build();
 
     Page<MeasureListDTO> page =
