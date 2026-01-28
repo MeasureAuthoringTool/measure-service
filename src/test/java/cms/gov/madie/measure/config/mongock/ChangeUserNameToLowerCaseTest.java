@@ -21,8 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -446,6 +445,37 @@ public class ChangeUserNameToLowerCaseTest {
         actionLogRepository,
         measureLockRepository,
         testCaseLockRepository);
+
+    assertEquals(1, changeUnit.getOriginalMeasures().size());
+    assertEquals(LOWER_CASE_USER_NAME, changeUnit.getOriginalMeasures().get(0).getCreatedBy());
+    assertEquals(0, changeUnit.getUpdatedMeasures().size());
+
+    assertEquals(1, changeUnit.getOriginalMeasureSets().size());
+    assertEquals(LOWER_CASE_USER_NAME, changeUnit.getOriginalMeasureSets().get(0).getOwner());
+    assertEquals(0, changeUnit.getUpdatedMeasureSets().size());
+
+    assertEquals(1, changeUnit.getOriginalMeasureActionLogs().size());
+    assertEquals(
+        LOWER_CASE_USER_NAME,
+        changeUnit.getOriginalMeasureActionLogs().get(0).getActions().get(0).getPerformedBy());
+    assertEquals(0, changeUnit.getUpdatedMeasureActionLogs().size());
+
+    assertEquals(1, changeUnit.getOriginalMeasureSetActionLogs().size());
+    assertEquals(
+        LOWER_CASE_USER_NAME,
+        changeUnit.getOriginalMeasureSetActionLogs().get(0).getActions().get(0).getPerformedBy());
+    assertEquals(0, changeUnit.getUpdatedMeasureSetActionLogs().size());
+
+    assertEquals(1, changeUnit.getOriginalTestCaseActionLogs().size());
+    assertEquals(0, changeUnit.getUpdatedTestCaseActionLogs().size());
+
+    assertEquals(1, changeUnit.getOriginalMeasureLocks().size());
+    assertEquals(LOWER_CASE_USER_NAME, changeUnit.getOriginalMeasureLocks().get(0).getLockedBy());
+    assertEquals(0, changeUnit.getUpdatedMeasureLocks().size());
+
+    assertEquals(1, changeUnit.getOriginalTestCaseLocks().size());
+    assertEquals(LOWER_CASE_USER_NAME, changeUnit.getOriginalTestCaseLocks().get(0).getLockedBy());
+    assertEquals(0, changeUnit.getUpdatedTestCaseLocks().size());
   }
 
   @Test
@@ -459,5 +489,13 @@ public class ChangeUserNameToLowerCaseTest {
         actionLogRepository,
         measureLockRepository,
         testCaseLockRepository);
+
+    assertEquals(0, changeUnit.getOriginalMeasures().size());
+    assertEquals(0, changeUnit.getOriginalMeasureSets().size());
+    assertEquals(0, changeUnit.getOriginalMeasureActionLogs().size());
+    assertEquals(0, changeUnit.getOriginalMeasureSetActionLogs().size());
+    assertEquals(0, changeUnit.getOriginalTestCaseActionLogs().size());
+    assertEquals(0, changeUnit.getOriginalMeasureLocks().size());
+    assertEquals(0, changeUnit.getOriginalTestCaseLocks().size());
   }
 }
