@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -115,7 +116,60 @@ class MeasureSetSearchRepositoryImplTest {
     assertEquals(4, aggregation.getPipeline().getOperations().size());
     String pipelineString = aggregation.toString();
 
-    org.assertj.core.api.Assertions.assertThat(pipelineString).contains("cmsIdDisplay");
+    assertThat(pipelineString).contains("cmsIdDisplay");
+  }
+
+  @Test
+  void shouldApplyDraftFilterForCompositeMeasureComponents() {
+    MeasureSearchCriteria criteria =
+            MeasureSearchCriteria.builder()
+                    .fromCompositeMeasureComponents(true)
+                    .build();
+
+    List<MeasureListDTO> mockResults = List.of(createDTO("Non-Draft Measure"));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq("measure"), eq(MeasureListDTO.class)))
+            .thenReturn(new AggregationResults<>(mockResults, new Document()));
+
+    List<MeasureListDTO> result =
+            repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
+
+    assertEquals(1, result.size());
+    assertEquals("Non-Draft Measure", result.get(0).getMeasureName());
+
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
+
+    Aggregation aggregation = captor.getValue();
+    String pipelineString = aggregation.toString();
+
+   assertThat(pipelineString)
+            .contains("measureMetaData.draft")
+            .contains("false");
+  }
+
+  @Test
+  void shouldApplyScoringTypeFilterForCompositeMeasureComponents() {
+    MeasureSearchCriteria criteria =
+            MeasureSearchCriteria.builder()
+                    .fromCompositeMeasureComponents(true)
+                    .allowedScoringTypes(List.of("Cohort", "Ratio"))
+                    .build();
+
+    List<MeasureListDTO> mockResults = List.of(createDTO("Cohort Measure"));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq("measure"), eq(MeasureListDTO.class)))
+            .thenReturn(new AggregationResults<>(mockResults, new Document()));
+
+    List<MeasureListDTO> result =
+            repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
+
+    assertEquals(1, result.size());
+    assertEquals("Cohort Measure", result.get(0).getMeasureName());
+
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
+
+    Aggregation aggregation = captor.getValue();
+    assertEquals(4, aggregation.getPipeline().getOperations().size());
   }
 
   private MeasureListDTO createDTO(String name) {

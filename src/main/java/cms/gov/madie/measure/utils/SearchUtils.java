@@ -114,16 +114,16 @@ public class SearchUtils {
   public static AggregationOperation createScoringTypeFilter(List<String> allowedScoringTypes) {
     AggregationExpression expr =
         context ->
-            new org.bson.Document(
+            new Document(
                 "$allElementsTrue",
                 Collections.singletonList(
-                    new org.bson.Document(
+                    new Document(
                         "$map",
-                        new org.bson.Document("input", "$groups")
+                        new Document("input", "$groups")
                             .append("as", "g")
                             .append(
                                 "in",
-                                new org.bson.Document(
+                                new Document(
                                     "$in", Arrays.asList("$$g.scoring", allowedScoringTypes))))));
     return match(Criteria.where("$expr").is(expr));
   }
