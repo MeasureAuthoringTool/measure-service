@@ -52,7 +52,7 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
     }
 
     // filter draft measures for composite measure components search
-    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponents()) {
+    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()) {
       measureCriteria.and("measureMetaData.draft").is(false);
     }
 
@@ -62,7 +62,7 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
     // filter measures that contains only the allowed scoring types in all their groups for
     // composite measure components search
     if (measureSearchCriteria != null
-        && measureSearchCriteria.isFromCompositeMeasureComponents()
+        && measureSearchCriteria.isFromCompositeMeasureComponent()
         && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
       aggregationOperations.add(
           SearchUtils.createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));

@@ -1135,7 +1135,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .fromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponent(true)
             .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
             .build();
 
@@ -1173,7 +1173,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .fromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponent(true)
             .allowedScoringTypes(List.of("Cohort"))
             .build();
 
@@ -1211,7 +1211,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .fromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponent(true)
             .allowedScoringTypes(Collections.emptyList())
             .build();
 
@@ -1249,7 +1249,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .fromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponent(true)
             .allowedScoringTypes(null)
             .build();
 
@@ -1287,7 +1287,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .fromCompositeMeasureComponents(false)
+            .fromCompositeMeasureComponent(false)
             .allowedScoringTypes(Arrays.asList("Proportion", "Ratio"))
             .build();
 
@@ -1329,7 +1329,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .fromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponent(true)
             .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable", "Ratio"))
             .build();
 
@@ -1400,7 +1400,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .fromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponent(true)
             .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable"))
             .build();
 
@@ -1452,7 +1452,7 @@ public class MeasureSearchServiceImplTest {
 
     MeasureSearchCriteria measureSearchCriteria =
         MeasureSearchCriteria.builder()
-            .fromCompositeMeasureComponents(true)
+            .fromCompositeMeasureComponent(true)
             .allowedScoringTypes(Arrays.asList("Cohort", "Continuous Variable", "Ratio"))
             .draft(true)
             .build();

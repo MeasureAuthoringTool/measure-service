@@ -122,16 +122,14 @@ class MeasureSetSearchRepositoryImplTest {
   @Test
   void shouldApplyDraftFilterForCompositeMeasureComponents() {
     MeasureSearchCriteria criteria =
-            MeasureSearchCriteria.builder()
-                    .fromCompositeMeasureComponents(true)
-                    .build();
+        MeasureSearchCriteria.builder().fromCompositeMeasureComponent(true).build();
 
     List<MeasureListDTO> mockResults = List.of(createDTO("Non-Draft Measure"));
     when(mongoTemplate.aggregate(any(Aggregation.class), eq("measure"), eq(MeasureListDTO.class)))
-            .thenReturn(new AggregationResults<>(mockResults, new Document()));
+        .thenReturn(new AggregationResults<>(mockResults, new Document()));
 
     List<MeasureListDTO> result =
-            repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
+        repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
 
     assertEquals(1, result.size());
     assertEquals("Non-Draft Measure", result.get(0).getMeasureName());
@@ -142,25 +140,23 @@ class MeasureSetSearchRepositoryImplTest {
     Aggregation aggregation = captor.getValue();
     String pipelineString = aggregation.toString();
 
-   assertThat(pipelineString)
-            .contains("measureMetaData.draft")
-            .contains("false");
+    assertThat(pipelineString).contains("measureMetaData.draft").contains("false");
   }
 
   @Test
   void shouldApplyScoringTypeFilterForCompositeMeasureComponents() {
     MeasureSearchCriteria criteria =
-            MeasureSearchCriteria.builder()
-                    .fromCompositeMeasureComponents(true)
-                    .allowedScoringTypes(List.of("Cohort", "Ratio"))
-                    .build();
+        MeasureSearchCriteria.builder()
+            .fromCompositeMeasureComponent(true)
+            .allowedScoringTypes(List.of("Cohort", "Ratio"))
+            .build();
 
     List<MeasureListDTO> mockResults = List.of(createDTO("Cohort Measure"));
     when(mongoTemplate.aggregate(any(Aggregation.class), eq("measure"), eq(MeasureListDTO.class)))
-            .thenReturn(new AggregationResults<>(mockResults, new Document()));
+        .thenReturn(new AggregationResults<>(mockResults, new Document()));
 
     List<MeasureListDTO> result =
-            repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
+        repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
 
     assertEquals(1, result.size());
     assertEquals("Cohort Measure", result.get(0).getMeasureName());

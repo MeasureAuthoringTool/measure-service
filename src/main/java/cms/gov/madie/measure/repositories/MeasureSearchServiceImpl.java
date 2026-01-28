@@ -211,14 +211,13 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version
     SortOperation sortByVersionAndDraft =
-        measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponents()
+        measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()
             ? sort(Sort.by(Sort.Direction.DESC, "active", "version"))
             : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
 
-
-    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponents()) {
-        // filter draft measures for composite measure components search
+    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()) {
+      // filter draft measures for composite measure components search
       if (measureSearchCriteria.getDraft() != null) {
         Criteria postCriteria =
             Criteria.where("measureMetaData.draft").is(measureSearchCriteria.getDraft());
