@@ -216,14 +216,16 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
 
-    // filter measures that contains only the allowed scoring types in all their groups for
-    // composite measure components search
+
     if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponents()) {
+        // filter draft measures for composite measure components search
       if (measureSearchCriteria.getDraft() != null) {
         Criteria postCriteria =
             Criteria.where("measureMetaData.draft").is(measureSearchCriteria.getDraft());
         postMatchPipeline.add(match(postCriteria));
       }
+      // filter measures that contains only the allowed scoring types in all their groups for
+      // composite measure components search
       if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
         postMatchPipeline.add(
             createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));

@@ -51,7 +51,7 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
       SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
     }
 
-    // Add draft filter for composite measure components search
+    // filter draft measures for composite measure components search
     if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponents()) {
       measureCriteria.and("measureMetaData.draft").is(false);
     }
