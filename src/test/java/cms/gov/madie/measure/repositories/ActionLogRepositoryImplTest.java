@@ -109,4 +109,12 @@ class ActionLogRepositoryImplTest {
                         && q.getQueryObject().toString().contains("$size")),
             eq("testCaseActionLog"));
   }
+
+  @Test
+  void testUpdateAllActionLogs() {
+    ActionLog actionLog =
+        ActionLog.builder().id("testActionLogId").targetId("testTargetId").build();
+    actionLogRepository.updateAllActionLogs(List.of(actionLog), TestCase.class);
+    verify(mongoTemplate).save(actionLog, "testCaseActionLog");
+  }
 }
