@@ -176,6 +176,15 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             .as("queryResults");
 
     aggregationOperations.add(matchOperation);
+
+    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()) {
+      // filter measures that contains only the allowed scoring types in all their groups
+      if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+        aggregationOperations.add(
+            createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+      }
+    }
+
     aggregationOperations.add(
         group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
     // Find all the measures that matches the given Criteria and fetch unique measureSetIds
@@ -215,21 +224,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             ? sort(Sort.by(Sort.Direction.DESC, "active", "version"))
             : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
-
-    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()) {
-      // filter draft measures for composite measure components search
-      if (measureSearchCriteria.getDraft() != null) {
-        Criteria postCriteria =
-            Criteria.where("measureMetaData.draft").is(measureSearchCriteria.getDraft());
-        postMatchPipeline.add(match(postCriteria));
-      }
-      // filter measures that contains only the allowed scoring types in all their groups for
-      // composite measure components search
-      if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
-        postMatchPipeline.add(
-            createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
-      }
-    }
 
     // Group all measures that has same measureSetId and get the count and also first document
     // which will be the latest measure in the MeasureSet

@@ -119,7 +119,10 @@ public class SearchUtils {
                 Collections.singletonList(
                     new Document(
                         "$map",
-                        new Document("input", "$groups")
+                        new Document(
+                                "input",
+                                new Document(
+                                    "$ifNull", Arrays.asList("$groups", Collections.emptyList())))
                             .append("as", "g")
                             .append(
                                 "in",
