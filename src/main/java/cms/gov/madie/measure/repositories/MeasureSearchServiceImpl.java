@@ -177,12 +177,12 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     aggregationOperations.add(matchOperation);
 
-    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()) {
-      // filter measures that contains only the allowed scoring types in all their groups
-      if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
-        aggregationOperations.add(
-            createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
-      }
+    // filter measures that contains only the allowed scoring types in all their groups
+    if (measureSearchCriteria != null
+        && measureSearchCriteria.isFromCompositeMeasureComponent()
+        && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+      aggregationOperations.add(
+          createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
     }
 
     aggregationOperations.add(
