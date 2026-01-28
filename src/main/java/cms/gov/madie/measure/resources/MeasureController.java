@@ -89,7 +89,7 @@ public class MeasureController extends AbstractMeasureController {
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
       @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
       @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     Page<MeasureListDTO> measures;
     final Pageable pageReq =
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
@@ -105,15 +105,15 @@ public class MeasureController extends AbstractMeasureController {
     results.put(
         "ownedMeasures",
         measureService.countMeasuresByOwnership(
-            true, principal.getName(), List.of(OwnershipType.OWNED)));
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.OWNED)));
     results.put(
         "sharedMeasures",
         measureService.countMeasuresByOwnership(
-            true, principal.getName(), List.of(OwnershipType.SHARED)));
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.SHARED)));
     results.put(
         "allMeasures",
         measureService.countMeasuresByOwnership(
-            true, principal.getName(), List.of(OwnershipType.ALL)));
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.ALL)));
 
     return ResponseEntity.ok(results);
   }
@@ -247,7 +247,8 @@ public class MeasureController extends AbstractMeasureController {
   public ResponseEntity<Measure> deactivateMeasure(
       @PathVariable("id") String id, Principal principal) {
 
-    return ResponseEntity.ok().body(measureService.deactivateMeasure(id, principal.getName()));
+    return ResponseEntity.ok()
+        .body(measureService.deactivateMeasure(id, principal.getName().toLowerCase()));
   }
 
   @PutMapping("/measures/{id}/acls")
@@ -270,7 +271,7 @@ public class MeasureController extends AbstractMeasureController {
       @RequestParam(name = "measureIds") List<String> measureIds,
       Principal principal) {
     return ResponseEntity.ok()
-        .body(measureService.getSharedMeasures(measureIds, principal.getName()));
+        .body(measureService.getSharedMeasures(measureIds, principal.getName().toLowerCase()));
   }
 
   @PutMapping("/measures/shared")
@@ -525,7 +526,7 @@ public class MeasureController extends AbstractMeasureController {
   public ResponseEntity<List<Action>> getMeasureHistory(
       @PathVariable("id") String measureId, Principal principal) {
     return ResponseEntity.ok()
-        .body(measureService.getMeasureHistory(measureId, principal.getName()));
+        .body(measureService.getMeasureHistory(measureId, principal.getName().toLowerCase()));
   }
 
   /**
