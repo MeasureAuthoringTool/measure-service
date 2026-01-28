@@ -66,12 +66,12 @@ public class ChangeUserNameToLowerCaseChangeUnit {
       for (Measure measure : originalMeasures) {
         boolean isUpdated = false;
         if (measure.getCreatedBy() != null
-            && !measure.getCreatedBy().equals(measure.getCreatedBy().toLowerCase())) {
+            && measure.getCreatedBy().chars().anyMatch(Character::isUpperCase)) {
           measure.setCreatedBy(measure.getCreatedBy().toLowerCase());
           isUpdated = true;
         }
         if (measure.getLastModifiedBy() != null
-            && !measure.getLastModifiedBy().equals(measure.getLastModifiedBy().toLowerCase())) {
+            && measure.getLastModifiedBy().chars().anyMatch(Character::isUpperCase)) {
           measure.setLastModifiedBy(measure.getLastModifiedBy().toLowerCase());
           isUpdated = true;
         }
@@ -93,7 +93,7 @@ public class ChangeUserNameToLowerCaseChangeUnit {
       for (MeasureSet measureSet : originalMeasureSets) {
         boolean isUpdated = false;
         if (measureSet.getOwner() != null
-            && !measureSet.getOwner().equals(measureSet.getOwner().toLowerCase())) {
+            && measureSet.getOwner().chars().anyMatch(Character::isUpperCase)) {
           measureSet.setOwner(measureSet.getOwner().toLowerCase());
           isUpdated = true;
         }
@@ -102,7 +102,7 @@ public class ChangeUserNameToLowerCaseChangeUnit {
           boolean aclUpdated = false;
           for (AclSpecification acl : measureSet.getAcls()) {
             String userId = acl.getUserId();
-            if (!userId.equals(userId.toLowerCase())) {
+            if (userId.chars().anyMatch(Character::isUpperCase)) {
               acl.setUserId(userId.toLowerCase());
               updatedAcls.add(acl);
               aclUpdated = true;
@@ -147,7 +147,7 @@ public class ChangeUserNameToLowerCaseChangeUnit {
     if (CollectionUtils.isNotEmpty(actions)) {
       for (Action action : actions) {
         if (action.getPerformedBy() != null
-            && !action.getPerformedBy().equals(action.getPerformedBy().toLowerCase())) {
+            && action.getPerformedBy().chars().anyMatch(Character::isUpperCase)) {
           action.setPerformedBy(action.getPerformedBy().toLowerCase());
           updatedActions.add(action);
           isUpdated = true;
@@ -179,7 +179,7 @@ public class ChangeUserNameToLowerCaseChangeUnit {
         if (CollectionUtils.isNotEmpty(actions)) {
           for (AccessControlAction action : actions) {
             if (action.getPerformedBy() != null
-                && !action.getPerformedBy().equals(action.getPerformedBy().toLowerCase())) {
+                && action.getPerformedBy().chars().anyMatch(Character::isUpperCase)) {
               action.setPerformedBy(action.getPerformedBy().toLowerCase());
               updatedActions.add(action);
               isUpdated = true;
@@ -223,7 +223,7 @@ public class ChangeUserNameToLowerCaseChangeUnit {
       for (MeasureLock measureLock : originalMeasureLocks) {
         boolean isUpdated = false;
         if (measureLock.getLockedBy() != null
-            && !measureLock.getLockedBy().equals(measureLock.getLockedBy().toLowerCase())) {
+            && measureLock.getLockedBy().chars().anyMatch(Character::isUpperCase)) {
           measureLock.setLockedBy(measureLock.getLockedBy().toLowerCase());
           isUpdated = true;
         }
@@ -245,7 +245,7 @@ public class ChangeUserNameToLowerCaseChangeUnit {
       for (TestCaseLock testCaseLock : originalTestCaseLocks) {
         boolean isUpdated = false;
         if (testCaseLock.getLockedBy() != null
-            && !testCaseLock.getLockedBy().equals(testCaseLock.getLockedBy().toLowerCase())) {
+            && testCaseLock.getLockedBy().chars().anyMatch(Character::isUpperCase)) {
           testCaseLock.setLockedBy(testCaseLock.getLockedBy().toLowerCase());
           isUpdated = true;
         }
