@@ -23,19 +23,21 @@ public class MeasureLockController {
   @PutMapping("/measures/{measureId}/measure-lock")
   public ResponseEntity<LockInfo> updateMeasureLock(
       @PathVariable String measureId, Principal principal) {
-    return ResponseEntity.ok(measureLockService.lockMeasure(measureId, principal.getName()));
+    return ResponseEntity.ok(
+        measureLockService.lockMeasure(measureId, principal.getName().toLowerCase()));
   }
 
   @DeleteMapping("/measures/{measureId}/measure-lock")
   public ResponseEntity<LockInfo> unlockMeasure(
       @PathVariable String measureId, Principal principal) {
-    LockInfo response = measureLockService.unlockMeasure(measureId, principal.getName());
+    LockInfo response =
+        measureLockService.unlockMeasure(measureId, principal.getName().toLowerCase());
     return ResponseEntity.ok(response);
   }
 
   @DeleteMapping("/measures/unlock")
   public ResponseEntity<List<String>> unlockAll(HttpServletRequest request, Principal principal) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     log.info("Unlock measures, test cases for user: " + username);
     List<String> messages = new ArrayList<>();
     messages.addAll(measureLockService.unlockByUser(username));

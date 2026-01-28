@@ -37,7 +37,7 @@ public class MeasureVersionController extends AbstractMeasureController {
       @RequestParam String versionType,
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     final Measure existingMeasure = measureService.findMeasureById(id);
     checkMeasureLock(existingMeasure, username);
     return ResponseEntity.ok(versionService.createVersion(id, versionType, username, accessToken));
@@ -50,7 +50,8 @@ public class MeasureVersionController extends AbstractMeasureController {
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
     var validationResult =
-        versionService.checkValidVersioning(id, versionType, principal.getName(), accessToken);
+        versionService.checkValidVersioning(
+            id, versionType, principal.getName().toLowerCase(), accessToken);
     if (validationResult == TEST_CASE_ERROR) {
       return new ResponseEntity<>(HttpStatus.ACCEPTED);
     }
@@ -75,7 +76,11 @@ public class MeasureVersionController extends AbstractMeasureController {
     }
     var output =
         versionService.createDraft(
-            id, measure.getMeasureName(), measure.getModel(), principal.getName(), accessToken);
+            id,
+            measure.getMeasureName(),
+            measure.getModel(),
+            principal.getName().toLowerCase(),
+            accessToken);
     return ResponseEntity.status(HttpStatus.CREATED).body(output);
   }
 }

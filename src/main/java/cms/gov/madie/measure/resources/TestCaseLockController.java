@@ -20,19 +20,21 @@ public class TestCaseLockController {
   public ResponseEntity<LockInfo> addTestCaseLock(
       @PathVariable String measureId, @PathVariable String testCaseId, Principal principal) {
     return ResponseEntity.ok(
-        testCaseLockService.lockTestCase(measureId, testCaseId, principal.getName()));
+        testCaseLockService.lockTestCase(measureId, testCaseId, principal.getName().toLowerCase()));
   }
 
   @DeleteMapping("/test-cases/{testCaseId}/lock")
   public ResponseEntity<LockInfo> unlockTestCase(
       @PathVariable String testCaseId, Principal principal) {
-    return ResponseEntity.ok(testCaseLockService.unlockTestCase(testCaseId, principal.getName()));
+    return ResponseEntity.ok(
+        testCaseLockService.unlockTestCase(testCaseId, principal.getName().toLowerCase()));
   }
 
   @GetMapping("/measures/{measureId}/test-cases/lock-by-other-user")
   public ResponseEntity<Boolean> isTestCaseLockedByOtherUser(
       @PathVariable String measureId, Principal principal) {
     return ResponseEntity.ok(
-        testCaseLockService.isAnyTestCaseLockedByOthers(measureId, principal.getName()));
+        testCaseLockService.isAnyTestCaseLockedByOthers(
+            measureId, principal.getName().toLowerCase()));
   }
 }

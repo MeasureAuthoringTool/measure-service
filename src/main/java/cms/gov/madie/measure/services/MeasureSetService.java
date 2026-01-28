@@ -229,7 +229,7 @@ public class MeasureSetService {
 
       MeasureSet measureSet = optionalMeasureSet.get();
 
-      if (!measureSet.getOwner().equals(harpId)) {
+      if (!measureSet.getOwner().equalsIgnoreCase(harpId)) {
         throw new HarpIdMismatchException(harpId, measureSet.getOwner(), measure.getId());
       }
 
