@@ -3,6 +3,7 @@ package cms.gov.madie.measure.repositories;
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.services.AppConfigService;
+import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.OwnershipType;
@@ -27,6 +28,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static cms.gov.madie.measure.dto.MadieFeatureFlag.DISPLAY_OWNER;
+import static cms.gov.madie.measure.utils.SearchAggregationUtils.createScoringTypeFilter;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Repository
@@ -135,7 +137,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
         if (CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())
             || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
-          aggregationOperations.add(SearchUtils.addCmsIdDisplayField());
+          aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
         }
         SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
@@ -153,6 +155,13 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       // If excludeMeasures is not empty, exclude those measures by their IDs
       if (CollectionUtils.isNotEmpty(measureSearchCriteria.getExcludeByMeasureIds())) {
         measureCriteria.and("_id").nin(measureSearchCriteria.getExcludeByMeasureIds());
+      }
+
+      // filter measures that contains only the allowed scoring types in all their groups
+      if (measureSearchCriteria.isFromCompositeMeasureComponent()
+          && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+        aggregationOperations.add(
+            createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
       }
     }
 
@@ -175,6 +184,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             .as("queryResults");
 
     aggregationOperations.add(matchOperation);
+
     aggregationOperations.add(
         group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
     // Find all the measures that matches the given Criteria and fetch unique measureSetIds
@@ -210,7 +220,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version
     SortOperation sortByVersionAndDraft =
-        sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
+        measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()
+            ? sort(Sort.by(Sort.Direction.DESC, "active", "version"))
+            : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
 
     // Group all measures that has same measureSetId and get the count and also first document
