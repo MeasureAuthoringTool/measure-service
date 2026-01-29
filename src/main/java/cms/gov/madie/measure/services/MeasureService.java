@@ -940,6 +940,8 @@ public class MeasureService extends BaseMeasureService {
     return measureHistory;
   }
 
+  // Returns Lock info if measure is locked by non-current user, else (locked by current user or no
+  // lock) returns null
   public gov.cms.madie.models.measure.MeasureLock getMeasureLock(
       String measureId, String username) {
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
