@@ -177,67 +177,67 @@ public class MeasureController extends AbstractMeasureController {
     log.info("getMeasureId [{}]", id);
 
     final Measure existingMeasure = measureService.findMeasureById(id);
+    if (existingMeasure == null) {
+      throw new ResourceNotFoundException("Measure", id);
+    }
     checkMeasureLock(existingMeasure, username);
 
-    if (existingMeasure != null) {
-      if (username != null && existingMeasure.getCreatedBy() != null) {
-        log.info("got username [{}] vs createdBy: [{}]", username, existingMeasure.getCreatedBy());
-        // either owner or shared-with role
-        measureService.verifyAuthorization(username, existingMeasure);
+    checkMeasureLock(existingMeasure, username);
+    if (username != null && existingMeasure.getCreatedBy() != null) {
+      log.info("got username [{}] vs createdBy: [{}]", username, existingMeasure.getCreatedBy());
+      // either owner or shared-with role
+      measureService.verifyAuthorization(username, existingMeasure);
 
-        if (!existingMeasure.getMeasureMetaData().isDraft()) {
-          throw new InvalidDraftStatusException(measure.getId());
-        }
-
-        // no user can update a soft-deleted measure
-        if (!existingMeasure.isActive()) {
-          throw new UnauthorizedException("Measure", existingMeasure.getId(), username);
-        }
-        // shared user should be able to edit Measure but won’t have delete access, only owner can
-        // delete
-        if (!measure.isActive()) {
-          measureService.verifyAuthorization(username, measure, null);
-        }
-
-        // Group changes are not allowed if any test case is locked by another user
-        if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            && testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username)
-            && MeasureUtil.isMeasureGroupsChanged(measure, existingMeasure)) {
-          throw new LockNotObtainedException(
-              "Unable to update measure groups. One or more test cases are locked by another user.");
-        }
-
-        // clear testcase groups for qdm when scoring or patient basis is changed.
-        // for QDM, scoring and patient basis are present outside the group
-        // therefor we need to clear testcase groups while updating measure
-        if (existingMeasure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
-            && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
-          QdmMeasure qdmExistingMeasure = (QdmMeasure) existingMeasure;
-          QdmMeasure qdmUpdatingMeasure = (QdmMeasure) measure;
-
-          if (!StringUtils.equals(qdmExistingMeasure.getScoring(), qdmUpdatingMeasure.getScoring())
-              || (qdmExistingMeasure.isPatientBasis() != qdmUpdatingMeasure.isPatientBasis())) {
-            existingMeasure
-                .getTestCases()
-                .forEach(
-                    testcase -> {
-                      testcase.setGroupPopulations(new ArrayList<>());
-                      testCaseService.updateTestCase(testcase, id, username, accessToken);
-                    });
-          }
-        }
+      if (!existingMeasure.getMeasureMetaData().isDraft()) {
+        throw new InvalidDraftStatusException(measure.getId());
       }
 
-      response =
-          ResponseEntity.ok()
-              .body(measureService.updateMeasure(existingMeasure, username, measure, accessToken));
+      // no user can update a soft-deleted measure
+      if (!existingMeasure.isActive()) {
+        throw new UnauthorizedException("Measure", existingMeasure.getId(), username);
+      }
+      // shared user should be able to edit Measure but won’t have delete access, only owner can
+      // delete
       if (!measure.isActive()) {
-        actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
-      } else {
-        actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
+        measureService.verifyAuthorization(username, measure, null);
       }
+
+      // Group changes are not allowed if any test case is locked by another user
+      if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
+          && testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username)
+          && MeasureUtil.isMeasureGroupsChanged(measure, existingMeasure)) {
+        throw new LockNotObtainedException(
+            "Unable to update measure groups. One or more test cases are locked by another user.");
+      }
+
+      // clear testcase groups for qdm when scoring or patient basis is changed.
+      // for QDM, scoring and patient basis are present outside the group
+      // therefor we need to clear testcase groups while updating measure
+      if (existingMeasure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
+          && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
+        QdmMeasure qdmExistingMeasure = (QdmMeasure) existingMeasure;
+        QdmMeasure qdmUpdatingMeasure = (QdmMeasure) measure;
+
+        if (!StringUtils.equals(qdmExistingMeasure.getScoring(), qdmUpdatingMeasure.getScoring())
+            || (qdmExistingMeasure.isPatientBasis() != qdmUpdatingMeasure.isPatientBasis())) {
+          existingMeasure
+              .getTestCases()
+              .forEach(
+                  testcase -> {
+                    testcase.setGroupPopulations(new ArrayList<>());
+                    testCaseService.updateTestCase(testcase, id, username, accessToken);
+                  });
+        }
+      }
+    }
+
+    response =
+        ResponseEntity.ok()
+            .body(measureService.updateMeasure(existingMeasure, username, measure, accessToken));
+    if (!measure.isActive()) {
+      actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
     } else {
-      throw new ResourceNotFoundException("Measure", id);
+      actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
     }
 
     return response;

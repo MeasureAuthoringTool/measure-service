@@ -1293,4 +1293,49 @@ class MeasureControllerTest {
     assertEquals("newMeasureId", response.getBody().getNewMeasureId());
     assertTrue(response.getBody().getComparisons().isEmpty());
   }
+
+  @Test
+  void testUpdateMeasureExistingQdmMeasurePatientBasisNotSameAsUpdatedMeasure() {
+    when(principal.getName()).thenReturn("test.user");
+    TestCaseGroupPopulation tcgp =
+        TestCaseGroupPopulation.builder()
+            .populationValues(List.of(TestCasePopulationValue.builder().build()))
+            .build();
+    TestCase testCase = TestCase.builder().groupPopulations(List.of(tcgp)).build();
+    TestCase testCase2 = TestCase.builder().groupPopulations(new ArrayList<>()).build();
+    Measure existingMeasure =
+        QdmMeasure.builder()
+            .id("measureId")
+            .model(ModelType.QDM_5_6.getValue())
+            .createdBy("test.user")
+            .patientBasis(true)
+            .testCases(List.of(testCase))
+            .active(true)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .build();
+
+    Measure updatedMeasure =
+        QdmMeasure.builder()
+            .id("measureId")
+            .model(ModelType.QDM_5_6.getValue())
+            .createdBy("test.user")
+            .patientBasis(false)
+            .testCases(List.of(testCase2))
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .build();
+
+    when(measureService.findMeasureById("measureId")).thenReturn(existingMeasure);
+    doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(updatedMeasure);
+
+    Measure result =
+        controller.updateMeasure("measureId", updatedMeasure, principal, "Bearer TOKEN").getBody();
+
+    assertNotNull(result);
+    assertEquals("measureId", result.getId());
+    assertFalse(((QdmMeasure) result).isPatientBasis());
+    assertTrue(((QdmMeasure) result).getTestCases().get(0).getGroupPopulations().isEmpty());
+  }
 }
