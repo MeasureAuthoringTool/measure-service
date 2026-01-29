@@ -59,6 +59,7 @@ class ExportControllerTest {
   @Test
   void getZipThrowsNotFoundException() {
     Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
     when(measureService.findMeasureById(anyString())).thenReturn(null);
     assertThrows(
         ResourceNotFoundException.class,
@@ -227,6 +228,7 @@ class ExportControllerTest {
   @Test
   void getTestCaseExportAllThrowsResourceNotFoundException() {
     Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
     assertThrows(
         ResourceNotFoundException.class,

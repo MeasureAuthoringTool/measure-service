@@ -56,7 +56,8 @@ public class TestCaseController {
 
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(
-            testCaseService.persistTestCase(testCase, measureId, principal.getName(), accessToken));
+            testCaseService.persistTestCase(
+                testCase, measureId, principal.getName().toLowerCase(), accessToken));
   }
 
   @PostMapping(ControllerUtil.TEST_CASES + "/list")
@@ -65,7 +66,7 @@ public class TestCaseController {
       @PathVariable String measureId,
       @RequestHeader("Authorization") String accessToken,
       Principal principal) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     Optional<Measure> measureOptional = measureRepository.findById(measureId);
     if (measureOptional.isEmpty()) {
       throw new ResourceNotFoundException("Measure", measureId);
@@ -105,7 +106,8 @@ public class TestCaseController {
         testCaseService.findTestCasesByMeasureId(measureId, principal.getName());
     // Enrich with lock information (excluding current user's locks)
     if (principal != null) {
-      testCaseLockEnrichmentService.enrichTestCasesWithLockInfo(testCases, principal.getName());
+      testCaseLockEnrichmentService.enrichTestCasesWithLockInfo(
+          testCases, principal.getName().toLowerCase());
     }
     return ResponseEntity.ok(testCases);
   }
@@ -136,7 +138,11 @@ public class TestCaseController {
 
     return ResponseEntity.ok(
         testCaseService.updateTestCase(
-            testCase, measureId, principal.getName(), accessToken, TestCaseServiceUtil.SAVE));
+            testCase,
+            measureId,
+            principal.getName().toLowerCase(),
+            accessToken,
+            TestCaseServiceUtil.SAVE));
   }
 
   @GetMapping(ControllerUtil.TEST_CASES + "/series")
@@ -156,7 +162,9 @@ public class TestCaseController {
 
     return ResponseEntity.ok(
         testCaseService.deleteTestCases(
-            sanitizeUserInput(measureId), sanitizeUserInput(testCaseIds), principal.getName()));
+            sanitizeUserInput(measureId),
+            sanitizeUserInput(testCaseIds),
+            principal.getName().toLowerCase()));
   }
 
   @PutMapping(ControllerUtil.TEST_CASES + "/imports")
@@ -165,7 +173,7 @@ public class TestCaseController {
       @PathVariable String measureId,
       @RequestHeader("Authorization") String accessToken,
       Principal principal) {
-    final String userName = principal.getName();
+    final String userName = principal.getName().toLowerCase();
 
     // Filter out locked test cases
     List<TestCaseImportRequest> unlocked = new ArrayList<>();
@@ -213,7 +221,7 @@ public class TestCaseController {
 
     List<String> unlockedIds =
         appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            ? filterOutLocked(testCaseIds, principal.getName())
+            ? filterOutLocked(testCaseIds, principal.getName().toLowerCase())
             : testCaseIds;
 
     List<String> shiftedIds =
@@ -246,14 +254,14 @@ public class TestCaseController {
 
     Map<String, Object> response =
         testCaseService.updateQiCoreJsonWithGroupAndTitle(
-            testCasesToBeUpdated, principal.getName(), measureId, accessToken);
+            testCasesToBeUpdated, principal.getName().toLowerCase(), measureId, accessToken);
 
     return ResponseEntity.ok(response);
   }
 
   private Measure checkMeasure(String measureId, Principal principal) {
     Measure measure = measureService.findMeasureById(measureId);
-    measureService.verifyAuthorization(principal.getName(), measure);
+    measureService.verifyAuthorization(principal.getName().toLowerCase(), measure);
     if (measure instanceof FhirMeasure) {
       throw new ResourceNotFoundException("QDM Measure", measureId);
     }
@@ -266,7 +274,7 @@ public class TestCaseController {
 
     for (String testCaseId : testCaseIds) {
       var lock = testCaseLockService.findByTestCaseId(testCaseId);
-      if (lock != null && !lock.getLockedBy().equals(username)) {
+      if (lock != null && !lock.getLockedBy().equalsIgnoreCase(username)) {
         continue;
       }
       unlocked.add(testCaseId);
@@ -320,7 +328,7 @@ public class TestCaseController {
 
     List<String> unlockedIds =
         appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            ? filterOutLocked(testCaseIds, principal.getName())
+            ? filterOutLocked(testCaseIds, principal.getName().toLowerCase())
             : testCaseIds;
 
     List<String> shiftedIds =
@@ -345,17 +353,22 @@ public class TestCaseController {
 
     List<String> unlockedIds =
         appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            ? filterOutLocked(testCaseIds, principal.getName())
+            ? filterOutLocked(testCaseIds, principal.getName().toLowerCase())
             : testCaseIds;
 
     return ResponseEntity.ok(
         populateShiftedAndFailedQiCore(
-            measure, testCaseIds, unlockedIds, shifted, accessToken, principal.getName()));
+            measure,
+            testCaseIds,
+            unlockedIds,
+            shifted,
+            accessToken,
+            principal.getName().toLowerCase()));
   }
 
   private Measure checkQiCoreMeasure(String measureId, Principal principal) {
     Measure measure = measureService.findMeasureById(measureId);
-    measureService.verifyAuthorization(principal.getName(), measure);
+    measureService.verifyAuthorization(principal.getName().toLowerCase(), measure);
     if (measure instanceof QdmMeasure) {
       throw new ResourceNotFoundException("QICore Measure", measureId);
     }
@@ -449,12 +462,17 @@ public class TestCaseController {
         measure.getTestCases().stream().map(testCase -> testCase.getId()).toList();
     List<String> unlockedIds =
         appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            ? filterOutLocked(testCaseIds, principal.getName())
+            ? filterOutLocked(testCaseIds, principal.getName().toLowerCase())
             : testCaseIds;
 
     return ResponseEntity.ok(
         populateShiftedAndFailedQiCore(
-            measure, testCaseIds, unlockedIds, shifted, accessToken, principal.getName()));
+            measure,
+            testCaseIds,
+            unlockedIds,
+            shifted,
+            accessToken,
+            principal.getName().toLowerCase()));
   }
 
   @PutMapping(ControllerUtil.TEST_CASES + "/copy-to")
@@ -467,7 +485,7 @@ public class TestCaseController {
 
     Measure targetMeasure = measureService.findMeasureById(targetMeasureId);
     Measure sourceMeasure = measureService.findMeasureById(measureId);
-    measureService.verifyAuthorization(principal.getName(), targetMeasure);
+    measureService.verifyAuthorization(principal.getName().toLowerCase(), targetMeasure);
     if (CollectionUtils.isEmpty(testCaseIds)) {
       throw new InvalidRequestException("Test Case List cannot be empty");
     }
@@ -482,7 +500,7 @@ public class TestCaseController {
             .toList();
     CopyTestCaseResult result =
         testCaseService.copyTestCasesToMeasure(
-            targetMeasureId, sourceTestCases, principal.getName(), accessToken);
+            targetMeasureId, sourceTestCases, principal.getName().toLowerCase(), accessToken);
 
     return ResponseEntity.ok(result);
   }
