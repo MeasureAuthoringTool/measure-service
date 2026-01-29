@@ -463,7 +463,9 @@ public class GroupServiceTest implements ResourceUtil {
             .groups(List.of(group))
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .measureSet(MeasureSet.builder().owner("test.user").build())
+            .measureLock(MeasureLock.builder().lockedBy("test.user").build())
             .build();
+    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
@@ -620,6 +622,23 @@ public class GroupServiceTest implements ResourceUtil {
     assertThrows(
         InvalidDraftStatusException.class,
         () -> groupService.deleteMeasureGroup("measure-id", groupId, "user2"));
+  }
+
+  @Test
+  void testDeleteGroupThrowsExceptionWhenTestCasesLockedByOtherUser() {
+    Measure existingMeasure =
+        Measure.builder()
+            .id("measure-id")
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .build();
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
+    when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
+        .thenReturn(true);
+
+    assertThrows(
+        LockNotObtainedException.class,
+        () -> groupService.deleteMeasureGroup("measure-id", "testgroupid", "test.user"));
   }
 
   @Test

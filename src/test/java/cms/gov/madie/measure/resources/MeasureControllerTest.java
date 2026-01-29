@@ -720,21 +720,17 @@ class MeasureControllerTest {
   @Test
   void deleteGroupWithMeasureLocked() {
     when(principal.getName()).thenReturn("test.user");
+    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
 
-    Measure updatedMeasure =
-        Measure.builder().id("measure-id").createdBy("test.user").groups(null).build();
-    when(measureService.getMeasureLock(anyString(), anyString()))
-        .thenReturn(MeasureLock.builder().lockedBy("anotherUser").build());
-    doReturn(updatedMeasure)
-        .when(groupService)
-        .deleteMeasureGroup(any(String.class), any(String.class), any(String.class));
-
-    ResponseEntity<Measure> output =
-        controller.deleteMeasureGroup("measure-id", "testgroupid", principal);
-
-    assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
-    assertNull(output.getBody().getGroups());
-    assertEquals("anotherUser", output.getBody().getMeasureLock().getLockedBy());
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(
+            Measure.builder()
+                .id("measure-id")
+                .measureLock(MeasureLock.builder().lockedBy("another.user").build())
+                .build());
+    assertThrows(
+        LockNotObtainedException.class,
+        () -> controller.deleteMeasureGroup("measure-id", "testgroupid", principal));
   }
 
   @Test
