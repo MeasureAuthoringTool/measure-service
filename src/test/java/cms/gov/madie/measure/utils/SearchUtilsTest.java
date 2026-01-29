@@ -2,6 +2,7 @@ package cms.gov.madie.measure.utils;
 
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
 import org.springframework.data.mongodb.core.query.Criteria;
 import java.util.List;
 
@@ -148,5 +149,29 @@ class SearchUtilsTest {
 
     String json = base.getCriteriaObject().toString();
     assertThat(json).contains("unknownProp").contains("test-field");
+  }
+
+  @Test
+  void testCreateScoringTypeFilterWithValidScoringTypes() {
+    List<String> allowedScoringTypes = List.of("Ratio", "Continuous Variable");
+
+    AggregationOperation filter = SearchUtils.createScoringTypeFilter(allowedScoringTypes);
+
+    // Verify the method returns a non-null aggregation operation
+    assertThat(filter).isNotNull();
+    // Verify it's a MatchOperation by checking its class
+    assertThat(filter.getClass().getSimpleName()).contains("Match");
+  }
+
+  @Test
+  void testCreateScoringTypeFilterWithSingleScoringType() {
+    List<String> allowedScoringTypes = List.of("Proportion");
+
+    AggregationOperation filter = SearchUtils.createScoringTypeFilter(allowedScoringTypes);
+
+    // Verify the method returns a non-null aggregation operation
+    assertThat(filter).isNotNull();
+    // Verify it's a MatchOperation by checking its class
+    assertThat(filter.getClass().getSimpleName()).contains("Match");
   }
 }

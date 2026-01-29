@@ -155,6 +155,13 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       if (CollectionUtils.isNotEmpty(measureSearchCriteria.getExcludeByMeasureIds())) {
         measureCriteria.and("_id").nin(measureSearchCriteria.getExcludeByMeasureIds());
       }
+
+      // filter measures that contains only the allowed scoring types in all their groups
+      if (measureSearchCriteria.isFromCompositeMeasureComponent()
+          && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+        aggregationOperations.add(
+            createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+      }
     }
 
     // prepare measure set search criteria(user is either owner or shared with)
@@ -176,14 +183,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             .as("queryResults");
 
     aggregationOperations.add(matchOperation);
-
-    // filter measures that contains only the allowed scoring types in all their groups
-    if (measureSearchCriteria != null
-        && measureSearchCriteria.isFromCompositeMeasureComponent()
-        && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
-      aggregationOperations.add(
-          createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
-    }
 
     aggregationOperations.add(
         group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
