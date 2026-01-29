@@ -17,4 +17,7 @@ public class MeasureSearchCriteria {
   private String model;
   private Boolean draft;
   private List<String> excludeByMeasureIds;
+  private boolean fromCompositeMeasureComponent;
+  private List<String>
+      allowedScoringTypes; // List of scoring types to include (e.g., ["Proportion", "Ratio"])
 }
