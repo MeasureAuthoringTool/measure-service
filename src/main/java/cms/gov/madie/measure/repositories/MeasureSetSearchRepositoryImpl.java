@@ -65,7 +65,6 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
 
     MatchOperation matchOperation = match(measureCriteria);
     aggregationOperations.add(matchOperation);
-
     Aggregation aggregation;
     if (sortByLatestVersion) {
       SortOperation sortOperation =
