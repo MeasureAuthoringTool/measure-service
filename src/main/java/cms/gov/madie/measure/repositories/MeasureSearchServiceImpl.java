@@ -3,6 +3,7 @@ package cms.gov.madie.measure.repositories;
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.services.AppConfigService;
+import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.OwnershipType;
@@ -27,7 +28,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static cms.gov.madie.measure.dto.MadieFeatureFlag.DISPLAY_OWNER;
-import static cms.gov.madie.measure.utils.SearchUtils.createScoringTypeFilter;
+import static cms.gov.madie.measure.utils.SearchAggregationUtils.createScoringTypeFilter;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Repository
@@ -136,7 +137,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
         if (CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())
             || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
-          aggregationOperations.add(SearchUtils.addCmsIdDisplayField());
+          aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
         }
         SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
