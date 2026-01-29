@@ -304,13 +304,14 @@ public class AdminController extends AbstractMeasureController {
     Measure measureToDelete = measureService.findMeasureById(id);
 
     if (measureToDelete != null) {
-      if (!measureToDelete.getMeasureSet().getOwner().equals(harpId)) {
+      if (!measureToDelete.getMeasureSet().getOwner().equalsIgnoreCase(harpId)) {
         throw new HarpIdMismatchException(
             harpId, measureToDelete.getMeasureSet().getOwner(), measureToDelete.getId());
       }
 
       measureRepository.delete(measureToDelete);
-      actionLogService.logAction(id, Measure.class, ActionType.DELETED, principal.getName());
+      actionLogService.logAction(
+          id, Measure.class, ActionType.DELETED, principal.getName().toLowerCase());
       return ResponseEntity.ok(measureToDelete);
     }
     throw new ResourceNotFoundException(id);
@@ -331,7 +332,7 @@ public class AdminController extends AbstractMeasureController {
     for (String id : ids) {
       Measure measureToGet = measureService.findMeasureById(id);
       if (measureToGet != null) {
-        if (!measureToGet.getMeasureSet().getOwner().equals(harpId)) {
+        if (!measureToGet.getMeasureSet().getOwner().equalsIgnoreCase(harpId)) {
           throw new HarpIdMismatchException(
               harpId, measureToGet.getMeasureSet().getOwner(), measureToGet.getId());
         }
@@ -340,7 +341,7 @@ public class AdminController extends AbstractMeasureController {
 
         result.put("measureName", measureToGet.getMeasureName());
         result.put("measureId", measureToGet.getId());
-        result.put("measureOwner", measureToGet.getMeasureSet().getOwner());
+        result.put("measureOwner", measureToGet.getMeasureSet().getOwner().toLowerCase());
         result.put("sharedWith", measureToGet.getMeasureSet().getAcls());
 
         results.add(result);
@@ -372,7 +373,10 @@ public class AdminController extends AbstractMeasureController {
       throw new ResourceNotFoundException(error);
     }
 
-    if (!measureToCorrectVersion.getMeasureSet().getOwner().equals(harpId)) {
+    if (!measureToCorrectVersion
+        .getMeasureSet()
+        .getOwner()
+        .equalsIgnoreCase(harpId)) {
       throw new HarpIdMismatchException(
           harpId,
           measureToCorrectVersion.getMeasureSet().getOwner(),
@@ -426,7 +430,7 @@ public class AdminController extends AbstractMeasureController {
         measureToCorrectVersion.getId(),
         Measure.class,
         ActionType.VERSION_REVERT,
-        principal.getName(),
+        principal.getName().toLowerCase(),
         String.format("Reverted from version %s to %s", inCorrectVersion, correctVersion));
 
     return ResponseEntity.ok(correctedVersionMeasure);
@@ -599,8 +603,8 @@ public class AdminController extends AbstractMeasureController {
       Principal principal) {
     log.info("Unlock measures, test cases for user: " + harpId);
     List<String> messages = new ArrayList<>();
-    messages.addAll(measureLockService.unlockByUser(harpId));
-    messages.addAll(testCaseLockService.unlockByUser(harpId));
+    messages.addAll(measureLockService.unlockByUser(harpId.toLowerCase()));
+    messages.addAll(testCaseLockService.unlockByUser(harpId.toLowerCase()));
     return ResponseEntity.ok(messages);
   }
 
@@ -629,7 +633,7 @@ public class AdminController extends AbstractMeasureController {
 
     return ResponseEntity.ok(
         adminService.updateCodeSystem(
-            id, principal.getName(), incorrectCodeSystem, correctCodeSystem));
+            id, principal.getName().toLowerCase(), incorrectCodeSystem, correctCodeSystem));
   }
 
   /**
@@ -679,7 +683,8 @@ public class AdminController extends AbstractMeasureController {
     if (CollectionUtils.isNotEmpty(validMeasureIds)) {
       // retainShareAccess = false, conductedBy = "admin"
       failedTransfers.addAll(
-          measureService.transferMeasures(validMeasureIds, harpId, retainShareAccess, "admin"));
+          measureService.transferMeasures(
+              validMeasureIds, harpId.toLowerCase(), retainShareAccess, "admin"));
     }
     List<String> successMeasureIds =
         measureIds.stream().filter(measureId -> !failedTransfers.contains(measureId)).toList();
