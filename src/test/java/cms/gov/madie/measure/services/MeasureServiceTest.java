@@ -2728,11 +2728,8 @@ public class MeasureServiceTest implements ResourceUtil {
 
     Measure updated = original.toBuilder().cql(null).active(true).build();
 
-    List<Measure> measureList = Collections.singletonList(Measure.builder().build());
-
     when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
         .thenReturn(false);
-    // when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(measureList);
 
     assertThrows(
         InvalidRequestException.class,
