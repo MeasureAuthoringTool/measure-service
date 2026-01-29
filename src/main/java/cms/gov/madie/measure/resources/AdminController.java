@@ -304,7 +304,7 @@ public class AdminController extends AbstractMeasureController {
     Measure measureToDelete = measureService.findMeasureById(id);
 
     if (measureToDelete != null) {
-      if (!measureToDelete.getMeasureSet().getOwner().equalsIgnoreCase(harpId.toLowerCase())) {
+      if (!measureToDelete.getMeasureSet().getOwner().equalsIgnoreCase(harpId)) {
         throw new HarpIdMismatchException(
             harpId, measureToDelete.getMeasureSet().getOwner(), measureToDelete.getId());
       }
@@ -332,7 +332,7 @@ public class AdminController extends AbstractMeasureController {
     for (String id : ids) {
       Measure measureToGet = measureService.findMeasureById(id);
       if (measureToGet != null) {
-        if (!measureToGet.getMeasureSet().getOwner().equalsIgnoreCase(harpId.toLowerCase())) {
+        if (!measureToGet.getMeasureSet().getOwner().equalsIgnoreCase(harpId)) {
           throw new HarpIdMismatchException(
               harpId, measureToGet.getMeasureSet().getOwner(), measureToGet.getId());
         }
@@ -376,7 +376,7 @@ public class AdminController extends AbstractMeasureController {
     if (!measureToCorrectVersion
         .getMeasureSet()
         .getOwner()
-        .equalsIgnoreCase(harpId.toLowerCase())) {
+        .equalsIgnoreCase(harpId)) {
       throw new HarpIdMismatchException(
           harpId,
           measureToCorrectVersion.getMeasureSet().getOwner(),
