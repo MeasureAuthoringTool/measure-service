@@ -73,7 +73,7 @@ public class GroupService {
     }
 
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-        && testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username)) {
+        && testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username.toLowerCase())) {
       throw new LockNotObtainedException(
           "Unable to create or update measure groups. One or more test cases are locked by another user.");
     }
@@ -192,6 +192,12 @@ public class GroupService {
 
     if (groupId == null || groupId.trim().isEmpty()) {
       throw new InvalidIdException("Measure group Id cannot be null");
+    }
+
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
+        && testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username.toLowerCase())) {
+      throw new LockNotObtainedException(
+          "Unable to delete measure groups. One or more test cases are locked by another user.");
     }
 
     List<Group> remainingGroups =
