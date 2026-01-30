@@ -373,10 +373,7 @@ public class AdminController extends AbstractMeasureController {
       throw new ResourceNotFoundException(error);
     }
 
-    if (!measureToCorrectVersion
-        .getMeasureSet()
-        .getOwner()
-        .equalsIgnoreCase(harpId)) {
+    if (!measureToCorrectVersion.getMeasureSet().getOwner().equalsIgnoreCase(harpId)) {
       throw new HarpIdMismatchException(
           harpId,
           measureToCorrectVersion.getMeasureSet().getOwner(),
