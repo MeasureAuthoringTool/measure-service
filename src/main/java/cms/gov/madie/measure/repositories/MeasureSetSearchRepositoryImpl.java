@@ -60,7 +60,8 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
       // composite measure components search
       if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
         aggregationOperations.add(
-          SearchAggregationUtils.createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+            SearchAggregationUtils.createScoringTypeFilter(
+                measureSearchCriteria.getAllowedScoringTypes()));
       }
     }
 
