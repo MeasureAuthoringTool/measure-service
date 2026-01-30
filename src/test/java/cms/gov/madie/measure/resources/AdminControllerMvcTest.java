@@ -925,7 +925,7 @@ public class AdminControllerMvcTest {
             eq(measureId),
             eq(Measure.class),
             eq(ActionType.VERSION_REVERT),
-            eq(principalName),
+            eq(principalName.toLowerCase()),
             eq(String.format("Reverted from version %s to %s", inCorrectVersion, correctVersion)));
   }
 
@@ -1489,7 +1489,8 @@ public class AdminControllerMvcTest {
 
     assertTrue(result.getResponse().getContentAsString().contains(measureId));
     verify(measureService, times(1))
-        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(false), eq("admin"));
+        .transferMeasures(
+            eq(List.of(measureId)), eq(newOwner.toLowerCase()), eq(false), eq("admin"));
   }
 
   @Test
@@ -1566,6 +1567,7 @@ public class AdminControllerMvcTest {
 
     assertTrue(result.getResponse().getContentAsString().contains(measureId));
     verify(measureService, times(1))
-        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(true), eq("admin"));
+        .transferMeasures(
+            eq(List.of(measureId)), eq(newOwner.toLowerCase()), eq(true), eq("admin"));
   }
 }

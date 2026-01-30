@@ -3,6 +3,7 @@ package cms.gov.madie.measure.utils;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.mongodb.core.query.Criteria;
+
 import java.util.List;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;

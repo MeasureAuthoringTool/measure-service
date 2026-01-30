@@ -322,7 +322,7 @@ class MeasureControllerTest {
             measureSet.getCmsId(), measureSet.getMeasureSetId());
 
     when(principal.getName()).thenReturn("testUser");
-    when(measureSetService.deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testUser"))
+    when(measureSetService.deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testuser"))
         .thenReturn(expectedBody);
 
     ResponseEntity<String> response =
@@ -332,7 +332,7 @@ class MeasureControllerTest {
     assertThat(response.getBody(), is(notNullValue()));
     assertEquals(expectedBody, response.getBody());
     verify(measureSetService, times(1))
-        .deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testUser");
+        .deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testuser");
   }
 
   @Test

@@ -52,7 +52,7 @@ public class ExportController {
           String elmErrorSeverity,
       @RequestHeader("Authorization") String accessToken) {
 
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     log.info("User [{}] is attempting to export measure [{}]", username, id);
 
     Measure measure = measureService.findMeasureById(id);
@@ -62,7 +62,7 @@ public class ExportController {
     }
     var packageDto = exportService.getMeasureExport(measure, accessToken, elmErrorSeverity);
 
-    actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_MEASURE, principal.getName());
+    actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_MEASURE, username);
 
     return ResponseEntity.status(
             packageDto.isFromStorage() ? HttpStatus.OK.value() : HttpStatus.CREATED.value())
@@ -81,7 +81,7 @@ public class ExportController {
       @RequestParam Optional<String> bundleType,
       @RequestBody List<String> testCaseId) {
 
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     log.info("User [{}] is attempting to export test cases for [{}]", username, measureId);
 
     Optional<Measure> measureOptional = measureRepository.findById(measureId);
@@ -130,7 +130,7 @@ public class ExportController {
       @RequestBody QrdaRequestDTO requestDTO,
       @RequestHeader("Authorization") String accessToken) {
 
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     byte[] qrdaPackage;
 
     log.info("User [{}] is attempting to export QRDA for measure [{}]", username, id);
@@ -165,7 +165,7 @@ public class ExportController {
       @RequestBody List<TestCaseExcelExportDTO> testCaseExcelExportDtos,
       @RequestHeader("Authorization") String accessToken) {
     byte[] excelBytes;
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
 
     log.info("User [{}] is attempting to export Excel for measure [{}]", username, id);
 

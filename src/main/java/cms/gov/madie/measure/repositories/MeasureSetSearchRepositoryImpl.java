@@ -2,6 +2,7 @@ package cms.gov.madie.measure.repositories;
 
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -46,9 +47,21 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
         && StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
       if (CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())
           || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
-        aggregationOperations.add(SearchUtils.addCmsIdDisplayField());
+        aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
       }
       SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
+    }
+
+    if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()) {
+      // filter draft measures for composite measure components search
+      measureCriteria.and("measureMetaData.draft").is(false);
+
+      // filter measures that contains only the allowed scoring types in all their groups for
+      // composite measure components search
+      if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+        aggregationOperations.add(
+          SearchAggregationUtils.createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+      }
     }
 
     MatchOperation matchOperation = match(measureCriteria);
