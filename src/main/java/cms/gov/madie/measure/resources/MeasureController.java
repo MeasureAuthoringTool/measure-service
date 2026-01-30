@@ -182,7 +182,6 @@ public class MeasureController extends AbstractMeasureController {
     }
     checkMeasureLock(existingMeasure, username);
 
-    checkMeasureLock(existingMeasure, username);
     if (username != null && existingMeasure.getCreatedBy() != null) {
       log.info("got username [{}] vs createdBy: [{}]", username, existingMeasure.getCreatedBy());
       // either owner or shared-with role
