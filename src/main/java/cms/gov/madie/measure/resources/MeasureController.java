@@ -89,7 +89,7 @@ public class MeasureController extends AbstractMeasureController {
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
       @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
       @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     Page<MeasureListDTO> measures;
     final Pageable pageReq =
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
@@ -105,22 +105,22 @@ public class MeasureController extends AbstractMeasureController {
     results.put(
         "ownedMeasures",
         measureService.countMeasuresByOwnership(
-            true, principal.getName(), List.of(OwnershipType.OWNED)));
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.OWNED)));
     results.put(
         "sharedMeasures",
         measureService.countMeasuresByOwnership(
-            true, principal.getName(), List.of(OwnershipType.SHARED)));
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.SHARED)));
     results.put(
         "allMeasures",
         measureService.countMeasuresByOwnership(
-            true, principal.getName(), List.of(OwnershipType.ALL)));
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.ALL)));
 
     return ResponseEntity.ok(results);
   }
 
   @GetMapping("/measures/{id}")
   public ResponseEntity<Measure> getMeasure(@PathVariable("id") String id, Principal principal) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     Optional<Measure> measureOptional = repository.findByIdAndActive(id, true);
     if (measureOptional.isPresent()) {
       Measure measure = measureOptional.get();
@@ -140,7 +140,7 @@ public class MeasureController extends AbstractMeasureController {
           boolean addDefaultCQL,
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     Measure savedMeasure =
         measureService.createMeasure(measure, username, accessToken, addDefaultCQL);
     return ResponseEntity.status(HttpStatus.CREATED).body(savedMeasure);
@@ -152,7 +152,7 @@ public class MeasureController extends AbstractMeasureController {
       @RequestBody TestCaseConfiguration testCaseConfig,
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     final Measure existingMeasure = measureService.findMeasureById(id);
     checkMeasureLock(existingMeasure, username);
     Measure updatedMeasure =
@@ -168,7 +168,7 @@ public class MeasureController extends AbstractMeasureController {
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
     ResponseEntity<Measure> response;
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     if (id == null || id.isEmpty() || !id.equals(measure.getId())) {
       log.info("got invalid id [{}] vs measureId: [{}]", id, measure.getId());
       throw new InvalidIdException("Measure", "Update (PUT)", "(PUT [base]/[resource]/[id])");
@@ -247,7 +247,8 @@ public class MeasureController extends AbstractMeasureController {
   public ResponseEntity<Measure> deactivateMeasure(
       @PathVariable("id") String id, Principal principal) {
 
-    return ResponseEntity.ok().body(measureService.deactivateMeasure(id, principal.getName()));
+    return ResponseEntity.ok()
+        .body(measureService.deactivateMeasure(id, principal.getName().toLowerCase()));
   }
 
   @PutMapping("/measures/{id}/acls")
@@ -270,13 +271,13 @@ public class MeasureController extends AbstractMeasureController {
       @RequestParam(name = "measureIds") List<String> measureIds,
       Principal principal) {
     return ResponseEntity.ok()
-        .body(measureService.getSharedMeasures(measureIds, principal.getName()));
+        .body(measureService.getSharedMeasures(measureIds, principal.getName().toLowerCase()));
   }
 
   @PutMapping("/measures/shared")
   public ResponseEntity<Map<String, List<AclSpecification>>> shareMeasures(
       @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     // Check lock for each measure being shared
     measureUserIdMap
         .keySet()
@@ -291,7 +292,7 @@ public class MeasureController extends AbstractMeasureController {
   @PutMapping("/measures/unshared")
   public ResponseEntity<Map<String, List<AclSpecification>>> unshareMeasures(
       @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     // Check lock for each measure being unshared
     measureUserIdMap
         .keySet()
@@ -321,7 +322,8 @@ public class MeasureController extends AbstractMeasureController {
       @PathVariable String measureId,
       Principal principal) {
     return ResponseEntity.status(HttpStatus.CREATED)
-        .body(groupService.createOrUpdateGroup(group, measureId, principal.getName()));
+        .body(
+            groupService.createOrUpdateGroup(group, measureId, principal.getName().toLowerCase()));
   }
 
   @PutMapping("/measures/{measureId}/groups")
@@ -329,7 +331,7 @@ public class MeasureController extends AbstractMeasureController {
       @RequestBody @Validated(Measure.ValidationSequence.class) Group group,
       @PathVariable String measureId,
       Principal principal) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     final Measure existingMeasure = measureService.findMeasureById(measureId);
     checkMeasureLock(existingMeasure, username);
     return ResponseEntity.ok(groupService.createOrUpdateGroup(group, measureId, username));
@@ -343,7 +345,7 @@ public class MeasureController extends AbstractMeasureController {
 
     log.info(
         "User [{}] is attempting to delete a group with Id [{}] from measure [{}]",
-        principal.getName(),
+        principal.getName().toLowerCase(),
         groupId,
         measureId);
     checkMeasureLock(measureService.findMeasureById(measureId), principal.getName().toLowerCase());
@@ -351,7 +353,8 @@ public class MeasureController extends AbstractMeasureController {
         groupService.deleteMeasureGroup(measureId, groupId, principal.getName().toLowerCase());
     // Setting measure.measureLock to null prevents the UI from deleting the existing measure lock.
     // Which is its own problem.
-    measure.setMeasureLock(measureService.getMeasureLock(measureId, principal.getName()));
+    measure.setMeasureLock(
+        measureService.getMeasureLock(measureId, principal.getName().toLowerCase()));
     return ResponseEntity.ok(measure);
   }
 
@@ -365,7 +368,7 @@ public class MeasureController extends AbstractMeasureController {
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(
             groupService.createOrUpdateStratification(
-                groupId, measureId, stratification, principal.getName()));
+                groupId, measureId, stratification, principal.getName().toLowerCase()));
   }
 
   @Deprecated
@@ -375,7 +378,7 @@ public class MeasureController extends AbstractMeasureController {
       @PathVariable String measureId,
       @PathVariable String groupId,
       Principal principal) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     final Measure existingMeasure = measureService.findMeasureById(measureId);
     checkMeasureLock(existingMeasure, username);
     return ResponseEntity.ok(
@@ -389,6 +392,7 @@ public class MeasureController extends AbstractMeasureController {
       @PathVariable String groupId,
       @PathVariable String stratificationId,
       Principal principal) {
+    final String username = principal.getName().toLowerCase();
 
     log.info(
         "User [{}] is attempting to delete a stratification with Id [{}] from group with Id [{}] from measure [{}]",
@@ -398,10 +402,9 @@ public class MeasureController extends AbstractMeasureController {
         measureId);
 
     final Measure existingMeasure = measureService.findMeasureById(measureId);
-    checkMeasureLock(existingMeasure, principal.getName());
+    checkMeasureLock(existingMeasure, username);
     return ResponseEntity.ok(
-        groupService.deleteStratification(
-            measureId, groupId, stratificationId, principal.getName()));
+        groupService.deleteStratification(measureId, groupId, stratificationId, username));
   }
 
   @PutMapping("/measures/searches")
@@ -413,7 +416,7 @@ public class MeasureController extends AbstractMeasureController {
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
       @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
       @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     final Pageable pageReq =
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
 
@@ -426,7 +429,7 @@ public class MeasureController extends AbstractMeasureController {
   @PutMapping("/measures/{measureSetId}/create-cms-id")
   public ResponseEntity<MeasureSet> createCmsId(
       @PathVariable String measureSetId, Principal principal) {
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     measureService.verifyAuthorizationByMeasureSetId(username, measureSetId, true);
     // Check lock for all measures in the measure set
     List<Measure> measuresInSet = repository.findAllByMeasureSetIdAndActive(measureSetId, true);
@@ -444,16 +447,17 @@ public class MeasureController extends AbstractMeasureController {
       @Value("${admin-api-key}") String apiKey,
       @RequestHeader(name = "harpId") String harpId,
       Principal principal) {
+    final String username = principal.getName().toLowerCase();
     log.info(
         "User [{}] - Started admin task [deleteCmsId] and is attempting to delete "
             + "CMS id [{}] from measure with measure id [{}]",
-        principal.getName(),
+        username,
         cmsId,
         measureId);
     final Measure existingMeasure = measureService.findMeasureById(measureId);
-    checkMeasureLock(existingMeasure, principal.getName());
+    checkMeasureLock(existingMeasure, username);
     return ResponseEntity.status(HttpStatus.OK)
-        .body(measureSetService.deleteCmsId(measureId, cmsId, harpId, principal.getName()));
+        .body(measureSetService.deleteCmsId(measureId, cmsId, harpId.toLowerCase(), username));
   }
 
   @PutMapping("/measures/cms-id-association")
@@ -462,16 +466,7 @@ public class MeasureController extends AbstractMeasureController {
       @RequestParam String qiCoreMeasureId,
       @RequestParam String qdmMeasureId,
       @RequestParam(defaultValue = "false") boolean copyMetaData) {
-    final String username = principal.getName();
-
-    if (StringUtils.isBlank(qiCoreMeasureId) || StringUtils.isBlank(qdmMeasureId)) {
-      log.info(
-          "CMS ID could not be associated. Measure Ids [{}],[{}] cannot be null",
-          qiCoreMeasureId,
-          qdmMeasureId);
-      throw new InvalidIdException("CMS ID could not be associated. Please try again.");
-    }
-
+    final String username = principal.getName().toLowerCase();
     // Check lock for both measures being associated
     final Measure qiCoreMeasure = measureService.findMeasureById(qiCoreMeasureId);
     final Measure qdmMeasure = measureService.findMeasureById(qdmMeasureId);
@@ -508,11 +503,11 @@ public class MeasureController extends AbstractMeasureController {
       @RequestParam(defaultValue = "false") boolean retainShareAccess,
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
-    log.info("transferMeasures to [{}] ", harpId);
+    log.info("transferMeasures to [{}] ", harpId.toLowerCase());
     if (CollectionUtils.isEmpty(measureIds)) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.emptyList());
     }
-    final String username = principal.getName();
+    final String username = principal.getName().toLowerCase();
     // Check lock for all measures being transferred
     measureIds.forEach(
         measureId -> {
@@ -522,7 +517,8 @@ public class MeasureController extends AbstractMeasureController {
           }
         });
     List<String> failedTransfers =
-        measureService.transferMeasures(measureIds, harpId, retainShareAccess, username);
+        measureService.transferMeasures(
+            measureIds, harpId.toLowerCase(), retainShareAccess, username);
     if (CollectionUtils.isEmpty(failedTransfers)) {
       return ResponseEntity.ok().build();
     } else {
@@ -534,7 +530,7 @@ public class MeasureController extends AbstractMeasureController {
   public ResponseEntity<List<Action>> getMeasureHistory(
       @PathVariable("id") String measureId, Principal principal) {
     return ResponseEntity.ok()
-        .body(measureService.getMeasureHistory(measureId, principal.getName()));
+        .body(measureService.getMeasureHistory(measureId, principal.getName().toLowerCase()));
   }
 
   /**

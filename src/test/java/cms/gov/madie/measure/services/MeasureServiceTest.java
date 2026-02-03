@@ -841,6 +841,7 @@ public class MeasureServiceTest implements ResourceUtil {
     Measure original =
         Measure.builder()
             .cqlLibraryName("OriginalLibName")
+            .cql("cql")
             .measureName("Measure1")
             .versionId("VersionId")
             .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
@@ -870,6 +871,7 @@ public class MeasureServiceTest implements ResourceUtil {
             .measureSetId("MeasureSetId")
             .model(ModelType.QI_CORE.getValue())
             .cqlLibraryName("CqlLibraryName")
+            .cql("cql")
             .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
             .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
             .createdAt(createdAt)
@@ -2194,6 +2196,7 @@ public class MeasureServiceTest implements ResourceUtil {
     Measure updatingMeasure = new Measure();
     updatingMeasure.setModel(ModelType.QI_CORE.getValue());
     updatingMeasure.setGroups(groups);
+    updatingMeasure.setCql("cql");
 
     measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
 
@@ -2212,6 +2215,7 @@ public class MeasureServiceTest implements ResourceUtil {
     Measure updatingMeasure = new Measure();
     updatingMeasure.setModel(ModelType.QDM_5_6.getValue());
     updatingMeasure.setGroups(groups);
+    updatingMeasure.setCql("cql");
 
     measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
 
@@ -2224,6 +2228,7 @@ public class MeasureServiceTest implements ResourceUtil {
     Measure updatingMeasure = new Measure();
     updatingMeasure.setModel(ModelType.QI_CORE.getValue());
     updatingMeasure.setGroups(Collections.emptyList());
+    updatingMeasure.setCql("cql");
 
     measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
 
@@ -2238,6 +2243,7 @@ public class MeasureServiceTest implements ResourceUtil {
     Measure updatingMeasure = new Measure();
     updatingMeasure.setModel(ModelType.QI_CORE.getValue());
     updatingMeasure.setGroups(List.of(group));
+    updatingMeasure.setCql("cql");
 
     measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
 
@@ -2694,5 +2700,25 @@ public class MeasureServiceTest implements ResourceUtil {
     assertEquals(
         "Code suffixes must be 4 characters or less. Please correct the code: Therapy Appropriate (12345) with suffix: 12345",
         exception.getMessage());
+  }
+
+  @Test
+  public void testUpdateMeasureThrowsExceptionForNullCql() {
+    Measure original =
+        Measure.builder()
+            .cqlLibraryName("libraryName")
+            .measureName("Measure1")
+            .cql("Some CQL Content")
+            .active(true)
+            .build();
+
+    Measure updated = original.toBuilder().cql(null).active(true).build();
+
+    when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
+        .thenReturn(false);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
   }
 }

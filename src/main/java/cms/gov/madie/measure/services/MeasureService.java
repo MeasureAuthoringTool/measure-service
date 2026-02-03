@@ -231,6 +231,9 @@ public class MeasureService extends BaseMeasureService {
     if (StringUtils.isBlank(existingMeasure.getMeasureSetId())) {
       existingMeasure.setMeasureSetId(UUID.randomUUID().toString());
     }
+    if (StringUtils.isBlank(updatingMeasure.getCql())) {
+      throw new InvalidRequestException("Cql is required.");
+    }
     // on cql change, update the included libraries & validate code suffixes
     if (!Strings.CS.equals(updatingMeasure.getCql(), existingMeasure.getCql())) {
       CqlTextParser parser = new CqlTextParser(updatingMeasure.getCql());
