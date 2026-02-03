@@ -22,7 +22,8 @@ public class SecurityConfig {
   };
 
   @Bean
-  protected SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+  protected SecurityFilterChain filterChain(
+      HttpSecurity http, CustomAccessDeniedHandler customAccessDeniedHandler) throws Exception {
     http.cors(withDefaults())
         .csrf(csrfConfigure -> csrfConfigure.ignoringRequestMatchers(CSRF_WHITELIST))
         .authorizeHttpRequests(
@@ -43,6 +44,8 @@ public class SecurityConfig {
                     .contentSecurityPolicy(
                         contentSecurityPolicyConfig ->
                             contentSecurityPolicyConfig.policyDirectives("script-src 'self'")));
+
+    http.exceptionHandling().accessDeniedHandler(customAccessDeniedHandler);
     return http.build();
   }
 }
