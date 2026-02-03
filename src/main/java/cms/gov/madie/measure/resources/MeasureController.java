@@ -463,6 +463,15 @@ public class MeasureController extends AbstractMeasureController {
       @RequestParam String qdmMeasureId,
       @RequestParam(defaultValue = "false") boolean copyMetaData) {
     final String username = principal.getName();
+
+    if (StringUtils.isBlank(qiCoreMeasureId) || StringUtils.isBlank(qdmMeasureId)) {
+      log.info(
+          "CMS ID could not be associated. Measure Ids [{}],[{}] cannot be null",
+          qiCoreMeasureId,
+          qdmMeasureId);
+      throw new InvalidIdException("CMS ID could not be associated. Please try again.");
+    }
+
     // Check lock for both measures being associated
     final Measure qiCoreMeasure = measureService.findMeasureById(qiCoreMeasureId);
     final Measure qdmMeasure = measureService.findMeasureById(qdmMeasureId);

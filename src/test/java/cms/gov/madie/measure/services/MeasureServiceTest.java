@@ -1407,20 +1407,6 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testAssociateCmsIdThrowsExceptionForNullQiCoreMeasureId() {
-    assertThrows(
-        InvalidIdException.class,
-        () -> measureService.associateCmsId("OWNER", null, "qdmId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionForNullQDMCoreMeasureId() {
-    assertThrows(
-        InvalidIdException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreId", null, false));
-  }
-
-  @Test
   public void testAssociateCmsIdThrowsExceptionWhenMeasuresWithGivenIdNotFound() {
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
     assertThrows(

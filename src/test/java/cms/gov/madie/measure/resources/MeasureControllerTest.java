@@ -1293,4 +1293,36 @@ class MeasureControllerTest {
     assertEquals("newMeasureId", response.getBody().getNewMeasureId());
     assertTrue(response.getBody().getComparisons().isEmpty());
   }
+
+  @Test
+  void associateCmsIdThrowsExceptionWhenQiCoreMeasureIdIsBlank() {
+    String qiCoreMeasureId = "";
+    String qdmMeasureId = "validQdmMeasureId";
+    when(principal.getName()).thenReturn("test.user");
+
+    InvalidIdException exception =
+        assertThrows(
+            InvalidIdException.class,
+            () -> controller.associateCmsId(principal, qiCoreMeasureId, qdmMeasureId, false));
+
+    assertThat(
+        exception.getMessage(), is(equalTo("CMS ID could not be associated. Please try again.")));
+    verifyNoInteractions(measureService);
+  }
+
+  @Test
+  void associateCmsIdThrowsExceptionWhenQdmMeasureIdIsBlank() {
+    String qiCoreMeasureId = "validQiCoreMeasureId";
+    String qdmMeasureId = "";
+    when(principal.getName()).thenReturn("test.user");
+
+    InvalidIdException exception =
+        assertThrows(
+            InvalidIdException.class,
+            () -> controller.associateCmsId(principal, qiCoreMeasureId, qdmMeasureId, false));
+
+    assertThat(
+        exception.getMessage(), is(equalTo("CMS ID could not be associated. Please try again.")));
+    verifyNoInteractions(measureService);
+  }
 }
