@@ -159,7 +159,7 @@ public class MeasureSetService {
                   }
                 });
       }
-
+      changeMeasureSetAlcsToLowerCase(measureSet);
       MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
       log.info("ACL updated for Measure set [{}]", updatedMeasureSet.getId());
 
@@ -349,7 +349,7 @@ public class MeasureSetService {
 
     // Only the original owner can transfer ownership for non-admin users that conduct the
     // changeOwnership action
-    if (!originalOwner.equals(conductedBy) && !"admin".equalsIgnoreCase(conductedBy)) {
+    if (!originalOwner.equalsIgnoreCase(conductedBy) && !"admin".equalsIgnoreCase(conductedBy)) {
       log.error(
           "User [{}] attempted to transfer ownership of measure set [{}] but is not the original owner [{}].",
           conductedBy,
@@ -389,14 +389,18 @@ public class MeasureSetService {
     if (retainShareAccess) {
       List<AclSpecification> acls =
           !CollectionUtils.isEmpty(measureSet.getAcls()) ? measureSet.getAcls() : new ArrayList<>();
-      acls.add(
-          AclSpecification.builder()
-              .userId(originalOwner)
-              .roles(Set.of(RoleEnum.SHARED_WITH))
-              .build());
+      boolean hasUserAlreadyBeenSharedWith =
+          acls.stream().anyMatch(acl -> originalOwner.equalsIgnoreCase(acl.getUserId()));
+      if (!hasUserAlreadyBeenSharedWith) {
+        acls.add(
+            AclSpecification.builder()
+                .userId(originalOwner.toLowerCase())
+                .roles(Set.of(RoleEnum.SHARED_WITH))
+                .build());
+      }
       measureSet.setAcls(acls);
     }
-
+    changeMeasureSetAlcsToLowerCase(measureSet);
     MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
 
     log.info(
@@ -443,5 +447,13 @@ public class MeasureSetService {
     }
 
     return updatedMeasureSet;
+  }
+
+  private void changeMeasureSetAlcsToLowerCase(MeasureSet measureSet) {
+    String ownerLower = measureSet.getOwner().toLowerCase();
+    measureSet.setOwner(ownerLower);
+    if (CollectionUtils.isNotEmpty(measureSet.getAcls())) {
+      measureSet.getAcls().stream().forEach(acl -> acl.setUserId(acl.getUserId().toLowerCase()));
+    }
   }
 }
