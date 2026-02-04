@@ -311,7 +311,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                 displayName = lastName;
               }
 
-              dto.setOwnerDisplayName(StringUtils.isNotBlank(displayName) ? displayName : "-");
+              dto.setOwnerDisplayName(
+                  StringUtils.isNotBlank(displayName)
+                      ? displayName
+                      : StringUtils.isNotBlank(ownerHarpId) ? ownerHarpId : "-");
             } else {
               // Fallback to '-' if user details not found
               dto.setOwnerDisplayName("-");

@@ -862,7 +862,7 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
-  public void testPopulateOwnerDisplayNamesWithEmptyNames() {
+  public void testPopulateOwnerDisplayNamesWithHarpIdWhenFirstAndLastNameIsNull() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
@@ -900,7 +900,7 @@ public class MeasureSearchServiceImplTest {
             "userId", pageRequest, null, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getContent().size());
-    assertEquals("-", page.getContent().get(0).getOwnerDisplayName());
+    assertEquals("harpId1", page.getContent().get(0).getOwnerDisplayName());
   }
 
   @Test
