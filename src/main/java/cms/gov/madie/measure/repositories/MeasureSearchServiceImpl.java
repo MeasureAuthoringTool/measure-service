@@ -301,7 +301,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               String firstName = userDetails.getFirstName();
               String lastName = userDetails.getLastName();
 
-              // Concatenate firstName and lastName
               String displayName = "";
               if (StringUtils.isNotBlank(firstName) && StringUtils.isNotBlank(lastName)) {
                 displayName = firstName + " " + lastName;
@@ -316,7 +315,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                       ? displayName
                       : StringUtils.isNotBlank(ownerHarpId) ? ownerHarpId : "-");
             } else {
-              // Fallback to '-' if user details not found
               dto.setOwnerDisplayName("-");
             }
           }
