@@ -159,7 +159,7 @@ public class MeasureSetService {
                   }
                 });
       }
-      changeMeasureSetAlcsToLowerCase(measureSet);
+
       MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
       log.info("ACL updated for Measure set [{}]", updatedMeasureSet.getId());
 
@@ -400,7 +400,7 @@ public class MeasureSetService {
       }
       measureSet.setAcls(acls);
     }
-    changeMeasureSetAlcsToLowerCase(measureSet);
+
     MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
 
     log.info(
@@ -447,13 +447,5 @@ public class MeasureSetService {
     }
 
     return updatedMeasureSet;
-  }
-
-  private void changeMeasureSetAlcsToLowerCase(MeasureSet measureSet) {
-    String ownerLower = measureSet.getOwner().toLowerCase();
-    measureSet.setOwner(ownerLower);
-    if (CollectionUtils.isNotEmpty(measureSet.getAcls())) {
-      measureSet.getAcls().stream().forEach(acl -> acl.setUserId(acl.getUserId().toLowerCase()));
-    }
   }
 }
