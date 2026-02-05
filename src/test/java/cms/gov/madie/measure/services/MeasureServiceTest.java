@@ -2721,4 +2721,24 @@ public class MeasureServiceTest implements ResourceUtil {
         InvalidRequestException.class,
         () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
   }
+
+  @Test
+  public void testUpdateMeasureThrowsExceptionForWhenCqlIsNull() {
+    Measure original =
+        Measure.builder()
+            .cqlLibraryName("OriginalLibName")
+            .measureName("Measure1")
+            .versionId("VersionId")
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .build();
+
+    Measure updated = original.toBuilder().cql(null).build();
+    when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
+        .thenReturn(false);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+  }
 }
