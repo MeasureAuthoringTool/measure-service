@@ -7,11 +7,12 @@
     "permissions": {
       "licenses": [
         {
-          "name": "",
-          "URL": ""
+            "name": "CC0-1.0",
+            "URL": "https://github.com/MeasureAuthoringTool/madie-java-models/blob/main/LICENSE"
         }
       ],
-      "usageType": ["openSource"]
+      "usageType": ["openSource"],
+      "exemptionText": ""
     },
     "organization": "Centers for Medicare & Medicaid Services",
     "repositoryURL": "https://github.com/MeasureAuthoringTool/madie-measure-service",
