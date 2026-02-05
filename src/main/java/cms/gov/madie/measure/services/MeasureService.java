@@ -231,7 +231,7 @@ public class MeasureService extends BaseMeasureService {
     if (StringUtils.isBlank(existingMeasure.getMeasureSetId())) {
       existingMeasure.setMeasureSetId(UUID.randomUUID().toString());
     }
-    if (StringUtils.isBlank(updatingMeasure.getCql())) {
+    if (updatingMeasure.getCql() == null) {
       throw new InvalidRequestException("Cql is required.");
     }
     // on cql change, update the included libraries & validate code suffixes
@@ -738,13 +738,6 @@ public class MeasureService extends BaseMeasureService {
 
   public MeasureSet associateCmsId(
       String username, String qiCoreMeasureId, String qdmMeasureId, boolean copyMetaData) {
-    if (StringUtils.isBlank(qiCoreMeasureId) || StringUtils.isBlank(qdmMeasureId)) {
-      log.info(
-          "CMS ID could not be associated. Measure Ids [{}],[{}] cannot be null",
-          qiCoreMeasureId,
-          qdmMeasureId);
-      throw new InvalidIdException("CMS ID could not be associated. Please try again.");
-    }
 
     Measure qiCoreMeasure = findMeasureById(qiCoreMeasureId);
     Measure qdmMeasure = findMeasureById(qdmMeasureId);

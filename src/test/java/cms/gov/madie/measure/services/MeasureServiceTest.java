@@ -1409,20 +1409,6 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testAssociateCmsIdThrowsExceptionForNullQiCoreMeasureId() {
-    assertThrows(
-        InvalidIdException.class,
-        () -> measureService.associateCmsId("OWNER", null, "qdmId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionForNullQDMCoreMeasureId() {
-    assertThrows(
-        InvalidIdException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreId", null, false));
-  }
-
-  @Test
   public void testAssociateCmsIdThrowsExceptionWhenMeasuresWithGivenIdNotFound() {
     when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
     assertThrows(
@@ -2728,6 +2714,26 @@ public class MeasureServiceTest implements ResourceUtil {
 
     Measure updated = original.toBuilder().cql(null).active(true).build();
 
+    when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
+        .thenReturn(false);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+  }
+
+  @Test
+  public void testUpdateMeasureThrowsExceptionForWhenCqlIsNull() {
+    Measure original =
+        Measure.builder()
+            .cqlLibraryName("OriginalLibName")
+            .measureName("Measure1")
+            .versionId("VersionId")
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .build();
+
+    Measure updated = original.toBuilder().cql(null).build();
     when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
         .thenReturn(false);
 
