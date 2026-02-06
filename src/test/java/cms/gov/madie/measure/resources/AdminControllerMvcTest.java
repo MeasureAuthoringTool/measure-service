@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.SecurityConfig;
+import cms.gov.madie.measure.SecurityConfigTest;
 import cms.gov.madie.measure.dto.JobStatus;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
@@ -57,7 +57,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest({AdminController.class})
 @ActiveProfiles("test")
-@Import(SecurityConfig.class)
+@Import({SecurityConfigTest.class})
 public class AdminControllerMvcTest {
   private static final String ADMIN_TEST_API_KEY_HEADER = "api-key";
   private static final String ADMIN_TEST_API_KEY_HEADER_VALUE = "0a51991c";
@@ -925,7 +925,7 @@ public class AdminControllerMvcTest {
             eq(measureId),
             eq(Measure.class),
             eq(ActionType.VERSION_REVERT),
-            eq(principalName.toLowerCase()),
+            eq(TEST_USER_ID),
             eq(String.format("Reverted from version %s to %s", inCorrectVersion, correctVersion)));
   }
 

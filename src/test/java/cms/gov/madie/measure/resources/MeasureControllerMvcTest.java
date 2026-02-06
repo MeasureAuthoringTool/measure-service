@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.SecurityConfig;
+import cms.gov.madie.measure.SecurityConfigTest;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -62,7 +62,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest({MeasureController.class})
 @ActiveProfiles("test")
-@Import(SecurityConfig.class)
+@Import(SecurityConfigTest.class)
 public class MeasureControllerMvcTest {
 
   @MockitoBean private MeasureRepository measureRepository;
@@ -1187,7 +1187,7 @@ public class MeasureControllerMvcTest {
             .andExpect(status().isForbidden())
             .andReturn();
     String resultStr = result.getResponse().getErrorMessage();
-    assertEquals("Forbidden", resultStr);
+    assertEquals("Access Denied", resultStr);
   }
 
   @Test

@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.SecurityConfig;
+import cms.gov.madie.measure.SecurityConfigTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -17,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest({LoggingController.class})
 @ActiveProfiles("test")
-@Import(SecurityConfig.class)
+@Import(SecurityConfigTest.class)
 public class LoggingControllerMvcTest {
 
   @Autowired private MockMvc mockMvc;
