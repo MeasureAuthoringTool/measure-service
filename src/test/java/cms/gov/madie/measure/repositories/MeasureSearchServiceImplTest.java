@@ -1519,7 +1519,6 @@ public class MeasureSearchServiceImplTest {
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
             "userId", pageRequest, null, List.of(OwnershipType.OWNED));
-
     assertEquals(2, page.getContent().size());
     assertEquals("harpId1", page.getContent().get(0).getOwnerDisplayName());
     assertEquals("-", page.getContent().get(1).getOwnerDisplayName());
