@@ -79,6 +79,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private MeasureLockService measureLockService;
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
+  @InjectMocks private MeasureSetService measureSetServiceMock;
 
   private Group group2;
   private MeasureMetaData draftMeasureMetaData;
@@ -2722,7 +2723,6 @@ public class MeasureServiceTest implements ResourceUtil {
         () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
   }
 
-  @Test
   public void testUpdateMeasureThrowsExceptionForWhenCqlIsNull() {
     Measure original =
         Measure.builder()
@@ -2740,5 +2740,74 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThrows(
         InvalidRequestException.class,
         () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+  }
+
+  @Test
+  public void testChangeOwnershipOriginalMeasureSetDoesNotHaveAcls() {
+    String measureSetId = "measureSetId1";
+    String originalOwner = "originalOwner";
+    String newOwner = "newOwner";
+    MeasureSet measureSet = MeasureSet.builder().id(measureSetId).owner(originalOwner).build();
+
+    MeasureSet updatedMeasureSet =
+        measureSet.toBuilder()
+            .owner(newOwner)
+            .acls(
+                List.of(
+                    AclSpecification.builder()
+                        .userId(originalOwner)
+                        .roles(Set.of(RoleEnum.SHARED_WITH))
+                        .build()))
+            .build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result =
+        measureSetServiceMock.changeOwnership(measureSetId, "user123", true, "admin");
+    assertNotNull(result);
+    assertEquals(newOwner, result.getOwner());
+    assertTrue(result.getAcls() != null && !result.getAcls().isEmpty());
+  }
+
+  @Test
+  public void testChangeOwnershipMeasureSetAlreadySharedWithUser() {
+    String measureSetId = "measureSetId1";
+    String originalOwner = "originalOwner";
+    String newOwner = "newOwner";
+    MeasureSet measureSet =
+        MeasureSet.builder()
+            .id(measureSetId)
+            .owner(originalOwner)
+            .acls(
+                new ArrayList<>(
+                    List.of(
+                        AclSpecification.builder()
+                            .userId(originalOwner)
+                            .roles(Set.of(RoleEnum.SHARED_WITH))
+                            .build())))
+            .build();
+    MeasureSet updatedMeasureSet =
+        measureSet.toBuilder()
+            .owner(newOwner)
+            .acls(
+                List.of(
+                    AclSpecification.builder()
+                        .userId(originalOwner)
+                        .roles(Set.of(RoleEnum.SHARED_WITH))
+                        .build()))
+            .build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result =
+        measureSetServiceMock.changeOwnership(measureSetId, newOwner, true, "admin");
+    assertNotNull(result);
+    assertEquals(newOwner, result.getOwner());
+    assertTrue(result.getAcls() != null && !result.getAcls().isEmpty());
+    assertEquals(1, result.getAcls().size());
+    assertEquals(originalOwner, result.getAcls().get(0).getUserId());
+    assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
   }
 }

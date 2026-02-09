@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.SecurityConfig;
+import cms.gov.madie.measure.SecurityConfigTest;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -62,7 +62,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest({MeasureController.class})
 @ActiveProfiles("test")
-@Import(SecurityConfig.class)
+@Import(SecurityConfigTest.class)
 public class MeasureControllerMvcTest {
 
   @MockitoBean private MeasureRepository measureRepository;
@@ -192,6 +192,7 @@ public class MeasureControllerMvcTest {
             .model(MODEL)
             .versionId(measureId)
             .measureSetId(measureSetId)
+            .measureMetaData((MeasureMetaData.builder().draft(true).build()))
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setSteward(steward);
@@ -277,6 +278,7 @@ public class MeasureControllerMvcTest {
             .model(MODEL)
             .versionId(measureId)
             .measureSetId(measureSetId)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setSteward(steward);
@@ -731,6 +733,7 @@ public class MeasureControllerMvcTest {
     priorMeasure.setEcqmTitle("ecqmTitle");
     priorMeasure.setVersionId(priorMeasure.getId());
     priorMeasure.setMeasureSetId("measureSetId");
+    priorMeasure.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
     when(measureService.findMeasureById(anyString())).thenReturn(priorMeasure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
@@ -786,6 +789,7 @@ public class MeasureControllerMvcTest {
     priorMeasure.setEcqmTitle("ecqmTitle");
     priorMeasure.setMeasureSetId("measureSetId");
     priorMeasure.setVersionId(priorMeasure.getId());
+    priorMeasure.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
     when(measureService.findMeasureById(anyString())).thenReturn(priorMeasure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
@@ -900,6 +904,7 @@ public class MeasureControllerMvcTest {
     saved.setVersionId(measureId);
     saved.setImprovementNotation("Other");
     saved.setImprovementNotationDescription("TestingOther");
+    saved.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
     when(measureService.findMeasureById(anyString())).thenReturn(saved);
     when(measureService.updateMeasure(
             any(Measure.class), anyString(), any(Measure.class), anyString()))
@@ -1058,6 +1063,7 @@ public class MeasureControllerMvcTest {
     saved.setModel(MODEL);
     saved.setVersionId(measureId);
     saved.setMeasureSetId(measureSetId);
+    saved.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
 
     when(measureService.findMeasureById(anyString())).thenReturn(saved);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
@@ -1181,7 +1187,7 @@ public class MeasureControllerMvcTest {
             .andExpect(status().isForbidden())
             .andReturn();
     String resultStr = result.getResponse().getErrorMessage();
-    assertEquals("Forbidden", resultStr);
+    assertEquals("Access Denied", resultStr);
   }
 
   @Test
