@@ -8,6 +8,8 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
+import cms.gov.madie.measure.clients.UserServiceRoleConverter;
+
 import static org.springframework.security.config.Customizer.withDefaults;
 
 @Configuration
@@ -23,20 +25,31 @@ public class SecurityConfig {
 
   @Bean
   protected SecurityFilterChain filterChain(
-      HttpSecurity http, CustomAccessDeniedHandler customAccessDeniedHandler) throws Exception {
+      HttpSecurity http,
+      CustomAccessDeniedHandler customAccessDeniedHandler,
+      UserServiceRoleConverter roleConverter)
+      throws Exception {
+
     http.cors(withDefaults())
         .csrf(csrfConfigure -> csrfConfigure.ignoringRequestMatchers(CSRF_WHITELIST))
         .authorizeHttpRequests(
             authorizeRequests ->
-                authorizeRequests.requestMatchers(HttpMethod.POST, "/organizations/**").permitAll())
-        .authorizeHttpRequests(
-            authorizeRequests -> authorizeRequests.requestMatchers(AUTH_WHITELIST).permitAll())
-        .authorizeHttpRequests(authorizeRequests -> authorizeRequests.anyRequest().authenticated())
+                authorizeRequests
+                    .requestMatchers(HttpMethod.POST, "/organizations/**")
+                    .permitAll() // TODO: move to admin controller with MADIE-ADMIN role access
+                    .requestMatchers(AUTH_WHITELIST)
+                    .permitAll()
+                    .requestMatchers("/admin/**")
+                    .hasRole("MADIE-ADMIN")
+                    .anyRequest()
+                    .authenticated())
         .sessionManagement(
             sessionManagement ->
                 sessionManagement.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .oauth2ResourceServer(
-            oAuth2ResourceServerConfigurer -> oAuth2ResourceServerConfigurer.jwt(withDefaults()))
+            oAuth2ResourceServerConfigurer ->
+                oAuth2ResourceServerConfigurer.jwt(
+                    jwt -> jwt.jwtAuthenticationConverter(roleConverter)))
         .headers(
             headers ->
                 headers

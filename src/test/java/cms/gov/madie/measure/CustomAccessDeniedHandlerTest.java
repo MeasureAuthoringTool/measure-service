@@ -29,7 +29,7 @@ public class CustomAccessDeniedHandlerTest {
 
     verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
     printWriter.flush();
-    assertTrue(stringWriter.toString().contains("Forbidden: Invalid API Key"));
+    assertTrue(stringWriter.toString().contains("Forbidden: Invalid user role"));
   }
 
   @Test
@@ -52,6 +52,6 @@ public class CustomAccessDeniedHandlerTest {
 
     verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
     printWriter.flush();
-    assertTrue(stringWriter.toString().contains("Forbidden: Invalid API Key"));
+    assertTrue(stringWriter.toString().contains("Forbidden: Invalid user role"));
   }
 }

@@ -70,10 +70,9 @@ public class AdminController extends AbstractMeasureController {
   private int concurrencyLimit;
 
   @PutMapping("/measures/test-cases/validations")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<MeasureTestCaseValidationReportSummary> validateAllMeasureTestCases(
       HttpServletRequest request,
-      @Value("${admin-api-key}") String apiKey,
       Principal principal,
       @RequestHeader("Authorization") String accessToken,
       @RequestParam(name = "draftOnly", defaultValue = "true") boolean draftOnly)
@@ -160,10 +159,9 @@ public class AdminController extends AbstractMeasureController {
    * @return Count of test cases placed back on the validation queue.
    */
   @PutMapping("/measures/test-cases/restart-validation")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Integer> resetTestCaseValidationQueue(
       HttpServletRequest request,
-      @Value("${admin-api-key}") String apiKey,
       Principal principal,
       @RequestParam(name = "draftOnly", defaultValue = "true") boolean draftOnly,
       @RequestParam(name = "force", defaultValue = "false") boolean force,
@@ -292,10 +290,9 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @DeleteMapping("/measures/{id}")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Measure> permDeleteMeasure(
       HttpServletRequest request,
-      @Value("${admin-api-key}") String apiKey,
       Principal principal,
       @RequestHeader("Authorization") String accessToken,
       @RequestHeader(name = "harpId") String harpId,
@@ -318,10 +315,9 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @GetMapping("/measures/sharedWith")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<Map<String, Object>>> getMeasureSharedWith(
       HttpServletRequest request,
-      @Value("${admin-api-key}") String apiKey,
       Principal principal,
       @RequestHeader("Authorization") String accessToken,
       @RequestHeader(name = "harpId") String harpId,
@@ -353,10 +349,9 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @PutMapping("/measures/{id}/correct-version")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Measure> correctMeasureVersion(
       HttpServletRequest request,
-      @Value("${admin-api-key}") String apiKey,
       @RequestHeader(name = "harpId") String harpId,
       Principal principal,
       @PathVariable String id,
@@ -434,10 +429,9 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @PutMapping("/measures/{id}")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Measure> overwriteExpectedValues(
       HttpServletRequest request,
-      @Value("${admin-api-key}") String apiKey,
       Principal principal,
       @PathVariable String id,
       @RequestBody @Valid Measure sourceMeasure) {
@@ -592,10 +586,9 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @DeleteMapping("/measures/test-cases/locks")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<String>> unlockAllByUser(
       HttpServletRequest request,
-      @Value("${admin-api-key}") String apiKey,
       @RequestHeader(name = "harpId") String harpId,
       Principal principal) {
     log.info("Unlock measures, test cases for user: " + harpId);
@@ -619,10 +612,9 @@ public class AdminController extends AbstractMeasureController {
    * @return ResponseEntity wrapping a List<Integer> case numbers of updated test cases
    */
   @PutMapping("/measures/{id}/testcases/code-system-correction")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<Integer>> updateCodeSystemInTestCaseJson(
       HttpServletRequest request,
-      @Value("${admin-api-key}") String apiKey,
       Principal principal,
       @PathVariable String id,
       @RequestParam String incorrectCodeSystem,
@@ -647,13 +639,12 @@ public class AdminController extends AbstractMeasureController {
    * </ul>
    */
   @PutMapping("/measures/ownership")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
+  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<String>> changeOwnership(
       HttpServletRequest request,
       @RequestBody List<String> measureIds,
       @RequestParam(required = true, name = "harpId") String harpId,
       @RequestParam(defaultValue = "false") boolean retainShareAccess,
-      @Value("${admin-api-key}") String apiKey,
       Principal principal) {
     log.info(
         "User [{}] - Starting admin task [changeOwnership] to [{}] for measureIds: [{}]",
