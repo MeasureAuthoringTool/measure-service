@@ -146,7 +146,6 @@ public class AdminController extends AbstractMeasureController {
    * avoid excessive load on the save queue.
    *
    * @param request Spring-ism.
-   * @param apiKey Admin API key value.
    * @param principal Security principal.
    * @param draftOnly (Optional, default=true) If true, only draft measures are considered. False
    *     includes all active measures.
@@ -604,7 +603,6 @@ public class AdminController extends AbstractMeasureController {
    * correctCodeSystem in each test case resource tied to the Measure id.
    *
    * @param request HTTP servlet request (context only)
-   * @param apiKey Injected admin API key value (compared against request header)
    * @param principal Authenticated user performing the correction
    * @param id Measure identifier whose test cases are to be updated
    * @param incorrectCodeSystem Code system string to search for
