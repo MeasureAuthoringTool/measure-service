@@ -1366,4 +1366,20 @@ class MeasureControllerTest {
     assertFalse(((QdmMeasure) result).isPatientBasis());
     assertTrue(((QdmMeasure) result).getTestCases().get(0).getGroupPopulations().isEmpty());
   }
+
+  @Test
+  void getMeasuresByIds_ReturnsEmptyListWhenInputIdsEmpty() {
+    List<String> emptyIds = List.of();
+    when(measureService.getMeasuresByObjectIds(emptyIds)).thenReturn(List.of());
+
+    ResponseEntity<List<MeasureListDTO>> response = controller.getMeasuresByIds(emptyIds);
+
+    assertNotNull(response);
+    assertEquals(200, response.getStatusCodeValue());
+    assertNotNull(response.getBody());
+    assertTrue(response.getBody().isEmpty());
+
+    verify(measureService, times(1)).getMeasuresByObjectIds(emptyIds);
+    verifyNoMoreInteractions(measureService);
+  }
 }
