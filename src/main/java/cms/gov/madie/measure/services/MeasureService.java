@@ -951,4 +951,9 @@ public class MeasureService extends BaseMeasureService {
     }
     return null;
   }
+
+  public List<MeasureListDTO> getMeasuresByObjectIds(List<String> ids) {
+    if (ids == null || ids.isEmpty()) return List.of();
+    return measureRepository.findAllByIdIn(ids);
+  }
 }

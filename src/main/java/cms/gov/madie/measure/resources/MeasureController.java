@@ -601,4 +601,11 @@ public class MeasureController extends AbstractMeasureController {
     log.info("Comparison complete: {} file comparison(s)", comparisons.size());
     return ResponseEntity.ok(result);
   }
+
+  @PostMapping(value = "/measures/by-ids")
+  public ResponseEntity<List<MeasureListDTO>> getMeasuresByIds(@RequestBody List<String> ids) {
+    List<MeasureListDTO> results = measureService.getMeasuresByObjectIds(ids);
+
+    return ResponseEntity.ok(results);
+  }
 }
