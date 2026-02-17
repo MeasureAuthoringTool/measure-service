@@ -1368,7 +1368,7 @@ class MeasureControllerTest {
   }
 
   @Test
-  void getMeasuresByIds_ReturnsEmptyListWhenInputIdsEmpty() {
+  void getMeasuresByIdsReturnsEmptyListWhenInputIdsEmpty() {
     List<String> emptyIds = List.of();
     when(measureService.getMeasuresByObjectIds(emptyIds)).thenReturn(List.of());
 
@@ -1384,7 +1384,7 @@ class MeasureControllerTest {
   }
 
   @Test
-  void getMeasuresByIds_ReturnsListWhenInputIdsNonEmpty_VersionIsClass() {
+  void getMeasuresByIdsReturnsListWhenInputIdsNonEmptyVersionIsClass() {
     List<String> ids = List.of("m1", "m2");
     MeasureListDTO dto1 =
         MeasureListDTO.builder()
