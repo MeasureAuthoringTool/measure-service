@@ -2810,4 +2810,50 @@ public class MeasureServiceTest implements ResourceUtil {
     assertEquals(originalOwner, result.getAcls().get(0).getUserId());
     assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
   }
+
+  @Test
+  void returnsEmptyListWhenIdsNullOrEmptyAndDoesNotCallRepository() {
+    List<MeasureListDTO> resultNull = measureService.getMeasuresByObjectIds(null);
+    assertNotNull(resultNull);
+    assertTrue(resultNull.isEmpty());
+    verifyNoInteractions(measureRepository);
+
+    List<MeasureListDTO> resultEmpty = measureService.getMeasuresByObjectIds(List.of());
+    assertNotNull(resultEmpty);
+    assertTrue(resultEmpty.isEmpty());
+    verifyNoMoreInteractions(measureRepository);
+  }
+
+  @Test
+  void returnsEmptyListWhenAllIdsAreNullAfterFilteringAndDoesNotCallRepository() {
+    List<String> inputIds = Arrays.asList(null, null);
+    List<MeasureListDTO> result = measureService.getMeasuresByObjectIds(inputIds);
+
+    assertNotNull(result);
+    assertTrue(result.isEmpty());
+    verifyNoInteractions(measureRepository);
+  }
+
+  @Test
+  void dedupesAndFiltersNullsThenCallsRepositoryWithUniqueIdsAndReturnsRepositoryResult() {
+    List<String> inputIds = Arrays.asList("m1", "m2", "m1", null, "m3", "m2");
+    List<MeasureListDTO> repoResponse =
+        List.of(
+            MeasureListDTO.builder().id("m1").measureName("Alpha").build(),
+            MeasureListDTO.builder().id("m2").measureName("Beta").build(),
+            MeasureListDTO.builder().id("m3").measureName("Gamma").build());
+
+    when(measureRepository.findAllByIdIn(List.of("m1", "m2", "m3"))).thenReturn(repoResponse);
+
+    List<MeasureListDTO> result = measureService.getMeasuresByObjectIds(inputIds);
+
+    assertNotNull(result);
+    assertEquals(3, result.size());
+    assertEquals("m1", result.get(0).getId());
+    assertEquals("m2", result.get(1).getId());
+    assertEquals("m3", result.get(2).getId());
+
+    verify(measureRepository, times(1)).findAllByIdIn(List.of("m1", "m2", "m3"));
+    verifyNoMoreInteractions(measureRepository);
+  }
 }
