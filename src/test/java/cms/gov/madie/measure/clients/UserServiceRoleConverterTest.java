@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.clients;
 
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
@@ -39,11 +41,13 @@ public class UserServiceRoleConverterTest {
 
     var result = converter.convert(jwt);
     // Assert that the result is not null and contains the expected authorities
-    assert (result != null);
-    assert (result.getAuthorities().stream()
-        .anyMatch(auth -> auth.getAuthority().equals("ROLE_MADIE-USER")));
-    assert (result.getAuthorities().stream()
-        .anyMatch(auth -> auth.getAuthority().equals("ROLE_MADIE-ADMIN")));
+    assertNotNull(result);
+    assertTrue(
+        result.getAuthorities().stream()
+            .anyMatch(auth -> auth.getAuthority().equals("ROLE_MADIE-USER")));
+    assertTrue(
+        result.getAuthorities().stream()
+            .anyMatch(auth -> auth.getAuthority().equals("ROLE_MADIE-ADMIN")));
   }
 
   @Test
@@ -54,8 +58,8 @@ public class UserServiceRoleConverterTest {
 
     var result = converter.convert(jwt);
     // Assert that the result is not null and contains no authorities
-    assert (result != null);
-    assert (result.getAuthorities().isEmpty());
+    assertNotNull(result);
+    assertTrue(result.getAuthorities().isEmpty());
   }
 
   @Test
@@ -67,7 +71,7 @@ public class UserServiceRoleConverterTest {
 
     var result = converter.convert(jwt);
     // Assert that the result is not null and contains no authorities
-    assert (result != null);
-    assert (result.getAuthorities().isEmpty());
+    assertNotNull(result);
+    assertTrue(result.getAuthorities().isEmpty());
   }
 }
