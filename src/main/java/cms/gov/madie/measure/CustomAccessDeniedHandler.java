@@ -19,7 +19,7 @@ public class CustomAccessDeniedHandler implements AccessDeniedHandler {
       AccessDeniedException accessDeniedException)
       throws IOException {
     response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-    response.getWriter().write("Forbidden: Invalid API Key");
+    response.getWriter().write("Forbidden: Invalid user role");
     final String username =
         request.getUserPrincipal() == null ? "" : request.getUserPrincipal().getName();
     log.info(

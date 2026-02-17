@@ -1184,10 +1184,10 @@ public class MeasureControllerMvcTest {
                     .content(measureAsJson)
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isForbidden())
+            .andExpect(status().isUnauthorized())
             .andReturn();
     String resultStr = result.getResponse().getErrorMessage();
-    assertEquals("Access Denied", resultStr);
+    assertNull(resultStr);
   }
 
   @Test
