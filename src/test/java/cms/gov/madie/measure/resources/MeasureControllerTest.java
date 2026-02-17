@@ -1382,4 +1382,44 @@ class MeasureControllerTest {
     verify(measureService, times(1)).getMeasuresByObjectIds(emptyIds);
     verifyNoMoreInteractions(measureService);
   }
+
+
+    @Test
+    void getMeasuresByIds_ReturnsListWhenInputIdsNonEmpty_VersionIsClass() {
+        List<String> ids = List.of("m1", "m2");
+        MeasureListDTO dto1 = MeasureListDTO.builder()
+                .id("m1")
+                .measureName("Alpha")
+                .version(new Version(1, 0, 0))
+                .build();
+
+        MeasureListDTO dto2 = MeasureListDTO.builder()
+                .id("m2")
+                .measureName("Beta")
+                .version(new Version(2, 0, 0))
+                .build();
+
+        when(measureService.getMeasuresByObjectIds(ids)).thenReturn(List.of(dto1, dto2));
+        ResponseEntity<List<MeasureListDTO>> response = controller.getMeasuresByIds(ids);
+
+        assertNotNull(response);
+        assertEquals(200, response.getStatusCodeValue());
+        assertNotNull(response.getBody());
+        assertEquals(2, response.getBody().size());
+
+        MeasureListDTO r1 = response.getBody().get(0);
+        MeasureListDTO r2 = response.getBody().get(1);
+
+        assertEquals("m1", r1.getId());
+        assertEquals("Alpha", r1.getMeasureName());
+        assertEquals(new Version(1, 0, 0), r1.getVersion());
+
+        assertEquals("m2", r2.getId());
+        assertEquals("Beta", r2.getMeasureName());
+        assertEquals(new Version(2, 0, 0), r2.getVersion());
+
+        verify(measureService, times(1)).getMeasuresByObjectIds(ids);
+        verifyNoMoreInteractions(measureService);
+    }
+
 }
