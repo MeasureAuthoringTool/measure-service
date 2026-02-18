@@ -693,9 +693,7 @@ public class AdminController extends AbstractMeasureController {
   @PutMapping("/measures/{id}/acls")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<AclSpecification>> updateAccessControl(
-      HttpServletRequest request,
-      @PathVariable String id,
-      @RequestBody @Validated AclOperation aclOperation) {
+      @PathVariable String id, @RequestBody @Validated AclOperation aclOperation) {
     final Measure existingMeasure = measureService.findMeasureById(id);
     checkMeasureLock(existingMeasure, "admin");
     List<AclSpecification> aclSpecifications =
@@ -706,7 +704,6 @@ public class AdminController extends AbstractMeasureController {
   @DeleteMapping("/measures/{measureId}/delete-cms-id")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<String> deleteCmsId(
-      HttpServletRequest request,
       @PathVariable String measureId,
       @RequestParam(name = "cmsId") Integer cmsId,
       @RequestHeader(name = "harpId") String harpId,
@@ -728,7 +725,7 @@ public class AdminController extends AbstractMeasureController {
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<Organization>> addOrganizations(
       HttpServletRequest request, @RequestBody List<Organization> organizations) {
-    final String userName = request.getHeader("harp-id");
+    String userName = request.getUserPrincipal().getName();
     log.info("User {} is attempting to add new organizations {}", userName, organizations);
     try {
       List<Organization> savedOrganizations = organizationRepository.saveAll(organizations);
