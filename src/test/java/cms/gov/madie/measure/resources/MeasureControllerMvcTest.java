@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.gson.Gson;
 
-import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ActionType;
@@ -82,9 +81,6 @@ public class MeasureControllerMvcTest {
 
   private static final String TEST_USER_ID = "test-okta-user-id-123";
 
-  private static final String TEST_API_KEY_HEADER = "api-key";
-  private static final String TEST_API_KEY_HEADER_VALUE = "0a51991c";
-
   @Captor ArgumentCaptor<Group> groupCaptor;
   @Captor ArgumentCaptor<String> groupIdCaptor;
   @Captor ArgumentCaptor<String> measureIdCaptor;
@@ -108,61 +104,6 @@ public class MeasureControllerMvcTest {
     mapper.registerModule(new JavaTimeModule());
     mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     return mapper.writeValueAsString(obj);
-  }
-
-  @Test
-  public void testUpdateAccessControl() throws Exception {
-    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-    AclSpecification aclSpecification = new AclSpecification();
-    aclSpecification.setUserId("test");
-    aclSpecification.setRoles(Set.of(RoleEnum.SHARED_WITH));
-
-    doReturn(List.of(aclSpecification))
-        .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                put("/measures/" + measureId + "/acls")
-                    .with(user(TEST_USER_ID))
-                    .with(csrf())
-                    .content(
-                        "{\"acls\": [{\"userId\": \"john.doe@abc.com\",\"roles\": [\"SHARED_WITH\"]}],\"action\": \"GRANT\"}")
-                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
-                    .contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(status().isOk())
-            .andReturn();
-    verify(measureService, times(1))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
-    assertEquals(
-        result.getResponse().getContentAsString(),
-        "[{\"userId\":\"test\",\"roles\":[\"SHARED_WITH\"]}]");
-  }
-
-  @Test
-  public void testUpdateAccessControlIfAclAndOperationMissing() throws Exception {
-    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                put("/measures/" + measureId + "/acls")
-                    .with(user(TEST_USER_ID))
-                    .with(csrf())
-                    .content("{\"acls\": [], \"operation\": null}")
-                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
-                    .contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(status().isBadRequest())
-            .andReturn();
-    verify(measureService, times(0))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
-    assertThat(
-        result
-            .getResponse()
-            .getContentAsString()
-            .contains("{\"acls\":\"must not be empty\",\"action\":\"must not be null\"}"),
-        is(true));
   }
 
   @Test
@@ -2120,7 +2061,6 @@ public class MeasureControllerMvcTest {
                     .with(user(TEST_USER_ID))
                     .with(csrf())
                     .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\"]}")
-                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();
@@ -2148,7 +2088,6 @@ public class MeasureControllerMvcTest {
                     .with(user(TEST_USER_ID))
                     .with(csrf())
                     .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\"]}")
-                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();

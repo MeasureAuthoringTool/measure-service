@@ -23,7 +23,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.mock.web.MockHttpServletRequest;
 import java.security.Principal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -299,40 +298,6 @@ class MeasureControllerTest {
     assertThat(response.getBody(), is(equalTo(measureSet)));
     assertEquals(measureSet, response.getBody());
     verify(measureSetService, times(1)).createAndUpdateCmsId(anyString(), anyString());
-  }
-
-  @Test
-  void deleteCmsId() {
-    MockHttpServletRequest mockHttpServletRequest = new MockHttpServletRequest();
-
-    String measureId = "measureId";
-
-    final MeasureSet measureSet =
-        MeasureSet.builder()
-            .id("f225481c-921e-4015-9e14-e5046bfac9ff")
-            .cmsId(6)
-            .measureSetId("measureSetId")
-            .owner("owner")
-            .acls(null)
-            .build();
-
-    String expectedBody =
-        String.format(
-            "CMS Id of %s was deleted successfully from measure set with measure set id of %s",
-            measureSet.getCmsId(), measureSet.getMeasureSetId());
-
-    when(principal.getName()).thenReturn("testUser");
-    when(measureSetService.deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testuser"))
-        .thenReturn(expectedBody);
-
-    ResponseEntity<String> response =
-        controller.deleteCmsId(
-            mockHttpServletRequest, measureId, measureSet.getCmsId(), "apiKey", "owner", principal);
-
-    assertThat(response.getBody(), is(notNullValue()));
-    assertEquals(expectedBody, response.getBody());
-    verify(measureSetService, times(1))
-        .deleteCmsId(measureId, measureSet.getCmsId(), "owner", "testuser");
   }
 
   @Test

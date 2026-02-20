@@ -6,7 +6,6 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
 import cms.gov.madie.measure.utils.MeasureUtil;
-import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.common.Action;
 import gov.cms.madie.models.common.ActionType;
@@ -19,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,7 +25,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -248,20 +245,6 @@ public class MeasureController extends AbstractMeasureController {
         .body(measureService.deactivateMeasure(id, principal.getName().toLowerCase()));
   }
 
-  @PutMapping("/measures/{id}/acls")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
-  public ResponseEntity<List<AclSpecification>> updateAccessControl(
-      HttpServletRequest request,
-      @PathVariable String id,
-      @RequestBody @Validated AclOperation aclOperation,
-      @Value("${admin-api-key}") String apiKey) {
-    final Measure existingMeasure = measureService.findMeasureById(id);
-    checkMeasureLock(existingMeasure, "admin");
-    List<AclSpecification> aclSpecifications =
-        measureService.updateAccessControlList(id, aclOperation, "admin");
-    return ResponseEntity.ok().body(aclSpecifications);
-  }
-
   @GetMapping("/measures/shared")
   public ResponseEntity<Map<String, List<SharedUser>>> getSharedMeasures(
       HttpServletRequest request,
@@ -433,28 +416,6 @@ public class MeasureController extends AbstractMeasureController {
     measuresInSet.forEach(measure -> checkMeasureLock(measure, username));
     return ResponseEntity.status(HttpStatus.CREATED)
         .body(measureSetService.createAndUpdateCmsId(measureSetId, username));
-  }
-
-  @DeleteMapping("/measures/{measureId}/delete-cms-id")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
-  public ResponseEntity<String> deleteCmsId(
-      HttpServletRequest request,
-      @PathVariable String measureId,
-      @RequestParam(name = "cmsId") Integer cmsId,
-      @Value("${admin-api-key}") String apiKey,
-      @RequestHeader(name = "harpId") String harpId,
-      Principal principal) {
-    final String username = principal.getName().toLowerCase();
-    log.info(
-        "User [{}] - Started admin task [deleteCmsId] and is attempting to delete "
-            + "CMS id [{}] from measure with measure id [{}]",
-        username,
-        cmsId,
-        measureId);
-    final Measure existingMeasure = measureService.findMeasureById(measureId);
-    checkMeasureLock(existingMeasure, username);
-    return ResponseEntity.status(HttpStatus.OK)
-        .body(measureSetService.deleteCmsId(measureId, cmsId, harpId.toLowerCase(), username));
   }
 
   @PutMapping("/measures/cms-id-association")
