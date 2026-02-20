@@ -66,4 +66,6 @@ public interface MeasureRepository
       String setId, Collection<String> model, boolean draft);
 
   List<Measure> findByMeasureSetIdIn(Collection<String> measureSetIds);
+
+  List<MeasureListDTO> findAllByIdIn(Collection<String> measureIds);
 }

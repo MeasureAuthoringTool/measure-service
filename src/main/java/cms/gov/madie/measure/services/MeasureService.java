@@ -951,4 +951,16 @@ public class MeasureService extends BaseMeasureService {
     }
     return null;
   }
+
+  public List<MeasureListDTO> getMeasuresByObjectIds(List<String> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return List.of();
+    }
+    List<String> uniqueIds = ids.stream().filter(Objects::nonNull).distinct().toList();
+
+    if (uniqueIds.isEmpty()) {
+      return List.of();
+    }
+    return measureRepository.findAllByIdIn(uniqueIds);
+  }
 }
