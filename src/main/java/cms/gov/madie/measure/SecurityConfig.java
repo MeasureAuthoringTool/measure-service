@@ -2,7 +2,6 @@ package cms.gov.madie.measure;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -16,7 +15,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-  private static final String[] CSRF_WHITELIST = {"/log/**", "/organizations/**"};
+  private static final String[] CSRF_WHITELIST = {"/log/**"};
   private static final String[] AUTH_WHITELIST = {"/actuator/**", "/log/**"};
 
   @Bean
@@ -31,8 +30,6 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             authorizeRequests ->
                 authorizeRequests
-                    .requestMatchers(HttpMethod.POST, "/organizations/**")
-                    .permitAll() // TODO: move to admin controller with MADIE-ADMIN role access
                     .requestMatchers(AUTH_WHITELIST)
                     .permitAll()
                     .requestMatchers("/admin/**")

@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.SecurityConfigTest;
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.JobStatus;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
@@ -8,12 +9,16 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.OrganizationRepository;
 import cms.gov.madie.measure.services.*;
+import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.Organization;
 import gov.cms.madie.models.common.Version;
+import gov.cms.madie.models.dto.UserRolesDto;
 import gov.cms.madie.models.measure.*;
 
 import org.assertj.core.api.Assertions;
@@ -35,11 +40,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
+import java.security.Principal;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,17 +60,18 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.security.core.authority.AuthorityUtils.createAuthorityList;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
 @WebMvcTest({AdminController.class})
 @ActiveProfiles("test")
 @Import({SecurityConfigTest.class})
 public class AdminControllerMvcTest {
-  private static final String ADMIN_TEST_API_KEY_HEADER = "api-key";
-  private static final String ADMIN_TEST_API_KEY_HEADER_VALUE = "0a51991c";
   private static final String TEST_USER_ID = "test-okta-user-id-123";
 
   @MockitoBean private MeasureService measureService;
@@ -73,11 +84,13 @@ public class AdminControllerMvcTest {
   @MockitoBean private MeasureRepository measureRepository;
   @MockitoBean private ExportRepository exportRepository;
   @MockitoBean private CqmMeasureRepository cqmMeasureRepository;
+  @MockitoBean private OrganizationRepository organizationRepository;
 
   @MockitoBean private MeasureLockService measureLockService;
   @MockitoBean private TestCaseLockService testCaseLockService;
   @MockitoBean private AdminService adminService;
   @MockitoBean private AppConfigService appConfigService;
+  @MockitoBean private UserServiceClient userServiceClient;
 
   @Autowired private MockMvc mockMvc;
 
@@ -194,8 +207,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/validations")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.reports", empty()))
@@ -211,8 +226,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/validations?draftOnly=true")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.reports", empty()))
@@ -229,8 +246,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/validations?draftOnly=false")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.reports", empty()))
@@ -287,8 +306,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/validations")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.reports[0].measureId").value("M1"))
@@ -383,8 +404,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/validations")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.reports[0].measureId").value("M1"))
@@ -440,8 +463,10 @@ public class AdminControllerMvcTest {
         .perform(
             MockMvcRequestBuilders.delete("/admin/measures/{id}", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isNotFound());
@@ -463,8 +488,10 @@ public class AdminControllerMvcTest {
         .perform(
             MockMvcRequestBuilders.delete("/admin/measures/{id}", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner2"))
         .andExpect(status().isConflict())
@@ -491,8 +518,10 @@ public class AdminControllerMvcTest {
         .perform(
             MockMvcRequestBuilders.delete("/admin/measures/{id}", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isOk())
@@ -507,8 +536,10 @@ public class AdminControllerMvcTest {
         .perform(
             MockMvcRequestBuilders.get("/admin/measures/sharedWith?measureids=12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isNotFound());
@@ -532,8 +563,10 @@ public class AdminControllerMvcTest {
         .perform(
             MockMvcRequestBuilders.get("/admin/measures/sharedWith?measureids=12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner2"))
         .andExpect(status().isConflict())
@@ -563,8 +596,10 @@ public class AdminControllerMvcTest {
         .perform(
             MockMvcRequestBuilders.get("/admin/measures/sharedWith?measureids=12345,6789")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isOk())
@@ -589,8 +624,10 @@ public class AdminControllerMvcTest {
         .perform(
             MockMvcRequestBuilders.get("/admin/measures/sharedWith?measureids=12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isOk())
@@ -610,8 +647,10 @@ public class AdminControllerMvcTest {
         .perform(
             MockMvcRequestBuilders.get("/admin/measures/sharedWith?measureids=12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isOk())
@@ -627,8 +666,10 @@ public class AdminControllerMvcTest {
         .perform(
             MockMvcRequestBuilders.delete("/admin/measures/{id}", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isNotFound());
@@ -636,11 +677,18 @@ public class AdminControllerMvcTest {
 
   @Test
   public void testBlocksNonAuthorizedDeleteRequests() throws Exception {
+    UserRolesDto userRolesDto = new UserRolesDto();
+    userRolesDto.setRoles(List.of("MADIE-USER"));
+    when(userServiceClient.getUserRoles(eq(TEST_USER_ID), anyString())).thenReturn(userRolesDto);
+
     mockMvc
         .perform(
             MockMvcRequestBuilders.delete("/admin/measures/{id}", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-USER")))
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isForbidden());
@@ -654,11 +702,13 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .queryParam("correctVersion", "2.0.000")
                 .queryParam("draftVersion", "1.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isNotFound());
@@ -680,11 +730,13 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .queryParam("correctVersion", "2.0.000")
                 .queryParam("draftVersion", "1.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner2"))
         .andExpect(status().isConflict())
@@ -717,11 +769,13 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .queryParam("correctVersion", "2.0.000")
                 .queryParam("draftVersion", "1.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isBadRequest());
@@ -747,11 +801,13 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .queryParam("correctVersion", "2.0.000")
                 .queryParam("draftVersion", "3.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isBadRequest());
@@ -783,11 +839,13 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .queryParam("correctVersion", "2.0.000")
                 .queryParam("draftVersion", "1.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isConflict());
@@ -837,11 +895,13 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}/correct-version", "12345")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .queryParam("correctVersion", "2.0.000")
                 .queryParam("draftVersion", "1.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isOk());
@@ -895,8 +955,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}/correct-version", measureId)
                 .with(csrf())
-                .with(user(principalName))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .header("harpId", harpId)
                 .param("inCorrectVersion", inCorrectVersion)
@@ -967,8 +1029,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk());
 
@@ -1006,8 +1070,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk());
 
@@ -1040,8 +1106,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk());
 
@@ -1059,8 +1127,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk());
 
@@ -1083,8 +1153,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk());
 
@@ -1139,8 +1211,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/test-cases/restart-validation")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta"))
         .andExpect(status().isOk());
 
@@ -1185,8 +1259,10 @@ public class AdminControllerMvcTest {
             .perform(
                 MockMvcRequestBuilders.delete("/admin/measures/test-cases/locks")
                     .with(csrf())
-                    .with(user(TEST_USER_ID))
-                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .header("Authorization", "test-okta")
                     .header("harpId", TEST_USER_ID))
             .andExpect(status().isOk())
@@ -1217,8 +1293,10 @@ public class AdminControllerMvcTest {
             .perform(
                 put("/admin/measures/{id}", draftMeasure.getId())
                     .with(csrf())
-                    .with(user(TEST_USER_ID))
-                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .header("Authorization", "test-okta")
                     .content(toJsonString(versionedMeasure))
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
@@ -1289,8 +1367,10 @@ public class AdminControllerMvcTest {
             .perform(
                 put("/admin/measures/{id}", draftMeasure.getId())
                     .with(csrf())
-                    .with(user(TEST_USER_ID))
-                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .header("Authorization", "test-okta")
                     .content(toJsonString(versionedMeasure))
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
@@ -1314,8 +1394,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}", "measureId")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .content(toJsonString(versionedMeasure))
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
@@ -1346,8 +1428,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}", draftMeasure.getId())
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .content(toJsonString(versionedMeasure))
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
@@ -1379,8 +1463,10 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}", draftMeasure.getId())
                 .with(csrf())
-                .with(user(TEST_USER_ID))
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .header("Authorization", "test-okta")
                 .content(toJsonString(versionedMeasure))
                 .contentType(MediaType.APPLICATION_JSON_VALUE))
@@ -1411,8 +1497,10 @@ public class AdminControllerMvcTest {
             .perform(
                 put("/admin/measures/{id}", draftMeasure.getId())
                     .with(csrf())
-                    .with(user(TEST_USER_ID))
-                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .header("Authorization", "test-okta")
                     .content(toJsonString(versionedMeasure))
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
@@ -1431,10 +1519,12 @@ public class AdminControllerMvcTest {
             .perform(
                 put("/admin/measures/{id}/testcases/code-system-correction", "measureId")
                     .with(csrf())
-                    .with(user(TEST_USER_ID))
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .param("incorrectCodeSystem", "test")
                     .param("correctCodeSystem", "test")
-                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
                     .header("Authorization", "test-okta"))
             .andExpect(status().isOk())
             .andReturn();
@@ -1453,10 +1543,12 @@ public class AdminControllerMvcTest {
         .perform(
             put("/admin/measures/{id}/testcases/code-system-correction", "invalidId")
                 .with(csrf())
-                .with(user(TEST_USER_ID))
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                 .param("incorrectCodeSystem", "test")
                 .param("correctCodeSystem", "test")
-                .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
                 .header("Authorization", "test-okta"))
         .andExpect(status().isNotFound());
 
@@ -1479,8 +1571,10 @@ public class AdminControllerMvcTest {
             .perform(
                 put("/admin/measures/ownership?harpId=" + newOwner)
                     .with(csrf())
-                    .with(user(TEST_USER_ID))
-                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .header("Authorization", "test-okta")
                     .content(toJsonString(List.of(measureId)))
                     .contentType(MediaType.APPLICATION_JSON))
@@ -1503,8 +1597,10 @@ public class AdminControllerMvcTest {
             .perform(
                 put("/admin/measures/ownership?harpId=" + newOwner)
                     .with(csrf())
-                    .with(user(TEST_USER_ID))
-                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .header("Authorization", "test-okta")
                     .content(toJsonString(Collections.emptyList()))
                     .contentType(MediaType.APPLICATION_JSON))
@@ -1529,8 +1625,10 @@ public class AdminControllerMvcTest {
             .perform(
                 put("/admin/measures/ownership?harpId=" + newOwner)
                     .with(csrf())
-                    .with(user(TEST_USER_ID))
-                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .header("Authorization", "test-okta")
                     .content(toJsonString(List.of(measureId)))
                     .contentType(MediaType.APPLICATION_JSON))
@@ -1557,8 +1655,10 @@ public class AdminControllerMvcTest {
             .perform(
                 put("/admin/measures/ownership?harpId=" + newOwner + "&retainShareAccess=true")
                     .with(csrf())
-                    .with(user(TEST_USER_ID))
-                    .header(ADMIN_TEST_API_KEY_HEADER, ADMIN_TEST_API_KEY_HEADER_VALUE)
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .header("Authorization", "test-okta")
                     .content(toJsonString(List.of(measureId)))
                     .contentType(MediaType.APPLICATION_JSON))
@@ -1569,5 +1669,197 @@ public class AdminControllerMvcTest {
     verify(measureService, times(1))
         .transferMeasures(
             eq(List.of(measureId)), eq(newOwner.toLowerCase()), eq(true), eq("admin"));
+  }
+
+  @Test
+  void testDeleteCmsId() throws Exception {
+    String measureId = "measureId";
+    String measureSetId = "measureSetId";
+    int cmsId = 6;
+    Principal principal = mock(Principal.class);
+    String principalName = "testuser";
+    when(principal.getName()).thenReturn(principalName);
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(
+            Measure.builder()
+                .id(measureId)
+                .measureSetId("measureSetId")
+                .measureSet(MeasureSet.builder().measureSetId("measureSetId").cmsId(cmsId).build())
+                .build());
+    ;
+    when(measureSetService.deleteCmsId(anyString(), anyInt(), anyString(), anyString()))
+        .thenReturn(
+            String.format(
+                "CMS id of %s was deleted successfully from "
+                    + "measure set with measure set id of %s",
+                cmsId, measureSetId));
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                delete("/admin/measures/{id}/delete-cms-id", measureId)
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .header("Authorization", "test-okta")
+                    .header("harpId", TEST_USER_ID)
+                    .param("cmsId", String.valueOf(cmsId))
+                    .principal(() -> "testuser"))
+            .andExpect(status().isOk())
+            .andReturn();
+
+    String expectedBody =
+        String.format(
+            "CMS id of %s was deleted successfully from measure set with measure set id of %s",
+            cmsId, measureSetId);
+
+    assertThat(result.getResponse(), is(notNullValue()));
+    assertEquals(expectedBody, result.getResponse().getContentAsString());
+    verify(measureSetService, times(1)).deleteCmsId(measureId, cmsId, TEST_USER_ID, TEST_USER_ID);
+  }
+
+  @Test
+  public void testUpdateAccessControl() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+    AclSpecification aclSpecification = new AclSpecification();
+    aclSpecification.setUserId("test");
+    aclSpecification.setRoles(Set.of(RoleEnum.SHARED_WITH));
+
+    doReturn(List.of(aclSpecification))
+        .when(measureService)
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/" + measureId + "/acls")
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .with(csrf())
+                    .content(
+                        "{\"acls\": [{\"userId\": \"john.doe@abc.com\",\"roles\": [\"SHARED_WITH\"]}],\"action\": \"GRANT\"}")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isOk())
+            .andReturn();
+    verify(measureService, times(1))
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+    assertEquals(
+        result.getResponse().getContentAsString(),
+        "[{\"userId\":\"test\",\"roles\":[\"SHARED_WITH\"]}]");
+  }
+
+  @Test
+  public void testUpdateAccessControlIfAclAndOperationMissing() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/" + measureId + "/acls")
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .with(csrf())
+                    .content("{\"acls\": [], \"operation\": null}")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    verify(measureService, times(0))
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+    assertThat(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains("{\"acls\":\"must not be empty\",\"action\":\"must not be null\"}"),
+        is(true));
+  }
+
+  @Test
+  public void testUpdateAccessControlIfAclMissing() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/" + measureId + "/acls")
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .with(csrf())
+                    .content("{\"acls\": [], \"action\": \"GRANT\"}")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    verify(measureService, times(0))
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+    assertThat(
+        result.getResponse().getContentAsString().contains("{\"acls\":\"must not be empty\"}"),
+        is(true));
+  }
+
+  @Test
+  public void addOrganizations() throws Exception {
+    List<Organization> organizationList = new ArrayList<>();
+    organizationList.add(Organization.builder().name("org1").oid("1.2.3.4").build());
+    organizationList.add(Organization.builder().name("org2").oid("1.2.3.5").build());
+    organizationList.add(Organization.builder().name("org3").oid("1.2.3.6").build());
+
+    doReturn(organizationList).when(organizationRepository).saveAll(any());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/admin/organizations")
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .with(csrf())
+                    .content(toJsonString(organizationList))
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+    // Validate the returned organizations match the input
+    String content = result.getResponse().getContentAsString();
+    ObjectMapper mapper = new ObjectMapper();
+    List<Organization> persistedOrganizations =
+        mapper.readValue(
+            content, new com.fasterxml.jackson.core.type.TypeReference<List<Organization>>() {});
+    assertEquals(organizationList.size(), persistedOrganizations.size());
+    for (int i = 0; i < organizationList.size(); i++) {
+      assertEquals(organizationList.get(i).getName(), persistedOrganizations.get(i).getName());
+      assertEquals(organizationList.get(i).getOid(), persistedOrganizations.get(i).getOid());
+    }
+  }
+
+  @Test
+  public void addOrganizationsThrowsDuplicateKeyException() throws Exception {
+    doThrow(new DuplicateKeyException("DuplicateKeyException Message", "Duplicate oid found"))
+        .when(organizationRepository)
+        .saveAll(any());
+    Organization organization = Organization.builder().name("org1").oid("1.2.3.4").build();
+    MvcResult result =
+        mockMvc
+            .perform(
+                post("/admin/organizations")
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .with(csrf())
+                    .content(toJsonString(List.of(organization)))
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+
+    String content = result.getResponse().getContentAsString();
+    assertTrue(content.contains("Duplicate oid found"));
   }
 }

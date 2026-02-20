@@ -7,8 +7,8 @@ import org.mockito.Mockito;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @TestConfiguration
 public class SecurityConfigTest {
@@ -36,8 +36,6 @@ public class SecurityConfigTest {
                 authz
                     .requestMatchers("/log/*")
                     .permitAll()
-                    .requestMatchers("/admin/measures/**")
-                    .hasAuthority("API_KEY")
                     .requestMatchers("/admin/**")
                     .hasRole("MADIE-ADMIN")
                     .anyRequest()
@@ -45,9 +43,9 @@ public class SecurityConfigTest {
         .csrf(csrf -> csrf.disable())
         .oauth2ResourceServer(
             oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(roleConverter)))
-        // To ensure requests without the right api-key header are blocked by
-        // Spring Security (returning 403 Forbidden)
-        .addFilterBefore(new ApiKeyAuthFilter(), UsernamePasswordAuthenticationFilter.class);
+        .addFilterBefore(
+            new JwtRoleTestFilter("ROLE_MADIE-ADMIN"), BearerTokenAuthenticationFilter.class);
+
     return http.build();
   }
 }
