@@ -6,8 +6,7 @@ public enum MadieFeatureFlag {
   QDM_TEST_CASES("qdmTestCases"),
   IMPORT_TEST_CASES("importTestCases"),
   LOCKING("Locking"),
-  QICORE_ELEMENTS_TAB("qiCoreElementsTab"),
-  DISPLAY_OWNER("DisplayOwner");
+  QICORE_ELEMENTS_TAB("qiCoreElementsTab");
 
   private final String flag;
 

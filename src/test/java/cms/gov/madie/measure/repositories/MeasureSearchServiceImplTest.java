@@ -720,7 +720,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresPopulatesOwnerDisplayNames() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
@@ -779,7 +778,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithFirstNameOnly() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
@@ -821,7 +819,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithLastNameOnly() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
@@ -863,7 +860,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithHarpIdWhenFirstAndLastNameIsNull() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
@@ -905,7 +901,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithUserNotFound() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
@@ -946,7 +941,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithNullMeasureSet() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
@@ -983,7 +977,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithNullOwner() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
@@ -1021,7 +1014,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithEmptyList() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
@@ -1050,7 +1042,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesDeduplicatesOwners() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
@@ -1472,7 +1463,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithHyphenWhenHarpIdFirstAndLastNameAreNull() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
