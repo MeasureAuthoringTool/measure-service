@@ -117,9 +117,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
       List<OwnershipType> ownershipTypes) {
-
-    AggregationOptions options = AggregationOptions.builder().allowDiskUse(true).build();
-
     List<AggregationOperation> aggregationOperations = new ArrayList<>();
 
     // join measure and measure_set to lookup owner and ACL info
@@ -237,7 +234,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     postMatchPipeline.add(facets);
 
-    Aggregation pipeline = newAggregation(postMatchPipeline).withOptions(options);
+    Aggregation pipeline = newAggregation(postMatchPipeline);
     List<FacetDTO> results =
         mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
     for (MeasureListDTO dto : results.get(0).getQueryResults()) {
