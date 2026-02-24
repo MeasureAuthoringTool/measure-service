@@ -12,8 +12,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.safety.Safelist;
 
 public class RichTextUtil {
-  private static final Parser parser = Parser.builder().build();
-  private static final HtmlRenderer htmlRenderer = HtmlRenderer.builder().build();
+  private static final Parser PARSER = Parser.builder().build();
+  private static final HtmlRenderer HTML_RENDERER = HtmlRenderer.builder().build();
   private static final Safelist RICH_TEXT_SAFE_LIST =
       Safelist.basic()
           .addTags("s", "br", "table", "tbody", "td", "th", "thead", "tr", "col", "colgroup", "del")
@@ -182,9 +182,9 @@ public class RichTextUtil {
       return text; // Already HTML formatted, return as is
     }
 
-    Node document = parser.parse(text);
+    Node document = PARSER.parse(text);
     // Sanitize HTML content
-    return sanitizeText(htmlRenderer.render(document)).replace("\n", "");
+    return sanitizeText(HTML_RENDERER.render(document)).replace("\n", "");
   }
 
   private static String sanitizeText(String val) {
