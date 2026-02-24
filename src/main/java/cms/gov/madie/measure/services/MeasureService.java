@@ -346,9 +346,8 @@ public class MeasureService extends BaseMeasureService {
       throw new InvalidResourceStateException("Measure is inactive.");
     }
 
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      measureLockService.checkMeasureAndTestCaseLock(username, existingMeasure, "delete");
-    }
+    measureLockService.checkMeasureAndTestCaseLock(username, existingMeasure, "delete");
+
     existingMeasure.setActive(false);
     existingMeasure.setLastModifiedBy(username);
     existingMeasure.setLastModifiedAt(Instant.now());
@@ -877,9 +876,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   private void verifyQiCoreMeasureNotLocked(Measure qiCoreMeasure, String username) {
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      measureLockService.checkMeasureLock(username, qiCoreMeasure, "associate");
-    }
+    measureLockService.checkMeasureLock(username, qiCoreMeasure, "associate");
   }
 
   /**
@@ -940,15 +937,14 @@ public class MeasureService extends BaseMeasureService {
   // lock) returns null
   public gov.cms.madie.models.measure.MeasureLock getMeasureLock(
       String measureId, String username) {
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      MeasureLock lock = measureLockService.findByMeasureId(measureId);
-      if (lock != null && !username.equalsIgnoreCase(lock.getLockedBy())) {
-        return gov.cms.madie.models.measure.MeasureLock.builder()
-            .id(lock.getId())
-            .lockedBy(lock.getLockedBy())
-            .build();
-      }
+    MeasureLock lock = measureLockService.findByMeasureId(measureId);
+    if (lock != null && !username.equalsIgnoreCase(lock.getLockedBy())) {
+      return gov.cms.madie.models.measure.MeasureLock.builder()
+          .id(lock.getId())
+          .lockedBy(lock.getLockedBy())
+          .build();
     }
+
     return null;
   }
 

@@ -458,7 +458,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testValidateResourceAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -520,7 +519,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testPersistTestCasesThrowsNoExceptionForNonDraftMeasure() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -1240,7 +1238,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testUpdateTestCaseThrowsResourceNotFoundExceptionForUnknownMeasureId() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(false);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -1543,7 +1540,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void testDeleteTestCasesAndReturnNotFoundTestIds() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     List<TestCase> testCases =
         List.of(
             TestCase.builder().id("TC1_ID").title("TC1").build(),
@@ -1567,7 +1563,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void testDeleteTestCasesAndReturnsLockedIds() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     List<TestCase> testCases =
         List.of(
             TestCase.builder().id("TC1_ID").title("TC1").build(),
@@ -3368,7 +3363,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testValidateTestCaseAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -3418,7 +3412,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void importTestCasesReturnValidOutcomesWhenLockingSuccessful() throws JsonProcessingException {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     measure.setTestCases(List.of(testCase));
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();
@@ -3454,7 +3447,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void importTestCasesReturnInvalidOutcomesWhenLockingFails() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     measure.setTestCases(List.of(testCase));
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("anotherUser").build();
@@ -3487,7 +3479,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void importTestCasesReturnValidOutcomesWhenLockedByIsSameUser() throws JsonProcessingException {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     measure.setTestCases(List.of(testCase));
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();
@@ -3529,8 +3520,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testShiftQiCoreTestCaseDatesWhenFeatureFlagOn() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+  void testShiftQiCoreTestCaseDates() {
     when(testCaseLockService.lockAllTestCases(anyString(), any(List.class), anyString()))
         .thenReturn(null);
     ResponseEntity<List<TestCase>> mockClientResponse = ResponseEntity.ok(List.of(testCase));
@@ -3548,7 +3538,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   void testShiftQiCoreTestCaseDatesThrowsLockNotObtainedException() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     LockInfo lock = LockInfo.builder().lockedId("TESTID").lockedBy("anotherUser").build();
     when(testCaseLockService.lockAllTestCases(anyString(), any(List.class), anyString()))
         .thenReturn(List.of(lock));
@@ -3568,7 +3557,6 @@ public class TestCaseServiceTest implements ResourceUtil {
     Measure mockMeasure =
         measure.toBuilder().testCases(Collections.singletonList(testCase)).build();
     when(measureService.findActiveMeasureById(anyString())).thenReturn(mockMeasure);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId(anyString()))
         .thenReturn(TestCaseLock.builder().lockedBy("anotherUser").build());
     TestCase output =
@@ -3582,7 +3570,6 @@ public class TestCaseServiceTest implements ResourceUtil {
     Measure mockMeasure =
         measure.toBuilder().testCases(Collections.singletonList(testCase)).build();
     when(measureService.findActiveMeasureById(anyString())).thenReturn(mockMeasure);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId(anyString())).thenReturn(null);
     TestCase output =
         testCaseService.getTestCase(measure.getId(), testCase.getId(), false, "TOKEN", "test-user");
@@ -3595,7 +3582,6 @@ public class TestCaseServiceTest implements ResourceUtil {
     Measure mockMeasure =
         measure.toBuilder().testCases(Collections.singletonList(testCase)).build();
     when(measureService.findActiveMeasureById(anyString())).thenReturn(mockMeasure);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId(anyString()))
         .thenReturn(TestCaseLock.builder().lockedBy("test-user").build());
     TestCase output =
@@ -3607,7 +3593,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testUpdateTestCaseThrowsLockNotObtainedExceptionWhenTestCaseIsLocked() {
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId(anyString()))
         .thenReturn(TestCaseLock.builder().lockedBy("another.user").build());
 
@@ -3619,7 +3604,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testUpdateTestCaseNoLock() {
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId(anyString())).thenReturn(null);
 
     when(testCaseValidationService.validateTestCaseAsResource(
@@ -3640,7 +3624,6 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testUpdateTestCaseSelfLock() {
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId(anyString()))
         .thenReturn(TestCaseLock.builder().lockedBy("test.user").build());
 

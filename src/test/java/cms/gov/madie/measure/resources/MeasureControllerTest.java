@@ -538,7 +538,6 @@ class MeasureControllerTest {
             .build();
     when(principal.getName()).thenReturn("test.user2");
     when(measureService.findMeasureById(anyString())).thenReturn(m1234);
-    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
     when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(true);
 
@@ -561,7 +560,6 @@ class MeasureControllerTest {
             .build();
     when(principal.getName()).thenReturn("test.user2");
     when(measureService.findMeasureById(anyString())).thenReturn(m1234);
-    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
     when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(true);
 
@@ -582,7 +580,6 @@ class MeasureControllerTest {
             .build();
     when(principal.getName()).thenReturn("test.user2");
     when(measureService.findMeasureById(anyString())).thenReturn(m1234);
-    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
     when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(false);
 
@@ -667,6 +664,8 @@ class MeasureControllerTest {
   @Test
   void deleteGroup() {
     when(principal.getName()).thenReturn("test.user");
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measure-id").build());
 
     Measure updatedMeasure =
         Measure.builder().id("measure-id").createdBy("test.user").groups(null).build();
@@ -685,7 +684,6 @@ class MeasureControllerTest {
   @Test
   void deleteGroupWithMeasureLocked() {
     when(principal.getName()).thenReturn("test.user");
-    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
 
     when(measureService.findMeasureById(anyString()))
         .thenReturn(
@@ -714,6 +712,8 @@ class MeasureControllerTest {
                         "IntialPopulation_1")))
             .build();
     when(principal.getName()).thenReturn("test.user");
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measure-id").build());
 
     doReturn(group)
         .when(groupService)
@@ -869,6 +869,8 @@ class MeasureControllerTest {
   @Test
   void deleteStratification() {
     when(principal.getName()).thenReturn("test.user");
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measure-id").build());
 
     Measure updatedMeasure =
         Measure.builder()
@@ -897,6 +899,8 @@ class MeasureControllerTest {
             .associations(List.of(PopulationType.INITIAL_POPULATION, PopulationType.NUMERATOR))
             .build();
     when(principal.getName()).thenReturn("test.user");
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measure-id").build());
 
     doReturn(stratification)
         .when(groupService)
@@ -916,6 +920,8 @@ class MeasureControllerTest {
     MeasureSet qiCoreMeasureSet =
         MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
     when(principal.getName()).thenReturn("test.user");
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measure-id").build());
 
     when(measureService.associateCmsId(
             any(String.class), any(String.class), any(String.class), any(Boolean.class)))
@@ -1020,6 +1026,8 @@ class MeasureControllerTest {
   @Test
   void updateMeasureTestCaseConfigurationReturnsUpdatedMeasure() {
     when(principal.getName()).thenReturn("test.user");
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measureId").build());
 
     Measure updatedMeasure = Measure.builder().id("measureId").build();
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
@@ -1043,6 +1051,8 @@ class MeasureControllerTest {
   @Test
   void updateMeasureTestCaseConfigurationThrowsUnauthorizedExceptionForInvalidUser() {
     when(principal.getName()).thenReturn("invalid.user");
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measureId").build());
 
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
 

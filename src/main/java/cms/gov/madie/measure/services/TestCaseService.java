@@ -238,12 +238,10 @@ public class TestCaseService {
     if (measure == null) {
       throw new ResourceNotFoundException("Measure", measureId);
     }
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      TestCaseLock lock = testCaseLockService.findByTestCaseId(testCaseId);
-      if (lock != null && !username.equalsIgnoreCase(lock.getLockedBy())) {
-        throw new LockNotObtainedException(
-            "Unable to update Test Case. Test Case is locked by: " + lock.getLockedBy());
-      }
+    TestCaseLock lock = testCaseLockService.findByTestCaseId(testCaseId);
+    if (lock != null && !username.equalsIgnoreCase(lock.getLockedBy())) {
+      throw new LockNotObtainedException(
+          "Unable to update Test Case. Test Case is locked by: " + lock.getLockedBy());
     }
     return measure;
   }
@@ -365,17 +363,17 @@ public class TestCaseService {
     if (testCase == null) {
       throw new ResourceNotFoundException("Test Case", testCaseId);
     }
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      TestCaseLock lock = testCaseLockService.findByTestCaseId(testCaseId);
-      testCase.setTestCaseLock(
-          lock != null && !username.equalsIgnoreCase(lock.getLockedBy())
-              ? TestCaseLockInfo.builder()
-                  .measureId(lock.getMeasureId())
-                  .testCaseId(lock.getTestCaseId())
-                  .lockedBy(lock.getLockedBy())
-                  .build()
-              : null);
-    }
+
+    TestCaseLock lock = testCaseLockService.findByTestCaseId(testCaseId);
+    testCase.setTestCaseLock(
+        lock != null && !username.equalsIgnoreCase(lock.getLockedBy())
+            ? TestCaseLockInfo.builder()
+                .measureId(lock.getMeasureId())
+                .testCaseId(lock.getTestCaseId())
+                .lockedBy(lock.getLockedBy())
+                .build()
+            : null);
+
     if (validate) {
       return testCaseValidationService.validateTestCaseAsResource(
           testCase, ModelType.valueOfName(measure.getModel()), accessToken);
@@ -385,7 +383,7 @@ public class TestCaseService {
 
   public List<TestCase> findTestCasesByMeasureId(String measureId, String username) {
     List<TestCase> testCases = measureService.findActiveMeasureById(measureId).getTestCases();
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING) && !isEmpty(testCases)) {
+    if (!isEmpty(testCases)) {
       testCases.forEach(
           testCase -> {
             TestCaseLock lock = testCaseLockService.findByTestCaseId(testCase.getId());
@@ -424,27 +422,20 @@ public class TestCaseService {
 
     List<String> testCaseIdsDeleted = new ArrayList<>();
     List<String> testCaseIdsLockedByOtherUser = new ArrayList<>();
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      testCasesToDelete.forEach(
-          testCase -> {
-            try {
-              testCaseLockService.lockTestCaseForUser(measureId, testCase.getId(), username);
-              measureRepository.removeTestCase(measureId, testCase.getId());
-              testCaseIdsDeleted.add(testCase.getId());
-              testCaseLockService.unlockTestCase(measureId, testCase.getId());
-            } catch (LockNotObtainedException e) {
-              testCaseIdsLockedByOtherUser.add(testCase.getId());
-            } catch (InvalidIdException e) {
-              // no-op - this means the test case was not found in the measure
-            }
-          });
-    } else {
-      testCasesToDelete.forEach(
-          testCase -> {
+
+    testCasesToDelete.forEach(
+        testCase -> {
+          try {
+            testCaseLockService.lockTestCaseForUser(measureId, testCase.getId(), username);
             measureRepository.removeTestCase(measureId, testCase.getId());
             testCaseIdsDeleted.add(testCase.getId());
-          });
-    }
+            testCaseLockService.unlockTestCase(measureId, testCase.getId());
+          } catch (LockNotObtainedException e) {
+            testCaseIdsLockedByOtherUser.add(testCase.getId());
+          } catch (InvalidIdException e) {
+            // no-op - this means the test case was not found in the measure
+          }
+        });
 
     if (testCaseIdsDeleted.size() == measure.getTestCases().size()) {
       sequenceService.resetSequence(measureId);
@@ -748,8 +739,7 @@ public class TestCaseService {
             .patientId(testCaseImportRequest.getPatientId())
             .successful(false)
             .build();
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-        && existingTestCase.getId() != null) {
+    if (existingTestCase.getId() != null) {
       LockInfo lock =
           testCaseLockService.lockTestCase(measureId, existingTestCase.getId(), userName);
       log.info(
@@ -784,25 +774,25 @@ public class TestCaseService {
           "User {} successfully imported test case with patient id : {}",
           userName,
           updatedTestCase.getPatientId());
-      if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-        LockInfo lock = testCaseLockService.unlockTestCase(existingTestCase.getId(), userName);
-        if (lock != null) {
-          if (!lock.isLocked()) {
-            log.info(
-                "User [{}] unlocked test case id: [{}] for measureId: [{}]",
-                userName,
-                existingTestCase.getId(),
-                measureId);
-          } else {
-            log.info(
-                "User [{}] failed unlocking test case id: [{}] for measureId: [{}], test case locked by: [{}}",
-                userName,
-                existingTestCase.getId(),
-                measureId,
-                lock.getLockedBy());
-          }
+
+      LockInfo lock = testCaseLockService.unlockTestCase(existingTestCase.getId(), userName);
+      if (lock != null) {
+        if (!lock.isLocked()) {
+          log.info(
+              "User [{}] unlocked test case id: [{}] for measureId: [{}]",
+              userName,
+              existingTestCase.getId(),
+              measureId);
+        } else {
+          log.info(
+              "User [{}] failed unlocking test case id: [{}] for measureId: [{}], test case locked by: [{}}",
+              userName,
+              existingTestCase.getId(),
+              measureId,
+              lock.getLockedBy());
         }
       }
+
       TestCaseImportOutcome testCaseImportOutcome =
           TestCaseImportOutcome.builder()
               .familyName(testCaseImportRequest.getFamilyName())
@@ -894,45 +884,42 @@ public class TestCaseService {
     if (isEmpty(testCases)) {
       return Collections.emptyList();
     }
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      List<String> testCaseIds = testCases.stream().map(testCase -> testCase.getId()).toList();
-      log.info(
-          "User: [{}} is trying to shift dates for measureId: [{}] - testCaseIds: {}",
-          userId,
-          measureId,
-          testCaseIds);
-      List<LockInfo> failedLocks =
-          testCaseLockService.lockAllTestCases(measureId, testCaseIds, userId);
-      // only when all locks are acquired can test cases' dates be shifted
-      if (isEmpty(failedLocks)) {
-        log.info("Locking all test cases for testCaseIds: {} successful", testCaseIds);
-        List<TestCase> shiftedTestCases =
-            fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();
-        testCaseLockService.unlockAllTestCases(testCaseIds, userId);
-        return shiftedTestCases;
-      } else {
-        // otherwise, unlock previously locked test cases, and shift dates should not happen
-        List<String> failedIds =
-            failedLocks.stream().map(failedLock -> failedLock.getLockedId()).toList();
-        log.info("Failed locking test cases for testCaseIds: {}", failedIds);
-        List<String> successLocks =
-            testCaseIds.stream().filter(testCaseId -> !failedIds.contains(testCaseId)).toList();
-        log.info("Revert locking test cases for testCaseIds: {}", successLocks);
-        List<String> failedMsgs =
-            failedLocks.stream()
-                .map(
-                    failedLock ->
-                        "Test Case: "
-                            + failedLock.getLockedId()
-                            + " is locked by user: "
-                            + failedLock.getLockedBy()
-                            + ".\n")
-                .toList();
-        testCaseLockService.unlockAllTestCases(successLocks, userId);
-        throw new LockNotObtainedException(failedMsgs.toString());
-      }
+
+    List<String> testCaseIds = testCases.stream().map(testCase -> testCase.getId()).toList();
+    log.info(
+        "User: [{}} is trying to shift dates for measureId: [{}] - testCaseIds: {}",
+        userId,
+        measureId,
+        testCaseIds);
+    List<LockInfo> failedLocks =
+        testCaseLockService.lockAllTestCases(measureId, testCaseIds, userId);
+    // only when all locks are acquired can test cases' dates be shifted
+    if (isEmpty(failedLocks)) {
+      log.info("Locking all test cases for testCaseIds: {} successful", testCaseIds);
+      List<TestCase> shiftedTestCases =
+          fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();
+      testCaseLockService.unlockAllTestCases(testCaseIds, userId);
+      return shiftedTestCases;
     } else {
-      return fhirServicesClient.shiftTestCaseDates(testCases, shifted, accessToken).getBody();
+      // otherwise, unlock previously locked test cases, and shift dates should not happen
+      List<String> failedIds =
+          failedLocks.stream().map(failedLock -> failedLock.getLockedId()).toList();
+      log.info("Failed locking test cases for testCaseIds: {}", failedIds);
+      List<String> successLocks =
+          testCaseIds.stream().filter(testCaseId -> !failedIds.contains(testCaseId)).toList();
+      log.info("Revert locking test cases for testCaseIds: {}", successLocks);
+      List<String> failedMsgs =
+          failedLocks.stream()
+              .map(
+                  failedLock ->
+                      "Test Case: "
+                          + failedLock.getLockedId()
+                          + " is locked by user: "
+                          + failedLock.getLockedBy()
+                          + ".\n")
+              .toList();
+      testCaseLockService.unlockAllTestCases(successLocks, userId);
+      throw new LockNotObtainedException(failedMsgs.toString());
     }
   }
 

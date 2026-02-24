@@ -1607,6 +1607,8 @@ public class MeasureControllerMvcTest {
 
     final String groupJson =
         "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-2\",\"name\":\"initialPopulation\",\"definition\":\"FactorialOfFive\"}],\"measureGroupTypes\":[\"Process\"], \"populationBasis\": \"boolean\"}";
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("1234").build());
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
         .thenReturn(group);
 
@@ -1637,6 +1639,8 @@ public class MeasureControllerMvcTest {
   public void testUpdateGroupIfPopulationDefinitionReturnTypesAreInvalid() throws Exception {
     final String groupJson =
         "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-2\",\"name\":\"initialPopulation\",\"definition\":\"FactorialOfFive\"}],\"measureGroupTypes\":[\"Process\"], \"populationBasis\": \"boolean\"}";
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("1234").build());
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
         .thenThrow(new InvalidReturnTypeException("Initial Population"));
 
@@ -1664,6 +1668,8 @@ public class MeasureControllerMvcTest {
   public void testUpdateGroupIfPopulationFunctionReturnTypesAreInvalid() throws Exception {
     final String groupJson =
         "{\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-1\",\"name\":\"initialPopulation\",\"definition\":\"Initial Population\"}],\"measureGroupTypes\":[\"Process\"],\"populationBasis\": \"boolean\"}";
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("1234").build());
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
         .thenThrow(
             new InvalidReturnTypeException(
@@ -1942,6 +1948,8 @@ public class MeasureControllerMvcTest {
             .association(PopulationType.INITIAL_POPULATION)
             .associations(List.of(PopulationType.INITIAL_POPULATION, PopulationType.NUMERATOR))
             .build();
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("1234").build());
     final String stratificationJson =
         "{\n"
             + "    \"id\": \"id-1\",\n"
@@ -2052,6 +2060,8 @@ public class MeasureControllerMvcTest {
     measureIdToAclSpecification.put("measureId1", List.of(aclSpecification1));
     measureIdToAclSpecification.put("measureId2", List.of(aclSpecification1, aclSpecification2));
 
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measureId1").build());
     doReturn(measureIdToAclSpecification).when(measureService).shareMeasures(any(), anyString());
 
     MvcResult result =
@@ -2079,6 +2089,8 @@ public class MeasureControllerMvcTest {
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
     measureIdToAclSpecification.put("measureId2", List.of(aclSpecification2));
 
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measureId1").build());
     doReturn(measureIdToAclSpecification).when(measureService).unshareMeasures(any(), anyString());
 
     MvcResult result =

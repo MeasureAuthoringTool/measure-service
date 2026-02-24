@@ -2,7 +2,6 @@ package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.dto.BulkTestCaseResult;
 import cms.gov.madie.measure.dto.CopyTestCaseResult;
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
@@ -219,10 +218,7 @@ public class TestCaseController {
 
     Measure measure = checkMeasure(measureId, principal);
 
-    List<String> unlockedIds =
-        appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            ? filterOutLocked(testCaseIds, principal.getName().toLowerCase())
-            : testCaseIds;
+    List<String> unlockedIds = filterOutLocked(testCaseIds, principal.getName().toLowerCase());
 
     List<String> shiftedIds =
         qdmTestCaseShiftDatesService.shiftTestCaseDates(
@@ -326,10 +322,7 @@ public class TestCaseController {
     List<String> testCaseIds =
         measure.getTestCases().stream().map(testCase -> testCase.getId()).toList();
 
-    List<String> unlockedIds =
-        appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            ? filterOutLocked(testCaseIds, principal.getName().toLowerCase())
-            : testCaseIds;
+    List<String> unlockedIds = filterOutLocked(testCaseIds, principal.getName().toLowerCase());
 
     List<String> shiftedIds =
         qdmTestCaseShiftDatesService.shiftTestCaseDates(
@@ -351,10 +344,7 @@ public class TestCaseController {
 
     Measure measure = checkQiCoreMeasure(measureId, principal);
 
-    List<String> unlockedIds =
-        appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            ? filterOutLocked(testCaseIds, principal.getName().toLowerCase())
-            : testCaseIds;
+    List<String> unlockedIds = filterOutLocked(testCaseIds, principal.getName().toLowerCase());
 
     return ResponseEntity.ok(
         populateShiftedAndFailedQiCore(
@@ -460,10 +450,7 @@ public class TestCaseController {
 
     List<String> testCaseIds =
         measure.getTestCases().stream().map(testCase -> testCase.getId()).toList();
-    List<String> unlockedIds =
-        appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            ? filterOutLocked(testCaseIds, principal.getName().toLowerCase())
-            : testCaseIds;
+    List<String> unlockedIds = filterOutLocked(testCaseIds, principal.getName().toLowerCase());
 
     return ResponseEntity.ok(
         populateShiftedAndFailedQiCore(

@@ -215,10 +215,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     MatchOperation matchMeasureSetIds =
         match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
     postMatchPipeline.add(matchMeasureSetIds);
+
     // lock stages
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      postMatchPipeline.addAll(getLockStages(userId));
-    }
+    postMatchPipeline.addAll(getLockStages(userId));
+
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version
     SortOperation sortByVersionAndDraft =
