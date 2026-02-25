@@ -682,6 +682,28 @@ class MeasureControllerTest {
   }
 
   @Test
+  void deleteGroupWithMeasureLockedBySameUser() {
+    when(principal.getName()).thenReturn("test.user");
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(
+            Measure.builder()
+                .id("measure-id")
+                .measureLock(MeasureLock.builder().lockedBy("test.user").build())
+                .build());
+
+    Measure updatedMeasure =
+        Measure.builder().id("measure-id").createdBy("test.user").groups(null).build();
+    doReturn(updatedMeasure)
+        .when(groupService)
+        .deleteMeasureGroup(any(String.class), any(String.class), any(String.class));
+
+    ResponseEntity<Measure> output =
+        controller.deleteMeasureGroup("measure-id", "testgroupid", principal);
+
+    assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
+  }
+
+  @Test
   void deleteGroupWithMeasureLocked() {
     when(principal.getName()).thenReturn("test.user");
 
@@ -694,6 +716,18 @@ class MeasureControllerTest {
     assertThrows(
         LockNotObtainedException.class,
         () -> controller.deleteMeasureGroup("measure-id", "testgroupid", principal));
+  }
+
+  @Test
+  void deleteGroupThrowsResourceNotFoundExceptionWhenMeasureNotFound() {
+    when(principal.getName()).thenReturn("test.user");
+    when(measureService.findMeasureById(anyString())).thenReturn(null);
+    ResourceNotFoundException ex =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> controller.deleteMeasureGroup("measure-id", "testgroupid", principal));
+    assertEquals(
+        "Unable to check lock for provided measure because measure was not found", ex.getMessage());
   }
 
   @Test

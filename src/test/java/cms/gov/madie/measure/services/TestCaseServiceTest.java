@@ -801,6 +801,58 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testFindTestCasesByMeasureIdSetsNullLockWhenNoLockExists() {
+    measure.setTestCases(List.of(testCase));
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
+    when(testCaseLockService.findByTestCaseId(testCase.getId())).thenReturn(null);
+
+    List<TestCase> result = testCaseService.findTestCasesByMeasureId(measure.getId(), "test.user");
+
+    assertEquals(1, result.size());
+    assertNull(result.get(0).getTestCaseLock());
+  }
+
+  @Test
+  public void testFindTestCasesByMeasureIdSetsNullLockWhenLockedByCurrentUser() {
+    measure.setTestCases(List.of(testCase));
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
+    TestCaseLock lock =
+        TestCaseLock.builder()
+            .measureId(measure.getId())
+            .testCaseId(testCase.getId())
+            .lockedBy("test.user")
+            .build();
+    when(testCaseLockService.findByTestCaseId(testCase.getId())).thenReturn(lock);
+
+    List<TestCase> result = testCaseService.findTestCasesByMeasureId(measure.getId(), "test.user");
+
+    assertEquals(1, result.size());
+    assertNull(result.get(0).getTestCaseLock());
+  }
+
+  @Test
+  public void testFindTestCasesByMeasureIdSetsLockInfoWhenLockedByAnotherUser() {
+    measure.setTestCases(List.of(testCase));
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
+    TestCaseLock lock =
+        TestCaseLock.builder()
+            .measureId(measure.getId())
+            .testCaseId(testCase.getId())
+            .lockedBy("another.user")
+            .build();
+    when(testCaseLockService.findByTestCaseId(testCase.getId())).thenReturn(lock);
+
+    List<TestCase> result = testCaseService.findTestCasesByMeasureId(measure.getId(), "test.user");
+
+    assertEquals(1, result.size());
+    TestCaseLockInfo lockInfo = result.get(0).getTestCaseLock();
+    assertNotNull(lockInfo);
+    assertEquals(measure.getId(), lockInfo.getMeasureId());
+    assertEquals(testCase.getId(), lockInfo.getTestCaseId());
+    assertEquals("another.user", lockInfo.getLockedBy());
+  }
+
+  @Test
   public void testFindTestCaseSeriesByMeasureIdThrowsExceptionWhenMeasureDoesNotExist() {
     Optional<Measure> optional = Optional.empty();
     when(measureRepository.findAllTestCaseSeriesByMeasureId(anyString())).thenReturn(optional);

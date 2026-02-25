@@ -370,6 +370,21 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testFindMeasureByIdIncludesMeasureLockWhenLockExists() {
+    MeasureSet measureSet = MeasureSet.builder().build();
+    Measure measure = Measure.builder().id("MID").measureSetId("MsetID").build();
+    MeasureLock lock = MeasureLock.builder().id("lock-id").lockedBy("test.user").build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+    when(measureLockService.findByMeasureId(anyString())).thenReturn(lock);
+    Measure output = measureService.findMeasureById("MID");
+    assertThat(output, is(notNullValue()));
+    assertThat(output.getMeasureLock(), is(notNullValue()));
+    assertThat(output.getMeasureLock().getId(), is(equalTo("lock-id")));
+    assertThat(output.getMeasureLock().getLockedBy(), is(equalTo("test.user")));
+  }
+
+  @Test
   public void testGetOwnedMeasuresByCriteria() {
     PageRequest initialPage = PageRequest.of(0, 10);
 
