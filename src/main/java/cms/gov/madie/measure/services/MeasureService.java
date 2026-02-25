@@ -957,6 +957,13 @@ public class MeasureService extends BaseMeasureService {
     if (uniqueIds.isEmpty()) {
       return List.of();
     }
-    return measureRepository.findAllByIdIn(uniqueIds);
+    List<MeasureListDTO> measuresList = measureRepository.findAllByIdIn(uniqueIds);
+    // We need to append measureSet to the measure so that we can access cmsId for components table.
+    measuresList.forEach(
+        (measure) -> {
+          // append a measureSet
+          measure.setMeasureSet(measureSetService.findByMeasureSetId(measure.getMeasureSetId()));
+        });
+    return measuresList;
   }
 }
