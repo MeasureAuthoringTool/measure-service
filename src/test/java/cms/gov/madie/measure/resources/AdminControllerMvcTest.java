@@ -194,9 +194,6 @@ public class AdminControllerMvcTest {
             .groups(List.of(group))
             .testCases(List.of(testCase2))
             .build();
-
-    // Mock appConfigService to return false for LOCKING feature flag by default
-    when(appConfigService.isFlagEnabled(any())).thenReturn(false);
   }
 
   @Test
@@ -1727,6 +1724,8 @@ public class AdminControllerMvcTest {
     aclSpecification.setUserId("test");
     aclSpecification.setRoles(Set.of(RoleEnum.SHARED_WITH));
 
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id(measureId).build());
     doReturn(List.of(aclSpecification))
         .when(measureService)
         .updateAccessControlList(anyString(), any(AclOperation.class), anyString());

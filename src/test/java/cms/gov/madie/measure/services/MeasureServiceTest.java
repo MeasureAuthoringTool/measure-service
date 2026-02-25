@@ -370,6 +370,21 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testFindMeasureByIdIncludesMeasureLockWhenLockExists() {
+    MeasureSet measureSet = MeasureSet.builder().build();
+    Measure measure = Measure.builder().id("MID").measureSetId("MsetID").build();
+    MeasureLock lock = MeasureLock.builder().id("lock-id").lockedBy("test.user").build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+    when(measureLockService.findByMeasureId(anyString())).thenReturn(lock);
+    Measure output = measureService.findMeasureById("MID");
+    assertThat(output, is(notNullValue()));
+    assertThat(output.getMeasureLock(), is(notNullValue()));
+    assertThat(output.getMeasureLock().getId(), is(equalTo("lock-id")));
+    assertThat(output.getMeasureLock().getLockedBy(), is(equalTo("test.user")));
+  }
+
+  @Test
   public void testGetOwnedMeasuresByCriteria() {
     PageRequest initialPage = PageRequest.of(0, 10);
 
@@ -1693,23 +1708,6 @@ public class MeasureServiceTest implements ResourceUtil {
     measure1.setMeasureSet(qiCoreMeasureSet);
     measure2.setMeasureSet(qdmMeasureSet);
 
-    assertDoesNotThrow(() -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationWhenFeatureFlagIsOn() {
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(Collections.emptyList());
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
         .thenReturn(false);
 
@@ -1729,7 +1727,6 @@ public class MeasureServiceTest implements ResourceUtil {
     measure1.setMeasureSet(qiCoreMeasureSet);
     measure2.setMeasureSet(qdmMeasureSet);
 
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
         .thenThrow(
             new LockNotObtainedException(
@@ -2552,7 +2549,6 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     // When
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
     when(measureLockService.checkMeasureAndTestCaseLock(
             anyString(), any(Measure.class), anyString()))
@@ -2572,7 +2568,7 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testDeactivateMeasureSuccessfullyWhenLockingIsEnabled() {
+  public void testDeactivateMeasureSuccessfully() {
     // Given
     String username = "test-user";
 
@@ -2584,7 +2580,6 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     // When
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
     when(measureLockService.checkMeasureAndTestCaseLock(
             anyString(), any(Measure.class), anyString()))
@@ -2618,7 +2613,6 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     // When
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
     when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
     when(actionLogService.logAction(
@@ -2640,7 +2634,6 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetMeasureLockLockedByOtherUser() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.findByMeasureId(anyString()))
         .thenReturn(MeasureLock.builder().id("testMeasureId").lockedBy("testUserName2").build());
 
@@ -2653,7 +2646,6 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetMeasureLockLockedBySelf() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.findByMeasureId(anyString()))
         .thenReturn(MeasureLock.builder().id("testMeasureId").lockedBy("testUserName").build());
 
@@ -2665,7 +2657,6 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetMeasureLockLockNotFound() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
 
     gov.cms.madie.models.measure.MeasureLock measureLock =
@@ -2676,7 +2667,6 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetMeasureLockFeatureFlagNotEnabled() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     gov.cms.madie.models.measure.MeasureLock measureLock =
         measureService.getMeasureLock("testMeasureId", "testUserName");

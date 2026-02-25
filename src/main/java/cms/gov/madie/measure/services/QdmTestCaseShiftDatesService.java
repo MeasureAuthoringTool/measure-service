@@ -17,7 +17,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import cms.gov.madie.measure.dto.LockInfo;
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.exceptions.CqmConversionException;
 import cms.gov.madie.measure.exceptions.LockNotObtainedException;
 
@@ -64,28 +63,16 @@ public class QdmTestCaseShiftDatesService {
             .filter(testCase -> testCaseIds.contains(testCase.getId()))
             .toList();
 
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      List<TestCase> shiftedAndUpdatedTestCases =
-          shiftDatesWhenFeatureFlagOn(testCases, measure.getId(), shifted, principal, accessToken);
-      List<String> savedTestCaseIds =
-          shiftedAndUpdatedTestCases.stream().map(testCase -> testCase.getId()).toList();
+    List<TestCase> shiftedAndUpdatedTestCases =
+        shiftDates(testCases, measure.getId(), shifted, principal, accessToken);
+    List<String> savedTestCaseIds =
+        shiftedAndUpdatedTestCases.stream().map(testCase -> testCase.getId()).toList();
 
-      // return shifted and saved test case ids
-      return testCases.stream()
-          .filter(testCase -> savedTestCaseIds.contains(testCase.getId()))
-          .map(testCase -> testCase.getId())
-          .toList();
-    } else {
-      List<TestCase> shiftedAndUpdatedTestCases =
-          shiftAndUpdate(testCases, shifted, measure.getId(), principal, accessToken);
-      List<String> savedTestCaseIds =
-          shiftedAndUpdatedTestCases.stream().map(testCase -> testCase.getId()).toList();
-
-      return testCases.stream()
-          .filter(testCase -> savedTestCaseIds.contains(testCase.getId()))
-          .map(testCase -> testCase.getId())
-          .toList();
-    }
+    // return shifted and saved test case ids
+    return testCases.stream()
+        .filter(testCase -> savedTestCaseIds.contains(testCase.getId()))
+        .map(testCase -> testCase.getId())
+        .toList();
   }
 
   protected List<TestCase> shiftAndUpdate(
@@ -161,7 +148,7 @@ public class QdmTestCaseShiftDatesService {
     }
   }
 
-  protected List<TestCase> shiftDatesWhenFeatureFlagOn(
+  protected List<TestCase> shiftDates(
       List<TestCase> testCases,
       String measureId,
       int shifted,

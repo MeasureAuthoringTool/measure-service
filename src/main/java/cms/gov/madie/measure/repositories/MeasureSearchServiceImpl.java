@@ -27,7 +27,6 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static cms.gov.madie.measure.dto.MadieFeatureFlag.DISPLAY_OWNER;
 import static cms.gov.madie.measure.utils.SearchAggregationUtils.createScoringTypeFilter;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
@@ -213,10 +212,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     MatchOperation matchMeasureSetIds =
         match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
     postMatchPipeline.add(matchMeasureSetIds);
+
     // lock stages
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      postMatchPipeline.addAll(getLockStages(userId));
-    }
+    postMatchPipeline.addAll(getLockStages(userId));
+
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version
     SortOperation sortByVersionAndDraft =
@@ -268,9 +267,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
    * @param measureListDTOs List of MeasureListDTO objects to populate
    */
   private void populateOwnerDisplayNames(List<MeasureListDTO> measureListDTOs) {
-    if (!appConfigService.isFlagEnabled(DISPLAY_OWNER)) {
-      return;
-    }
     if (CollectionUtils.isEmpty(measureListDTOs)) {
       return;
     }

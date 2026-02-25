@@ -465,7 +465,6 @@ public class GroupServiceTest implements ResourceUtil {
             .measureSet(MeasureSet.builder().owner("test.user").build())
             .measureLock(MeasureLock.builder().lockedBy("test.user").build())
             .build();
-    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     doReturn(existingMeasure).when(measureRepository).save(any(Measure.class));
@@ -632,7 +631,6 @@ public class GroupServiceTest implements ResourceUtil {
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .build();
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
-    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
     when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(true);
 
@@ -769,7 +767,6 @@ public class GroupServiceTest implements ResourceUtil {
   public void testCreateOrUpdateGroupWhenMeasureHasLockedTestCases() {
     Optional<Measure> optional = Optional.of(measure);
     when(measureRepository.findById(anyString())).thenReturn(optional);
-    when(appConfigService.isFlagEnabled(any())).thenReturn(true);
     when(testCaseLockService.isAnyTestCaseLockedByOthers(anyString(), anyString()))
         .thenReturn(true);
     assertThrows(

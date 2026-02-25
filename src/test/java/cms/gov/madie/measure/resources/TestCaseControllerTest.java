@@ -1,7 +1,6 @@
 package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.dto.BulkTestCaseResult;
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
@@ -451,7 +450,6 @@ public class TestCaseControllerTest {
             .build();
     fhirMeasure.setTestCases(List.of(testCase));
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
@@ -706,7 +704,6 @@ public class TestCaseControllerTest {
     when(principal.getName()).thenReturn("test.user");
     measure.setTestCases(List.of(testCase));
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId(anyString()))
         .thenReturn(TestCaseLock.builder().lockedBy("test.user").build());
     doReturn(List.of(testCase.getId()))
@@ -744,7 +741,6 @@ public class TestCaseControllerTest {
     testCase.setSeries(null);
     measure.setTestCases(List.of(testCase, testCase2, testCase3, testCase4));
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId("TESTID")).thenReturn(null);
     when(testCaseLockService.findByTestCaseId("testCaseId2"))
         .thenReturn(TestCaseLock.builder().lockedBy("test.user2").build());
@@ -776,7 +772,7 @@ public class TestCaseControllerTest {
   }
 
   @Test
-  void shiftAllQdmTestCaseDatesWithLockeAndFailedTestCases() {
+  void shiftAllQdmTestCaseDatesWithLockedAndFailedTestCases() {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
@@ -792,7 +788,6 @@ public class TestCaseControllerTest {
     testCase.setSeries(null);
     measure.setTestCases(List.of(testCase, testCase2, testCase3, testCase4));
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId("TESTID")).thenReturn(null);
     when(testCaseLockService.findByTestCaseId("testCaseId2"))
         .thenReturn(TestCaseLock.builder().lockedBy("test.user2").build());
@@ -833,7 +828,6 @@ public class TestCaseControllerTest {
     fhirMeasure.setTestCases(List.of(testCase, testCase2));
     doReturn(fhirMeasure).when(measureService).findMeasureById(fhirMeasure.getId());
 
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(testCaseLockService.findByTestCaseId("TESTID")).thenReturn(null);
     when(testCaseLockService.findByTestCaseId("testCaseId2"))
         .thenReturn(TestCaseLock.builder().lockedBy("test.user2").build());

@@ -198,8 +198,7 @@ public class MeasureController extends AbstractMeasureController {
     }
 
     // Group changes are not allowed if any test case is locked by another user
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-        && testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username)
+    if (testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username)
         && MeasureUtil.isMeasureGroupsChanged(measure, existingMeasure)) {
       throw new LockNotObtainedException(
           "Unable to update measure groups. One or more test cases are locked by another user.");

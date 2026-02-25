@@ -1,6 +1,5 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BadVersionRequestException;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
@@ -1671,7 +1670,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateVersionWhenLockingFeatureFlagIsOn() {
+  public void testCreateVersion() {
     FhirMeasure existingMeasure =
         FhirMeasure.builder()
             .id("testMeasureId")
@@ -1689,8 +1688,6 @@ public class VersionServiceTest {
     existingMeasure.setVersion(version);
 
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
-
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.checkMeasureAndTestCaseLock(
             anyString(), any(Measure.class), anyString()))
         .thenReturn(false);

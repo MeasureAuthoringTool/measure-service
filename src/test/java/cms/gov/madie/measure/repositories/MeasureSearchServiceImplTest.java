@@ -685,7 +685,6 @@ public class MeasureSearchServiceImplTest {
                 .hasLockedTestCases(true)
                 .build());
     FacetDTO mockFacetDto = FacetDTO.builder().queryResults(measuresList).build();
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
 
     MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
     MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
@@ -720,8 +719,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresPopulatesOwnerDisplayNames() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -779,8 +776,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithFirstNameOnly() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -821,8 +816,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithLastNameOnly() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -863,8 +856,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithHarpIdWhenFirstAndLastNameIsNull() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -905,8 +896,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithUserNotFound() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -946,8 +935,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithNullMeasureSet() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -983,8 +970,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithNullOwner() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1021,8 +1006,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithEmptyList() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1050,8 +1033,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesDeduplicatesOwners() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1108,7 +1089,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresWithAllowedScoringTypesFilter() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1149,7 +1129,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresWithSingleAllowedScoringType() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1187,7 +1166,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresWithEmptyAllowedScoringTypes() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1225,7 +1203,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresWithNullAllowedScoringTypes() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1263,7 +1240,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresWithIsFromCompositeMeasureComponentsFalse() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1301,7 +1277,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresWithMultipleAllowedScoringTypes() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1344,7 +1319,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresWithNullMeasureSearchCriteria() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
@@ -1376,8 +1350,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresWithScoringFilterAndLocking() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
-
     PageRequest pageRequest = PageRequest.of(0, 10);
 
     MeasureListDTO measure1 =
@@ -1414,7 +1386,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testSearchMeasuresByCriteriaExecutesCreateScoringTypeFilterCompletely() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     PageRequest pageRequest = PageRequest.of(0, 10);
     MeasureListDTO measureWithAllowedScoring =
         MeasureListDTO.builder()
@@ -1472,8 +1443,6 @@ public class MeasureSearchServiceImplTest {
 
   @Test
   public void testPopulateOwnerDisplayNamesWithHyphenWhenHarpIdFirstAndLastNameAreNull() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.DISPLAY_OWNER)).thenReturn(true);
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     PageRequest pageRequest = PageRequest.of(0, 10);
 
