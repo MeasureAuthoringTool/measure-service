@@ -22,9 +22,9 @@ public class RemoveDuplicateAclsChangeUnit {
   List<MeasureSet> copyOfAllMeasureSets = null;
 
   @Execution
-  public void removeDuplicateAcls(MeasureSetRepository MeasureSetRepository) {
+  public void removeDuplicateAcls(MeasureSetRepository measureSetRepository) {
     log.info("Entering removeDuplicateAcls()");
-    List<MeasureSet> allMeasureSets = MeasureSetRepository.findAll();
+    List<MeasureSet> allMeasureSets = measureSetRepository.findAll();
     if (CollectionUtils.isNotEmpty(allMeasureSets)) {
       copyOfAllMeasureSets = new ArrayList<>(allMeasureSets);
       log.info("copyOfAllMeasureSets size = " + copyOfAllMeasureSets.size());
@@ -32,7 +32,7 @@ public class RemoveDuplicateAclsChangeUnit {
         List<AclSpecification> acls = measureSet.getAcls();
         if (CollectionUtils.isNotEmpty(acls)) {
           measureSet.setAcls(removeDuplicatesWithSharedWith(acls));
-          MeasureSetRepository.save(measureSet);
+          measureSetRepository.save(measureSet);
         }
       }
     }
