@@ -1,6 +1,5 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.factories.ModelValidatorFactory;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -72,8 +71,7 @@ public class GroupService {
       }
     }
 
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-        && testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username.toLowerCase())) {
+    if (testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username.toLowerCase())) {
       throw new LockNotObtainedException(
           "Unable to create or update measure groups. One or more test cases are locked by another user.");
     }
@@ -111,6 +109,7 @@ public class GroupService {
         existingGroup.setStratifications(group.getStratifications());
         existingGroup.setPopulationBasis(group.getPopulationBasis());
         existingGroup.setCompositeScoring(group.getCompositeScoring());
+        existingGroup.setComponents(group.getComponents());
       } else { // if not present, add into groups collection
         group.setId(ObjectId.get().toString());
         measure.getGroups().add(group);
@@ -194,8 +193,7 @@ public class GroupService {
       throw new InvalidIdException("Measure group Id cannot be null");
     }
 
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-        && testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username.toLowerCase())) {
+    if (testCaseLockService.isAnyTestCaseLockedByOthers(measureId, username.toLowerCase())) {
       throw new LockNotObtainedException(
           "Unable to delete measure groups. One or more test cases are locked by another user.");
     }

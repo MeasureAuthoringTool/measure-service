@@ -346,9 +346,8 @@ public class MeasureService extends BaseMeasureService {
       throw new InvalidResourceStateException("Measure is inactive.");
     }
 
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      measureLockService.checkMeasureAndTestCaseLock(username, existingMeasure, "delete");
-    }
+    measureLockService.checkMeasureAndTestCaseLock(username, existingMeasure, "delete");
+
     existingMeasure.setActive(false);
     existingMeasure.setLastModifiedBy(username);
     existingMeasure.setLastModifiedAt(Instant.now());
@@ -877,9 +876,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   private void verifyQiCoreMeasureNotLocked(Measure qiCoreMeasure, String username) {
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      measureLockService.checkMeasureLock(username, qiCoreMeasure, "associate");
-    }
+    measureLockService.checkMeasureLock(username, qiCoreMeasure, "associate");
   }
 
   /**
@@ -940,15 +937,33 @@ public class MeasureService extends BaseMeasureService {
   // lock) returns null
   public gov.cms.madie.models.measure.MeasureLock getMeasureLock(
       String measureId, String username) {
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      MeasureLock lock = measureLockService.findByMeasureId(measureId);
-      if (lock != null && !username.equalsIgnoreCase(lock.getLockedBy())) {
-        return gov.cms.madie.models.measure.MeasureLock.builder()
-            .id(lock.getId())
-            .lockedBy(lock.getLockedBy())
-            .build();
-      }
+    MeasureLock lock = measureLockService.findByMeasureId(measureId);
+    if (lock != null && !username.equalsIgnoreCase(lock.getLockedBy())) {
+      return gov.cms.madie.models.measure.MeasureLock.builder()
+          .id(lock.getId())
+          .lockedBy(lock.getLockedBy())
+          .build();
     }
+
     return null;
+  }
+
+  public List<MeasureListDTO> getMeasuresByObjectIds(List<String> ids) {
+    if (ids == null || ids.isEmpty()) {
+      return List.of();
+    }
+    List<String> uniqueIds = ids.stream().filter(Objects::nonNull).distinct().toList();
+
+    if (uniqueIds.isEmpty()) {
+      return List.of();
+    }
+    List<MeasureListDTO> measuresList = measureRepository.findAllByIdIn(uniqueIds);
+    // We need to append measureSet to the measure so that we can access cmsId for components table.
+    measuresList.forEach(
+        (measure) -> {
+          // append a measureSet
+          measure.setMeasureSet(measureSetService.findByMeasureSetId(measure.getMeasureSetId()));
+        });
+    return measuresList;
   }
 }

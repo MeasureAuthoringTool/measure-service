@@ -1,11 +1,11 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.utils.RichTextUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
@@ -80,16 +80,12 @@ public class VersionService {
   public Measure createVersion(String id, String versionType, String username, String accessToken) {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-      measureLockService.checkMeasureAndTestCaseLock(username, measure, "version");
-      // no lock on measure and no locks on any test cases, version is ok
-      Measure versionedMeasure = versionMeasure(measure, versionType, username, accessToken);
-      measureLockService.unlockMeasure(measure.getId(), username);
-      log.info("user: [{}] unlocked Measure: [{}] after versioning.", username, measure.getId());
-      return versionedMeasure;
-    } else {
-      return versionMeasure(measure, versionType, username, accessToken);
-    }
+    measureLockService.checkMeasureAndTestCaseLock(username, measure, "version");
+    // no lock on measure and no locks on any test cases, version is ok
+    Measure versionedMeasure = versionMeasure(measure, versionType, username, accessToken);
+    measureLockService.unlockMeasure(measure.getId(), username);
+    log.info("user: [{}] unlocked Measure: [{}] after versioning.", username, measure.getId());
+    return versionedMeasure;
   }
 
   private Measure versionMeasure(
@@ -276,6 +272,10 @@ public class VersionService {
     measureDraft.setCreatedAt(now);
     measureDraft.setLastModifiedAt(now);
     measureDraft.setCreatedBy(username);
+    // versioned measures may have rich text content that needs to be html-fied for the draft
+    // so that react RTE can render them properly
+    // TODO: remove at some point in the future once all measures have been drafted
+    RichTextUtil.htmlifyMeasureRichTextContents(measureDraft);
     Measure savedDraft = measureRepository.save(measureDraft);
     log.info(
         "User [{}] created a draft for measure with id [{}]. Draft id is [{}]",

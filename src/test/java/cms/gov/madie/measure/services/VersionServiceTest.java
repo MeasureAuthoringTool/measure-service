@@ -1,6 +1,5 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BadVersionRequestException;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
@@ -1671,7 +1670,7 @@ public class VersionServiceTest {
   }
 
   @Test
-  public void testCreateVersionWhenLockingFeatureFlagIsOn() {
+  public void testCreateVersion() {
     FhirMeasure existingMeasure =
         FhirMeasure.builder()
             .id("testMeasureId")
@@ -1689,8 +1688,6 @@ public class VersionServiceTest {
     existingMeasure.setVersion(version);
 
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
-
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.checkMeasureAndTestCaseLock(
             anyString(), any(Measure.class), anyString()))
         .thenReturn(false);
@@ -1767,5 +1764,84 @@ public class VersionServiceTest {
     assertEquals(savedValue.getId(), capturedExport.getMeasureId());
     assertEquals("hex1", capturedExport.getMeasureBundleGridFsId());
     assertEquals("hex2", capturedExport.getMeasureBundleWithoutWarningsGridFsId());
+  }
+
+  @Test
+  public void testCreateDraftHtmlifiesRichTextContent() {
+    ArgumentCaptor<Measure> measureArgumentCaptor = ArgumentCaptor.forClass(Measure.class);
+
+    TestCaseGroupPopulation clonedTestCaseGroupPopulation =
+        TestCaseGroupPopulation.builder()
+            .groupId("clonedGroupId1")
+            .scoring("Cohort")
+            .populationBasis("boolean")
+            .build();
+
+    // Create a measure with markdown-style content in metadata
+    Measure versionedMeasure = buildBasicMeasure();
+    MeasureMetaData metadata = new MeasureMetaData();
+    metadata.setDescription("This is a <strong>bold</strong> description");
+    metadata.setRationale("This is an _italic_ rationale");
+    metadata.setPurpose("This is a purpose");
+    versionedMeasure.setMeasureMetaData(metadata);
+
+    // Set up a group with markdown description
+    Group groupWithMarkdown =
+        cvGroup.toBuilder().groupDescription("Group with **markdown** content").build();
+    versionedMeasure.setGroups(List.of(groupWithMarkdown));
+
+    MeasureMetaData draftMetadata = new MeasureMetaData();
+    draftMetadata.setDraft(true);
+    draftMetadata.setDescription("<p>This is a <strong>bold</strong> description</p>");
+    draftMetadata.setRationale("<p>This is an <em>italic</em> rationale</p>");
+    draftMetadata.setPurpose("<p>This is a purpose</p>");
+
+    Measure versionedCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(draftMetadata)
+            .groups(
+                List.of(
+                    cvGroup.toBuilder()
+                        .id(ObjectId.get().toString())
+                        .groupDescription("<p>Group with <strong>markdown</strong> content</p>")
+                        .build()))
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .id(ObjectId.get().toString())
+                        .groupPopulations(List.of(clonedTestCaseGroupPopulation))
+                        .build()))
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+
+    versionService.createDraft(
+        versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
+
+    // Verify that measureRepository.save was called with htmlified content
+    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
+    Measure capturedMeasure = measureArgumentCaptor.getValue();
+
+    // Verify that rich text content was htmlified (converted from markdown to HTML)
+    assertThat(
+        capturedMeasure.getMeasureMetaData().getDescription(),
+        containsString("<strong>bold</strong>"));
+    assertThat(
+        capturedMeasure.getMeasureMetaData().getRationale(), containsString("<em>italic</em>"));
+    assertThat(
+        capturedMeasure.getMeasureMetaData().getPurpose(),
+        containsString("<p>This is a purpose</p>"));
+    assertThat(
+        capturedMeasure.getGroups().get(0).getGroupDescription(),
+        containsString("<strong>markdown</strong>"));
   }
 }

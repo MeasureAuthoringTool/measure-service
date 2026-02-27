@@ -6,7 +6,6 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
 import cms.gov.madie.measure.utils.MeasureUtil;
-import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.common.Action;
 import gov.cms.madie.models.common.ActionType;
@@ -19,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -27,7 +25,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -177,67 +174,63 @@ public class MeasureController extends AbstractMeasureController {
     log.info("getMeasureId [{}]", id);
 
     final Measure existingMeasure = measureService.findMeasureById(id);
+    if (existingMeasure == null) {
+      throw new ResourceNotFoundException("Measure", id);
+    }
     checkMeasureLock(existingMeasure, username);
 
-    if (existingMeasure != null) {
-      if (username != null && existingMeasure.getCreatedBy() != null) {
-        log.info("got username [{}] vs createdBy: [{}]", username, existingMeasure.getCreatedBy());
-        // either owner or shared-with role
-        measureService.verifyAuthorization(username, existingMeasure);
+    log.info("got username [{}] vs createdBy: [{}]", username, existingMeasure.getCreatedBy());
+    // either owner or shared-with role
+    measureService.verifyAuthorization(username, existingMeasure);
 
-        if (!existingMeasure.getMeasureMetaData().isDraft()) {
-          throw new InvalidDraftStatusException(measure.getId());
-        }
+    if (!existingMeasure.getMeasureMetaData().isDraft()) {
+      throw new InvalidDraftStatusException(measure.getId());
+    }
 
-        // no user can update a soft-deleted measure
-        if (!existingMeasure.isActive()) {
-          throw new UnauthorizedException("Measure", existingMeasure.getId(), username);
-        }
-        // shared user should be able to edit Measure but won’t have delete access, only owner can
-        // delete
-        if (!measure.isActive()) {
-          measureService.verifyAuthorization(username, measure, null);
-        }
+    // no user can update a soft-deleted measure
+    if (!existingMeasure.isActive()) {
+      throw new UnauthorizedException("Measure", existingMeasure.getId(), username);
+    }
+    // shared user should be able to edit Measure but won’t have delete access, only owner can
+    // delete
+    if (!measure.isActive()) {
+      measureService.verifyAuthorization(username, measure, null);
+    }
 
-        // Group changes are not allowed if any test case is locked by another user
-        if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)
-            && testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username)
-            && MeasureUtil.isMeasureGroupsChanged(measure, existingMeasure)) {
-          throw new LockNotObtainedException(
-              "Unable to update measure groups. One or more test cases are locked by another user.");
-        }
+    // Group changes are not allowed if any test case is locked by another user
+    if (testCaseLockService.isAnyTestCaseLockedByOthers(existingMeasure.getId(), username)
+        && MeasureUtil.isMeasureGroupsChanged(measure, existingMeasure)) {
+      throw new LockNotObtainedException(
+          "Unable to update measure groups. One or more test cases are locked by another user.");
+    }
 
-        // clear testcase groups for qdm when scoring or patient basis is changed.
-        // for QDM, scoring and patient basis are present outside the group
-        // therefor we need to clear testcase groups while updating measure
-        if (existingMeasure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
-            && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
-          QdmMeasure qdmExistingMeasure = (QdmMeasure) existingMeasure;
-          QdmMeasure qdmUpdatingMeasure = (QdmMeasure) measure;
+    // clear testcase groups for qdm when scoring or patient basis is changed.
+    // for QDM, scoring and patient basis are present outside the group
+    // therefor we need to clear testcase groups while updating measure
+    if (existingMeasure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())
+        && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
+      QdmMeasure qdmExistingMeasure = (QdmMeasure) existingMeasure;
+      QdmMeasure qdmUpdatingMeasure = (QdmMeasure) measure;
 
-          if (!StringUtils.equals(qdmExistingMeasure.getScoring(), qdmUpdatingMeasure.getScoring())
-              || (qdmExistingMeasure.isPatientBasis() != qdmUpdatingMeasure.isPatientBasis())) {
-            existingMeasure
-                .getTestCases()
-                .forEach(
-                    testcase -> {
-                      testcase.setGroupPopulations(new ArrayList<>());
-                      testCaseService.updateTestCase(testcase, id, username, accessToken);
-                    });
-          }
-        }
+      if (!StringUtils.equals(qdmExistingMeasure.getScoring(), qdmUpdatingMeasure.getScoring())
+          || (qdmExistingMeasure.isPatientBasis() != qdmUpdatingMeasure.isPatientBasis())) {
+        existingMeasure
+            .getTestCases()
+            .forEach(
+                testcase -> {
+                  testcase.setGroupPopulations(new ArrayList<>());
+                  testCaseService.updateTestCase(testcase, id, username, accessToken);
+                });
       }
+    }
 
-      response =
-          ResponseEntity.ok()
-              .body(measureService.updateMeasure(existingMeasure, username, measure, accessToken));
-      if (!measure.isActive()) {
-        actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
-      } else {
-        actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
-      }
+    response =
+        ResponseEntity.ok()
+            .body(measureService.updateMeasure(existingMeasure, username, measure, accessToken));
+    if (!measure.isActive()) {
+      actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
     } else {
-      throw new ResourceNotFoundException("Measure", id);
+      actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
     }
 
     return response;
@@ -249,20 +242,6 @@ public class MeasureController extends AbstractMeasureController {
 
     return ResponseEntity.ok()
         .body(measureService.deactivateMeasure(id, principal.getName().toLowerCase()));
-  }
-
-  @PutMapping("/measures/{id}/acls")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
-  public ResponseEntity<List<AclSpecification>> updateAccessControl(
-      HttpServletRequest request,
-      @PathVariable String id,
-      @RequestBody @Validated AclOperation aclOperation,
-      @Value("${admin-api-key}") String apiKey) {
-    final Measure existingMeasure = measureService.findMeasureById(id);
-    checkMeasureLock(existingMeasure, "admin");
-    List<AclSpecification> aclSpecifications =
-        measureService.updateAccessControlList(id, aclOperation, "admin");
-    return ResponseEntity.ok().body(aclSpecifications);
   }
 
   @GetMapping("/measures/shared")
@@ -438,28 +417,6 @@ public class MeasureController extends AbstractMeasureController {
         .body(measureSetService.createAndUpdateCmsId(measureSetId, username));
   }
 
-  @DeleteMapping("/measures/{measureId}/delete-cms-id")
-  @PreAuthorize("#request.getHeader('api-key') == #apiKey")
-  public ResponseEntity<String> deleteCmsId(
-      HttpServletRequest request,
-      @PathVariable String measureId,
-      @RequestParam(name = "cmsId") Integer cmsId,
-      @Value("${admin-api-key}") String apiKey,
-      @RequestHeader(name = "harpId") String harpId,
-      Principal principal) {
-    final String username = principal.getName().toLowerCase();
-    log.info(
-        "User [{}] - Started admin task [deleteCmsId] and is attempting to delete "
-            + "CMS id [{}] from measure with measure id [{}]",
-        username,
-        cmsId,
-        measureId);
-    final Measure existingMeasure = measureService.findMeasureById(measureId);
-    checkMeasureLock(existingMeasure, username);
-    return ResponseEntity.status(HttpStatus.OK)
-        .body(measureSetService.deleteCmsId(measureId, cmsId, harpId.toLowerCase(), username));
-  }
-
   @PutMapping("/measures/cms-id-association")
   public ResponseEntity<MeasureSet> associateCmsId(
       Principal principal,
@@ -603,5 +560,12 @@ public class MeasureController extends AbstractMeasureController {
 
     log.info("Comparison complete: {} file comparison(s)", comparisons.size());
     return ResponseEntity.ok(result);
+  }
+
+  @PostMapping(value = "/measures/by-ids")
+  public ResponseEntity<List<MeasureListDTO>> getMeasuresByIds(@RequestBody List<String> ids) {
+    List<MeasureListDTO> results = measureService.getMeasuresByObjectIds(ids);
+
+    return ResponseEntity.ok(results);
   }
 }

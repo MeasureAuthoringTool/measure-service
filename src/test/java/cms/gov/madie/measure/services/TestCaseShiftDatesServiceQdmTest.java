@@ -32,7 +32,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import cms.gov.madie.measure.dto.LockInfo;
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.exceptions.CqmConversionException;
 import cms.gov.madie.measure.exceptions.LockNotObtainedException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
@@ -202,8 +201,7 @@ public class TestCaseShiftDatesServiceQdmTest {
   }
 
   @Test
-  void testShiftTestCaseDatesWhenFeatureFlagOn() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+  void testShiftTestCaseDates() {
     TestCase testCase2 = TestCase.builder().id("TESTID2").title("TITLE2").json(JSON).build();
     QdmMeasure qdmMeasure =
         QdmMeasure.builder()
@@ -239,8 +237,7 @@ public class TestCaseShiftDatesServiceQdmTest {
   }
 
   @Test
-  void testShiftTestCaseDatesWhenFeatureFlagAndSeries() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
+  void testShiftTestCaseDatesWhenSeries() {
     TestCase testCase2 =
         TestCase.builder().id("TESTID2").series("SERIES2").title("TITLE2").json(JSON).build();
     QdmMeasure qdmMeasure =
@@ -278,7 +275,6 @@ public class TestCaseShiftDatesServiceQdmTest {
 
   @Test
   void testShiftTestCaseDatesWhenLockFails() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     TestCase testCase2 = TestCase.builder().id("TESTID2").title("TITLE2").json(JSON).build();
     QdmMeasure qdmMeasure =
         QdmMeasure.builder()

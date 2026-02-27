@@ -1,6 +1,5 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.exceptions.InvalidMeasureStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.locks.MeasureLock;
@@ -47,16 +46,14 @@ public abstract class BaseMeasureService {
                   m.toBuilder()
                       .measureSet(measureSetService.findByMeasureSetId(m.getMeasureSetId()));
 
-              // Map measure lock if locking feature is enabled
-              if (appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)) {
-                MeasureLock lock = measureLockService.findByMeasureId(m.getId());
-                if (lock != null) {
-                  builder.measureLock(
-                      gov.cms.madie.models.measure.MeasureLock.builder()
-                          .id(lock.getId())
-                          .lockedBy(lock.getLockedBy())
-                          .build());
-                }
+              // Map measure lock
+              MeasureLock lock = measureLockService.findByMeasureId(m.getId());
+              if (lock != null) {
+                builder.measureLock(
+                    gov.cms.madie.models.measure.MeasureLock.builder()
+                        .id(lock.getId())
+                        .lockedBy(lock.getLockedBy())
+                        .build());
               }
 
               return builder.build();
@@ -108,7 +105,7 @@ public abstract class BaseMeasureService {
         .map(
             userId ->
                 AclSpecification.builder()
-                    .userId(userId)
+                    .userId(userId.toLowerCase())
                     .roles(Set.of(RoleEnum.SHARED_WITH))
                     .build())
         .toList();

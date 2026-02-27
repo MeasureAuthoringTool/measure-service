@@ -79,6 +79,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private MeasureLockService measureLockService;
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
+  @InjectMocks private MeasureSetService measureSetServiceMock;
 
   private Group group2;
   private MeasureMetaData draftMeasureMetaData;
@@ -366,6 +367,21 @@ public class MeasureServiceTest implements ResourceUtil {
     Measure output = measureService.findMeasureById("MID");
     assertThat(output, is(notNullValue()));
     assertThat(output.getMeasureSet(), is(equalTo(measureSet)));
+  }
+
+  @Test
+  public void testFindMeasureByIdIncludesMeasureLockWhenLockExists() {
+    MeasureSet measureSet = MeasureSet.builder().build();
+    Measure measure = Measure.builder().id("MID").measureSetId("MsetID").build();
+    MeasureLock lock = MeasureLock.builder().id("lock-id").lockedBy("test.user").build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+    when(measureLockService.findByMeasureId(anyString())).thenReturn(lock);
+    Measure output = measureService.findMeasureById("MID");
+    assertThat(output, is(notNullValue()));
+    assertThat(output.getMeasureLock(), is(notNullValue()));
+    assertThat(output.getMeasureLock().getId(), is(equalTo("lock-id")));
+    assertThat(output.getMeasureLock().getLockedBy(), is(equalTo("test.user")));
   }
 
   @Test
@@ -1692,23 +1708,6 @@ public class MeasureServiceTest implements ResourceUtil {
     measure1.setMeasureSet(qiCoreMeasureSet);
     measure2.setMeasureSet(qdmMeasureSet);
 
-    assertDoesNotThrow(() -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationWhenFeatureFlagIsOn() {
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(Collections.emptyList());
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
         .thenReturn(false);
 
@@ -1728,7 +1727,6 @@ public class MeasureServiceTest implements ResourceUtil {
     measure1.setMeasureSet(qiCoreMeasureSet);
     measure2.setMeasureSet(qdmMeasureSet);
 
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
         .thenThrow(
             new LockNotObtainedException(
@@ -2551,7 +2549,6 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     // When
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureService.findMeasureById(measureId)).thenReturn(existingMeasure);
     when(measureLockService.checkMeasureAndTestCaseLock(
             anyString(), any(Measure.class), anyString()))
@@ -2571,7 +2568,7 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testDeactivateMeasureSuccessfullyWhenLockingIsEnabled() {
+  public void testDeactivateMeasureSuccessfully() {
     // Given
     String username = "test-user";
 
@@ -2583,7 +2580,6 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     // When
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
     when(measureLockService.checkMeasureAndTestCaseLock(
             anyString(), any(Measure.class), anyString()))
@@ -2617,7 +2613,6 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     // When
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
     when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
     when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
     when(actionLogService.logAction(
@@ -2639,7 +2634,6 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetMeasureLockLockedByOtherUser() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.findByMeasureId(anyString()))
         .thenReturn(MeasureLock.builder().id("testMeasureId").lockedBy("testUserName2").build());
 
@@ -2652,7 +2646,6 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetMeasureLockLockedBySelf() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.findByMeasureId(anyString()))
         .thenReturn(MeasureLock.builder().id("testMeasureId").lockedBy("testUserName").build());
 
@@ -2664,7 +2657,6 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetMeasureLockLockNotFound() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(true);
     when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
 
     gov.cms.madie.models.measure.MeasureLock measureLock =
@@ -2675,7 +2667,6 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testGetMeasureLockFeatureFlagNotEnabled() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.LOCKING)).thenReturn(false);
 
     gov.cms.madie.models.measure.MeasureLock measureLock =
         measureService.getMeasureLock("testMeasureId", "testUserName");
@@ -2722,7 +2713,6 @@ public class MeasureServiceTest implements ResourceUtil {
         () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
   }
 
-  @Test
   public void testUpdateMeasureThrowsExceptionForWhenCqlIsNull() {
     Measure original =
         Measure.builder()
@@ -2740,5 +2730,120 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThrows(
         InvalidRequestException.class,
         () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+  }
+
+  @Test
+  public void testChangeOwnershipOriginalMeasureSetDoesNotHaveAcls() {
+    String measureSetId = "measureSetId1";
+    String originalOwner = "originalOwner";
+    String newOwner = "newOwner";
+    MeasureSet measureSet = MeasureSet.builder().id(measureSetId).owner(originalOwner).build();
+
+    MeasureSet updatedMeasureSet =
+        measureSet.toBuilder()
+            .owner(newOwner)
+            .acls(
+                List.of(
+                    AclSpecification.builder()
+                        .userId(originalOwner)
+                        .roles(Set.of(RoleEnum.SHARED_WITH))
+                        .build()))
+            .build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result =
+        measureSetServiceMock.changeOwnership(measureSetId, "user123", true, "admin");
+    assertNotNull(result);
+    assertEquals(newOwner, result.getOwner());
+    assertTrue(result.getAcls() != null && !result.getAcls().isEmpty());
+  }
+
+  @Test
+  public void testChangeOwnershipMeasureSetAlreadySharedWithUser() {
+    String measureSetId = "measureSetId1";
+    String originalOwner = "originalOwner";
+    String newOwner = "newOwner";
+    MeasureSet measureSet =
+        MeasureSet.builder()
+            .id(measureSetId)
+            .owner(originalOwner)
+            .acls(
+                new ArrayList<>(
+                    List.of(
+                        AclSpecification.builder()
+                            .userId(originalOwner)
+                            .roles(Set.of(RoleEnum.SHARED_WITH))
+                            .build())))
+            .build();
+    MeasureSet updatedMeasureSet =
+        measureSet.toBuilder()
+            .owner(newOwner)
+            .acls(
+                List.of(
+                    AclSpecification.builder()
+                        .userId(originalOwner)
+                        .roles(Set.of(RoleEnum.SHARED_WITH))
+                        .build()))
+            .build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result =
+        measureSetServiceMock.changeOwnership(measureSetId, newOwner, true, "admin");
+    assertNotNull(result);
+    assertEquals(newOwner, result.getOwner());
+    assertTrue(result.getAcls() != null && !result.getAcls().isEmpty());
+    assertEquals(1, result.getAcls().size());
+    assertEquals(originalOwner, result.getAcls().get(0).getUserId());
+    assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
+  }
+
+  @Test
+  void returnsEmptyListWhenIdsNullOrEmptyAndDoesNotCallRepository() {
+    List<MeasureListDTO> resultNull = measureService.getMeasuresByObjectIds(null);
+    assertNotNull(resultNull);
+    assertTrue(resultNull.isEmpty());
+    verifyNoInteractions(measureRepository);
+
+    List<MeasureListDTO> resultEmpty = measureService.getMeasuresByObjectIds(List.of());
+    assertNotNull(resultEmpty);
+    assertTrue(resultEmpty.isEmpty());
+    verifyNoMoreInteractions(measureRepository);
+  }
+
+  @Test
+  void returnsEmptyListWhenAllIdsAreNullAfterFilteringAndDoesNotCallRepository() {
+    List<String> inputIds = Arrays.asList(null, null);
+    List<MeasureListDTO> result = measureService.getMeasuresByObjectIds(inputIds);
+
+    assertNotNull(result);
+    assertTrue(result.isEmpty());
+    verifyNoInteractions(measureRepository);
+  }
+
+  @Test
+  void dedupesAndFiltersNullsThenCallsRepositoryWithUniqueIdsAndReturnsRepositoryResult() {
+    List<String> inputIds = Arrays.asList("m1", "m2", "m1", null, "m3", "m2");
+    List<MeasureListDTO> repoResponse =
+        List.of(
+            MeasureListDTO.builder().id("m1").measureName("Alpha").build(),
+            MeasureListDTO.builder().id("m2").measureName("Beta").build(),
+            MeasureListDTO.builder().id("m3").measureName("Gamma").build());
+
+    when(measureRepository.findAllByIdIn(List.of("m1", "m2", "m3"))).thenReturn(repoResponse);
+
+    List<MeasureListDTO> result = measureService.getMeasuresByObjectIds(inputIds);
+
+    assertNotNull(result);
+    assertEquals(3, result.size());
+    assertEquals("m1", result.get(0).getId());
+    assertEquals("m2", result.get(1).getId());
+    assertEquals("m3", result.get(2).getId());
+
+    verify(measureRepository, times(1)).findAllByIdIn(List.of("m1", "m2", "m3"));
+    verifyNoMoreInteractions(measureRepository);
   }
 }

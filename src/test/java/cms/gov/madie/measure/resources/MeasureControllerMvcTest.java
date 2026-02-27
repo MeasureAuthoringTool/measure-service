@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.SecurityConfig;
+import cms.gov.madie.measure.SecurityConfigTest;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -15,7 +15,6 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.google.gson.Gson;
 
-import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ActionType;
@@ -62,7 +61,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest({MeasureController.class})
 @ActiveProfiles("test")
-@Import(SecurityConfig.class)
+@Import(SecurityConfigTest.class)
 public class MeasureControllerMvcTest {
 
   @MockitoBean private MeasureRepository measureRepository;
@@ -81,9 +80,6 @@ public class MeasureControllerMvcTest {
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor2;
 
   private static final String TEST_USER_ID = "test-okta-user-id-123";
-
-  private static final String TEST_API_KEY_HEADER = "api-key";
-  private static final String TEST_API_KEY_HEADER_VALUE = "0a51991c";
 
   @Captor ArgumentCaptor<Group> groupCaptor;
   @Captor ArgumentCaptor<String> groupIdCaptor;
@@ -108,61 +104,6 @@ public class MeasureControllerMvcTest {
     mapper.registerModule(new JavaTimeModule());
     mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
     return mapper.writeValueAsString(obj);
-  }
-
-  @Test
-  public void testUpdateAccessControl() throws Exception {
-    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-    AclSpecification aclSpecification = new AclSpecification();
-    aclSpecification.setUserId("test");
-    aclSpecification.setRoles(Set.of(RoleEnum.SHARED_WITH));
-
-    doReturn(List.of(aclSpecification))
-        .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                put("/measures/" + measureId + "/acls")
-                    .with(user(TEST_USER_ID))
-                    .with(csrf())
-                    .content(
-                        "{\"acls\": [{\"userId\": \"john.doe@abc.com\",\"roles\": [\"SHARED_WITH\"]}],\"action\": \"GRANT\"}")
-                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
-                    .contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(status().isOk())
-            .andReturn();
-    verify(measureService, times(1))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
-    assertEquals(
-        result.getResponse().getContentAsString(),
-        "[{\"userId\":\"test\",\"roles\":[\"SHARED_WITH\"]}]");
-  }
-
-  @Test
-  public void testUpdateAccessControlIfAclAndOperationMissing() throws Exception {
-    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                put("/measures/" + measureId + "/acls")
-                    .with(user(TEST_USER_ID))
-                    .with(csrf())
-                    .content("{\"acls\": [], \"operation\": null}")
-                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
-                    .contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(status().isBadRequest())
-            .andReturn();
-    verify(measureService, times(0))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
-    assertThat(
-        result
-            .getResponse()
-            .getContentAsString()
-            .contains("{\"acls\":\"must not be empty\",\"action\":\"must not be null\"}"),
-        is(true));
   }
 
   @Test
@@ -192,6 +133,7 @@ public class MeasureControllerMvcTest {
             .model(MODEL)
             .versionId(measureId)
             .measureSetId(measureSetId)
+            .measureMetaData((MeasureMetaData.builder().draft(true).build()))
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setSteward(steward);
@@ -277,6 +219,7 @@ public class MeasureControllerMvcTest {
             .model(MODEL)
             .versionId(measureId)
             .measureSetId(measureSetId)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setSteward(steward);
@@ -731,6 +674,7 @@ public class MeasureControllerMvcTest {
     priorMeasure.setEcqmTitle("ecqmTitle");
     priorMeasure.setVersionId(priorMeasure.getId());
     priorMeasure.setMeasureSetId("measureSetId");
+    priorMeasure.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
     when(measureService.findMeasureById(anyString())).thenReturn(priorMeasure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
@@ -786,6 +730,7 @@ public class MeasureControllerMvcTest {
     priorMeasure.setEcqmTitle("ecqmTitle");
     priorMeasure.setMeasureSetId("measureSetId");
     priorMeasure.setVersionId(priorMeasure.getId());
+    priorMeasure.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
     when(measureService.findMeasureById(anyString())).thenReturn(priorMeasure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
@@ -900,6 +845,7 @@ public class MeasureControllerMvcTest {
     saved.setVersionId(measureId);
     saved.setImprovementNotation("Other");
     saved.setImprovementNotationDescription("TestingOther");
+    saved.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
     when(measureService.findMeasureById(anyString())).thenReturn(saved);
     when(measureService.updateMeasure(
             any(Measure.class), anyString(), any(Measure.class), anyString()))
@@ -1058,6 +1004,7 @@ public class MeasureControllerMvcTest {
     saved.setModel(MODEL);
     saved.setVersionId(measureId);
     saved.setMeasureSetId(measureSetId);
+    saved.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
 
     when(measureService.findMeasureById(anyString())).thenReturn(saved);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
@@ -1178,10 +1125,10 @@ public class MeasureControllerMvcTest {
                     .content(measureAsJson)
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isForbidden())
+            .andExpect(status().isUnauthorized())
             .andReturn();
     String resultStr = result.getResponse().getErrorMessage();
-    assertEquals("Forbidden", resultStr);
+    assertNull(resultStr);
   }
 
   @Test
@@ -1660,6 +1607,8 @@ public class MeasureControllerMvcTest {
 
     final String groupJson =
         "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-2\",\"name\":\"initialPopulation\",\"definition\":\"FactorialOfFive\"}],\"measureGroupTypes\":[\"Process\"], \"populationBasis\": \"boolean\"}";
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("1234").build());
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
         .thenReturn(group);
 
@@ -1690,6 +1639,8 @@ public class MeasureControllerMvcTest {
   public void testUpdateGroupIfPopulationDefinitionReturnTypesAreInvalid() throws Exception {
     final String groupJson =
         "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-2\",\"name\":\"initialPopulation\",\"definition\":\"FactorialOfFive\"}],\"measureGroupTypes\":[\"Process\"], \"populationBasis\": \"boolean\"}";
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("1234").build());
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
         .thenThrow(new InvalidReturnTypeException("Initial Population"));
 
@@ -1717,6 +1668,8 @@ public class MeasureControllerMvcTest {
   public void testUpdateGroupIfPopulationFunctionReturnTypesAreInvalid() throws Exception {
     final String groupJson =
         "{\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-1\",\"name\":\"initialPopulation\",\"definition\":\"Initial Population\"}],\"measureGroupTypes\":[\"Process\"],\"populationBasis\": \"boolean\"}";
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("1234").build());
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
         .thenThrow(
             new InvalidReturnTypeException(
@@ -1995,6 +1948,8 @@ public class MeasureControllerMvcTest {
             .association(PopulationType.INITIAL_POPULATION)
             .associations(List.of(PopulationType.INITIAL_POPULATION, PopulationType.NUMERATOR))
             .build();
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("1234").build());
     final String stratificationJson =
         "{\n"
             + "    \"id\": \"id-1\",\n"
@@ -2105,6 +2060,8 @@ public class MeasureControllerMvcTest {
     measureIdToAclSpecification.put("measureId1", List.of(aclSpecification1));
     measureIdToAclSpecification.put("measureId2", List.of(aclSpecification1, aclSpecification2));
 
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measureId1").build());
     doReturn(measureIdToAclSpecification).when(measureService).shareMeasures(any(), anyString());
 
     MvcResult result =
@@ -2114,7 +2071,6 @@ public class MeasureControllerMvcTest {
                     .with(user(TEST_USER_ID))
                     .with(csrf())
                     .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\"]}")
-                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();
@@ -2133,6 +2089,8 @@ public class MeasureControllerMvcTest {
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
     measureIdToAclSpecification.put("measureId2", List.of(aclSpecification2));
 
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measureId1").build());
     doReturn(measureIdToAclSpecification).when(measureService).unshareMeasures(any(), anyString());
 
     MvcResult result =
@@ -2142,7 +2100,6 @@ public class MeasureControllerMvcTest {
                     .with(user(TEST_USER_ID))
                     .with(csrf())
                     .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\"]}")
-                    .header(TEST_API_KEY_HEADER, TEST_API_KEY_HEADER_VALUE)
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();
