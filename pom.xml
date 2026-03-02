@@ -161,7 +161,7 @@
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-rest-commons</artifactId>
-      <version>1.0.5-SNAPSHOT</version>
+      <version>1.0.6-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>info.cqframework</groupId>
@@ -179,7 +179,7 @@
     <dependency>
       <groupId>gov.cms.madie.packaging</groupId>
       <artifactId>packaging-utility</artifactId>
-      <version>0.2.13-SNAPSHOT</version>
+      <version>0.2.14-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.springdoc</groupId>
