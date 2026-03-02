@@ -330,10 +330,6 @@ public class MeasureController extends AbstractMeasureController {
     checkMeasureLock(measureService.findMeasureById(measureId), principal.getName().toLowerCase());
     Measure measure =
         groupService.deleteMeasureGroup(measureId, groupId, principal.getName().toLowerCase());
-    // Setting measure.measureLock to null prevents the UI from deleting the existing measure lock.
-    // Which is its own problem.
-    measure.setMeasureLock(
-        measureService.getMeasureLock(measureId, principal.getName().toLowerCase()));
     return ResponseEntity.ok(measure);
   }
 
