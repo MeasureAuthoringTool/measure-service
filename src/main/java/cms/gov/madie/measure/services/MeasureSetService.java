@@ -328,12 +328,16 @@ public class MeasureSetService {
    * @param userId - new owner
    * @param retainShareAccess - add SHARED_WITH for the original owner if true, otherwise keep the
    *     current Acls
-   * @param conductedBy - the user that performs the ownership change, if the user is admin, then we
-   *     don't check if the user is the original owner.
-   * @return
+   * @param conductedBy - the user that performs the ownership change
+   * @param isAdmin - true if the user performing the action has admin role, false otherwise
+   * @return the updated MeasureSet
    */
   public MeasureSet changeOwnership(
-      String measureSetId, String userId, boolean retainShareAccess, String conductedBy) {
+      String measureSetId,
+      String userId,
+      boolean retainShareAccess,
+      String conductedBy,
+      boolean isAdmin) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
 
     if (optionalMeasureSet.isEmpty()) {
@@ -349,7 +353,7 @@ public class MeasureSetService {
 
     // Only the original owner can transfer ownership for non-admin users that conduct the
     // changeOwnership action
-    if (!originalOwner.equalsIgnoreCase(conductedBy) && !"admin".equalsIgnoreCase(conductedBy)) {
+    if (!originalOwner.equalsIgnoreCase(conductedBy) && !isAdmin) {
       log.error(
           "User [{}] attempted to transfer ownership of measure set [{}] but is not the original owner [{}].",
           conductedBy,
@@ -414,7 +418,9 @@ public class MeasureSetService {
         MeasureSet.class,
         ActionType.OWNERSHIP_TRANSFER,
         conductedBy,
-        String.format("Transferred from %s to %s", originalOwner, userId));
+        String.format(
+            "Transferred from %s to %s%s",
+            originalOwner, userId, isAdmin ? " by MADiE Admin" : ""));
 
     if (retainShareAccess) {
       actionLogService.logShareAccessControlAction(
@@ -423,7 +429,7 @@ public class MeasureSetService {
           ActionType.SHARED,
           conductedBy,
           originalOwner,
-          String.format("Shared with - %s", originalOwner));
+          String.format("Shared with - %s%s", originalOwner, isAdmin ? " by MADiE Admin" : ""));
 
       log.info(
           "Retained SHARED role for user [{}] on measure set [{}] after ownership transfer",
@@ -436,7 +442,7 @@ public class MeasureSetService {
           updatedMeasureSet.getMeasureSetId(),
           MeasureSet.class,
           ActionType.UNSHARED,
-          "admin",
+          conductedBy,
           userId,
           String.format("%s now has owner permissions instead of share permissions", userId));
 

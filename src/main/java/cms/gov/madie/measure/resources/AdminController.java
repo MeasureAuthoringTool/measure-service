@@ -78,7 +78,6 @@ public class AdminController extends AbstractMeasureController {
   @PutMapping("/measures/test-cases/validations")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<MeasureTestCaseValidationReportSummary> validateAllMeasureTestCases(
-      HttpServletRequest request,
       Principal principal,
       @RequestHeader("Authorization") String accessToken,
       @RequestParam(name = "draftOnly", defaultValue = "true") boolean draftOnly)
@@ -151,7 +150,6 @@ public class AdminController extends AbstractMeasureController {
    * <p>Validation requests generated via this endpoint will be processed via the import queue to
    * avoid excessive load on the save queue.
    *
-   * @param request Spring-ism.
    * @param principal Security principal.
    * @param draftOnly (Optional, default=true) If true, only draft measures are considered. False
    *     includes all active measures.
@@ -166,7 +164,6 @@ public class AdminController extends AbstractMeasureController {
   @PutMapping("/measures/test-cases/restart-validation")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Integer> resetTestCaseValidationQueue(
-      HttpServletRequest request,
       Principal principal,
       @RequestParam(name = "draftOnly", defaultValue = "true") boolean draftOnly,
       @RequestParam(name = "force", defaultValue = "false") boolean force,
@@ -297,11 +294,7 @@ public class AdminController extends AbstractMeasureController {
   @DeleteMapping("/measures/{id}")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Measure> permDeleteMeasure(
-      HttpServletRequest request,
-      Principal principal,
-      @RequestHeader("Authorization") String accessToken,
-      @RequestHeader(name = "harpId") String harpId,
-      @PathVariable String id) {
+      Principal principal, @RequestHeader(name = "harpId") String harpId, @PathVariable String id) {
 
     Measure measureToDelete = measureService.findMeasureById(id);
 
@@ -322,11 +315,8 @@ public class AdminController extends AbstractMeasureController {
   @GetMapping("/measures/sharedWith")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<Map<String, Object>>> getMeasureSharedWith(
-      HttpServletRequest request,
-      Principal principal,
-      @RequestHeader("Authorization") String accessToken,
       @RequestHeader(name = "harpId") String harpId,
-      @RequestParam(required = true, name = "measureids") String measureids) {
+      @RequestParam(name = "measureids") String measureids) {
 
     List<Map<String, Object>> results = new ArrayList<Map<String, Object>>();
     String[] ids = StringUtils.split(measureids, ",");
@@ -356,7 +346,6 @@ public class AdminController extends AbstractMeasureController {
   @PutMapping("/measures/{id}/correct-version")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Measure> correctMeasureVersion(
-      HttpServletRequest request,
       @RequestHeader(name = "harpId") String harpId,
       Principal principal,
       @PathVariable String id,
@@ -436,10 +425,7 @@ public class AdminController extends AbstractMeasureController {
   @PutMapping("/measures/{id}")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Measure> overwriteExpectedValues(
-      HttpServletRequest request,
-      Principal principal,
-      @PathVariable String id,
-      @RequestBody @Valid Measure sourceMeasure) {
+      Principal principal, @PathVariable String id, @RequestBody @Valid Measure sourceMeasure) {
     Measure targetMeasure = measureService.findMeasureById(id);
     if (targetMeasure == null) {
       throw new ResourceNotFoundException("Measure", id);
@@ -593,9 +579,7 @@ public class AdminController extends AbstractMeasureController {
   @DeleteMapping("/measures/test-cases/locks")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<String>> unlockAllByUser(
-      HttpServletRequest request,
-      @RequestHeader(name = "harpId") String harpId,
-      Principal principal) {
+      @RequestHeader(name = "harpId") String harpId) {
     log.info("Unlock measures, test cases for user: " + harpId);
     List<String> messages = new ArrayList<>();
     messages.addAll(measureLockService.unlockByUser(harpId.toLowerCase()));
@@ -608,7 +592,6 @@ public class AdminController extends AbstractMeasureController {
    * for the specified Measure. Replaces occurrences of the provided incorrectCodeSystem with
    * correctCodeSystem in each test case resource tied to the Measure id.
    *
-   * @param request HTTP servlet request (context only)
    * @param principal Authenticated user performing the correction
    * @param id Measure identifier whose test cases are to be updated
    * @param incorrectCodeSystem Code system string to search for
@@ -618,7 +601,6 @@ public class AdminController extends AbstractMeasureController {
   @PutMapping("/measures/{id}/testcases/code-system-correction")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<Integer>> updateCodeSystemInTestCaseJson(
-      HttpServletRequest request,
       Principal principal,
       @PathVariable String id,
       @RequestParam String incorrectCodeSystem,
@@ -645,14 +627,14 @@ public class AdminController extends AbstractMeasureController {
   @PutMapping("/measures/ownership")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<String>> changeOwnership(
-      HttpServletRequest request,
       @RequestBody List<String> measureIds,
-      @RequestParam(required = true, name = "harpId") String harpId,
+      @RequestParam(name = "harpId") String harpId,
       @RequestParam(defaultValue = "false") boolean retainShareAccess,
       Principal principal) {
+    final String username = principal.getName().toLowerCase();
     log.info(
         "User [{}] - Starting admin task [changeOwnership] to [{}] for measureIds: [{}]",
-        principal.getName(),
+        username,
         harpId,
         measureIds);
     if (CollectionUtils.isEmpty(measureIds)) {
@@ -673,10 +655,9 @@ public class AdminController extends AbstractMeasureController {
         });
 
     if (CollectionUtils.isNotEmpty(validMeasureIds)) {
-      // retainShareAccess = false, conductedBy = "admin"
       failedTransfers.addAll(
           measureService.transferMeasures(
-              validMeasureIds, harpId.toLowerCase(), retainShareAccess, "admin"));
+              validMeasureIds, harpId.toLowerCase(), retainShareAccess, username, true));
     }
     List<String> successMeasureIds =
         measureIds.stream().filter(measureId -> !failedTransfers.contains(measureId)).toList();

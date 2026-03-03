@@ -2179,7 +2179,8 @@ public class MeasureControllerMvcTest {
 
     doReturn(Collections.emptyList())
         .when(measureService)
-        .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(true), eq("testUser"));
+        .transferMeasures(
+            eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID), eq(false));
 
     mockMvc
         .perform(
@@ -2196,7 +2197,8 @@ public class MeasureControllerMvcTest {
         .andExpect(status().isOk());
 
     verify(measureService, times(1))
-        .transferMeasures(eq(List.of(measureId)), eq("testuser"), eq(true), eq(TEST_USER_ID));
+        .transferMeasures(
+            eq(List.of(measureId)), eq("testuser"), eq(true), eq(TEST_USER_ID), eq(false));
   }
 
   @Test
@@ -2205,7 +2207,8 @@ public class MeasureControllerMvcTest {
 
     doReturn(List.of("1"))
         .when(measureService)
-        .transferMeasures(eq(List.of(measureId)), eq("testuser"), eq(false), eq(TEST_USER_ID));
+        .transferMeasures(
+            eq(List.of(measureId)), eq("testuser"), eq(false), eq(TEST_USER_ID), eq(false));
 
     mockMvc
         .perform(
@@ -2222,7 +2225,8 @@ public class MeasureControllerMvcTest {
         .andExpect(status().isMultiStatus());
 
     verify(measureService, times(1))
-        .transferMeasures(eq(List.of(measureId)), eq("testuser"), eq(false), eq(TEST_USER_ID));
+        .transferMeasures(
+            eq(List.of(measureId)), eq("testuser"), eq(false), eq(TEST_USER_ID), eq(false));
   }
 
   @Test
@@ -2244,7 +2248,8 @@ public class MeasureControllerMvcTest {
         .andExpect(status().isBadRequest());
 
     verify(measureService, times(0))
-        .transferMeasures(eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID));
+        .transferMeasures(
+            eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID), eq(false));
   }
 
   @Test

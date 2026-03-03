@@ -483,7 +483,7 @@ public class MeasureController extends AbstractMeasureController {
         });
     List<String> failedTransfers =
         measureService.transferMeasures(
-            measureIds, harpId.toLowerCase(), retainShareAccess, username);
+            measureIds, harpId.toLowerCase(), retainShareAccess, username, false);
     if (CollectionUtils.isEmpty(failedTransfers)) {
       return ResponseEntity.ok().build();
     } else {

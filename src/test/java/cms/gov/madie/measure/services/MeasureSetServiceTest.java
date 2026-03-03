@@ -752,7 +752,7 @@ public class MeasureSetServiceTest {
 
     MeasureSet result =
         measureSetService.changeOwnership(
-            measureSet.getMeasureSetId(), "testUser", false, "user-1");
+            measureSet.getMeasureSetId(), "testUser", false, "user-1", true);
 
     assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
     assertThat(result.getOwner(), is(equalTo("testUser")));
@@ -793,7 +793,8 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
     MeasureSet result =
-        measureSetService.changeOwnership(measureSet.getMeasureSetId(), "testUser", true, "user-1");
+        measureSetService.changeOwnership(
+            measureSet.getMeasureSetId(), "testUser", true, "user-1", true);
 
     assertThat(result.getOwner(), is(equalTo("testUser")));
     assertThat(result.getAcls().size(), is(2)); // "john" + "user-1"
@@ -846,7 +847,8 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
     // Conducted by "user-1" (original owner)
-    MeasureSet result = measureSetService.changeOwnership("msid-2", "newOwner", false, "user-1");
+    MeasureSet result =
+        measureSetService.changeOwnership("msid-2", "newOwner", false, "user-1", true);
 
     assertThat(result.getOwner(), is(equalTo("newOwner")));
     assertThat(result.getAcls().size(), is(1));
@@ -865,7 +867,7 @@ public class MeasureSetServiceTest {
             "msid-2",
             MeasureSet.class,
             ActionType.UNSHARED,
-            "admin",
+            "user-1",
             "newOwner",
             "newOwner now has owner permissions instead of share permissions");
   }
@@ -877,7 +879,7 @@ public class MeasureSetServiceTest {
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.changeOwnership("1", "testUser", true, "anotherUser"));
+            () -> measureSetService.changeOwnership("1", "testUser", true, "anotherUser", false));
     assertThat(ex.getMessage(), is(equalTo("Could not find MeasureSet with id: 1")));
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
@@ -895,7 +897,9 @@ public class MeasureSetServiceTest {
     UnauthorizedException ex =
         assertThrows(
             UnauthorizedException.class,
-            () -> measureSetService.changeOwnership("1", "newOwner", false, "notOriginalOwner"));
+            () ->
+                measureSetService.changeOwnership(
+                    "1", "newOwner", false, "notOriginalOwner", false));
     assertTrue(
         ex.getMessage()
             .contains("notOriginalOwner does not have permissions to transfer ownership"));
@@ -912,7 +916,8 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
     // Act & Assert
-    assertDoesNotThrow(() -> measureSetService.changeOwnership("1", "newOwner", false, "admin"));
+    assertDoesNotThrow(
+        () -> measureSetService.changeOwnership("1", "newOwner", false, "admin", true));
     verify(measureSetRepository, times(1)).findByMeasureSetId("1");
     verify(measureSetRepository, times(1)).save(any());
   }

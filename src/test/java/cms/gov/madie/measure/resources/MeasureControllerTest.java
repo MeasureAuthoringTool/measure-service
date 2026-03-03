@@ -1106,7 +1106,7 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     when(measureService.transferMeasures(
-            any(List.class), anyString(), any(Boolean.class), anyString()))
+            any(List.class), anyString(), anyBoolean(), anyString(), anyBoolean()))
         .thenReturn(Collections.emptyList());
     ResponseEntity<List<String>> result =
         controller.transferMeasures(
@@ -1120,7 +1120,8 @@ class MeasureControllerTest {
     when(principal.getName()).thenReturn("test.user");
 
     List<String> failedMeasures = List.of("measureId2");
-    when(measureService.transferMeasures(any(List.class), anyString(), anyBoolean(), anyString()))
+    when(measureService.transferMeasures(
+            any(List.class), anyString(), anyBoolean(), anyString(), anyBoolean()))
         .thenReturn(failedMeasures);
 
     ResponseEntity<List<String>> result =

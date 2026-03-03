@@ -1560,7 +1560,7 @@ public class AdminControllerMvcTest {
 
     when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
     when(measureService.transferMeasures(
-            any(List.class), anyString(), any(Boolean.class), anyString()))
+            any(List.class), anyString(), anyBoolean(), anyString(), anyBoolean()))
         .thenReturn(Collections.emptyList());
 
     MvcResult result =
@@ -1581,7 +1581,11 @@ public class AdminControllerMvcTest {
     assertTrue(result.getResponse().getContentAsString().contains(measureId));
     verify(measureService, times(1))
         .transferMeasures(
-            eq(List.of(measureId)), eq(newOwner.toLowerCase()), eq(false), eq("admin"));
+            eq(List.of(measureId)),
+            eq(newOwner.toLowerCase()),
+            eq(false),
+            eq(TEST_USER_ID),
+            eq(true));
   }
 
   @Test
@@ -1606,7 +1610,8 @@ public class AdminControllerMvcTest {
 
     assertFalse(result.getResponse().getContentAsString().contains(measureId));
     verify(measureService, never())
-        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(false), eq("admin"));
+        .transferMeasures(
+            eq(List.of(measureId)), eq(newOwner), eq(false), eq(TEST_USER_ID), eq(true));
   }
 
   @Test
@@ -1634,7 +1639,8 @@ public class AdminControllerMvcTest {
 
     assertTrue(result.getResponse().getContentAsString().contains(measureId));
     verify(measureService, times(0))
-        .transferMeasures(eq(List.of(measureId)), eq(newOwner), eq(false), eq("admin"));
+        .transferMeasures(
+            eq(List.of(measureId)), eq(newOwner), eq(false), eq(TEST_USER_ID), eq(true));
   }
 
   @Test
@@ -1644,7 +1650,7 @@ public class AdminControllerMvcTest {
 
     when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
     when(measureService.transferMeasures(
-            any(List.class), anyString(), any(Boolean.class), anyString()))
+            any(List.class), anyString(), anyBoolean(), anyString(), anyBoolean()))
         .thenReturn(List.of(measureId));
 
     MvcResult result =
@@ -1665,7 +1671,11 @@ public class AdminControllerMvcTest {
     assertTrue(result.getResponse().getContentAsString().contains(measureId));
     verify(measureService, times(1))
         .transferMeasures(
-            eq(List.of(measureId)), eq(newOwner.toLowerCase()), eq(true), eq("admin"));
+            eq(List.of(measureId)),
+            eq(newOwner.toLowerCase()),
+            eq(true),
+            eq(TEST_USER_ID),
+            eq(true));
   }
 
   @Test
