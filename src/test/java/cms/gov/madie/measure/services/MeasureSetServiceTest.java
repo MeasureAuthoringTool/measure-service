@@ -752,7 +752,7 @@ public class MeasureSetServiceTest {
 
     MeasureSet result =
         measureSetService.changeOwnership(
-            measureSet.getMeasureSetId(), "testUser", false, "user-1", true);
+            measureSet.getMeasureSetId(), "testUser", false, "user-1", false);
 
     assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
     assertThat(result.getOwner(), is(equalTo("testUser")));
@@ -794,7 +794,7 @@ public class MeasureSetServiceTest {
 
     MeasureSet result =
         measureSetService.changeOwnership(
-            measureSet.getMeasureSetId(), "testUser", true, "user-1", true);
+            measureSet.getMeasureSetId(), "testUser", true, "user-1", false);
 
     assertThat(result.getOwner(), is(equalTo("testUser")));
     assertThat(result.getAcls().size(), is(2)); // "john" + "user-1"
@@ -848,7 +848,7 @@ public class MeasureSetServiceTest {
 
     // Conducted by "user-1" (original owner)
     MeasureSet result =
-        measureSetService.changeOwnership("msid-2", "newOwner", false, "user-1", true);
+        measureSetService.changeOwnership("msid-2", "newOwner", false, "user-1", false);
 
     assertThat(result.getOwner(), is(equalTo("newOwner")));
     assertThat(result.getAcls().size(), is(1));
