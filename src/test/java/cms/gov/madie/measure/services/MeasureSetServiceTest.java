@@ -910,15 +910,23 @@ public class MeasureSetServiceTest {
   @Test
   public void testChangeOwnershipDoesNotThrowUnauthorizedExceptionIfConductedByAdmin() {
     // Arrange
+    String admin = "admin";
+    String newOwner = "newOwner";
     measureSet.setOwner("originalOwner");
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
-    MeasureSet updatedMeasureSet = measureSet.toBuilder().owner("newOwner").build();
+    MeasureSet updatedMeasureSet = measureSet.toBuilder().owner(newOwner).build();
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
     // Act & Assert
-    assertDoesNotThrow(
-        () -> measureSetService.changeOwnership("1", "newOwner", false, "admin", true));
+    assertDoesNotThrow(() -> measureSetService.changeOwnership("1", newOwner, false, admin, true));
     verify(measureSetRepository, times(1)).findByMeasureSetId("1");
     verify(measureSetRepository, times(1)).save(any());
+    verify(actionLogService, times(1))
+        .logMeasureSetAction(
+            "1",
+            MeasureSet.class,
+            ActionType.OWNERSHIP_TRANSFER,
+            admin,
+            "Transferred from originalOwner to " + newOwner + " by MADiE Admin");
   }
 }
