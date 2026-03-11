@@ -139,11 +139,7 @@ public class CqlDifferentiatorService {
     String newLibraryBody = newParts[1];
 
     // Split into paragraphs (separated by double newlines)
-    List<String> oldParagraphs = Arrays.asList(oldLibraryBody.split(PARAGRAPH_DELIMITER));
     List<String> newParagraphs = Arrays.asList(newLibraryBody.split(PARAGRAPH_DELIMITER));
-
-    // Map old paragraphs to new paragraphs based on similarity
-    Map<String, String> paragraphMap = mapByEditDistance(oldParagraphs, newParagraphs);
 
     // Rebuild new library body preserving original structure
     String reorderedBody = rebuildFromMapping(newParagraphs);
