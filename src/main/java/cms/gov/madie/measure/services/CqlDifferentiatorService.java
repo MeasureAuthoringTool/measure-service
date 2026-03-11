@@ -77,7 +77,7 @@ public class CqlDifferentiatorService {
 
       // Reorder new library to match old structure if enabled
       if (autoReorder && !oldText.isEmpty()) {
-        newText = reorderNewLibrary(oldText, newText);
+        newText = reorderNewLibrary(newText);
       }
 
       // Update filename display for new files
@@ -115,20 +115,10 @@ public class CqlDifferentiatorService {
    * Reorder the new library's body to match the structure of the old library. This makes diffs more
    * meaningful by aligning similar code blocks.
    *
-   * @param oldLibrary Old library CQL content
    * @param newLibrary New library CQL content
    * @return Reordered new library content
    */
-  private String reorderNewLibrary(String oldLibrary, String newLibrary) {
-    String oldLibraryBody = "";
-
-    if (!oldLibrary.isEmpty()) {
-      String[] oldParts = oldLibrary.split(CONTEXT_PATIENT_DELIMITER, 2);
-      if (oldParts.length > 1) {
-        oldLibraryBody = oldParts[1];
-      }
-    }
-
+  private String reorderNewLibrary(String newLibrary) {
     String[] newParts = newLibrary.split(CONTEXT_PATIENT_DELIMITER, 2);
     if (newParts.length < 2) {
       // No context patient delimiter found, return as-is
