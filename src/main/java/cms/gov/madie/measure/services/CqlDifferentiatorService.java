@@ -161,6 +161,15 @@ public class CqlDifferentiatorService {
    * @return Map from old strings to best matching new strings
    */
   private Map<String, String> mapByEditDistance(List<String> oldStrings, List<String> newStrings) {
+    // If there are no new strings, all old strings map to null
+    if (newStrings.isEmpty()) {
+      Map<String, String> emptyMatches = new HashMap<>();
+      for (String oldString : oldStrings) {
+        emptyMatches.put(oldString, null);
+      }
+      return emptyMatches;
+    }
+
     // Calculate distances from each old string to all new strings
     Map<String, List<DistanceMatch>> distances = new HashMap<>();
 
