@@ -23,6 +23,12 @@ public class CqlDifferentiatorService {
   private static final String CONTEXT_PATIENT_DELIMITER = "context Patient\n\n";
   private static final String PARAGRAPH_DELIMITER = "\n\n";
   private static final LevenshteinDistance LEVENSHTEIN = new LevenshteinDistance();
+  // Maximum allowed edit distance for matching paragraphs. Above this, treat as deleted.
+  // This prevents mismatching deleted comments to unrelated definitions.
+  // Set to 150 to allow matching similar definitions/comments (e.g., renamed variables)
+  // while preventing matches between fundamentally different elements like comments and
+  // definitions.
+  private static final double MAX_MATCH_DISTANCE = 150.0;
 
   /**
    * Compare CQL libraries from two measures and return normalized, reordered text ready for diff
@@ -139,50 +145,30 @@ public class CqlDifferentiatorService {
     // Map old paragraphs to new paragraphs based on similarity
     Map<String, String> paragraphMap = mapByEditDistance(oldParagraphs, newParagraphs);
 
-    // Rebuild new library body in order that matches old library
-    String reorderedBody = rebuildFromMapping(oldParagraphs, newParagraphs, paragraphMap);
+    // Rebuild new library body preserving original structure
+    String reorderedBody = rebuildFromMapping(newParagraphs);
 
     return newLibraryHeader + CONTEXT_PATIENT_DELIMITER + reorderedBody;
   }
 
   /**
-   * Rebuild text from mapping, maintaining order of old strings and appending any new strings that
-   * weren't matched.
+   * Rebuild text preserving original document order. This prevents unmatched items (like comments)
+   * from being moved around. The matching is used for diff purposes only.
    *
-   * @param oldStrings List of old strings
-   * @param newStrings List of new strings
-   * @param mapping Map from old strings to matched new strings
-   * @return Rebuilt text with reordered paragraphs
+   * @param newStrings List of new strings (returned in original order)
+   * @return Rebuilt text in original order
    */
-  private String rebuildFromMapping(
-      List<String> oldStrings, List<String> newStrings, Map<String, String> mapping) {
-
-    List<String> reordered = new ArrayList<>();
-    Set<String> usedNewStrings = new HashSet<>();
-
-    // First, add matched new strings in the order of old strings
-    for (String oldString : oldStrings) {
-      String matchedNewString = mapping.get(oldString);
-      if (matchedNewString != null) {
-        reordered.add(matchedNewString);
-        usedNewStrings.add(matchedNewString);
-      }
-    }
-
-    // Then, append any new strings that weren't matched
-    for (String newString : newStrings) {
-      if (!usedNewStrings.contains(newString)) {
-        reordered.add(newString);
-      }
-    }
-
-    return String.join(PARAGRAPH_DELIMITER, reordered);
+  private String rebuildFromMapping(List<String> newStrings) {
+    // Return new strings in their original order
+    // Matching is done for diff purposes, but order is preserved
+    return String.join(PARAGRAPH_DELIMITER, newStrings);
   }
 
   /**
    * Map strings from old list to new list based on edit distance similarity. Uses a greedy matching
    * algorithm that prioritizes closest matches. For CQL define statements, uses weighted distance
-   * (50% label + 50% full statement).
+   * (50% label + 50% full statement). Only matches if distance is below MAX_MATCH_DISTANCE
+   * threshold.
    *
    * @param oldStrings List of old strings to map from
    * @param newStrings List of new strings to map to
@@ -222,17 +208,18 @@ public class CqlDifferentiatorService {
       String oldString = oldStringWithDist.string;
       List<DistanceMatch> candidates = distances.get(oldString);
 
-      // Find first candidate that hasn't been matched yet
+      // Find first candidate that hasn't been matched yet and meets similarity threshold
       String match = null;
       for (DistanceMatch candidate : candidates) {
-        if (!usedNewStrings.contains(candidate.newString)) {
+        if (!usedNewStrings.contains(candidate.newString)
+            && candidate.distance <= MAX_MATCH_DISTANCE) {
           match = candidate.newString;
           usedNewStrings.add(match);
           break;
         }
       }
 
-      // If no match found (extra paragraph in old measure), map to null
+      // If no match found or distance too high (paragraph likely deleted), map to null
       matches.put(oldString, match);
     }
 

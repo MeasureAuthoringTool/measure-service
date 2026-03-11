@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.dto.CqlFileComparisonDTO;
+import org.apache.commons.text.similarity.LevenshteinDistance;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -57,12 +58,11 @@ public class CqlDifferentiatorServiceTest {
     assertFalse(comparison.getOldText().contains("\t"));
     assertFalse(comparison.getNewText().contains("\t"));
 
-    // Verify reordering occurred - new text should have Initial Population before Numerator
-    String[] newLines = comparison.getNewText().split("\n\n");
+    // Verify document order is preserved - new text should maintain order from new CQL
     assertTrue(
-        comparison.getNewText().indexOf("Initial Population")
-            < comparison.getNewText().indexOf("Numerator"),
-        "New text should be reordered to match old structure");
+        comparison.getNewText().indexOf("Numerator")
+            < comparison.getNewText().indexOf("Initial Population"),
+        "New text should preserve original document order (Numerator before Initial Population)");
   }
 
   @Test
@@ -171,5 +171,97 @@ public class CqlDifferentiatorServiceTest {
     assertFalse(comparison.getNewText().contains("\t"));
     assertTrue(comparison.getOldText().contains("  ")); // Should have 2 spaces
     assertTrue(comparison.getNewText().contains("  ")); // Should have 2 spaces
+  }
+
+  @Test
+  void testCompareLibrariesWithDeletedCommentsNotDuplicated() {
+    Map<String, String> oldLibraries = new HashMap<>();
+    Map<String, String> newLibraries = new HashMap<>();
+
+    String oldCql =
+        "library CMS1017HHFI version '2.1.006'\n\n"
+            + "context Patient\n\n"
+            + "define \"Risk Variable Encounter With Antidepressant Active At Admission\":\n"
+            + "  \"Initial Population\" QualifyingEncounter\n"
+            + "    with [\"Medication, Active\": \"Antidepressants\"] AntidepressantActive\n"
+            + "      such that AntidepressantActive.relevantPeriod contains start of Global.\"HospitalizationWithObservation\" ( QualifyingEncounter )\n\n"
+            + "/*\n"
+            + "@comment:QDM doesn't have an \"Admission Medication\".  So use Med, Active where the med relevant period contains the enc start date if the time when the pt is first known to have been taking the med before encounter can't be captured.\n"
+            + "*/\n\n"
+            + "define \"Risk Variable Encounter With Antihypertensive Active At Admission\":\n"
+            + "  \"Initial Population\" QualifyingEncounter\n"
+            + "    with [\"Medication, Active\": \"Antihypertensives\"] AntihypertensiveActive\n"
+            + "      such that AntihypertensiveActive.relevantPeriod contains start of Global.\"HospitalizationWithObservation\" ( QualifyingEncounter )\n\n"
+            + "/*\n"
+            + "@comment:QDM doesn't have an \"Admission Medication\".  So use Med, Active where the med relevant period contains the enc start date if the time when the pt is first known to have been taking the med before encounter can't be captured.\n"
+            + "*/\n\n"
+            + "define \"Risk Variable Encounter With CNS Depressant Active At Admission\":\n"
+            + "  \"Initial Population\" QualifyingEncounter\n"
+            + "    with [\"Medication, Active\": \"Central Nervous System Depressants\"] CNSMedicationActive\n"
+            + "      such that CNSMedicationActive.relevantPeriod contains start of Global.\"HospitalizationWithObservation\" ( QualifyingEncounter )\n\n"
+            + "define \"Encounter With A Fall Diagnosis\":\n"
+            + "  \"Initial Population\" QualifyingEncounter\n"
+            + "    where exists ( QualifyingEncounter.diagnoses QualifyingFall\n"
+            + "        where QualifyingFall.code in \"Inpatient Falls\"\n"
+            + "    )\n\n"
+            + "define \"Encounter Where A Fall Occurred\":\n"
+            + "  \"Encounter With A Fall Event\"\n"
+            + "    union \"Encounter With A Fall Diagnosis\"";
+
+    String newCql =
+        "library CMS1017HHFI version '2.1.006'\n\n"
+            + "context Patient\n\n"
+            + "define \"Risk Variable Encounter With Antidepressant Active At Admission\":\n"
+            + "  \"Initial Population\" QualifyingEncounter\n"
+            + "    with [\"Medication, Active\": \"Antidepressants\"] AntidepressantActive\n"
+            + "      such that AntidepressantActive.relevantPeriod contains start of Global.\"HospitalizationWithObservation\" ( QualifyingEncounter )\n\n"
+            + "define \"Risk Variable Encounter With Antihypertensive Active At Admission\":\n"
+            + "  \"Initial Population\" QualifyingEncounter\n"
+            + "    with [\"Medication, Active\": \"Antihypertensives\"] AntihypertensiveActive\n"
+            + "      such that AntihypertensiveActive.relevantPeriod contains start of Global.\"HospitalizationWithObservation\" ( QualifyingEncounter )\n\n"
+            + "define \"Risk Variable Encounter With CNS Depressant Active At Admission\":\n"
+            + "  \"Initial Population\" QualifyingEncounter\n"
+            + "    with [\"Medication, Active\": \"Central Nervous System Depressants\"] CNSMedicationActive\n"
+            + "      such that CNSMedicationActive.relevantPeriod contains start of Global.\"HospitalizationWithObservation\" ( QualifyingEncounter )\n\n"
+            + "define \"Encounter With A Fall Diagnosis\":\n"
+            + "  \"Initial Population\" QualifyingEncounter\n"
+            + "    where exists ( QualifyingEncounter.diagnoses QualifyingFall\n"
+            + "        where QualifyingFall.code in \"Inpatient Falls\"\n"
+            + "    )\n\n"
+            + "define \"Encounter Where A Fall Occurred\":\n"
+            + "  \"Encounter With A Fall Event\"\n"
+            + "    union \"Encounter With A Fall Diagnosis\"";
+
+    oldLibraries.put("Test.cql", oldCql);
+    newLibraries.put("Test.cql", newCql);
+
+    List<CqlFileComparisonDTO> result = service.compareLibraries(oldLibraries, newLibraries, true);
+    assertNotNull(result);
+    assertEquals(1, result.size());
+
+    CqlFileComparisonDTO comparison = result.get(0);
+    long fallDiagnosisCount =
+        comparison.getNewText().split("define \"Encounter With A Fall Diagnosis\"", -1).length - 1;
+
+    // Should only appear once, not multiple times (once per deleted comment)
+    assertEquals(
+        1, fallDiagnosisCount, "Encounter With A Fall Diagnosis should appear exactly once");
+  }
+
+  @Test
+  void testDebugDistanceBetweenCommentAndDefinition() {
+    String comment1 =
+        "/*\n@comment:QDM doesn't have an \"Admission Medication\".  So use Med, Active where the med relevant period contains the enc start date if the time when the pt is first known to have been taking the med before encounter can't be captured.\n*/";
+
+    String definition =
+        "define \"Encounter With A Fall Diagnosis\":\n  \"Initial Population\" QualifyingEncounter\n    where exists ( QualifyingEncounter.diagnoses QualifyingFall\n        where QualifyingFall.code in \"Inpatient Falls\"\n    )";
+
+    LevenshteinDistance levenshtein = new LevenshteinDistance();
+    int distance = levenshtein.apply(comment1, definition);
+
+    // If distance > 150, it should NOT match (which is what we want)
+    assertTrue(
+        distance > 150,
+        "Distance (" + distance + ") should be > 150 to prevent matching comment to definition");
   }
 }
