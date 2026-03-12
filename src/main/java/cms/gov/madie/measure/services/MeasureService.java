@@ -411,8 +411,8 @@ public class MeasureService extends BaseMeasureService {
         userName,
         measureId,
         aclOperation.toString());
-    Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
-    if (persistedMeasure.isEmpty()) {
+    Measure persistedMeasure = findMeasureById(measureId);
+    if (persistedMeasure == null) {
       log.error(
           "User [{}] called updateAccessControlList but failed because the measure with measure "
               + "ID [{}] does not exist.",
@@ -421,7 +421,7 @@ public class MeasureService extends BaseMeasureService {
       throw new ResourceNotFoundException("Measure does not exist: " + measureId);
     }
 
-    Measure measure = persistedMeasure.get();
+    Measure measure = persistedMeasure;
     MeasureSet measureSet =
         measureSetService.updateMeasureSetAcls(measure.getMeasureSetId(), aclOperation, userName);
 
@@ -928,12 +928,12 @@ public class MeasureService extends BaseMeasureService {
     if (StringUtils.isBlank(measureId)) {
       throw new InvalidRequestException("Measure ID cannot be null or empty.");
     }
-    Optional<Measure> persistedMeasure = measureRepository.findById(measureId);
-    if (persistedMeasure.isEmpty()) {
+    Measure persistedMeasure = findMeasureById(measureId);
+    if (persistedMeasure == null) {
       throw new ResourceNotFoundException("Measure does not exist: " + measureId);
     }
     List<Action> measureHistory =
-        actionLogService.findMeasureHistory(measureId, persistedMeasure.get().getMeasureSetId());
+        actionLogService.findMeasureHistory(measureId, persistedMeasure.getMeasureSetId());
     log.info(
         "User [{}] successfully retrieved the history of the measure with ID [{}]",
         userName,
