@@ -36,7 +36,6 @@ public abstract class BaseMeasureService {
         .build();
   }
 
-  // TODO: start replacing usage of measureRepository.findById with this method
   public Measure findMeasureById(final String id) {
     return measureRepository
         .findById(id)
