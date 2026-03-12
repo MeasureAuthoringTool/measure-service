@@ -50,7 +50,9 @@ public class SecurityConfig {
                     .contentSecurityPolicy(
                         contentSecurityPolicyConfig ->
                             contentSecurityPolicyConfig.policyDirectives("script-src 'self'")))
-      .exceptionHandling(exceptionHandlingConfig -> exceptionHandlingConfig.accessDeniedHandler(customAccessDeniedHandler));
+        .exceptionHandling(
+            exceptionHandlingConfig ->
+                exceptionHandlingConfig.accessDeniedHandler(customAccessDeniedHandler));
     return http.build();
   }
 }

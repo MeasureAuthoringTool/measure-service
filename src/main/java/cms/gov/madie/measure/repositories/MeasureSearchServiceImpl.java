@@ -11,6 +11,7 @@ import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -30,6 +31,7 @@ import java.util.stream.Collectors;
 import static cms.gov.madie.measure.utils.SearchAggregationUtils.createScoringTypeFilter;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
+@Slf4j
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
   private final MongoTemplate mongoTemplate;
@@ -172,15 +174,34 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria))
             : match(measureCriteria);
 
-    FacetOperation facets =
-        facet(sortByCount("id"))
-            .as("count")
-            .and(
-                sort(pageable.getSort()),
-                skip(pageable.getOffset()),
-                limit(pageable.getPageSize()),
-                project(MeasureListDTO.class))
-            .as("queryResults");
+    // Build facets operation - exclude sort when using priority-based sorting
+    // to avoid overriding the priority sort
+    boolean usePrioritySort =
+        measureSearchCriteria != null
+            && measureSearchCriteria.isFromCompositeMeasureComponent()
+            && CollectionUtils.isNotEmpty(measureSearchCriteria.getPriorityMeasureSets());
+
+    FacetOperation facets;
+    if (usePrioritySort) {
+      facets =
+          facet(sortByCount("id"))
+              .as("count")
+              .and(
+                  skip(pageable.getOffset()),
+                  limit(pageable.getPageSize()),
+                  project(MeasureListDTO.class))
+              .as("queryResults");
+    } else {
+      facets =
+          facet(sortByCount("id"))
+              .as("count")
+              .and(
+                  sort(pageable.getSort()),
+                  skip(pageable.getOffset()),
+                  limit(pageable.getPageSize()),
+                  project(MeasureListDTO.class))
+              .as("queryResults");
+    }
 
     aggregationOperations.add(matchOperation);
 
@@ -226,8 +247,32 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     // Group all measures that has same measureSetId and get the count and also first document
     // which will be the latest measure in the MeasureSet
-    GroupOperation groupByMeasureSet = group("measureSetId").first("$$ROOT").as("selectedDoc");
-    postMatchPipeline.add(groupByMeasureSet);
+    if (usePrioritySort) {
+      String sortField = pageable.getSort().stream().iterator().next().getProperty();
+      // Add a field to check if measureSetId (which becomes _id after grouping) is in the priority
+      // list
+      // Also preserve sortField for sorting
+      GroupOperation groupByMeasureSet =
+          group("measureSetId")
+              .first("$$ROOT")
+              .as("selectedDoc")
+              .first(sortField)
+              .as(sortField)
+              .max(
+                  ConditionalOperators.Cond.when(
+                          ArrayOperators.In.arrayOf(measureSearchCriteria.getPriorityMeasureSets())
+                              .containsValue("$measureSetId"))
+                      .then(1)
+                      .otherwise(0))
+              .as("isPrioritySet");
+      postMatchPipeline.add(groupByMeasureSet);
+      // Sort by priority first, then by the provided sort (which is preserved in the group stage)
+      SortOperation sortByPriority =
+          sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(pageable.getSort()));
+      postMatchPipeline.add(sortByPriority);
+    } else {
+      postMatchPipeline.add(group("measureSetId").first("$$ROOT").as("selectedDoc"));
+    }
 
     ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
     postMatchPipeline.add(replaceRoot);

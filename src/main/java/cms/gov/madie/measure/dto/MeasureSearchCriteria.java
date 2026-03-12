@@ -20,4 +20,5 @@ public class MeasureSearchCriteria {
   private boolean fromCompositeMeasureComponent;
   private List<String>
       allowedScoringTypes; // List of scoring types to include (e.g., ["Proportion", "Ratio"])
+  private List<String> priorityMeasureSets; // List of measure set IDs to prioritize in sorting
 }
