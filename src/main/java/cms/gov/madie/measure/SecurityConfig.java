@@ -49,9 +49,8 @@ public class SecurityConfig {
                     .xssProtection(withDefaults())
                     .contentSecurityPolicy(
                         contentSecurityPolicyConfig ->
-                            contentSecurityPolicyConfig.policyDirectives("script-src 'self'")));
-
-    http.exceptionHandling().accessDeniedHandler(customAccessDeniedHandler);
+                            contentSecurityPolicyConfig.policyDirectives("script-src 'self'")))
+      .exceptionHandling(exceptionHandlingConfig -> exceptionHandlingConfig.accessDeniedHandler(customAccessDeniedHandler));
     return http.build();
   }
 }
