@@ -25,7 +25,6 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.List;
-import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -172,9 +171,9 @@ public class TestCaseControllerMvcTest {
 
   @Test
   public void testAddTestCases() throws Exception {
-    doReturn(Optional.of(new Measure().toBuilder().createdBy(TEST_USER_ID).build()))
-        .when(repository)
-        .findById("1234");
+    doReturn(new Measure().toBuilder().createdBy(TEST_USER_ID).build())
+        .when(measureService)
+        .findMeasureById("1234");
     ArgumentCaptor<List> testCaseListCaptor = ArgumentCaptor.forClass(List.class);
     List<TestCase> savedTestCases =
         List.of(
@@ -422,9 +421,9 @@ public class TestCaseControllerMvcTest {
 
   @Test
   public void testAddListThrowsUserUnauthorized() throws Exception {
-    doReturn(Optional.of(Measure.builder().createdBy("good.user").id("1234").build()))
-        .when(repository)
-        .findById("1234");
+    doReturn(Measure.builder().createdBy("good.user").id("1234").build())
+        .when(measureService)
+        .findMeasureById("1234");
     doThrow(new UnauthorizedException("Measure", "1234", TEST_USER_ID))
         .when(measureService)
         .verifyAuthorization(anyString(), any(Measure.class));

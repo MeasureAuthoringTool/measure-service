@@ -33,6 +33,8 @@ public class MeasureServiceAclTest {
   @Mock private MeasureRepository measureRepository;
   @Mock private MeasureSetService measureSetService;
   @Mock private ActionLogService actionLogService;
+  @Mock private AppConfigService appConfigService;
+  @Mock private MeasureLockService measureLockService;
 
   @InjectMocks private MeasureService measureService;
 
@@ -52,8 +54,9 @@ public class MeasureServiceAclTest {
             .acls(List.of(aclSpecification))
             .action(AclOperation.AclAction.GRANT)
             .build();
-    Optional<Measure> persistedMeasure = Optional.of(measure);
-    when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
+    when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
     when(measureSetService.updateMeasureSetAcls(any(), any(), eq("userName")))
         .thenReturn(measureSet);
 
@@ -67,8 +70,7 @@ public class MeasureServiceAclTest {
   @Test
   public void testUpdateAccessControlListNoMeasure() {
     AclOperation aclOperation = AclOperation.builder().build();
-    Optional<Measure> persistedMeasure = Optional.empty();
-    when(measureRepository.findById(eq("123"))).thenReturn(persistedMeasure);
+    when(measureRepository.findById(eq("123"))).thenReturn(Optional.empty());
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,

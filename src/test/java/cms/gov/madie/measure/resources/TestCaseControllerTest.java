@@ -101,7 +101,7 @@ public class TestCaseControllerTest {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
 
-    doReturn(Optional.of(measure)).when(repository).findById("MeasureID");
+    when(measureService.findMeasureById("MeasureID")).thenReturn(measure);
 
     List<TestCase> savedTestCases =
         List.of(
@@ -148,7 +148,7 @@ public class TestCaseControllerTest {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("evil.user");
 
-    doReturn(Optional.of(measure)).when(repository).findById("MeasureID");
+    when(measureService.findMeasureById("MeasureID")).thenReturn(measure);
     doThrow(new UnauthorizedException("Measure", "MeasureID", "evil.user"))
         .when(measureService)
         .verifyAuthorization(anyString(), any(Measure.class));
