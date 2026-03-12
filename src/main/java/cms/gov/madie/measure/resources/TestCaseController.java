@@ -5,7 +5,6 @@ import cms.gov.madie.measure.dto.CopyTestCaseResult;
 import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.AppConfigService;
 import cms.gov.madie.measure.services.MeasureService;
 import cms.gov.madie.measure.services.QdmTestCaseShiftDatesService;
@@ -37,7 +36,6 @@ import static cms.gov.madie.measure.utils.UserInputSanitizeUtil.sanitizeUserInpu
 public class TestCaseController {
 
   private final TestCaseService testCaseService;
-  private final MeasureRepository measureRepository;
   private final MeasureService measureService;
   private final QdmTestCaseShiftDatesService qdmTestCaseShiftDatesService;
   private final TestCaseLockEnrichmentService testCaseLockEnrichmentService;
@@ -66,11 +64,10 @@ public class TestCaseController {
       @RequestHeader("Authorization") String accessToken,
       Principal principal) {
     final String username = principal.getName().toLowerCase();
-    Optional<Measure> measureOptional = measureRepository.findById(measureId);
-    if (measureOptional.isEmpty()) {
+    Measure measure = measureService.findMeasureById(measureId);
+    if (measure == null) {
       throw new ResourceNotFoundException("Measure", measureId);
     }
-    Measure measure = measureOptional.get();
     measureService.verifyAuthorization(username, measure);
 
     // Filter out locked test cases
