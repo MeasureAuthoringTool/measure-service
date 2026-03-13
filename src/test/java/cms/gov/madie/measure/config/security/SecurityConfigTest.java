@@ -1,5 +1,7 @@
-package cms.gov.madie.measure;
+package cms.gov.madie.measure.config.security;
 
+import cms.gov.madie.measure.CustomAccessDeniedHandler;
+import cms.gov.madie.measure.JwtRoleTestFilter;
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.clients.UserServiceRoleConverter;
 
@@ -37,7 +39,7 @@ public class SecurityConfigTest {
                     .requestMatchers("/log/*")
                     .permitAll()
                     .requestMatchers("/admin/**")
-                    .hasRole("MADIE-ADMIN")
+                    .hasRole(RoleConstants.MADiE_ADMIN)
                     .anyRequest()
                     .authenticated())
         .csrf(csrf -> csrf.disable())

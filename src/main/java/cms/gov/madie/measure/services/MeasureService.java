@@ -575,7 +575,11 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public void changeOwnership(
-      String measureId, String userid, boolean retainShareAccess, String username) {
+      String measureId,
+      String userid,
+      boolean retainShareAccess,
+      String username,
+      String accessToken) {
     Measure measure =
         measureRepository
             .findById(measureId)
@@ -588,7 +592,7 @@ public class MeasureService extends BaseMeasureService {
                   return new ResourceNotFoundException("Measure", measureId);
                 });
     measureSetService.changeOwnership(
-        measure.getMeasureSetId(), userid, retainShareAccess, username);
+        measure.getMeasureSetId(), userid, retainShareAccess, username, accessToken);
   }
 
   public Map<String, Boolean> getMeasureDrafts(List<String> measureSetIds) {
@@ -898,12 +902,16 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public List<String> transferMeasures(
-      List<String> measureIds, String harpId, boolean retainShareAccess, String conductedBy) {
+      List<String> measureIds,
+      String harpId,
+      boolean retainShareAccess,
+      String conductedBy,
+      String accessToken) {
     List<String> failedMeasures = new ArrayList<>();
 
     for (String measureId : measureIds) {
       try {
-        changeOwnership(measureId, harpId, retainShareAccess, conductedBy);
+        changeOwnership(measureId, harpId, retainShareAccess, conductedBy, accessToken);
       } catch (RuntimeException e) {
         log.warn(
             "Failed to transfer ownership of measure [{}] to [{}]: {}",
