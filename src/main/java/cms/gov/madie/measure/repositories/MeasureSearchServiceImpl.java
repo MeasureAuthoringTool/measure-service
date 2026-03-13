@@ -174,13 +174,14 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria))
             : match(measureCriteria);
 
-    // Build facets operation - exclude sort when using priority-based sorting
-    // to avoid overriding the priority sort
+    // priority-based sorting based on the presence of priorityMeasureSets for composite component
+    // search
     boolean usePrioritySort =
         measureSearchCriteria != null
             && measureSearchCriteria.isFromCompositeMeasureComponent()
             && CollectionUtils.isNotEmpty(measureSearchCriteria.getPriorityMeasureSets());
-
+    // Build facets operation - exclude sort when using priority-based sorting
+    // to avoid overriding the priority sort
     FacetOperation facets;
     if (usePrioritySort) {
       facets =
@@ -249,8 +250,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     // which will be the latest measure in the MeasureSet
     if (usePrioritySort) {
       String sortField = pageable.getSort().stream().iterator().next().getProperty();
-      // Add a field to check if measureSetId (which becomes _id after grouping) is in the priority
-      // list
+      // Add a field to check if measureSetId is in the priority list
       // Also preserve sortField for sorting
       GroupOperation groupByMeasureSet =
           group("measureSetId")
