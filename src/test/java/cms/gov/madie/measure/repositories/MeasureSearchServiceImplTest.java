@@ -23,11 +23,13 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
+import java.time.Instant;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -1491,5 +1493,124 @@ public class MeasureSearchServiceImplTest {
     assertEquals(2, page.getContent().size());
     assertEquals("harpId1", page.getContent().get(0).getOwnerDisplayName());
     assertEquals("-", page.getContent().get(1).getOwnerDisplayName());
+  }
+
+  @Test
+  public void testSearchMeasuresByCriteriaWithPriorityMeasureSets() {
+    PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("measureSetId").ascending());
+
+    // Create measures with different measureSetIds and last modified dates
+    // Set A: measureSetId "setA", lastModifiedAt in 2023
+    MeasureSet measureSetA = MeasureSet.builder().owner("user1").build();
+    MeasureListDTO measureA1 =
+        MeasureListDTO.builder()
+            .id("measure-id-1")
+            .measureName("Measure A1")
+            .measureSetId("setA")
+            .measureSet(measureSetA)
+            .lastModifiedAt(Instant.ofEpochMilli(1672531200000L)) // Jan 1, 2023
+            .build();
+
+    // Set B: measureSetId "setB", lastModifiedAt in 2025
+    MeasureSet measureSetB = MeasureSet.builder().owner("user2").build();
+    MeasureListDTO measureB1 =
+        MeasureListDTO.builder()
+            .id("measure-id-3")
+            .measureName("Measure B1")
+            .measureSetId("setB")
+            .measureSet(measureSetB)
+            .lastModifiedAt(Instant.ofEpochMilli(1735689600000L)) // Jan 1, 2025
+            .build();
+
+    // Set C: measureSetId "setC", lastModifiedAt in 2026
+    MeasureSet measureSetC = MeasureSet.builder().owner("user3").build();
+    MeasureListDTO measureC1 =
+        MeasureListDTO.builder()
+            .id("measure-id-2")
+            .measureName("Measure C1")
+            .measureSetId("setC")
+            .measureSet(measureSetC)
+            .lastModifiedAt(Instant.ofEpochMilli(1767225600000L)) // Jan 1, 2026
+            .build();
+
+    // Set D: measureSetId "setD", lastModifiedAt in 2026
+    MeasureSet measureSetD = MeasureSet.builder().owner("user4").build();
+    MeasureListDTO measureD1 =
+        MeasureListDTO.builder()
+            .id("measure-id-8")
+            .measureName("Measure D1")
+            .measureSetId("setD")
+            .measureSet(measureSetD)
+            .lastModifiedAt(Instant.ofEpochMilli(1767312000000L)) // Jan 2, 2026 (later than setC)
+            .build();
+
+    // Mock the first aggregation for measure set match counts
+    MeasureSetMatchCountDTO dtoA =
+        MeasureSetMatchCountDTO.builder().measureSetId("setA").matchCount(1).build();
+    MeasureSetMatchCountDTO dtoB =
+        MeasureSetMatchCountDTO.builder().measureSetId("setB").matchCount(1).build();
+    MeasureSetMatchCountDTO dtoC =
+        MeasureSetMatchCountDTO.builder().measureSetId("setC").matchCount(1).build();
+    MeasureSetMatchCountDTO dtoD =
+        MeasureSetMatchCountDTO.builder().measureSetId("setD").matchCount(1).build();
+
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(dtoA, dtoB, dtoC, dtoD), new Document()));
+
+    // Expected order: Set D (priority, most recent), Set B (priority, older),
+    // Set C (non-priority, most recent), Set A (non-priority, oldest)
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(List.of(measureD1, measureB1, measureC1, measureA1))
+            .count(List.of(1, 2, 3, 4))
+            .build();
+
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    // Mock user details
+    Map<String, UserDetailsDto> userDetailsMap = new HashMap<>();
+    userDetailsMap.put("user1", UserDetailsDto.builder().firstName("User").lastName("One").build());
+    userDetailsMap.put("user2", UserDetailsDto.builder().firstName("User").lastName("Two").build());
+    userDetailsMap.put(
+        "user3", UserDetailsDto.builder().firstName("User").lastName("Three").build());
+    userDetailsMap.put(
+        "user4", UserDetailsDto.builder().firstName("User").lastName("Four").build());
+
+    when(userServiceClient.getBulkUserDetails(any())).thenReturn(userDetailsMap);
+
+    // Create search criteria with priorityMeasureSets
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder()
+            .fromCompositeMeasureComponent(true)
+            .priorityMeasureSets(List.of("setB", "setD")) // Priority sets
+            .build();
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, searchCriteria, List.of(OwnershipType.OWNED));
+
+    // Verify results
+    assertEquals(4, page.getContent().size());
+
+    // Verify the order: Set D first (priority + most recent), then Set B (priority),
+    // then Set C (non-priority, most recent), then Set A (non-priority, oldest)
+    assertEquals("setD", page.getContent().get(0).getMeasureSetId());
+    assertEquals("measure-id-8", page.getContent().get(0).getId());
+
+    assertEquals("setB", page.getContent().get(1).getMeasureSetId());
+    assertEquals("measure-id-3", page.getContent().get(1).getId());
+
+    assertEquals("setC", page.getContent().get(2).getMeasureSetId());
+    assertEquals("measure-id-2", page.getContent().get(2).getId());
+
+    assertEquals("setA", page.getContent().get(3).getMeasureSetId());
+    assertEquals("measure-id-1", page.getContent().get(3).getId());
   }
 }
