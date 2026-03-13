@@ -460,7 +460,7 @@ public class MeasureService extends BaseMeasureService {
             "No measure set exists for measure with ID: " + measure.getId());
       }
 
-      if (measure.getMeasureSet().getAcls() == null) {
+      if (CollectionUtils.isEmpty(measure.getMeasureSet().getAcls())) {
         sharedMeasures.put(measureId, Collections.emptyList());
       } else {
         List<String> userIds =
