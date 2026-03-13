@@ -115,13 +115,9 @@ public class TestCaseService {
     if (enrichedTestCase != null && !measure.getMeasureMetaData().isDraft()) {
       enrichedTestCase.setCreatedBeforeVersioning(false);
     }
-    if (measure.getTestCases() == null) {
-      measure.setTestCases(List.of(enrichedTestCase));
-    } else {
-      measure.getTestCases().add(enrichedTestCase);
-    }
 
-    measureRepository.save(measure);
+    measureRepository.addOrUpdateTestCase(measureId, enrichedTestCase);
+
     actionLogService.logAction(
         enrichedTestCase.getId(), TestCase.class, ActionType.CREATED, username);
     log.info(

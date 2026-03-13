@@ -116,24 +116,19 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCase() {
-    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
-
-    doReturn(measure).when(measureRepository).save(any(Measure.class));
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(measure);
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase persistTestCase =
         testCaseService.persistTestCase(testCase, measure.getId(), "test.user", "TOKEN");
-    verify(measureRepository, times(1)).save(measureCaptor.capture());
-    Measure savedMeasure = measureCaptor.getValue();
-    assertEquals(measure.getLastModifiedBy(), savedMeasure.getLastModifiedBy());
-    assertEquals(measure.getLastModifiedAt(), savedMeasure.getLastModifiedAt());
-    assertNotNull(savedMeasure.getTestCases());
-    assertEquals(1, savedMeasure.getTestCases().size());
-    TestCase capturedTestCase = savedMeasure.getTestCases().get(0);
+    verify(measureRepository, times(1))
+        .addOrUpdateTestCase(eq(measure.getId()), testCaseCaptor.capture());
+    TestCase capturedTestCase = testCaseCaptor.getValue();
     int lastModCompareTo =
         capturedTestCase.getLastModifiedAt().compareTo(Instant.now().minus(60, ChronoUnit.SECONDS));
     assertEquals("test.user", capturedTestCase.getLastModifiedBy());
@@ -163,10 +158,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     TestCase existingTestCase = TestCase.builder().id("Test1ID").title("Test0").build();
     existingTestCases.add(existingTestCase);
     measure.setTestCases(existingTestCases);
-    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
-
-    doReturn(measure).when(measureRepository).save(any(Measure.class));
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(measure);
 
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -184,14 +178,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(persistTestCase, is(notNullValue()));
     assertThat(persistTestCase.getId(), is(notNullValue()));
     assertThat(persistTestCase.getTitle(), is(equalTo(testCase.getTitle())));
-    verify(measureRepository, times(1)).save(measureCaptor.capture());
-    Measure savedMeasure = measureCaptor.getValue();
-    assertEquals(measure.getLastModifiedBy(), savedMeasure.getLastModifiedBy());
-    assertEquals(measure.getLastModifiedAt(), savedMeasure.getLastModifiedAt());
-    assertNotNull(savedMeasure.getTestCases());
-    assertEquals(2, savedMeasure.getTestCases().size());
-    assertThat(savedMeasure.getTestCases().get(0), is(equalTo(existingTestCase)));
-    TestCase capturedTestCase = savedMeasure.getTestCases().get(1);
+    verify(measureRepository, times(1))
+        .addOrUpdateTestCase(eq(measure.getId()), testCaseCaptor.capture());
+    TestCase capturedTestCase = testCaseCaptor.getValue();
     int lastModCompareTo =
         capturedTestCase.getLastModifiedAt().compareTo(Instant.now().minus(60, ChronoUnit.SECONDS));
     assertEquals("test.user", capturedTestCase.getLastModifiedBy());
@@ -769,16 +758,14 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
-    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
-    Mockito.doAnswer((args) -> args.getArgument(0))
-        .when(measureRepository)
-        .save(measureCaptor.capture());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(measure);
 
     // Should not throw exception - editing versioned measures is now always allowed
     testCaseService.persistTestCase(testCase, measure.getId(), "test.user", "TOKEN");
 
-    // Verify the measure was saved
-    verify(measureRepository).save(any(Measure.class));
+    // Verify the test case was pushed to the database
+    verify(measureRepository).addOrUpdateTestCase(eq(measure.getId()), any(TestCase.class));
   }
 
   @Test
@@ -2596,10 +2583,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     existingTestCases.add(existingTestCase);
     measure.setTestCases(existingTestCases);
     measure.setModel(ModelType.QDM_5_6.getValue());
-    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
-
-    doReturn(measure).when(measureRepository).save(any(Measure.class));
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(measure);
 
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
@@ -2610,14 +2596,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(persistTestCase, is(notNullValue()));
     assertThat(persistTestCase.getId(), is(notNullValue()));
     assertThat(persistTestCase.getTitle(), is(equalTo(testCase.getTitle())));
-    verify(measureRepository, times(1)).save(measureCaptor.capture());
-    Measure savedMeasure = measureCaptor.getValue();
-    assertEquals(measure.getLastModifiedBy(), savedMeasure.getLastModifiedBy());
-    assertEquals(measure.getLastModifiedAt(), savedMeasure.getLastModifiedAt());
-    assertNotNull(savedMeasure.getTestCases());
-    assertEquals(2, savedMeasure.getTestCases().size());
-    assertThat(savedMeasure.getTestCases().get(0), is(equalTo(existingTestCase)));
-    TestCase capturedTestCase = savedMeasure.getTestCases().get(1);
+    verify(measureRepository, times(1))
+        .addOrUpdateTestCase(eq(measure.getId()), testCaseCaptor.capture());
+    TestCase capturedTestCase = testCaseCaptor.getValue();
     int lastModCompareTo =
         capturedTestCase.getLastModifiedAt().compareTo(Instant.now().minus(60, ChronoUnit.SECONDS));
     assertEquals("test.user", capturedTestCase.getLastModifiedBy());
@@ -3010,7 +2991,8 @@ public class TestCaseServiceTest implements ResourceUtil {
                             HapiOperationOutcome.builder().code(200).successful(true).build())
                         .validResource(true)
                         .build());
-    doReturn(targetMeasure).when(measureRepository).save(any());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
 
     // Start with empty Test Case list on target measure
     assertTrue(CollectionUtils.isEmpty(targetMeasure.getTestCases()));
@@ -3045,8 +3027,6 @@ public class TestCaseServiceTest implements ResourceUtil {
         result.getCopiedTestCases().get(0).getJson(),
         containsString("2012-01-16T08:00:00.000+00:00"));
     assertFalse(result.getCopiedTestCases().get(0).isCreatedBeforeVersioning());
-    // Verify target measure now has a single Test Case
-    assertThat(targetMeasure.getTestCases().size(), is(1));
   }
 
   @Test
@@ -3111,7 +3091,8 @@ public class TestCaseServiceTest implements ResourceUtil {
                             HapiOperationOutcome.builder().code(200).successful(true).build())
                         .validResource(true)
                         .build());
-    doReturn(targetMeasure).when(measureRepository).save(any());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
 
     // Start with empty Test Case list on target measure
     assertTrue(CollectionUtils.isEmpty(targetMeasure.getTestCases()));
@@ -3138,9 +3119,6 @@ public class TestCaseServiceTest implements ResourceUtil {
             .getPopulationValues()
             .get(0)
             .getExpected());
-
-    // Verify target measure now has a single Test Case
-    assertThat(targetMeasure.getTestCases().size(), is(1));
   }
 
   @Test
@@ -3163,15 +3141,14 @@ public class TestCaseServiceTest implements ResourceUtil {
                             HapiOperationOutcome.builder().code(200).successful(true).build())
                         .validResource(true)
                         .build());
-    doReturn(targetMeasure).when(measureRepository).save(any());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
 
     CopyTestCaseResult result =
         testCaseService.copyTestCasesToMeasure(
             targetMeasure.getId(), List.of(source), "user.name", "accessToken");
     assertThat(result.getCopiedTestCases().size(), is(1));
     assertTrue(result.getCopiedTestCases().get(0).getTitle().contains("-"));
-
-    assertThat(targetMeasure.getTestCases().size(), is(2));
   }
 
   @Test
@@ -3268,7 +3245,8 @@ public class TestCaseServiceTest implements ResourceUtil {
                             HapiOperationOutcome.builder().code(200).successful(true).build())
                         .validResource(true)
                         .build());
-    doReturn(targetMeasure).when(measureRepository).save(any());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
 
     // Start with empty Test Case list on target measure
     assertTrue(CollectionUtils.isEmpty(targetMeasure.getTestCases()));
@@ -3321,9 +3299,6 @@ public class TestCaseServiceTest implements ResourceUtil {
             .get(0)
             .getId(),
         is("target-strat-id"));
-
-    // Verify target measure now has a single Test Case
-    assertThat(targetMeasure.getTestCases().size(), is(1));
   }
 
   @Test
@@ -3366,7 +3341,8 @@ public class TestCaseServiceTest implements ResourceUtil {
                             HapiOperationOutcome.builder().code(200).successful(true).build())
                         .validResource(true)
                         .build());
-    doReturn(targetMeasure).when(measureRepository).save(any());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
 
     // Start with empty Test Case list on target measure
     assertTrue(CollectionUtils.isEmpty(targetMeasure.getTestCases()));
@@ -3383,9 +3359,6 @@ public class TestCaseServiceTest implements ResourceUtil {
     // but this helps the UI display a more accurate toast message.
     assertThat(result.getCopiedTestCases().size(), equalTo(1));
     assertFalse(result.getDidClearExpectedValues());
-
-    // Verify target measure now has a single Test Case
-    assertThat(targetMeasure.getTestCases().size(), is(1));
   }
 
   @Test
@@ -3396,7 +3369,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     Measure targetMeasure = measure.toBuilder().model(ModelType.QDM_5_6.getValue()).build();
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
-    doReturn(targetMeasure).when(measureRepository).save(any());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
 
     when(testCaseValidationService.validateTestCaseAsResource(
             any(TestCase.class), any(ModelType.class), anyString()))
