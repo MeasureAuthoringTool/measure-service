@@ -464,25 +464,49 @@ public class MeasureController extends AbstractMeasureController {
       @RequestParam(defaultValue = "false") boolean retainShareAccess,
       Principal principal,
       @RequestHeader("Authorization") String accessToken) {
-    log.info("transferMeasures to [{}] ", harpId.toLowerCase());
+    final String username = principal.getName().toLowerCase();
+    log.info(
+        "User [{}] - Starting change ownership to [{}] for measureIds: [{}]",
+        username,
+        harpId,
+        measureIds);
     if (CollectionUtils.isEmpty(measureIds)) {
       return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.emptyList());
     }
-    final String username = principal.getName().toLowerCase();
+    List<String> validMeasureIds = new ArrayList<>();
+    List<String> failedTransfers = new ArrayList<>();
     // Check lock for all measures being transferred
     measureIds.forEach(
         measureId -> {
           final Measure existingMeasure = measureService.findMeasureById(measureId);
           if (existingMeasure != null) {
-            checkMeasureLock(existingMeasure, username);
+            try {
+              checkMeasureLock(existingMeasure, username);
+              validMeasureIds.add(existingMeasure.getId());
+            } catch (LockNotObtainedException e) {
+              failedTransfers.add(existingMeasure.getId());
+            }
+          } else {
+            log.warn(
+                "Measure with ID [{}] not found during transfer attempt by user [{}]",
+                measureId,
+                username);
+            failedTransfers.add(measureId);
           }
         });
-    List<String> failedTransfers =
-        measureService.transferMeasures(
-            measureIds, harpId.toLowerCase(), retainShareAccess, username, false);
+    if (CollectionUtils.isNotEmpty(validMeasureIds)) {
+      failedTransfers.addAll(
+          measureService.transferMeasures(
+              measureIds, harpId.toLowerCase(), retainShareAccess, username, accessToken));
+    }
+    List<String> successMeasureIds =
+        measureIds.stream().filter(measureId -> !failedTransfers.contains(measureId)).toList();
+
     if (CollectionUtils.isEmpty(failedTransfers)) {
-      return ResponseEntity.ok().build();
+      log.info("Transfer successful for measureIds: [{}]", successMeasureIds);
+      return ResponseEntity.ok().body(successMeasureIds);
     } else {
+      log.info("Transfer failed for measureIds: [{}]", failedTransfers);
       return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(failedTransfers);
     }
   }

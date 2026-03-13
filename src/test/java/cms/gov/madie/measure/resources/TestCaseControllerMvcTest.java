@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.SecurityConfigTest;
+import cms.gov.madie.measure.config.security.SecurityConfigTest;
 import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;

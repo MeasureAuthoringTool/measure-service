@@ -1104,9 +1104,9 @@ class MeasureControllerTest {
   @Test
   public void testTransferMeasures() {
     when(principal.getName()).thenReturn("test.user");
-
+    when(measureService.findMeasureById(anyString())).thenReturn(measure1);
     when(measureService.transferMeasures(
-            any(List.class), anyString(), anyBoolean(), anyString(), anyBoolean()))
+            anyList(), anyString(), anyBoolean(), anyString(), anyString()))
         .thenReturn(Collections.emptyList());
     ResponseEntity<List<String>> result =
         controller.transferMeasures(
@@ -1118,25 +1118,44 @@ class MeasureControllerTest {
   @Test
   public void testTransferMeasuresPartialFailure() {
     when(principal.getName()).thenReturn("test.user");
+    // successfully transferred measure
+    Measure successfullMeasure = measure1.toBuilder().id("measureId1").build();
+    // locked measure
+    Measure lockedMeasure =
+        measure1.toBuilder()
+            .id("measureId2")
+            .measureLock(MeasureLock.builder().lockedBy("another.user").build())
+            .build();
+    // Failed measure
+    Measure failedMeasure = measure1.toBuilder().id("measureId3").build();
+    // mock measure retrieval for all measures
+    when(measureService.findMeasureById(successfullMeasure.getId())).thenReturn(successfullMeasure);
+    when(measureService.findMeasureById(lockedMeasure.getId())).thenReturn(lockedMeasure);
+    when(measureService.findMeasureById(failedMeasure.getId())).thenReturn(failedMeasure);
 
-    List<String> failedMeasures = List.of("measureId2");
+    // mock transfer result to indicate measureId3 failed due to some other reasons
     when(measureService.transferMeasures(
-            any(List.class), anyString(), anyBoolean(), anyString(), anyBoolean()))
-        .thenReturn(failedMeasures);
+            anyList(), anyString(), anyBoolean(), anyString(), anyString()))
+        .thenReturn(List.of(failedMeasure.getId()));
 
     ResponseEntity<List<String>> result =
         controller.transferMeasures(
-            List.of("measureId1", "measureId2"), "harpId1", true, principal, "testToken");
+            List.of("measureId1", "measureId2", "measureId3"),
+            "harpId1",
+            true,
+            principal,
+            "testToken");
 
     assertEquals(HttpStatus.MULTI_STATUS, result.getStatusCode());
     assertNotNull(result.getBody());
-    assertEquals(1, result.getBody().size());
-    assertTrue(result.getBody().contains("measureId2"));
+    assertEquals(2, result.getBody().size());
+    assertTrue(result.getBody().contains(failedMeasure.getId()));
+    assertTrue(result.getBody().contains(lockedMeasure.getId()));
   }
 
   @Test
   public void testTransferMeasuresEmptyMeasureIds() {
-
+    when(principal.getName()).thenReturn("test.user");
     ResponseEntity<List<String>> result =
         controller.transferMeasures(
             Collections.emptyList(), "testHarpId", true, principal, "testToken");

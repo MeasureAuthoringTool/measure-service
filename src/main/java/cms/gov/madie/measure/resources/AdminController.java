@@ -611,66 +611,6 @@ public class AdminController extends AbstractMeasureController {
             id, principal.getName().toLowerCase(), incorrectCodeSystem, correctCodeSystem));
   }
 
-  /**
-   * Admin API that handles transfer of multiple measures to a new owner (identified by harpId).
-   *
-   * <p>Validates the input list of measure IDs. Delegates transfer logic to measureService, which
-   * attempts to reassign each measure. Returns:
-   *
-   * <ul>
-   *   <li>200 OK if all transfers succeed and returns all success measure IDs
-   *   <li>400 BAD REQUEST if the input list is empty.
-   *   <li>207 MULTI_STATUS if some transfers fail, returning only the failed measure IDs in the
-   *       body.
-   * </ul>
-   */
-  @PutMapping("/measures/ownership")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
-  public ResponseEntity<List<String>> changeOwnership(
-      @RequestBody List<String> measureIds,
-      @RequestParam(name = "harpId") String harpId,
-      @RequestParam(defaultValue = "false") boolean retainShareAccess,
-      Principal principal) {
-    final String username = principal.getName().toLowerCase();
-    log.info(
-        "User [{}] - Starting admin task [changeOwnership] to [{}] for measureIds: [{}]",
-        username,
-        harpId,
-        measureIds);
-    if (CollectionUtils.isEmpty(measureIds)) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Collections.emptyList());
-    }
-    List<String> validMeasureIds = new ArrayList<>();
-    List<String> failedTransfers = new ArrayList<>();
-    // Check lock for all measures being transferred
-    measureIds.forEach(
-        measureId -> {
-          cms.gov.madie.measure.locks.MeasureLock measureLock =
-              measureLockService.findByMeasureId(measureId);
-          if (measureLock == null) {
-            validMeasureIds.add(measureId);
-          } else {
-            failedTransfers.add(measureId);
-          }
-        });
-
-    if (CollectionUtils.isNotEmpty(validMeasureIds)) {
-      failedTransfers.addAll(
-          measureService.transferMeasures(
-              validMeasureIds, harpId.toLowerCase(), retainShareAccess, username, true));
-    }
-    List<String> successMeasureIds =
-        measureIds.stream().filter(measureId -> !failedTransfers.contains(measureId)).toList();
-
-    if (CollectionUtils.isEmpty(failedTransfers)) {
-      log.info("Successful measureIds: [{}]", successMeasureIds);
-      return ResponseEntity.ok().body(successMeasureIds);
-    } else {
-      log.info("Failed transfer measureIds: [{}]", failedTransfers);
-      return ResponseEntity.status(HttpStatus.MULTI_STATUS).body(failedTransfers);
-    }
-  }
-
   @PutMapping("/measures/{id}/acls")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<AclSpecification>> updateAccessControl(

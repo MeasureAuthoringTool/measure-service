@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.SecurityConfigTest;
+import cms.gov.madie.measure.config.security.SecurityConfigTest;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -80,6 +80,7 @@ public class MeasureControllerMvcTest {
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor2;
 
   private static final String TEST_USER_ID = "test-okta-user-id-123";
+  private static final String ACCESS_TOKEN = "test-okta";
 
   @Captor ArgumentCaptor<Group> groupCaptor;
   @Captor ArgumentCaptor<String> groupIdCaptor;
@@ -2176,11 +2177,12 @@ public class MeasureControllerMvcTest {
   @Test
   public void testTransferMeasures() throws Exception {
     String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-
+    Measure measure = Measure.builder().id(measureId).build();
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
     doReturn(Collections.emptyList())
         .when(measureService)
         .transferMeasures(
-            eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID), eq(false));
+            eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID), eq(ACCESS_TOKEN));
 
     mockMvc
         .perform(
@@ -2188,7 +2190,7 @@ public class MeasureControllerMvcTest {
                 .with(user(TEST_USER_ID))
                 .with(csrf())
                 .header("harpId", "testUser")
-                .header("Authorization", "test-okta")
+                .header("Authorization", ACCESS_TOKEN)
                 .queryParam("retainShareAccess", "true")
                 .content(gson.toJson(List.of(measureId)))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -2198,35 +2200,50 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .transferMeasures(
-            eq(List.of(measureId)), eq("testuser"), eq(true), eq(TEST_USER_ID), eq(false));
+            eq(List.of(measureId)), eq("testuser"), eq(true), eq(TEST_USER_ID), eq(ACCESS_TOKEN));
   }
 
   @Test
   public void testTransferMeasuresPartialFailure() throws Exception {
-    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-
-    doReturn(List.of("1"))
+    Measure measure1 = Measure.builder().id("f225481c").build();
+    Measure measure2 = Measure.builder().id("921e4015").build();
+    // mock measure retrieval for all measures
+    when(measureService.findMeasureById(measure1.getId())).thenReturn(measure1);
+    when(measureService.findMeasureById(measure2.getId())).thenReturn(measure2);
+    doReturn(List.of(measure2.getId()))
         .when(measureService)
         .transferMeasures(
-            eq(List.of(measureId)), eq("testuser"), eq(false), eq(TEST_USER_ID), eq(false));
+            eq(List.of(measure1.getId(), measure2.getId())),
+            eq("testuser"),
+            eq(false),
+            eq(TEST_USER_ID),
+            eq(ACCESS_TOKEN));
 
-    mockMvc
-        .perform(
-            put("/measures/transfer")
-                .with(user(TEST_USER_ID))
-                .with(csrf())
-                .header("harpId", "testUser")
-                .header("Authorization", "test-okta")
-                .queryParam("retainShareAccess", "false")
-                .content(gson.toJson(List.of(measureId)))
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON))
-        .andDo(print())
-        .andExpect(status().isMultiStatus());
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/measures/transfer")
+                    .with(user(TEST_USER_ID))
+                    .with(csrf())
+                    .header("harpId", "testUser")
+                    .header("Authorization", ACCESS_TOKEN)
+                    .queryParam("retainShareAccess", "false")
+                    .content(gson.toJson(List.of(measure1.getId(), measure2.getId())))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .accept(MediaType.APPLICATION_JSON))
+            .andDo(print())
+            .andExpect(status().isMultiStatus())
+            .andReturn();
 
     verify(measureService, times(1))
         .transferMeasures(
-            eq(List.of(measureId)), eq("testuser"), eq(false), eq(TEST_USER_ID), eq(false));
+            eq(List.of(measure1.getId(), measure2.getId())),
+            eq("testuser"),
+            eq(false),
+            eq(TEST_USER_ID),
+            eq(ACCESS_TOKEN));
+    // failed measure should be in the response
+    assertThat(result.getResponse().getContentAsString(), containsString(measure2.getId()));
   }
 
   @Test
@@ -2239,7 +2256,7 @@ public class MeasureControllerMvcTest {
                 .with(user(TEST_USER_ID))
                 .with(csrf())
                 .header("harpId", "testUser")
-                .header("Authorization", "test-okta")
+                .header("Authorization", ACCESS_TOKEN)
                 .queryParam("retainShareAccess", "true")
                 .content(gson.toJson(Collections.emptyList()))
                 .contentType(MediaType.APPLICATION_JSON)
@@ -2249,7 +2266,7 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(0))
         .transferMeasures(
-            eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID), eq(false));
+            eq(List.of(measureId)), eq("testUser"), eq(true), eq(TEST_USER_ID), eq(ACCESS_TOKEN));
   }
 
   @Test
@@ -2265,7 +2282,7 @@ public class MeasureControllerMvcTest {
                     .with(user(TEST_USER_ID))
                     .with(csrf())
                     .header("harpId", "testUser")
-                    .header("Authorization", "test-okta")
+                    .header("Authorization", ACCESS_TOKEN)
                     .contentType(MediaType.APPLICATION_JSON)
                     .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isOk())

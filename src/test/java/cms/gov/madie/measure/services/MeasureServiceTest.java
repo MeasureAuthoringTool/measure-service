@@ -56,7 +56,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.repositories.OrganizationRepository;
 import cms.gov.madie.measure.resources.DuplicateKeyException;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
@@ -68,19 +67,18 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private MeasureRepository measureRepository;
   @Mock private MeasureSetRepository measureSetRepository;
   @Mock private TestCasePatchRepository testCasePatchRepository;
-  @Mock private OrganizationRepository organizationRepository;
   @Mock private ElmTranslatorClient elmTranslatorClient;
   @Mock private MeasureUtil measureUtil;
   @Mock private ActionLogService actionLogService;
   @Mock private MeasureSetService measureSetService;
   @Mock private CqlTemplateConfigService cqlTemplateConfigService;
   @Mock private TerminologyValidationService terminologyValidationService;
-  @Mock private AppConfigService appConfigService;
   @Mock private MeasureLockService measureLockService;
+
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
-  @InjectMocks private MeasureSetService measureSetServiceMock;
 
+  private static final String ACCESS_TOKEN = "test-token";
   private Group group2;
   private MeasureMetaData draftMeasureMetaData;
   private MeasureMetaData finalMeasureMetaData;
@@ -1274,15 +1272,15 @@ public class MeasureServiceTest implements ResourceUtil {
     when(principal.getName()).thenReturn("testUser");
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.changeOwnership(
-            anyString(), anyString(), anyBoolean(), anyString(), anyBoolean()))
+            anyString(), anyString(), anyBoolean(), anyString(), anyString()))
         .thenReturn(new MeasureSet());
 
     measureService.changeOwnership(
-        measure.getId(), "updatedUserId", true, principal.getName(), false);
+        measure.getId(), "updatedUserId", true, principal.getName(), ACCESS_TOKEN);
 
     verify(measureSetService, times(1))
         .changeOwnership(
-            measure.getMeasureSetId(), "updatedUserId", true, principal.getName(), false);
+            measure.getMeasureSetId(), "updatedUserId", true, principal.getName(), ACCESS_TOKEN);
   }
 
   @Test
@@ -1294,7 +1292,7 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThrows(
         ResourceNotFoundException.class,
         () -> {
-          measureService.changeOwnership("testMeasureId", "user123", true, username, true);
+          measureService.changeOwnership("testMeasureId", "user123", true, username, ACCESS_TOKEN);
         });
   }
 
@@ -1312,20 +1310,20 @@ public class MeasureServiceTest implements ResourceUtil {
     // Simulate ResourceNotFoundException thrown by measureSetService
     doThrow(new ResourceNotFoundException("MeasureSet", "123"))
         .when(measureSetService)
-        .changeOwnership(anyString(), anyString(), anyBoolean(), anyString(), anyBoolean());
+        .changeOwnership(anyString(), anyString(), anyBoolean(), anyString(), anyString());
 
     ResourceNotFoundException exception =
         assertThrows(
             ResourceNotFoundException.class,
             () ->
                 measureService.changeOwnership(
-                    measure.getId(), "updatedUserId", true, principal.getName(), false));
+                    measure.getId(), "updatedUserId", true, principal.getName(), ACCESS_TOKEN));
 
     assertEquals("Could not find MeasureSet with id: 123", exception.getMessage());
 
     verify(measureSetService, times(1))
         .changeOwnership(
-            measure.getMeasureSetId(), "updatedUserId", true, principal.getName(), false);
+            measure.getMeasureSetId(), "updatedUserId", true, principal.getName(), ACCESS_TOKEN);
   }
 
   @Test
@@ -1341,20 +1339,20 @@ public class MeasureServiceTest implements ResourceUtil {
 
     doThrow(new RuntimeException("Error occurred during measure ownership transfer"))
         .when(measureSetService)
-        .changeOwnership(anyString(), anyString(), anyBoolean(), anyString(), anyBoolean());
+        .changeOwnership(anyString(), anyString(), anyBoolean(), anyString(), anyString());
 
     RuntimeException exception =
         assertThrows(
             RuntimeException.class,
             () ->
                 measureService.changeOwnership(
-                    measure.getId(), "updatedUserId", true, principal.getName(), false));
+                    measure.getId(), "updatedUserId", true, principal.getName(), ACCESS_TOKEN));
 
     assertEquals("Error occurred during measure ownership transfer", exception.getMessage());
 
     verify(measureSetService, times(1))
         .changeOwnership(
-            measure.getMeasureSetId(), "updatedUserId", true, principal.getName(), false);
+            measure.getMeasureSetId(), "updatedUserId", true, principal.getName(), ACCESS_TOKEN);
   }
 
   @Test
@@ -2347,11 +2345,12 @@ public class MeasureServiceTest implements ResourceUtil {
 
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.changeOwnership(
-            anyString(), anyString(), any(Boolean.class), anyString(), anyBoolean()))
+            anyString(), anyString(), any(Boolean.class), anyString(), anyString()))
         .thenReturn(new MeasureSet());
 
     List<String> failed =
-        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser", false);
+        measureService.transferMeasures(
+            List.of("123"), "user123", true, "anotherUser", ACCESS_TOKEN);
 
     assertTrue(failed.isEmpty());
   }
@@ -2361,7 +2360,8 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureRepository.findById("123")).thenReturn(Optional.empty());
 
     List<String> failed =
-        measureService.transferMeasures(List.of("123"), "user123", true, "anotherUser", false);
+        measureService.transferMeasures(
+            List.of("123"), "user123", true, "anotherUser", ACCESS_TOKEN);
 
     assertEquals(1, failed.size());
     assertTrue(failed.contains("123"));
@@ -2717,6 +2717,7 @@ public class MeasureServiceTest implements ResourceUtil {
         () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
   }
 
+  @Test
   public void testUpdateMeasureThrowsExceptionForWhenCqlIsNull() {
     Measure original =
         Measure.builder()
@@ -2734,75 +2735,6 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThrows(
         InvalidRequestException.class,
         () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
-  }
-
-  @Test
-  public void testChangeOwnershipOriginalMeasureSetDoesNotHaveAcls() {
-    String measureSetId = "measureSetId1";
-    String originalOwner = "originalOwner";
-    String newOwner = "newOwner";
-    MeasureSet measureSet = MeasureSet.builder().id(measureSetId).owner(originalOwner).build();
-
-    MeasureSet updatedMeasureSet =
-        measureSet.toBuilder()
-            .owner(newOwner)
-            .acls(
-                List.of(
-                    AclSpecification.builder()
-                        .userId(originalOwner)
-                        .roles(Set.of(RoleEnum.SHARED_WITH))
-                        .build()))
-            .build();
-
-    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
-
-    MeasureSet result =
-        measureSetServiceMock.changeOwnership(measureSetId, "user123", true, "admin", true);
-    assertNotNull(result);
-    assertEquals(newOwner, result.getOwner());
-    assertTrue(result.getAcls() != null && !result.getAcls().isEmpty());
-  }
-
-  @Test
-  public void testChangeOwnershipMeasureSetAlreadySharedWithUser() {
-    String measureSetId = "measureSetId1";
-    String originalOwner = "originalOwner";
-    String newOwner = "newOwner";
-    MeasureSet measureSet =
-        MeasureSet.builder()
-            .id(measureSetId)
-            .owner(originalOwner)
-            .acls(
-                new ArrayList<>(
-                    List.of(
-                        AclSpecification.builder()
-                            .userId(originalOwner)
-                            .roles(Set.of(RoleEnum.SHARED_WITH))
-                            .build())))
-            .build();
-    MeasureSet updatedMeasureSet =
-        measureSet.toBuilder()
-            .owner(newOwner)
-            .acls(
-                List.of(
-                    AclSpecification.builder()
-                        .userId(originalOwner)
-                        .roles(Set.of(RoleEnum.SHARED_WITH))
-                        .build()))
-            .build();
-
-    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
-
-    MeasureSet result =
-        measureSetServiceMock.changeOwnership(measureSetId, newOwner, true, "admin", true);
-    assertNotNull(result);
-    assertEquals(newOwner, result.getOwner());
-    assertTrue(result.getAcls() != null && !result.getAcls().isEmpty());
-    assertEquals(1, result.getAcls().size());
-    assertEquals(originalOwner, result.getAcls().get(0).getUserId());
-    assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
   }
 
   @Test

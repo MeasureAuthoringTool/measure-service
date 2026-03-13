@@ -14,7 +14,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.util.CollectionUtils;
+import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
@@ -123,5 +123,15 @@ public class UserServiceClient {
           e);
       return null;
     }
+  }
+
+  public boolean hasRole(String harpId, String role, String accessToken) {
+    if (StringUtils.isBlank(harpId)) {
+      return false;
+    }
+    UserRolesDto userRolesDto = getUserRoles(harpId, accessToken);
+    return userRolesDto != null
+        && CollectionUtils.isNotEmpty(userRolesDto.getRoles())
+        && userRolesDto.getRoles().contains(role);
   }
 }

@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.config.security.RoleConstants;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.*;
@@ -15,7 +17,6 @@ import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
-import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -34,7 +35,7 @@ public class MeasureSetService {
   private final MeasureSetRepository measureSetRepository;
   private final GeneratorRepository generatorRepository;
   private final ActionLogService actionLogService;
-  private final MongoTemplate mongoTemplate;
+  private final UserServiceClient userServiceClient;
 
   public void createMeasureSet(
       final String harpId, final String measureId, final String savedMeasureSetId, String cmsId) {
@@ -329,7 +330,6 @@ public class MeasureSetService {
    * @param retainShareAccess - add SHARED_WITH for the original owner if true, otherwise keep the
    *     current Acls
    * @param conductedBy - the user that performs the ownership change
-   * @param isAdmin - true if the user performing the action has admin role, false otherwise
    * @return the updated MeasureSet
    */
   public MeasureSet changeOwnership(
@@ -337,7 +337,7 @@ public class MeasureSetService {
       String userId,
       boolean retainShareAccess,
       String conductedBy,
-      boolean isAdmin) {
+      String accessToken) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
 
     if (optionalMeasureSet.isEmpty()) {
@@ -350,7 +350,8 @@ public class MeasureSetService {
 
     MeasureSet measureSet = optionalMeasureSet.get();
     String originalOwner = optionalMeasureSet.get().getOwner();
-
+    boolean isAdmin =
+        userServiceClient.hasRole(conductedBy, RoleConstants.MADiE_ADMIN, accessToken);
     // Only the original owner can transfer ownership for non-admin users that conduct the
     // changeOwnership action
     if (!originalOwner.equalsIgnoreCase(conductedBy) && !isAdmin) {
