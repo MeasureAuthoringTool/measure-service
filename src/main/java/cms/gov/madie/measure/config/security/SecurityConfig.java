@@ -1,5 +1,6 @@
-package cms.gov.madie.measure;
+package cms.gov.madie.measure.config.security;
 
+import cms.gov.madie.measure.CustomAccessDeniedHandler;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -33,7 +34,7 @@ public class SecurityConfig {
                     .requestMatchers(AUTH_WHITELIST)
                     .permitAll()
                     .requestMatchers("/admin/**")
-                    .hasRole("MADIE-ADMIN")
+                    .hasRole(RoleConstants.MADiE_ADMIN)
                     .anyRequest()
                     .authenticated())
         .sessionManagement(
@@ -50,7 +51,9 @@ public class SecurityConfig {
                     .contentSecurityPolicy(
                         contentSecurityPolicyConfig ->
                             contentSecurityPolicyConfig.policyDirectives("script-src 'self'")))
-      .exceptionHandling(exceptionHandlingConfig -> exceptionHandlingConfig.accessDeniedHandler(customAccessDeniedHandler));
+        .exceptionHandling(
+            exceptionHandlingConfig ->
+                exceptionHandlingConfig.accessDeniedHandler(customAccessDeniedHandler));
     return http.build();
   }
 }

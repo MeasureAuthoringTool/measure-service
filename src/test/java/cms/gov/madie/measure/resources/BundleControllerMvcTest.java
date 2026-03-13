@@ -1,6 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.SecurityConfigTest;
+import cms.gov.madie.measure.config.security.SecurityConfigTest;
 import cms.gov.madie.measure.exceptions.CqlElmTranslationServiceException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.BundleService;

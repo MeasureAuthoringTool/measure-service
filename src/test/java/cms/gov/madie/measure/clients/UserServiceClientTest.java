@@ -298,4 +298,97 @@ class UserServiceClientTest {
         .exchange(
             anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(UserRolesDto.class));
   }
+
+  @Test
+  void testHasRoleReturnsTrueWhenUserHasRole() {
+    // Arrange
+    String role = "Admin";
+    UserRolesDto userRolesDto =
+        UserRolesDto.builder().harpId(HARP_ID).roles(List.of("User", role)).build();
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class)))
+        .thenReturn(ResponseEntity.ok(userRolesDto));
+
+    // Act
+    boolean result = userServiceClient.hasRole(HARP_ID, role, TOKEN);
+
+    // Assert
+    assertTrue(result);
+    verify(userServiceRestTemplate, times(1))
+        .exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
+  }
+
+  @Test
+  void testHasRoleReturnsFalseWhenUserDoesNotHaveRole() {
+    // Arrange
+    String role = "Admin";
+    UserRolesDto userRolesDto =
+        UserRolesDto.builder().harpId(HARP_ID).roles(List.of("User")).build();
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class)))
+        .thenReturn(ResponseEntity.ok(userRolesDto));
+
+    // Act
+    boolean result = userServiceClient.hasRole(HARP_ID, role, TOKEN);
+
+    // Assert
+    assertFalse(result);
+    verify(userServiceRestTemplate, times(1))
+        .exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
+  }
+
+  @Test
+  void testHasRoleReturnsFalseWhenUserHasNoRoles() {
+    // Arrange
+    String role = "Admin";
+    UserRolesDto userRolesDto =
+        UserRolesDto.builder().harpId(HARP_ID).roles(Collections.emptyList()).build();
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class)))
+        .thenReturn(ResponseEntity.ok(userRolesDto));
+
+    // Act
+    boolean result = userServiceClient.hasRole(HARP_ID, role, TOKEN);
+
+    // Assert
+    assertFalse(result);
+    verify(userServiceRestTemplate, times(1))
+        .exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
+  }
+
+  @Test
+  void testHasRoleReturnsFalseWhenGetUserRolesReturnsNull() {
+    // Arrange
+    String role = "Admin";
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class)))
+        .thenThrow(new RestClientException("Connection error"));
+
+    // Act
+    boolean result = userServiceClient.hasRole(HARP_ID, role, TOKEN);
+
+    // Assert
+    assertFalse(result);
+    verify(userServiceRestTemplate, times(1))
+        .exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
+  }
+
+  @Test
+  void testHasRoleReturnsFalseWhenHarpIdIsNull() {
+    // Arrange
+    String role = "Admin";
+
+    // Act
+    boolean result = userServiceClient.hasRole(null, role, TOKEN);
+
+    // Assert
+    assertFalse(result);
+    verify(userServiceRestTemplate, never())
+        .exchange(
+            anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(UserRolesDto.class));
+  }
 }
