@@ -132,6 +132,6 @@ public class UserServiceClient {
     UserRolesDto userRolesDto = getUserRoles(harpId, accessToken);
     return userRolesDto != null
         && CollectionUtils.isNotEmpty(userRolesDto.getRoles())
-        && userRolesDto.getRoles().contains(role);
+        && userRolesDto.getRoles().stream().anyMatch(r -> r.equalsIgnoreCase(role));
   }
 }

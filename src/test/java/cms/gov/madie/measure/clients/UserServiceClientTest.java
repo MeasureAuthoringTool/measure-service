@@ -307,10 +307,7 @@ class UserServiceClientTest {
         UserRolesDto.builder().harpId(HARP_ID).roles(List.of("User", role)).build();
 
     when(userServiceRestTemplate.exchange(
-            anyString(),
-            eq(HttpMethod.GET),
-            any(HttpEntity.class),
-            eq(UserRolesDto.class)))
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class)))
         .thenReturn(ResponseEntity.ok(userRolesDto));
 
     // Act
@@ -319,8 +316,7 @@ class UserServiceClientTest {
     // Assert
     assertTrue(result);
     verify(userServiceRestTemplate, times(1))
-        .exchange(
-            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
+        .exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
   }
 
   @Test
@@ -331,10 +327,7 @@ class UserServiceClientTest {
         UserRolesDto.builder().harpId(HARP_ID).roles(List.of("User")).build();
 
     when(userServiceRestTemplate.exchange(
-            anyString(),
-            eq(HttpMethod.GET),
-            any(HttpEntity.class),
-            eq(UserRolesDto.class)))
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class)))
         .thenReturn(ResponseEntity.ok(userRolesDto));
 
     // Act
@@ -343,8 +336,7 @@ class UserServiceClientTest {
     // Assert
     assertFalse(result);
     verify(userServiceRestTemplate, times(1))
-        .exchange(
-            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
+        .exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
   }
 
   @Test
@@ -355,10 +347,7 @@ class UserServiceClientTest {
         UserRolesDto.builder().harpId(HARP_ID).roles(Collections.emptyList()).build();
 
     when(userServiceRestTemplate.exchange(
-            anyString(),
-            eq(HttpMethod.GET),
-            any(HttpEntity.class),
-            eq(UserRolesDto.class)))
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class)))
         .thenReturn(ResponseEntity.ok(userRolesDto));
 
     // Act
@@ -367,8 +356,7 @@ class UserServiceClientTest {
     // Assert
     assertFalse(result);
     verify(userServiceRestTemplate, times(1))
-        .exchange(
-            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
+        .exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
   }
 
   @Test
@@ -377,10 +365,7 @@ class UserServiceClientTest {
     String role = "Admin";
 
     when(userServiceRestTemplate.exchange(
-            anyString(),
-            eq(HttpMethod.GET),
-            any(HttpEntity.class),
-            eq(UserRolesDto.class)))
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class)))
         .thenThrow(new RestClientException("Connection error"));
 
     // Act
@@ -389,8 +374,7 @@ class UserServiceClientTest {
     // Assert
     assertFalse(result);
     verify(userServiceRestTemplate, times(1))
-        .exchange(
-            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
+        .exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
   }
 
   @Test
