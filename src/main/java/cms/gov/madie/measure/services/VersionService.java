@@ -347,8 +347,12 @@ public class VersionService {
         .map(
             testCase -> {
               AtomicInteger indexHolder = new AtomicInteger();
+
               List<TestCaseGroupPopulation> updatedTestCaseGroupPopulations =
                   Optional.ofNullable(testCase.getGroupPopulations()).orElse(List.of()).stream()
+                      // If the test case has more group populations than the target measure has
+                      // groups, drop the extra ones
+                      .limit(draftGroups.size())
                       .map(
                           testCaseGroupPopulation ->
                               testCaseGroupPopulation.toBuilder()
