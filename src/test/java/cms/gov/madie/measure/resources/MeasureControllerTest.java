@@ -1399,7 +1399,7 @@ class MeasureControllerTest {
   @Test
   void getMeasuresByIdsReturnsEmptyListWhenInputIdsEmpty() {
     List<String> emptyIds = List.of();
-    when(measureService.getMeasuresByObjectIds(emptyIds)).thenReturn(List.of());
+    when(measureService.getMeasuresByIds(emptyIds)).thenReturn(List.of());
 
     ResponseEntity<List<MeasureListDTO>> response = controller.getMeasuresByIds(emptyIds);
 
@@ -1408,7 +1408,7 @@ class MeasureControllerTest {
     assertNotNull(response.getBody());
     assertTrue(response.getBody().isEmpty());
 
-    verify(measureService, times(1)).getMeasuresByObjectIds(emptyIds);
+    verify(measureService, times(1)).getMeasuresByIds(emptyIds);
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1425,7 +1425,7 @@ class MeasureControllerTest {
     MeasureListDTO dto2 =
         MeasureListDTO.builder().id("m2").measureName("Beta").version(new Version(2, 0, 0)).build();
 
-    when(measureService.getMeasuresByObjectIds(ids)).thenReturn(List.of(dto1, dto2));
+    when(measureService.getMeasuresByIds(ids)).thenReturn(List.of(dto1, dto2));
     ResponseEntity<List<MeasureListDTO>> response = controller.getMeasuresByIds(ids);
 
     assertNotNull(response);
@@ -1444,7 +1444,7 @@ class MeasureControllerTest {
     assertEquals("Beta", r2.getMeasureName());
     assertEquals(new Version(2, 0, 0), r2.getVersion());
 
-    verify(measureService, times(1)).getMeasuresByObjectIds(ids);
+    verify(measureService, times(1)).getMeasuresByIds(ids);
     verifyNoMoreInteractions(measureService);
   }
 }

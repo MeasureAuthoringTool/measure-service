@@ -956,22 +956,9 @@ public class MeasureService extends BaseMeasureService {
     return null;
   }
 
-  public List<MeasureListDTO> getMeasuresByObjectIds(List<String> ids) {
-    if (ids == null || ids.isEmpty()) {
-      return List.of();
-    }
-    List<String> uniqueIds = ids.stream().filter(Objects::nonNull).distinct().toList();
-
-    if (uniqueIds.isEmpty()) {
-      return List.of();
-    }
-    List<MeasureListDTO> measuresList = measureRepository.findAllByIdIn(uniqueIds);
-    // We need to append measureSet to the measure so that we can access cmsId for components table.
-    measuresList.forEach(
-        (measure) -> {
-          // append a measureSet
-          measure.setMeasureSet(measureSetService.findByMeasureSetId(measure.getMeasureSetId()));
-        });
-    return measuresList;
+  public List<MeasureListDTO> getMeasuresByIds(List<String> ids) {
+    // Use aggregation pipeline to fetch measures with measureSet in a single query
+    // This avoids the N+1 query problem
+    return measureRepository.findAllByIdInWithMeasureSet(ids);
   }
 }

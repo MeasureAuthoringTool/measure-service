@@ -18,7 +18,8 @@ public interface MeasureRepository
         MeasureSearchService,
         MeasureCmsIdRepository,
         TestCaseRepository,
-        MeasurePatchRepository {
+        MeasurePatchRepository,
+        MeasureBulkFetchRepository {
   @Query("{cqlLibraryName : ?0, active : true}")
   List<Measure> findAllByCqlLibraryName(String cqlLibraryName);
 
@@ -67,5 +68,11 @@ public interface MeasureRepository
 
   List<Measure> findByMeasureSetIdIn(Collection<String> measureSetIds);
 
+  /**
+   * @deprecated Use {@link MeasureBulkFetchRepository#findAllByIdInWithMeasureSet(Collection)}
+   *     instead. This method does not join with measure_set, causing N+1 queries when measureSet is
+   *     needed.
+   */
+  @Deprecated
   List<MeasureListDTO> findAllByIdIn(Collection<String> measureIds);
 }
