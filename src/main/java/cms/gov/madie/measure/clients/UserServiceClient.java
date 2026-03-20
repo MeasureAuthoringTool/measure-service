@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.clients;
 
+import cms.gov.madie.measure.exceptions.InternalServerException;
+import gov.cms.madie.models.access.MadieUser;
+import gov.cms.madie.models.access.UserStatus;
 import gov.cms.madie.models.dto.DetailsRequestDto;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.dto.UserRolesDto;
@@ -123,6 +126,40 @@ public class UserServiceClient {
           e);
       return null;
     }
+  }
+
+  private MadieUser getMadieUser(String harpId, String accessToken) {
+    log.debug("Requesting user for HARP ID: [{}]", harpId);
+
+    if (StringUtils.isBlank(harpId)) {
+      return null;
+    }
+
+    String url = userServiceBaseUrl + "/users/" + harpId;
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+    headers.set(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken);
+    HttpEntity<Void> request = new HttpEntity<>(headers);
+
+    try {
+      log.debug("Calling user-service to get user for HARP ID: [{}]", harpId);
+      ResponseEntity<MadieUser> responseEntity =
+          userServiceRestTemplate.exchange(url, HttpMethod.GET, request, MadieUser.class);
+      log.debug("Successfully retrieved user for HARP ID: [{}]", harpId);
+      return responseEntity.getBody();
+    } catch (Exception e) {
+      log.error("Failed to fetch user from user service for HARP ID: [{}]", harpId, e);
+      throw new InternalServerException("An error occurred while fetching user from user service.");
+    }
+  }
+
+  public boolean isActiveMadieUser(String harpId, String accessToken) {
+    if (StringUtils.isBlank(harpId)) {
+      return false;
+    }
+
+    MadieUser user = getMadieUser(harpId, accessToken);
+    return user != null && UserStatus.ACTIVE.equals(user.getStatus());
   }
 
   public boolean hasRole(String harpId, String role, String accessToken) {

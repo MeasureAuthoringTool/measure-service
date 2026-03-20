@@ -31,6 +31,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.locks.MeasureLock;
@@ -74,6 +75,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private CqlTemplateConfigService cqlTemplateConfigService;
   @Mock private TerminologyValidationService terminologyValidationService;
   @Mock private MeasureLockService measureLockService;
+  @Mock private UserServiceClient userServiceClient;
 
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
@@ -2343,6 +2345,7 @@ public class MeasureServiceTest implements ResourceUtil {
         Measure.builder().id("123").measureSetId("123").measureSet(measureSet).build();
     Optional<Measure> persistedMeasure = Optional.of(measure);
 
+    when(userServiceClient.isActiveMadieUser(anyString(), anyString())).thenReturn(true);
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.changeOwnership(
             anyString(), anyString(), any(Boolean.class), anyString(), anyString()))
@@ -2356,7 +2359,23 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testTransferMeasuresWhenNewOwnerNotActiveMadieUser() {
+    when(userServiceClient.isActiveMadieUser(eq("user123"), anyString())).thenReturn(false);
+
+    InvalidRequestException ex =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                measureService.transferMeasures(
+                    List.of("measureId"), "user123", true, "anotherUser", ACCESS_TOKEN));
+    assertThat(
+        ex.getMessage(),
+        is(equalTo("The provided HARP ID is not associated with an active MADiE user.")));
+  }
+
+  @Test
   public void testTransferMeasuresNotFound() {
+    when(userServiceClient.isActiveMadieUser(anyString(), anyString())).thenReturn(true);
     when(measureRepository.findById("123")).thenReturn(Optional.empty());
 
     List<String> failed =

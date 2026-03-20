@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
@@ -42,6 +43,7 @@ public class MeasureService extends BaseMeasureService {
   private final TerminologyValidationService terminologyValidationService;
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
+  private final UserServiceClient userServiceClient;
 
   @Autowired
   public MeasureService(
@@ -55,7 +57,8 @@ public class MeasureService extends BaseMeasureService {
       CqlTemplateConfigService cqlTemplateConfigService,
       TerminologyValidationService terminologyValidationService,
       AppConfigService appConfigService,
-      MeasureLockService measureLockService) {
+      MeasureLockService measureLockService,
+      UserServiceClient userServiceClient) {
     // Pass parent dependencies to BaseMeasureService constructor
     super(measureRepository, measureSetService, appConfigService, measureLockService);
     // Assign child-specific fields
@@ -70,6 +73,7 @@ public class MeasureService extends BaseMeasureService {
     this.terminologyValidationService = terminologyValidationService;
     this.appConfigService = appConfigService;
     this.measureLockService = measureLockService;
+    this.userServiceClient = userServiceClient;
   }
 
   public void verifyAuthorizationByMeasureSetId(
@@ -907,6 +911,12 @@ public class MeasureService extends BaseMeasureService {
       boolean retainShareAccess,
       String conductedBy,
       String accessToken) {
+    if (!userServiceClient.isActiveMadieUser(harpId, accessToken)) {
+      log.warn("New owner HARP ID [{}] is not associated with an active MADiE user.", harpId);
+      throw new InvalidRequestException(
+          "The provided HARP ID is not associated with an active MADiE user.");
+    }
+
     List<String> failedMeasures = new ArrayList<>();
 
     for (String measureId : measureIds) {

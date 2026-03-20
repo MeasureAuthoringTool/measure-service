@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.clients;
 
+import cms.gov.madie.measure.exceptions.InternalServerException;
+import gov.cms.madie.models.access.MadieUser;
+import gov.cms.madie.models.access.UserStatus;
 import gov.cms.madie.models.dto.DetailsRequestDto;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.dto.UserRolesDto;
@@ -375,6 +378,82 @@ class UserServiceClientTest {
     assertFalse(result);
     verify(userServiceRestTemplate, times(1))
         .exchange(anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserRolesDto.class));
+  }
+
+  @Test
+  void testIsActiveMadieUserReturnsTrue() {
+    MadieUser activeUser = MadieUser.builder().harpId(HARP_ID).status(UserStatus.ACTIVE).build();
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(MadieUser.class)))
+        .thenReturn(ResponseEntity.ok(activeUser));
+
+    assertTrue(userServiceClient.isActiveMadieUser(HARP_ID, TOKEN));
+  }
+
+  @Test
+  void testIsActiveMadieUserReturnsFalseWhenDeactivated() {
+    MadieUser deactivatedUser =
+        MadieUser.builder().harpId(HARP_ID).status(UserStatus.DEACTIVATED).build();
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(MadieUser.class)))
+        .thenReturn(ResponseEntity.ok(deactivatedUser));
+
+    assertFalse(userServiceClient.isActiveMadieUser(HARP_ID, TOKEN));
+  }
+
+  @Test
+  void testIsActiveMadieUserReturnsFalseWhenErrorSuspended() {
+    MadieUser suspendedUser =
+        MadieUser.builder().harpId(HARP_ID).status(UserStatus.ERROR_SUSPENDED).build();
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(MadieUser.class)))
+        .thenReturn(ResponseEntity.ok(suspendedUser));
+
+    assertFalse(userServiceClient.isActiveMadieUser(HARP_ID, TOKEN));
+  }
+
+  @Test
+  void testIsActiveMadieUserReturnsFalseWhenNullStatus() {
+    MadieUser shellUser = MadieUser.builder().harpId(HARP_ID).build();
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(MadieUser.class)))
+        .thenReturn(ResponseEntity.ok(shellUser));
+
+    assertFalse(userServiceClient.isActiveMadieUser(HARP_ID, TOKEN));
+  }
+
+  @Test
+  void testIsActiveMadieUserReturnsFalseWhenNullBody() {
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(MadieUser.class)))
+        .thenReturn(ResponseEntity.ok(null));
+
+    assertFalse(userServiceClient.isActiveMadieUser(HARP_ID, TOKEN));
+  }
+
+  @Test
+  void testIsActiveMadieUserThrowsInternalServerExceptionOnRestClientException() {
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(MadieUser.class)))
+        .thenThrow(new RestClientException("Connection error"));
+
+    InternalServerException ex =
+        assertThrows(
+            InternalServerException.class,
+            () -> userServiceClient.isActiveMadieUser(HARP_ID, TOKEN));
+    assertThat(
+        ex.getMessage(), is(equalTo("An error occurred while fetching user from user service.")));
+  }
+
+  @Test
+  void testIsActiveMadieUserReturnsFalseWhenHarpIdBlank() {
+    assertFalse(userServiceClient.isActiveMadieUser("", TOKEN));
+    verify(userServiceRestTemplate, never())
+        .exchange(anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(MadieUser.class));
   }
 
   @Test
