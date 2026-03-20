@@ -173,8 +173,11 @@ public class MeasureSetService {
                 userName,
                 userId,
                 String.format(
-                    actionType == ActionType.UNSHARED ? "Unshared with - %s" : "Shared with - %s",
-                    userId));
+                    actionType == ActionType.UNSHARED
+                        ? "Unshared with - %s%s"
+                        : "Shared with - %s%s",
+                    userId,
+                    isAdmin ? " by MADiE Admin" : ""));
           });
 
       return updatedMeasureSet;
