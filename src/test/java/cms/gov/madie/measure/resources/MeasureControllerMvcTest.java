@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.resources;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.config.security.SecurityConfigTest;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
@@ -69,6 +70,7 @@ public class MeasureControllerMvcTest {
   @MockitoBean private GroupService groupService;
   @MockitoBean private ActionLogService actionLogService;
   @MockitoBean private MeasureSetService measureSetService;
+  @MockitoBean private UserServiceClient userServiceClient;
   @Autowired private MockMvc mockMvc;
   @MockitoBean private MeasureSetRepository measureSetRepository;
   @MockitoBean private TestCasePatchRepository testCasePatchRepository;
@@ -2049,6 +2051,9 @@ public class MeasureControllerMvcTest {
 
   @Test
   public void testShareMeasures() throws Exception {
+    // Mock admin user check
+    when(userServiceClient.hasRole(anyString(), anyString(), anyString())).thenReturn(true);
+
     AclSpecification aclSpecification1 = new AclSpecification();
     aclSpecification1.setUserId("userId1");
     aclSpecification1.setRoles(Set.of(RoleEnum.SHARED_WITH));
@@ -2063,7 +2068,9 @@ public class MeasureControllerMvcTest {
 
     when(measureService.findMeasureById(anyString()))
         .thenReturn(Measure.builder().id("measureId1").build());
-    doReturn(measureIdToAclSpecification).when(measureService).shareMeasures(any(), anyString());
+    doReturn(measureIdToAclSpecification)
+        .when(measureService)
+        .shareMeasures(any(), anyString(), anyString());
 
     MvcResult result =
         mockMvc
@@ -2071,11 +2078,13 @@ public class MeasureControllerMvcTest {
                 put("/measures/shared")
                     .with(user(TEST_USER_ID))
                     .with(csrf())
-                    .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\"]}")
+                    .header("Authorization", "test-okta")
+                    .content(
+                        "{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\",\"userId2\"]}")
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();
-    verify(measureService, times(1)).shareMeasures(any(), anyString());
+    verify(measureService, times(1)).shareMeasures(any(), anyString(), anyString());
     assertEquals(
         result.getResponse().getContentAsString(),
         "{\"measureId1\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]}],\"measureId2\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]},{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");
@@ -2083,6 +2092,9 @@ public class MeasureControllerMvcTest {
 
   @Test
   public void testUnshareMeasures() throws Exception {
+    // Mock admin user check
+    when(userServiceClient.hasRole(anyString(), anyString(), anyString())).thenReturn(true);
+
     AclSpecification aclSpecification2 = new AclSpecification();
     aclSpecification2.setUserId("userId2");
     aclSpecification2.setRoles(Set.of(RoleEnum.SHARED_WITH));
@@ -2092,7 +2104,9 @@ public class MeasureControllerMvcTest {
 
     when(measureService.findMeasureById(anyString()))
         .thenReturn(Measure.builder().id("measureId1").build());
-    doReturn(measureIdToAclSpecification).when(measureService).unshareMeasures(any(), anyString());
+    doReturn(measureIdToAclSpecification)
+        .when(measureService)
+        .unshareMeasures(any(), anyString(), anyString());
 
     MvcResult result =
         mockMvc
@@ -2100,11 +2114,12 @@ public class MeasureControllerMvcTest {
                 put("/measures/unshared")
                     .with(user(TEST_USER_ID))
                     .with(csrf())
-                    .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\"]}")
+                    .header("Authorization", "test-okta")
+                    .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId2\"]}")
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();
-    verify(measureService, times(1)).unshareMeasures(any(), anyString());
+    verify(measureService, times(1)).unshareMeasures(any(), anyString(), anyString());
     assertEquals(
         result.getResponse().getContentAsString(),
         "{\"measureId2\":[{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");

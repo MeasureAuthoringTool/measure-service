@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.config.security.RoleConstants;
 import cms.gov.madie.measure.exceptions.InvalidMeasureStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.locks.MeasureLock;
@@ -28,6 +30,7 @@ public abstract class BaseMeasureService {
   private final MeasureSetService measureSetService;
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
+  private final UserServiceClient userServiceClient;
 
   AclOperation buildShareAclOperation(List<String> userIds) {
     return AclOperation.builder()
@@ -66,32 +69,44 @@ public abstract class BaseMeasureService {
    * the measure is already shared with (ownerOnly = false).
    */
   void verifyShareAuthorization(
-      Map<String, List<String>> measureUserIdMap, String username, boolean ownerOnly) {
+      Map<String, List<String>> measureUserIdMap,
+      String username,
+      boolean ownerOnly,
+      String accessToken) {
     log.info(
         "User [{}] has called verifyShareAuthorization to determine whether operation with [{}]"
             + " is allowed to be performed",
         username,
         measureUserIdMap);
 
-    measureUserIdMap
-        .keySet()
-        .forEach(
-            measureId -> {
-              Measure measure = findMeasureById(measureId);
+    boolean isAdmin = userServiceClient.hasRole(username, RoleConstants.MADiE_ADMIN, accessToken);
+    if (isAdmin) {
+      log.info(
+          "User [{}] has role [{}] and is authorized to perform share/unshare operations with [{}]",
+          username,
+          RoleConstants.MADiE_ADMIN,
+          measureUserIdMap);
+      return;
+    } else {
+      measureUserIdMap
+          .keySet()
+          .forEach(
+              measureId -> {
+                Measure measure = findMeasureById(measureId);
 
-              if (measure == null) {
-                log.error(
-                    "User [{}] called verifyShareAuthorization with measureUserIdMap [{}] but "
-                        + "failed because the measure with measure ID [{}] does not exist.",
-                    username,
-                    measureUserIdMap,
-                    measureId);
-                throw new ResourceNotFoundException("Measure does not exist: " + measureId);
-              }
-              verifyAuthorization(
-                  username, measure, ownerOnly ? List.of() : List.of(RoleEnum.SHARED_WITH));
-            });
-
+                if (measure == null) {
+                  log.error(
+                      "User [{}] called verifyShareAuthorization with measureUserIdMap [{}] but "
+                          + "failed because the measure with measure ID [{}] does not exist.",
+                      username,
+                      measureUserIdMap,
+                      measureId);
+                  throw new ResourceNotFoundException("Measure does not exist: " + measureId);
+                }
+                verifyAuthorization(
+                    username, measure, ownerOnly ? List.of() : List.of(RoleEnum.SHARED_WITH));
+              });
+    }
     log.info(
         "User [{}] successfully called verifyShareAuthorization and determined that operation "
             + "with [{}] is allowed to be performed",

@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
@@ -42,6 +43,7 @@ public class MeasureService extends BaseMeasureService {
   private final TerminologyValidationService terminologyValidationService;
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
+  private final UserServiceClient userServiceClient;
 
   @Autowired
   public MeasureService(
@@ -55,9 +57,16 @@ public class MeasureService extends BaseMeasureService {
       CqlTemplateConfigService cqlTemplateConfigService,
       TerminologyValidationService terminologyValidationService,
       AppConfigService appConfigService,
-      MeasureLockService measureLockService) {
+      MeasureLockService measureLockService,
+      UserServiceClient userServiceClient) {
+
     // Pass parent dependencies to BaseMeasureService constructor
-    super(measureRepository, measureSetService, appConfigService, measureLockService);
+    super(
+        measureRepository,
+        measureSetService,
+        appConfigService,
+        measureLockService,
+        userServiceClient);
     // Assign child-specific fields
     this.measureRepository = measureRepository;
     this.measureSetRepository = measureSetRepository;
@@ -70,6 +79,7 @@ public class MeasureService extends BaseMeasureService {
     this.terminologyValidationService = terminologyValidationService;
     this.appConfigService = appConfigService;
     this.measureLockService = measureLockService;
+    this.userServiceClient = userServiceClient;
   }
 
   public void verifyAuthorizationByMeasureSetId(
@@ -510,7 +520,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public Map<String, List<AclSpecification>> shareMeasures(
-      Map<String, List<String>> measureUserIdMap, String username) {
+      Map<String, List<String>> measureUserIdMap, String username, String accessToken) {
     log.info(
         "User [{}] has called shareMeasures with measureUserIdMap [{}]",
         username,
@@ -519,7 +529,7 @@ public class MeasureService extends BaseMeasureService {
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
     // Restrict sharing to owners of measure only
-    verifyShareAuthorization(measureUserIdMap, username, true);
+    verifyShareAuthorization(measureUserIdMap, username, true, accessToken);
 
     measureUserIdMap.forEach(
         (measureId, userIds) -> {
@@ -539,7 +549,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public Map<String, List<AclSpecification>> unshareMeasures(
-      Map<String, List<String>> measureUserIdMap, String username) {
+      Map<String, List<String>> measureUserIdMap, String username, String accessToken) {
     log.info(
         "User [{}] has called unshareMeasures with measureUserIdMap [{}]",
         username,
@@ -548,7 +558,7 @@ public class MeasureService extends BaseMeasureService {
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
     // Allow unsharing by owners of measure or already shared user of measure
-    verifyShareAuthorization(measureUserIdMap, username, false);
+    verifyShareAuthorization(measureUserIdMap, username, false, accessToken);
 
     measureUserIdMap.forEach(
         (measureId, userIds) -> {

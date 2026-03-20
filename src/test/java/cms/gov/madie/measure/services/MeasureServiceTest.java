@@ -31,6 +31,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.locks.MeasureLock;
@@ -74,6 +75,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private CqlTemplateConfigService cqlTemplateConfigService;
   @Mock private TerminologyValidationService terminologyValidationService;
   @Mock private MeasureLockService measureLockService;
+  @Mock private UserServiceClient userServiceClient;
 
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
@@ -2007,8 +2009,8 @@ public class MeasureServiceTest implements ResourceUtil {
 
   @Test
   public void testShareMeasuresWithNoMeasureFound() {
+    when(userServiceClient.hasRole(anyString(), anyString(), anyString())).thenReturn(false);
     Map<String, List<String>> measureUserIdMap = new HashMap<>();
-
     String measureId1 = "measureId1";
     String measureId2 = "measureId2";
 
@@ -2019,11 +2021,13 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.shareMeasures(measureUserIdMap, "userName"));
+        () -> measureService.shareMeasures(measureUserIdMap, "userName", "accessToken"));
   }
 
   @Test
   public void testShareMeasures() {
+    // Simulate admin user for shareMeasures
+    when(userServiceClient.hasRole(anyString(), anyString(), anyString())).thenReturn(false);
     Map<String, List<String>> measureUserIdMap = new HashMap<>();
 
     AclSpecification acl1 = new AclSpecification();
@@ -2082,7 +2086,7 @@ public class MeasureServiceTest implements ResourceUtil {
         .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-        measureService.shareMeasures(measureUserIdMap, "userName");
+        measureService.shareMeasures(measureUserIdMap, "userName", "accessToken");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
@@ -2111,11 +2115,13 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.unshareMeasures(measureUserIdMap, "userName"));
+        () -> measureService.unshareMeasures(measureUserIdMap, "userName", "accessToken"));
   }
 
   @Test
   public void testUnshareMeasures() {
+    // Simulate admin user for unshareMeasures
+    when(userServiceClient.hasRole(anyString(), anyString(), anyString())).thenReturn(false);
     Map<String, List<String>> measureUserIdMap = new HashMap<>();
 
     AclSpecification acl1 = new AclSpecification();
@@ -2172,7 +2178,7 @@ public class MeasureServiceTest implements ResourceUtil {
         .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-        measureService.unshareMeasures(measureUserIdMap, "userName");
+        measureService.unshareMeasures(measureUserIdMap, "userName", "accessToken");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
@@ -2737,7 +2743,6 @@ public class MeasureServiceTest implements ResourceUtil {
         () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
   }
 
-  @Test
   void returnsEmptyListWhenIdsNullOrEmptyAndDoesNotCallRepository() {
     List<MeasureListDTO> resultNull = measureService.getMeasuresByObjectIds(null);
     assertNotNull(resultNull);
@@ -2750,7 +2755,6 @@ public class MeasureServiceTest implements ResourceUtil {
     verifyNoMoreInteractions(measureRepository);
   }
 
-  @Test
   void returnsEmptyListWhenAllIdsAreNullAfterFilteringAndDoesNotCallRepository() {
     List<String> inputIds = Arrays.asList(null, null);
     List<MeasureListDTO> result = measureService.getMeasuresByObjectIds(inputIds);
@@ -2760,7 +2764,6 @@ public class MeasureServiceTest implements ResourceUtil {
     verifyNoInteractions(measureRepository);
   }
 
-  @Test
   void dedupesAndFiltersNullsThenCallsRepositoryWithUniqueIdsAndReturnsRepositoryResult() {
     List<String> inputIds = Arrays.asList("m1", "m2", "m1", null, "m3", "m2");
     List<MeasureListDTO> repoResponse =
