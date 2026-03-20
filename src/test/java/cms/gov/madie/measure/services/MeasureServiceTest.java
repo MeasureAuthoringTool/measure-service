@@ -2743,6 +2743,7 @@ public class MeasureServiceTest implements ResourceUtil {
         () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
   }
 
+  @Test
   void returnsEmptyListWhenIdsNullOrEmptyAndDoesNotCallRepository() {
     List<MeasureListDTO> resultNull = measureService.getMeasuresByObjectIds(null);
     assertNotNull(resultNull);
@@ -2755,6 +2756,7 @@ public class MeasureServiceTest implements ResourceUtil {
     verifyNoMoreInteractions(measureRepository);
   }
 
+  @Test
   void returnsEmptyListWhenAllIdsAreNullAfterFilteringAndDoesNotCallRepository() {
     List<String> inputIds = Arrays.asList(null, null);
     List<MeasureListDTO> result = measureService.getMeasuresByObjectIds(inputIds);
@@ -2764,6 +2766,7 @@ public class MeasureServiceTest implements ResourceUtil {
     verifyNoInteractions(measureRepository);
   }
 
+  @Test
   void dedupesAndFiltersNullsThenCallsRepositoryWithUniqueIdsAndReturnsRepositoryResult() {
     List<String> inputIds = Arrays.asList("m1", "m2", "m1", null, "m3", "m2");
     List<MeasureListDTO> repoResponse =
