@@ -957,8 +957,6 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public List<MeasureListDTO> getMeasuresByIds(List<String> ids) {
-    // Use aggregation pipeline to fetch measures with measureSet in a single query
-    // This avoids the N+1 query problem
     return measureRepository.findAllByIdInWithMeasureSet(ids);
   }
 }

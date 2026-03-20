@@ -67,12 +67,4 @@ public interface MeasureRepository
       String setId, Collection<String> model, boolean draft);
 
   List<Measure> findByMeasureSetIdIn(Collection<String> measureSetIds);
-
-  /**
-   * @deprecated Use {@link MeasureBulkFetchRepository#findAllByIdInWithMeasureSet(Collection)}
-   *     instead. This method does not join with measure_set, causing N+1 queries when measureSet is
-   *     needed.
-   */
-  @Deprecated
-  List<MeasureListDTO> findAllByIdIn(Collection<String> measureIds);
 }

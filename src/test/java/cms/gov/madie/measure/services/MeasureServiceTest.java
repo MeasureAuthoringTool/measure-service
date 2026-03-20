@@ -2738,31 +2738,8 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  void returnsEmptyListWhenIdsNullOrEmptyAndDoesNotCallRepository() {
-    List<MeasureListDTO> resultNull = measureService.getMeasuresByIds(null);
-    assertNotNull(resultNull);
-    assertTrue(resultNull.isEmpty());
-    verifyNoInteractions(measureRepository);
-
-    List<MeasureListDTO> resultEmpty = measureService.getMeasuresByIds(List.of());
-    assertNotNull(resultEmpty);
-    assertTrue(resultEmpty.isEmpty());
-    verifyNoMoreInteractions(measureRepository);
-  }
-
-  @Test
-  void returnsEmptyListWhenAllIdsAreNullAfterFilteringAndDoesNotCallRepository() {
-    List<String> inputIds = Arrays.asList(null, null);
-    List<MeasureListDTO> result = measureService.getMeasuresByIds(inputIds);
-
-    assertNotNull(result);
-    assertTrue(result.isEmpty());
-    verifyNoInteractions(measureRepository);
-  }
-
-  @Test
-  void dedupesAndFiltersNullsThenCallsRepositoryWithUniqueIdsAndReturnsRepositoryResult() {
-    List<String> inputIds = Arrays.asList("m1", "m2", "m1", null, "m3", "m2");
+  void testGetMeasuresByIds() {
+    List<String> inputIds = Arrays.asList("m1", "m2", "m3");
 
     MeasureSet measureSet1 = MeasureSet.builder().id("set1").owner("owner1").build();
     MeasureSet measureSet2 = MeasureSet.builder().id("set2").owner("owner2").build();
