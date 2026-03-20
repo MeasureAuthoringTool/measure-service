@@ -1612,7 +1612,7 @@ public class AdminControllerMvcTest {
         .thenReturn(Measure.builder().id(measureId).build());
     doReturn(List.of(aclSpecification))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
 
     MvcResult result =
         mockMvc
@@ -1629,7 +1629,7 @@ public class AdminControllerMvcTest {
             .andExpect(status().isOk())
             .andReturn();
     verify(measureService, times(1))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
     assertEquals(
         result.getResponse().getContentAsString(),
         "[{\"userId\":\"test\",\"roles\":[\"SHARED_WITH\"]}]");
@@ -1653,7 +1653,7 @@ public class AdminControllerMvcTest {
             .andExpect(status().isBadRequest())
             .andReturn();
     verify(measureService, times(0))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
     assertThat(
         result
             .getResponse()
@@ -1680,7 +1680,7 @@ public class AdminControllerMvcTest {
             .andExpect(status().isBadRequest())
             .andReturn();
     verify(measureService, times(0))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
     assertThat(
         result.getResponse().getContentAsString().contains("{\"acls\":\"must not be empty\"}"),
         is(true));

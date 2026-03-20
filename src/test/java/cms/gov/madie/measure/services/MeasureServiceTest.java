@@ -2081,7 +2081,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     doReturn(List.of(aclSpecification1, aclSpecification2))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
         measureService.shareMeasures(measureUserIdMap, "userName", "accessToken");
@@ -2171,7 +2171,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     doReturn(List.of(aclSpecification1))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
         measureService.unshareMeasures(measureUserIdMap, "userName", "accessToken");

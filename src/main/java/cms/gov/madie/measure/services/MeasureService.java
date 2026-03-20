@@ -410,7 +410,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public List<AclSpecification> updateAccessControlList(
-      String measureId, AclOperation aclOperation, String userName) {
+      String measureId, AclOperation aclOperation, String userName, boolean isAdmin) {
     log.info(
         "User [{}] has called updateAccessControlList with measure ID [{}] and AclOperation [{}]",
         userName,
@@ -539,7 +539,7 @@ public class MeasureService extends BaseMeasureService {
         (measureId, userIds) -> {
           AclOperation aclOperation = buildShareAclOperation(userIds);
           measureIdToAclSpecification.put(
-              measureId, updateAccessControlList(measureId, aclOperation, username));
+              measureId, updateAccessControlList(measureId, aclOperation, username, isAdmin));
         });
 
     log.info(
@@ -577,7 +577,7 @@ public class MeasureService extends BaseMeasureService {
         (measureId, userIds) -> {
           AclOperation aclOperation = buildUnshareAclOperation(userIds);
           measureIdToAclSpecification.put(
-              measureId, updateAccessControlList(measureId, aclOperation, username));
+              measureId, updateAccessControlList(measureId, aclOperation, username, isAdmin));
         });
 
     log.info(

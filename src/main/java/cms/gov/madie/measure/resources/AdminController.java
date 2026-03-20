@@ -618,7 +618,7 @@ public class AdminController extends AbstractMeasureController {
     final Measure existingMeasure = measureService.findMeasureById(id);
     checkMeasureLock(existingMeasure, "admin");
     List<AclSpecification> aclSpecifications =
-        measureService.updateAccessControlList(id, aclOperation, "admin");
+        measureService.updateAccessControlList(id, aclOperation, "admin", true);
     return ResponseEntity.ok().body(aclSpecifications);
   }
 
