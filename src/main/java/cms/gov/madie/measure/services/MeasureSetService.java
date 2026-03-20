@@ -67,7 +67,7 @@ public class MeasureSetService {
    * @return an instance of MeasureSet
    */
   public MeasureSet updateMeasureSetAcls(
-      String measureSetId, AclOperation aclOperation, String userName) {
+      String measureSetId, AclOperation aclOperation, String userName, boolean isAdmin) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (optionalMeasureSet.isPresent()) {
       Map<String, ActionType> actionLogDetails = new HashMap<>();

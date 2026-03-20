@@ -428,7 +428,8 @@ public class MeasureService extends BaseMeasureService {
 
     Measure measure = persistedMeasure;
     MeasureSet measureSet =
-        measureSetService.updateMeasureSetAcls(measure.getMeasureSetId(), aclOperation, userName);
+        measureSetService.updateMeasureSetAcls(
+            measure.getMeasureSetId(), aclOperation, userName, isAdmin);
 
     log.info(
         "User [{}] successfully called updateAccessControlList with measure ID [{}] and "

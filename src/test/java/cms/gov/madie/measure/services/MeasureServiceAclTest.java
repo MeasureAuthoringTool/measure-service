@@ -57,7 +57,7 @@ public class MeasureServiceAclTest {
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
     when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
-    when(measureSetService.updateMeasureSetAcls(any(), any(), eq("userName")))
+    when(measureSetService.updateMeasureSetAcls(any(), any(), eq("userName"), eq(false)))
         .thenReturn(measureSet);
 
     List<AclSpecification> aclSpecifications =
