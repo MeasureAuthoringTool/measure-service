@@ -18,7 +18,8 @@ public interface MeasureRepository
         MeasureSearchService,
         MeasureCmsIdRepository,
         TestCaseRepository,
-        MeasurePatchRepository {
+        MeasurePatchRepository,
+        MeasureBulkFetchRepository {
   @Query("{cqlLibraryName : ?0, active : true}")
   List<Measure> findAllByCqlLibraryName(String cqlLibraryName);
 
@@ -66,6 +67,4 @@ public interface MeasureRepository
       String setId, Collection<String> model, boolean draft);
 
   List<Measure> findByMeasureSetIdIn(Collection<String> measureSetIds);
-
-  List<MeasureListDTO> findAllByIdIn(Collection<String> measureIds);
 }

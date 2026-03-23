@@ -7,6 +7,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import gov.cms.madie.models.common.IncludedLibrary;
+import gov.cms.madie.models.measure.*;
 import gov.cms.mat.cql.CqlTextParser;
 import gov.cms.mat.cql.elements.CodeProperties;
 import gov.cms.mat.cql.elements.IncludeProperties;
@@ -17,12 +18,6 @@ import org.springframework.stereotype.Service;
 import cms.gov.madie.measure.validations.CqlDefinitionReturnTypeService;
 import cms.gov.madie.measure.validations.CqlObservationFunctionService;
 import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.measure.DefDescPair;
-import gov.cms.madie.models.measure.Group;
-import gov.cms.madie.models.measure.Measure;
-import gov.cms.madie.models.measure.MeasureErrorType;
-import gov.cms.madie.models.measure.Population;
-import gov.cms.madie.models.measure.QdmMeasure;
 import gov.cms.madie.models.validators.ValidLibraryNameValidator;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -289,5 +284,12 @@ public class MeasureUtil {
     }
     CqlTextParser cqlTextParser = new CqlTextParser(cql);
     return cqlTextParser.getCodes();
+  }
+
+  public static String getCmsIdDisplay(MeasureSet measureSet, String model) {
+    if (measureSet != null && measureSet.getCmsId() != null && StringUtils.isNotBlank(model)) {
+      return measureSet.getCmsId() + (model.contains("QDM") ? "" : "FHIR");
+    }
+    return null;
   }
 }
