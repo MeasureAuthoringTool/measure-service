@@ -614,9 +614,18 @@ public class AdminController extends AbstractMeasureController {
   @PutMapping("/measures/{id}/acls")
   @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<AclSpecification>> updateAccessControl(
-      @PathVariable String id, @RequestBody @Validated AclOperation aclOperation) {
+      @PathVariable String id,
+      @RequestBody @Validated AclOperation aclOperation,
+      @RequestHeader("Authorization") String accessToken) {
     final Measure existingMeasure = measureService.findMeasureById(id);
     checkMeasureLock(existingMeasure, "admin");
+
+    if (AclOperation.AclAction.GRANT.equals(aclOperation.getAction())) {
+      aclOperation
+          .getAcls()
+          .forEach(acl -> measureService.validateHarpIdForShare(acl.getUserId(), accessToken));
+    }
+
     List<AclSpecification> aclSpecifications =
         measureService.updateAccessControlList(id, aclOperation, "admin");
     return ResponseEntity.ok().body(aclSpecifications);

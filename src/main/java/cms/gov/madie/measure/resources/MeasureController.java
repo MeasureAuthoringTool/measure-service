@@ -253,9 +253,18 @@ public class MeasureController extends AbstractMeasureController {
         .body(measureService.getSharedMeasures(measureIds, principal.getName().toLowerCase()));
   }
 
+  @GetMapping("/measures/harp-id/validate")
+  public ResponseEntity<Void> validateHarpId(
+      @RequestParam String harpId, @RequestHeader("Authorization") String accessToken) {
+    measureService.validateHarpIdIsActiveMadieUser(harpId, accessToken);
+    return ResponseEntity.ok().build();
+  }
+
   @PutMapping("/measures/shared")
   public ResponseEntity<Map<String, List<AclSpecification>>> shareMeasures(
-      @RequestBody Map<String, List<String>> measureUserIdMap, Principal principal) {
+      @RequestBody Map<String, List<String>> measureUserIdMap,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
     final String username = principal.getName().toLowerCase();
     // Check lock for each measure being shared
     measureUserIdMap
@@ -265,7 +274,7 @@ public class MeasureController extends AbstractMeasureController {
               final Measure existingMeasure = measureService.findMeasureById(measureId);
               checkMeasureLock(existingMeasure, username);
             });
-    return ResponseEntity.ok(measureService.shareMeasures(measureUserIdMap, username));
+    return ResponseEntity.ok(measureService.shareMeasures(measureUserIdMap, username, accessToken));
   }
 
   @PutMapping("/measures/unshared")

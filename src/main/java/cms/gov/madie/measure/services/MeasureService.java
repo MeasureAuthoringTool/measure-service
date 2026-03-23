@@ -513,14 +513,35 @@ public class MeasureService extends BaseMeasureService {
     return sharedMeasures;
   }
 
+  public void validateHarpIdIsActiveMadieUser(String harpId, String accessToken) {
+    if (!userServiceClient.isActiveMadieUser(harpId, accessToken)) {
+      log.warn("HARP ID [{}] is not associated with an active MADiE user.", harpId);
+      throw new InvalidRequestException(
+          "The provided HARP ID is not associated with an active MADiE user.");
+    }
+  }
+
+  public void validateHarpIdForShare(String harpId, String accessToken) {
+    if (!userServiceClient.isActiveMadieUser(harpId, accessToken)) {
+      log.warn("HARP ID [{}] is not associated with an active MADiE user.", harpId);
+      throw new InvalidRequestException(
+          "The provided HARP ID (" + harpId + ") is not associated with an active MADiE user.");
+    }
+  }
+
   public Map<String, List<AclSpecification>> shareMeasures(
-      Map<String, List<String>> measureUserIdMap, String username) {
+      Map<String, List<String>> measureUserIdMap, String username, String accessToken) {
     log.info(
         "User [{}] has called shareMeasures with measureUserIdMap [{}]",
         username,
         measureUserIdMap);
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
+
+    // Validate all HARP IDs in the request before proceeding
+    measureUserIdMap.values().stream()
+        .flatMap(Collection::stream)
+        .forEach(harpId -> validateHarpIdForShare(harpId, accessToken));
 
     // Restrict sharing to owners of measure only
     verifyShareAuthorization(measureUserIdMap, username, true);
@@ -911,11 +932,7 @@ public class MeasureService extends BaseMeasureService {
       boolean retainShareAccess,
       String conductedBy,
       String accessToken) {
-    if (!userServiceClient.isActiveMadieUser(harpId, accessToken)) {
-      log.warn("New owner HARP ID [{}] is not associated with an active MADiE user.", harpId);
-      throw new InvalidRequestException(
-          "The provided HARP ID is not associated with an active MADiE user.");
-    }
+    validateHarpIdIsActiveMadieUser(harpId, accessToken);
 
     List<String> failedMeasures = new ArrayList<>();
 

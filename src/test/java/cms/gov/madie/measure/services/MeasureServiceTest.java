@@ -2018,10 +2018,11 @@ public class MeasureServiceTest implements ResourceUtil {
     measureUserIdMap.put(measureId2, List.of("userId2"));
 
     when(measureService.findMeasureById(eq(measureId1))).thenReturn(null);
+    when(userServiceClient.isActiveMadieUser(anyString(), anyString())).thenReturn(true);
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.shareMeasures(measureUserIdMap, "userName"));
+        () -> measureService.shareMeasures(measureUserIdMap, "userName", ACCESS_TOKEN));
   }
 
   @Test
@@ -2083,8 +2084,10 @@ public class MeasureServiceTest implements ResourceUtil {
         .when(measureService)
         .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
 
+    when(userServiceClient.isActiveMadieUser(anyString(), anyString())).thenReturn(true);
+
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-        measureService.shareMeasures(measureUserIdMap, "userName");
+        measureService.shareMeasures(measureUserIdMap, "userName", ACCESS_TOKEN);
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
@@ -2097,6 +2100,80 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(
         measureIdToAclSpecification.get(measureId2),
         is(equalTo(List.of(aclSpecification1, aclSpecification2))));
+  }
+
+  @Test
+  public void testValidateHarpIdValid() {
+    when(userServiceClient.isActiveMadieUser(eq("validUser"), anyString())).thenReturn(true);
+    assertDoesNotThrow(
+        () -> measureService.validateHarpIdIsActiveMadieUser("validUser", ACCESS_TOKEN));
+  }
+
+  @Test
+  public void testValidateHarpIdInvalid() {
+    when(userServiceClient.isActiveMadieUser(eq("invalidUser"), anyString())).thenReturn(false);
+    InvalidRequestException ex =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> measureService.validateHarpIdIsActiveMadieUser("invalidUser", ACCESS_TOKEN));
+    assertThat(
+        ex.getMessage(),
+        is(equalTo("The provided HARP ID is not associated with an active MADiE user.")));
+  }
+
+  @Test
+  public void testValidateShareTargetHarpIdValid() {
+    when(userServiceClient.isActiveMadieUser(eq("validUser"), anyString())).thenReturn(true);
+    assertDoesNotThrow(() -> measureService.validateHarpIdForShare("validUser", ACCESS_TOKEN));
+  }
+
+  @Test
+  public void testValidateShareTargetHarpIdInvalid() {
+    when(userServiceClient.isActiveMadieUser(eq("invalidUser"), anyString())).thenReturn(false);
+    InvalidRequestException ex =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> measureService.validateHarpIdForShare("invalidUser", ACCESS_TOKEN));
+    assertThat(
+        ex.getMessage(),
+        is(
+            equalTo(
+                "The provided HARP ID (invalidUser) is not associated with an active MADiE user.")));
+  }
+
+  @Test
+  public void testShareMeasuresInvalidHarpId() {
+    Map<String, List<String>> measureUserIdMap = new HashMap<>();
+    measureUserIdMap.put("measureId1", List.of("invalidUser"));
+
+    when(userServiceClient.isActiveMadieUser(eq("invalidUser"), anyString())).thenReturn(false);
+
+    assertThrows(
+        InvalidRequestException.class,
+        () -> measureService.shareMeasures(measureUserIdMap, "userName", ACCESS_TOKEN));
+
+    verify(measureService, never()).updateAccessControlList(anyString(), any(), anyString());
+  }
+
+  @Test
+  public void testShareMeasuresOneInvalidHarpIdAmongMultiple() {
+    Map<String, List<String>> measureUserIdMap = new HashMap<>();
+    measureUserIdMap.put("measureId1", List.of("validUser", "invalidUser"));
+
+    when(userServiceClient.isActiveMadieUser(eq("validUser"), anyString())).thenReturn(true);
+    when(userServiceClient.isActiveMadieUser(eq("invalidUser"), anyString())).thenReturn(false);
+
+    InvalidRequestException ex =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> measureService.shareMeasures(measureUserIdMap, "userName", ACCESS_TOKEN));
+
+    assertThat(
+        ex.getMessage(),
+        is(
+            equalTo(
+                "The provided HARP ID (invalidUser) is not associated with an active MADiE user.")));
+    verify(measureService, never()).updateAccessControlList(anyString(), any(), anyString());
   }
 
   @Test

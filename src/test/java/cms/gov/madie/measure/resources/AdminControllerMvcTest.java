@@ -5,6 +5,7 @@ import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.JobStatus;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
+import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
@@ -1613,6 +1614,7 @@ public class AdminControllerMvcTest {
     doReturn(List.of(aclSpecification))
         .when(measureService)
         .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+    doNothing().when(measureService).validateHarpIdForShare(anyString(), anyString());
 
     MvcResult result =
         mockMvc
@@ -1623,11 +1625,88 @@ public class AdminControllerMvcTest {
                             .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
                             .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
                     .with(csrf())
+                    .header("Authorization", "test-okta")
                     .content(
                         "{\"acls\": [{\"userId\": \"john.doe@abc.com\",\"roles\": [\"SHARED_WITH\"]}],\"action\": \"GRANT\"}")
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();
+    verify(measureService, times(1))
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+    verify(measureService, times(1)).validateHarpIdForShare(anyString(), anyString());
+    assertEquals(
+        result.getResponse().getContentAsString(),
+        "[{\"userId\":\"test\",\"roles\":[\"SHARED_WITH\"]}]");
+  }
+
+  @Test
+  public void testUpdateAccessControlGrantInvalidHarpId() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id(measureId).build());
+    doThrow(
+            new InvalidRequestException(
+                "The provided HARP ID (invalidUser) is not associated with an active MADiE user."))
+        .when(measureService)
+        .validateHarpIdForShare(anyString(), anyString());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/" + measureId + "/acls")
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .with(csrf())
+                    .header("Authorization", "test-okta")
+                    .content(
+                        "{\"acls\": [{\"userId\": \"invalidUser\",\"roles\": [\"SHARED_WITH\"]}],\"action\": \"GRANT\"}")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    verify(measureService, times(0))
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+    assertThat(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains(
+                "The provided HARP ID (invalidUser) is not associated with an active MADiE user."),
+        is(true));
+  }
+
+  @Test
+  public void testUpdateAccessControlRevoke() throws Exception {
+    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
+    AclSpecification aclSpecification = new AclSpecification();
+    aclSpecification.setUserId("test");
+    aclSpecification.setRoles(Set.of(RoleEnum.SHARED_WITH));
+
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id(measureId).build());
+    doReturn(List.of(aclSpecification))
+        .when(measureService)
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/" + measureId + "/acls")
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .with(csrf())
+                    .header("Authorization", "test-okta")
+                    .content(
+                        "{\"acls\": [{\"userId\": \"someUser\",\"roles\": [\"SHARED_WITH\"]}],\"action\": \"REVOKE\"}")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isOk())
+            .andReturn();
+    // REVOKE operations skip HARP ID validation (proceed regardless of user status)
+    verify(measureService, times(0)).validateHarpIdForShare(anyString(), anyString());
     verify(measureService, times(1))
         .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
     assertEquals(

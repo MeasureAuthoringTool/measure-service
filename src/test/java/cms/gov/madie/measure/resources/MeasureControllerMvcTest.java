@@ -2063,7 +2063,9 @@ public class MeasureControllerMvcTest {
 
     when(measureService.findMeasureById(anyString()))
         .thenReturn(Measure.builder().id("measureId1").build());
-    doReturn(measureIdToAclSpecification).when(measureService).shareMeasures(any(), anyString());
+    doReturn(measureIdToAclSpecification)
+        .when(measureService)
+        .shareMeasures(any(), anyString(), anyString());
 
     MvcResult result =
         mockMvc
@@ -2071,14 +2073,84 @@ public class MeasureControllerMvcTest {
                 put("/measures/shared")
                     .with(user(TEST_USER_ID))
                     .with(csrf())
+                    .header("Authorization", "test-okta")
                     .content("{\"measureId1\": [\"userId1\"],\"measureId2\": [\"userId1\"]}")
                     .contentType(MediaType.APPLICATION_JSON_VALUE))
             .andExpect(status().isOk())
             .andReturn();
-    verify(measureService, times(1)).shareMeasures(any(), anyString());
+    verify(measureService, times(1)).shareMeasures(any(), anyString(), anyString());
     assertEquals(
         result.getResponse().getContentAsString(),
         "{\"measureId1\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]}],\"measureId2\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]},{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");
+  }
+
+  @Test
+  public void testShareMeasuresInvalidHarpId() throws Exception {
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measureId1").build());
+    when(measureService.shareMeasures(any(), anyString(), anyString()))
+        .thenThrow(
+            new InvalidRequestException(
+                "The provided HARP ID (invalidUser) is not associated with an active MADiE user."));
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/measures/shared")
+                    .with(user(TEST_USER_ID))
+                    .with(csrf())
+                    .header("Authorization", "test-okta")
+                    .content("{\"measureId1\": [\"invalidUser\"]}")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    assertThat(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains(
+                "The provided HARP ID (invalidUser) is not associated with an active MADiE user."),
+        is(true));
+  }
+
+  @Test
+  public void testValidateHarpIdValid() throws Exception {
+    doNothing().when(measureService).validateHarpIdIsActiveMadieUser(anyString(), anyString());
+
+    mockMvc
+        .perform(
+            get("/measures/harp-id/validate")
+                .with(user(TEST_USER_ID))
+                .header("Authorization", "test-okta")
+                .param("harpId", "validUser"))
+        .andExpect(status().isOk());
+
+    verify(measureService, times(1)).validateHarpIdIsActiveMadieUser(eq("validUser"), anyString());
+  }
+
+  @Test
+  public void testValidateHarpIdInvalid() throws Exception {
+    doThrow(
+            new InvalidRequestException(
+                "The provided HARP ID is not associated with an active MADiE user."))
+        .when(measureService)
+        .validateHarpIdIsActiveMadieUser(anyString(), anyString());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                get("/measures/harp-id/validate")
+                    .with(user(TEST_USER_ID))
+                    .header("Authorization", "test-okta")
+                    .param("harpId", "invalidUser"))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    assertThat(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains("The provided HARP ID is not associated with an active MADiE user."),
+        is(true));
   }
 
   @Test
