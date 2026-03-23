@@ -1015,4 +1015,77 @@ public class MeasureSetServiceTest {
     assertEquals(originalOwner, result.getAcls().get(0).getUserId());
     assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
   }
+
+  @Test
+  public void testUpdateMeasureSetAclsSharingByAdmin() {
+    String measureSetId = "measureSetId1";
+    String adminUser = "MADiE Admin";
+    AclSpecification aclSpec = new AclSpecification();
+    aclSpec.setUserId("testUser");
+    aclSpec.setRoles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)));
+
+    AclOperation aclOperation =
+        AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.GRANT).build();
+
+    MeasureSet measureSet = MeasureSet.builder().measureSetId(measureSetId).owner("owner1").build();
+
+    MeasureSet updatedMeasureSet =
+        measureSet.toBuilder().acls(new ArrayList<>(List.of(aclSpec))).build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result =
+        measureSetService.updateMeasureSetAcls(measureSetId, aclOperation, adminUser, true);
+
+    assertNotNull(result);
+    assertEquals(1, result.getAcls().size());
+    assertEquals("testUser", result.getAcls().get(0).getUserId());
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            measureSetId,
+            MeasureSet.class,
+            ActionType.SHARED,
+            adminUser,
+            "testUser",
+            "Shared with - testUser by MADiE Admin");
+  }
+
+  @Test
+  public void testUpdateMeasureSetAclsUnsharingByAdmin() {
+    String measureSetId = "measureSetId1";
+    String adminUser = "MADiE Admin";
+    AclSpecification aclSpec = new AclSpecification();
+    aclSpec.setUserId("testUser");
+    aclSpec.setRoles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)));
+
+    AclOperation aclOperation =
+        AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.REVOKE).build();
+
+    MeasureSet measureSet =
+        MeasureSet.builder()
+            .measureSetId(measureSetId)
+            .owner("owner1")
+            .acls(new ArrayList<>(List.of(aclSpec)))
+            .build();
+
+    MeasureSet updatedMeasureSet = measureSet.toBuilder().acls(new ArrayList<>()).build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result =
+        measureSetService.updateMeasureSetAcls(measureSetId, aclOperation, adminUser, true);
+
+    assertNotNull(result);
+    assertTrue(result.getAcls().isEmpty());
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            measureSetId,
+            MeasureSet.class,
+            ActionType.UNSHARED,
+            adminUser,
+            "testUser",
+            "Unshared with - testUser by MADiE Admin");
+  }
 }
