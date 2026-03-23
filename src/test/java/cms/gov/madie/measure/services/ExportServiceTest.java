@@ -1,10 +1,14 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.PackageDto;
+import cms.gov.madie.measure.dto.excel.MeasureAccessReportDTO;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
+import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.factories.ModelValidatorFactory;
 import cms.gov.madie.measure.factories.PackageServiceFactory;
+import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.common.Organization;
 import gov.cms.madie.models.measure.Group;
@@ -15,7 +19,6 @@ import gov.cms.madie.models.measure.MeasureSet;
 import gov.cms.madie.models.measure.Population;
 import gov.cms.madie.models.measure.PopulationType;
 import gov.cms.madie.models.measure.TestCase;
-import gov.cms.madie.models.validators.ValidLibraryNameValidator;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,8 +44,10 @@ class ExportServiceTest {
   @Mock private QdmPackageService qdmPackageService;
   @Mock private QiCoreModelValidator qicoreModelValidator;
   @Mock private QdmModelValidator qdmModelValidator;
-  @Mock private ValidLibraryNameValidator validLibraryNameValidator;
   @Mock private MeasureUtil measureUtil;
+  @Mock private ExcelClient excelClient;
+  @Mock private MeasureRepository measureRepository;
+  @Mock private MeasureSetService measureSetService;
   @InjectMocks ExportService exportService;
 
   private final String packageContent = "raw package";
@@ -161,5 +166,60 @@ class ExportServiceTest {
     assertEquals(
         ex.getMessage(),
         "Response could not be completed for Measure with ID measure-id, since there are no test cases in the measure.");
+  }
+
+  @Test
+  void testGetSharedAccessReportThrowsWhenEmptyIds() {
+    Exception ex =
+        Assertions.assertThrows(
+            InvalidRequestException.class,
+            () ->
+                exportService.getSharedAccessReportForMeasures(
+                    Collections.emptyList(), "test.user", token));
+    assertEquals(
+        "Please provide at least one measure id to export the shared access report.",
+        ex.getMessage());
+  }
+
+  @Test
+  void testGetSharedAccessReportWhenMeasureSetIsNull() {
+    MeasureListDTO dto =
+        MeasureListDTO.builder()
+            .id("m1")
+            .measureName("My Measure")
+            .model("QI-Core v4.1.1")
+            .measureSet(null)
+            .build();
+    when(measureRepository.findAllByIdInWithMeasureSet(List.of("m1"))).thenReturn(List.of(dto));
+    byte[] expected = "report".getBytes();
+    when(excelClient.getSharedAccessReportForMeasures(any(), eq(token))).thenReturn(expected);
+
+    byte[] result =
+        exportService.getSharedAccessReportForMeasures(List.of("m1"), "test.user", token);
+
+    assertEquals(expected, result);
+  }
+
+  @Test
+  void testGetSharedAccessReportWithMeasureSet() {
+    MeasureSet measureSet = MeasureSet.builder().owner("test.user").cmsId(1).build();
+    MeasureListDTO dto =
+        MeasureListDTO.builder()
+            .id("m1")
+            .measureName("My Measure")
+            .model("QI-Core v4.1.1")
+            .measureSet(measureSet)
+            .build();
+    when(measureRepository.findAllByIdInWithMeasureSet(List.of("m1"))).thenReturn(List.of(dto));
+    List<MeasureAccessReportDTO.SharedWithUser> sharedUsers =
+        List.of(MeasureAccessReportDTO.SharedWithUser.builder().userId("user2").build());
+    when(measureSetService.getSharedUsersForMeasureSet(measureSet)).thenReturn(sharedUsers);
+    byte[] expected = "report".getBytes();
+    when(excelClient.getSharedAccessReportForMeasures(any(), eq(token))).thenReturn(expected);
+
+    byte[] result =
+        exportService.getSharedAccessReportForMeasures(List.of("m1"), "test.user", token);
+
+    assertEquals(expected, result);
   }
 }

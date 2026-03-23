@@ -584,7 +584,7 @@ public class MeasureController extends AbstractMeasureController {
 
   @PostMapping(value = "/measures/by-ids")
   public ResponseEntity<List<MeasureListDTO>> getMeasuresByIds(@RequestBody List<String> ids) {
-    List<MeasureListDTO> results = measureService.getMeasuresByObjectIds(ids);
+    List<MeasureListDTO> results = measureService.getMeasuresByIds(ids);
 
     return ResponseEntity.ok(results);
   }

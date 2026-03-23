@@ -8,6 +8,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
+import cms.gov.madie.measure.config.security.AdminOnly;
 import cms.gov.madie.measure.exceptions.HarpIdMismatchException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
@@ -25,9 +26,9 @@ import jakarta.validation.Valid;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.util.StopWatch;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -49,6 +50,7 @@ import lombok.extern.slf4j.Slf4j;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
+@AdminOnly
 public class AdminController extends AbstractMeasureController {
   private final MeasureService measureService;
   private final TestCaseService testCaseService;
@@ -56,6 +58,7 @@ public class AdminController extends AbstractMeasureController {
   private final MeasureSetService measureSetService;
   private final ActionLogService actionLogService;
   private final VersionService versionService;
+  private final ExportService exportService;
 
   private final MeasureRepository measureRepository;
   private final ExportRepository exportRepository;
@@ -76,7 +79,6 @@ public class AdminController extends AbstractMeasureController {
   private int concurrencyLimit;
 
   @PutMapping("/measures/test-cases/validations")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<MeasureTestCaseValidationReportSummary> validateAllMeasureTestCases(
       Principal principal,
       @RequestHeader("Authorization") String accessToken,
@@ -162,7 +164,6 @@ public class AdminController extends AbstractMeasureController {
    * @return Count of test cases placed back on the validation queue.
    */
   @PutMapping("/measures/test-cases/restart-validation")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Integer> resetTestCaseValidationQueue(
       Principal principal,
       @RequestParam(name = "draftOnly", defaultValue = "true") boolean draftOnly,
@@ -292,7 +293,6 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @DeleteMapping("/measures/{id}")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Measure> permDeleteMeasure(
       Principal principal, @RequestHeader(name = "harpId") String harpId, @PathVariable String id) {
 
@@ -313,7 +313,6 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @GetMapping("/measures/sharedWith")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<Map<String, Object>>> getMeasureSharedWith(
       @RequestHeader(name = "harpId") String harpId,
       @RequestParam(name = "measureids") String measureids) {
@@ -344,7 +343,6 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @PutMapping("/measures/{id}/correct-version")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Measure> correctMeasureVersion(
       @RequestHeader(name = "harpId") String harpId,
       Principal principal,
@@ -423,7 +421,6 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @PutMapping("/measures/{id}")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<Measure> overwriteExpectedValues(
       Principal principal, @PathVariable String id, @RequestBody @Valid Measure sourceMeasure) {
     Measure targetMeasure = measureService.findMeasureById(id);
@@ -577,7 +574,6 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @DeleteMapping("/measures/test-cases/locks")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<String>> unlockAllByUser(
       @RequestHeader(name = "harpId") String harpId) {
     log.info("Unlock measures, test cases for user: " + harpId);
@@ -599,7 +595,6 @@ public class AdminController extends AbstractMeasureController {
    * @return ResponseEntity wrapping a List<Integer> case numbers of updated test cases
    */
   @PutMapping("/measures/{id}/testcases/code-system-correction")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<Integer>> updateCodeSystemInTestCaseJson(
       Principal principal,
       @PathVariable String id,
@@ -612,7 +607,6 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @PutMapping("/measures/{id}/acls")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<AclSpecification>> updateAccessControl(
       @PathVariable String id, @RequestBody @Validated AclOperation aclOperation) {
     final Measure existingMeasure = measureService.findMeasureById(id);
@@ -623,7 +617,6 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @DeleteMapping("/measures/{measureId}/delete-cms-id")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<String> deleteCmsId(
       @PathVariable String measureId,
       @RequestParam(name = "cmsId") Integer cmsId,
@@ -643,7 +636,6 @@ public class AdminController extends AbstractMeasureController {
   }
 
   @PostMapping("/organizations")
-  @PreAuthorize("hasRole('MADIE-ADMIN')")
   public ResponseEntity<List<Organization>> addOrganizations(
       HttpServletRequest request, @RequestBody List<Organization> organizations) {
     String userName = request.getUserPrincipal().getName();
@@ -657,5 +649,21 @@ public class AdminController extends AbstractMeasureController {
       throw new DuplicateKeyException(
           duplicateKeyException.getLocalizedMessage(), "Duplicate oid found");
     }
+  }
+
+  @PutMapping("/measures/shared-access-report")
+  public ResponseEntity<byte[]> getMeasureAccessReport(
+      Principal principal,
+      @RequestBody List<String> measureIds,
+      @RequestHeader("Authorization") String accessToken) {
+    final String username = principal.getName().toLowerCase();
+
+    return ResponseEntity.ok()
+        .header(
+            HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"MeasureSharingExport.xlsx\"")
+        .header(
+            HttpHeaders.CONTENT_TYPE,
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        .body(exportService.getSharedAccessReportForMeasures(measureIds, username, accessToken));
   }
 }
