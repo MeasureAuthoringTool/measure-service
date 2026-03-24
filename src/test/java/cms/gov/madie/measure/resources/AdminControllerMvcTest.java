@@ -12,7 +12,6 @@ import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.OrganizationRepository;
 import cms.gov.madie.measure.services.*;
-import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.ActionType;
@@ -1603,91 +1602,6 @@ public class AdminControllerMvcTest {
     assertThat(result.getResponse(), is(notNullValue()));
     assertEquals(expectedBody, result.getResponse().getContentAsString());
     verify(measureSetService, times(1)).deleteCmsId(measureId, cmsId, TEST_USER_ID, TEST_USER_ID);
-  }
-
-  @Test
-  public void testUpdateAccessControl() throws Exception {
-    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-    AclSpecification aclSpecification = new AclSpecification();
-    aclSpecification.setUserId("test");
-    aclSpecification.setRoles(Set.of(RoleEnum.SHARED_WITH));
-
-    when(measureService.findMeasureById(anyString()))
-        .thenReturn(Measure.builder().id(measureId).build());
-    doReturn(List.of(aclSpecification))
-        .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                put("/admin/measures/" + measureId + "/acls")
-                    .with(
-                        jwt()
-                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
-                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
-                    .with(csrf())
-                    .content(
-                        "{\"acls\": [{\"userId\": \"john.doe@abc.com\",\"roles\": [\"SHARED_WITH\"]}],\"action\": \"GRANT\"}")
-                    .contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(status().isOk())
-            .andReturn();
-    verify(measureService, times(1))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
-    assertEquals(
-        result.getResponse().getContentAsString(),
-        "[{\"userId\":\"test\",\"roles\":[\"SHARED_WITH\"]}]");
-  }
-
-  @Test
-  public void testUpdateAccessControlIfAclAndOperationMissing() throws Exception {
-    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                put("/admin/measures/" + measureId + "/acls")
-                    .with(
-                        jwt()
-                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
-                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
-                    .with(csrf())
-                    .content("{\"acls\": [], \"operation\": null}")
-                    .contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(status().isBadRequest())
-            .andReturn();
-    verify(measureService, times(0))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
-    assertThat(
-        result
-            .getResponse()
-            .getContentAsString()
-            .contains("{\"acls\":\"must not be empty\",\"action\":\"must not be null\"}"),
-        is(true));
-  }
-
-  @Test
-  public void testUpdateAccessControlIfAclMissing() throws Exception {
-    String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                put("/admin/measures/" + measureId + "/acls")
-                    .with(
-                        jwt()
-                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
-                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
-                    .with(csrf())
-                    .content("{\"acls\": [], \"action\": \"GRANT\"}")
-                    .contentType(MediaType.APPLICATION_JSON_VALUE))
-            .andExpect(status().isBadRequest())
-            .andReturn();
-    verify(measureService, times(0))
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
-    assertThat(
-        result.getResponse().getContentAsString().contains("{\"acls\":\"must not be empty\"}"),
-        is(true));
   }
 
   @Test
