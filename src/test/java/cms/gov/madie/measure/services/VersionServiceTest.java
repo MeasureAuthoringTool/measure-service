@@ -1068,6 +1068,67 @@ public class VersionServiceTest {
   }
 
   @Test
+  public void testCreateDraftDropsExtraGroupPopulationsWhenTestCaseHasMoreGroupsThanMeasure() {
+    // Test case has 2 group populations but target measure only has 1 group.
+    // The extra group population should be silently dropped to prevent IndexOutOfBoundsException.
+    TestCaseGroupPopulation groupPop1 =
+        TestCaseGroupPopulation.builder()
+            .groupId("groupId1")
+            .scoring("Cohort")
+            .populationBasis("boolean")
+            .build();
+    TestCaseGroupPopulation groupPop2 =
+        TestCaseGroupPopulation.builder()
+            .groupId("groupId2")
+            .scoring("Cohort")
+            .populationBasis("boolean")
+            .build();
+
+    TestCase testCaseWithTwoGroups =
+        testCase.toBuilder().groupPopulations(List.of(groupPop1, groupPop2)).build();
+
+    Measure versionedMeasure = buildBasicMeasure(); // has 1 group (cvGroup)
+    versionedMeasure.setTestCases(List.of(testCaseWithTwoGroups));
+
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure versionedCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(metaData)
+            .groups(List.of(cvGroup.toBuilder().id("clonedGroupId1").build()))
+            .testCases(List.of())
+            .build();
+
+    ArgumentCaptor<Measure> measureArgumentCaptor = ArgumentCaptor.forClass(Measure.class);
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+
+    // Should not throw IndexOutOfBoundsException
+    assertDoesNotThrow(
+        () ->
+            versionService.createDraft(
+                versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN));
+
+    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
+    Measure captured = measureArgumentCaptor.getValue();
+    // The extra group population (groupId2) should have been dropped
+    assertThat(captured.getTestCases().size(), is(equalTo(1)));
+    assertThat(captured.getTestCases().get(0).getGroupPopulations().size(), is(equalTo(1)));
+    // The remaining group population should be mapped to the target group
+    assertThat(
+        captured.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(),
+        not(equalTo("groupId1")));
+  }
+
+  @Test
   public void testCreateDraftSuccessfullyWithoutGroups() {
 
     Measure versionedMeasure =

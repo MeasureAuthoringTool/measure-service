@@ -5,6 +5,7 @@ import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.JobStatus;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
+import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
@@ -28,6 +29,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -84,6 +86,8 @@ public class AdminControllerMvcTest {
   @MockitoBean private ExportRepository exportRepository;
   @MockitoBean private CqmMeasureRepository cqmMeasureRepository;
   @MockitoBean private OrganizationRepository organizationRepository;
+
+  @MockitoBean private ExportService exportService;
 
   @MockitoBean private MeasureLockService measureLockService;
   @MockitoBean private TestCaseLockService testCaseLockService;
@@ -1744,5 +1748,91 @@ public class AdminControllerMvcTest {
 
     String content = result.getResponse().getContentAsString();
     assertTrue(content.contains("Duplicate oid found"));
+  }
+
+  @Test
+  public void testGetMeasureAccessReportReturnsOkWithCorrectHeadersAndBody() throws Exception {
+    byte[] expectedBytes = "test-excel-content".getBytes();
+    List<String> measureIds = List.of("measure-id-1", "measure-id-2");
+
+    when(exportService.getSharedAccessReportForMeasures(
+            eq(measureIds), eq(TEST_USER_ID), anyString()))
+        .thenReturn(expectedBytes);
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/shared-access-report")
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .header(HttpHeaders.AUTHORIZATION, "test-okta")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE)
+                    .content(toJsonString(measureIds)))
+            .andExpect(status().isOk())
+            .andReturn();
+
+    assertThat(result.getResponse(), is(notNullValue()));
+    assertEquals(
+        "attachment; filename=\"MeasureSharingExport.xlsx\"",
+        result.getResponse().getHeader(HttpHeaders.CONTENT_DISPOSITION));
+    assertEquals(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        result.getResponse().getHeader(HttpHeaders.CONTENT_TYPE));
+    assertThat(result.getResponse().getContentAsByteArray(), equalTo(expectedBytes));
+    verify(exportService, times(1))
+        .getSharedAccessReportForMeasures(eq(measureIds), eq(TEST_USER_ID), anyString());
+  }
+
+  @Test
+  public void testGetMeasureAccessReportReturnsForbiddenWhenNotAdmin() throws Exception {
+    List<String> measureIds = List.of("measure-id-1");
+
+    mockMvc
+        .perform(
+            put("/admin/measures/shared-access-report")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_SOME_OTHER_ROLE")))
+                .header(HttpHeaders.AUTHORIZATION, "test-okta")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(toJsonString(measureIds)))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(exportService);
+  }
+
+  @Test
+  public void testGetMeasureAccessReportReturnsBadRequestWhenServiceThrowsInvalidRequestException()
+      throws Exception {
+    List<String> measureIds = List.of();
+
+    when(exportService.getSharedAccessReportForMeasures(any(), anyString(), anyString()))
+        .thenThrow(
+            new InvalidRequestException(
+                "Please provide at least one measure id to export the shared access report."));
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/shared-access-report")
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .header(HttpHeaders.AUTHORIZATION, "test-okta")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE)
+                    .content(toJsonString(measureIds)))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+
+    assertThat(result.getResponse(), is(notNullValue()));
+    verify(exportService, times(1))
+        .getSharedAccessReportForMeasures(any(), anyString(), anyString());
   }
 }

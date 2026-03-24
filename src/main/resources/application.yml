@@ -57,7 +57,10 @@ madie:
     base-url: ${USER_SERVICE_URL:http://localhost:8088/api}
   excel-export-service:
     base-url: ${EXCEL_EXPORT_SERVICE:http://localhost:3000/api}
-    get-excel-urn: /excel
+    test-cases:
+      export-api-path: /excel
+    measures:
+      access-report-api-path: /excel/measure-shared-access-report
   service-config:
     json-url: ${SERVICE_CONFIG_JSON_URL:http://localhost:9000/env-config/serviceConfig.json}
     cql-template-qicore411-url: ${CQL_TEMPLATE_QICORE411_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore411_CQLTemplate.txt}

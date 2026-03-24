@@ -13,8 +13,11 @@ public class ExcelConfig {
   @Value("${madie.excel-export-service.base-url}")
   private String excelExportServiceBaseUrl;
 
-  @Value("${madie.excel-export-service.get-excel-urn}")
-  private String getExcelUrn;
+  @Value("${madie.excel-export-service.test-cases.export-api-path}")
+  private String testCasesExcelExportApiPath;
+
+  @Value("${madie.excel-export-service.measures.access-report-api-path}")
+  private String measureSharedAccessReportApiPath;
 
   @Bean
   public RestTemplate excelRestTemplate() {
