@@ -57,11 +57,11 @@ public class MeasureServiceAclTest {
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
     when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
-    when(measureSetService.updateMeasureSetAcls(any(), any(), eq("userName")))
+    when(measureSetService.updateMeasureSetAcls(any(), any(), eq("userName"), eq(false)))
         .thenReturn(measureSet);
 
     List<AclSpecification> aclSpecifications =
-        measureService.updateAccessControlList(measure.getId(), aclOperation, "userName");
+        measureService.updateAccessControlList(measure.getId(), aclOperation, "userName", false);
     assertThat(aclSpecifications.size(), is(equalTo(1)));
     assertThat(aclSpecifications.get(0).getUserId(), is(aclSpecification.getUserId()));
     assertThat(aclSpecifications.get(0).getRoles(), is(aclSpecification.getRoles()));
@@ -74,7 +74,7 @@ public class MeasureServiceAclTest {
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureService.updateAccessControlList("123", aclOperation, "userName"));
+            () -> measureService.updateAccessControlList("123", aclOperation, "userName", false));
 
     assertThat(ex.getMessage(), is(equalTo("Measure does not exist: 123")));
   }

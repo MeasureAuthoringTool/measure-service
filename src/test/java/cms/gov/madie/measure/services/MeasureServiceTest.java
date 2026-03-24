@@ -31,6 +31,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.locks.MeasureLock;
@@ -74,6 +75,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private CqlTemplateConfigService cqlTemplateConfigService;
   @Mock private TerminologyValidationService terminologyValidationService;
   @Mock private MeasureLockService measureLockService;
+  @Mock private UserServiceClient userServiceClient;
 
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
@@ -2019,7 +2021,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.shareMeasures(measureUserIdMap, "userName"));
+        () -> measureService.shareMeasures(measureUserIdMap, "userName", "accessToken"));
   }
 
   @Test
@@ -2079,10 +2081,10 @@ public class MeasureServiceTest implements ResourceUtil {
 
     doReturn(List.of(aclSpecification1, aclSpecification2))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-        measureService.shareMeasures(measureUserIdMap, "userName");
+        measureService.shareMeasures(measureUserIdMap, "userName", "accessToken");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
@@ -2111,7 +2113,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.unshareMeasures(measureUserIdMap, "userName"));
+        () -> measureService.unshareMeasures(measureUserIdMap, "userName", "accessToken"));
   }
 
   @Test
@@ -2169,10 +2171,10 @@ public class MeasureServiceTest implements ResourceUtil {
 
     doReturn(List.of(aclSpecification1))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-        measureService.unshareMeasures(measureUserIdMap, "userName");
+        measureService.unshareMeasures(measureUserIdMap, "userName", "accessToken");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
