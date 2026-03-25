@@ -3,14 +3,18 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.excel.MeasureAccessReportDTO;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.GeneratorRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.MeasureSetActionLogRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.MeasureSetActionLog;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
@@ -22,6 +26,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.security.Principal;
+import java.time.Instant;
 import java.util.*;
 
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -39,6 +44,7 @@ public class MeasureSetServiceTest {
   @Mock GeneratorRepository generatorRepository;
   @Mock private ActionLogService actionLogService;
   @Mock private UserServiceClient userServiceClient;
+  @Mock private MeasureSetActionLogRepository measureSetActionLogRepository;
 
   private final String MEASURE_SET_ID = "measureSet1";
   private final String ACCESS_TOKEN = "test-token";
@@ -105,7 +111,8 @@ public class MeasureSetServiceTest {
 
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    MeasureSet measureSet =
+        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
     assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
     assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(measureSet.getAcls().size(), is(equalTo(1)));
@@ -132,7 +139,8 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    MeasureSet measureSet =
+        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
     assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
     assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(measureSet.getAcls().size(), is(equalTo(1)));
@@ -165,7 +173,8 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    MeasureSet measureSet =
+        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
     assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
     assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(measureSet.getAcls().size(), is(equalTo(2)));
@@ -208,7 +217,8 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    MeasureSet measureSet =
+        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
     assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
     assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(measureSet.getAcls().size(), is(equalTo(1)));
@@ -243,7 +253,8 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
 
-    MeasureSet measureSet = measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+    MeasureSet measureSet =
+        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
     assertThat(measureSet.getMeasureSetId(), is(equalTo(updatedMeasureSet.getMeasureSetId())));
     assertThat(measureSet.getOwner(), is(equalTo(updatedMeasureSet.getOwner())));
     assertThat(measureSet.getAcls().size(), is(equalTo(1)));
@@ -270,7 +281,7 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(measureSet);
 
     MeasureSet updatedMeasureSet =
-        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
     assertThat(updatedMeasureSet.getMeasureSetId(), is(equalTo(measureSet.getMeasureSetId())));
     assertThat(updatedMeasureSet.getOwner(), is(equalTo(measureSet.getOwner())));
     assertThat(updatedMeasureSet.getAcls().size(), is(equalTo(0)));
@@ -301,7 +312,7 @@ public class MeasureSetServiceTest {
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(measureSet);
 
     MeasureSet updatedMeasureSet =
-        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName");
+        measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
     assertThat(updatedMeasureSet.getMeasureSetId(), is(equalTo(measureSet.getMeasureSetId())));
     assertThat(updatedMeasureSet.getOwner(), is(equalTo(measureSet.getOwner())));
     assertThat(updatedMeasureSet.getAcls().size(), is(equalTo(1)));
@@ -324,7 +335,7 @@ public class MeasureSetServiceTest {
     Exception ex =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureSetService.updateMeasureSetAcls("1", aclOperation, "userName"));
+            () -> measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false));
     assertEquals(
         "User userName called updateMeasureSetAcls with AclOperation AclOperation(acls=[AclSpecification(userId=john_1, roles=[SHARED_WITH])], action=GRANT) but failed because no measure set exists with measure set ID 1",
         ex.getMessage());
@@ -1009,5 +1020,288 @@ public class MeasureSetServiceTest {
     assertEquals(1, result.getAcls().size());
     assertEquals(originalOwner, result.getAcls().get(0).getUserId());
     assertTrue(result.getAcls().get(0).getRoles().contains(RoleEnum.SHARED_WITH));
+  }
+
+  @Test
+  public void testGetSharedUsersForMeasureSetIfNull() {
+    List<MeasureAccessReportDTO.SharedWithUser> result =
+        measureSetService.getSharedUsersForMeasureSet(null);
+
+    assertTrue(result.isEmpty());
+    verifyNoInteractions(measureSetActionLogRepository);
+  }
+
+  @Test
+  public void testGetSharedUsersForMeasureSetIfEmptyAcls() {
+    MeasureSet ms = MeasureSet.builder().measureSetId("ms1").owner("owner1").acls(null).build();
+
+    List<MeasureAccessReportDTO.SharedWithUser> result =
+        measureSetService.getSharedUsersForMeasureSet(ms);
+
+    assertTrue(result.isEmpty());
+    verifyNoInteractions(measureSetActionLogRepository);
+  }
+
+  @Test
+  public void testGetSharedUsersForMeasureSetIfNoActionLogFoundReturnsDateSharedAsDash() {
+    AclSpecification acl =
+        AclSpecification.builder()
+            .userId("sharedUser")
+            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
+            .build();
+    MeasureSet ms =
+        MeasureSet.builder()
+            .measureSetId("ms1")
+            .owner("owner1")
+            .acls(new ArrayList<>(List.of(acl)))
+            .build();
+
+    when(measureSetActionLogRepository.findByTargetId("ms1")).thenReturn(Optional.empty());
+
+    List<MeasureAccessReportDTO.SharedWithUser> result =
+        measureSetService.getSharedUsersForMeasureSet(ms);
+
+    assertEquals(1, result.size());
+    assertEquals("sharedUser", result.get(0).getUserId());
+    assertEquals("-", result.get(0).getDateShared());
+  }
+
+  @Test
+  public void testGetSharedUsersForMeasureSetIfActionLogWithNoActionsReturnsDateSharedAsDash() {
+    AclSpecification acl =
+        AclSpecification.builder()
+            .userId("sharedUser")
+            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
+            .build();
+    MeasureSet ms =
+        MeasureSet.builder()
+            .measureSetId("ms1")
+            .owner("owner1")
+            .acls(new ArrayList<>(List.of(acl)))
+            .build();
+
+    MeasureSetActionLog actionLog =
+        MeasureSetActionLog.builder().targetId("ms1").actions(Collections.emptyList()).build();
+    when(measureSetActionLogRepository.findByTargetId("ms1")).thenReturn(Optional.of(actionLog));
+
+    List<MeasureAccessReportDTO.SharedWithUser> result =
+        measureSetService.getSharedUsersForMeasureSet(ms);
+
+    assertEquals(1, result.size());
+    assertEquals("-", result.get(0).getDateShared());
+  }
+
+  @Test
+  public void testGetSharedUsersForMeasureSetIfActionLogWithSharedActionPresent() {
+    AclSpecification acl =
+        AclSpecification.builder()
+            .userId("sharedUser")
+            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
+            .build();
+    MeasureSet ms =
+        MeasureSet.builder()
+            .measureSetId("ms1")
+            .owner("owner1")
+            .acls(new ArrayList<>(List.of(acl)))
+            .build();
+
+    // 2025-06-15T12:00:00Z  → "06/15/2025" in system default zone (or similar MM/dd/yyyy)
+    Instant sharedAt = Instant.parse("2025-06-15T12:00:00Z");
+    MeasureSetActionLog actionLog =
+        MeasureSetActionLog.builder()
+            .targetId("ms1")
+            .actions(
+                List.of(
+                    AccessControlAction.builder()
+                        .sharedWith("sharedUser")
+                        .actionType(ActionType.SHARED)
+                        .performedAt(sharedAt)
+                        .build()))
+            .build();
+    when(measureSetActionLogRepository.findByTargetId("ms1")).thenReturn(Optional.of(actionLog));
+
+    List<MeasureAccessReportDTO.SharedWithUser> result =
+        measureSetService.getSharedUsersForMeasureSet(ms);
+
+    assertEquals(1, result.size());
+    assertEquals("sharedUser", result.get(0).getUserId());
+    assertNotEquals("-", result.get(0).getDateShared());
+  }
+
+  @Test
+  public void testGetSharedUsersForMeasureSetForActionLogWithNoSharedActionForUser() {
+    AclSpecification acl =
+        AclSpecification.builder()
+            .userId("sharedUser")
+            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
+            .build();
+    MeasureSet ms =
+        MeasureSet.builder()
+            .measureSetId("ms1")
+            .owner("owner1")
+            .acls(new ArrayList<>(List.of(acl)))
+            .build();
+
+    MeasureSetActionLog actionLog =
+        MeasureSetActionLog.builder()
+            .targetId("ms1")
+            .actions(
+                List.of(
+                    AccessControlAction.builder()
+                        .sharedWith("otherUser")
+                        .actionType(ActionType.SHARED)
+                        .performedAt(Instant.now())
+                        .build()))
+            .build();
+    when(measureSetActionLogRepository.findByTargetId("ms1")).thenReturn(Optional.of(actionLog));
+
+    List<MeasureAccessReportDTO.SharedWithUser> result =
+        measureSetService.getSharedUsersForMeasureSet(ms);
+
+    assertEquals(1, result.size());
+    assertEquals("-", result.get(0).getDateShared());
+  }
+
+  @Test
+  public void testGetSharedUsersForMeasureSetDuplicateAclFiltered() {
+    AclSpecification ownerAcl =
+        AclSpecification.builder()
+            .userId("owner1")
+            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
+            .build();
+    AclSpecification sharedAcl =
+        AclSpecification.builder()
+            .userId("sharedUser")
+            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
+            .build();
+    MeasureSet ms =
+        MeasureSet.builder()
+            .measureSetId("ms1")
+            .owner("owner1")
+            .acls(new ArrayList<>(List.of(ownerAcl, sharedAcl)))
+            .build();
+
+    when(measureSetActionLogRepository.findByTargetId("ms1")).thenReturn(Optional.empty());
+
+    List<MeasureAccessReportDTO.SharedWithUser> result =
+        measureSetService.getSharedUsersForMeasureSet(ms);
+
+    assertEquals(1, result.size());
+    assertEquals("sharedUser", result.get(0).getUserId());
+  }
+
+  @Test
+  public void testGetSharedUsersForMeasureForMultipleSharedActionsReturnsMostRecent() {
+    AclSpecification acl =
+        AclSpecification.builder()
+            .userId("sharedUser")
+            .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
+            .build();
+    MeasureSet ms =
+        MeasureSet.builder()
+            .measureSetId("ms1")
+            .owner("owner1")
+            .acls(new ArrayList<>(List.of(acl)))
+            .build();
+
+    Instant earlier = Instant.parse("2025-01-01T00:00:00Z");
+    Instant later = Instant.parse("2025-06-01T00:00:00Z");
+    MeasureSetActionLog actionLog =
+        MeasureSetActionLog.builder()
+            .targetId("ms1")
+            .actions(
+                List.of(
+                    AccessControlAction.builder()
+                        .sharedWith("sharedUser")
+                        .actionType(ActionType.SHARED)
+                        .performedAt(earlier)
+                        .build(),
+                    AccessControlAction.builder()
+                        .sharedWith("sharedUser")
+                        .actionType(ActionType.SHARED)
+                        .performedAt(later)
+                        .build()))
+            .build();
+    when(measureSetActionLogRepository.findByTargetId("ms1")).thenReturn(Optional.of(actionLog));
+
+    List<MeasureAccessReportDTO.SharedWithUser> result =
+        measureSetService.getSharedUsersForMeasureSet(ms);
+
+    assertEquals(1, result.size());
+    // The date should reflect the most recent (later) instant
+    assertNotEquals("-", result.get(0).getDateShared());
+  }
+
+  @Test
+  public void testUpdateMeasureSetAclsSharingByAdmin() {
+    String measureSetId = "measureSetId1";
+    String adminUser = "MADiE Admin";
+    AclSpecification aclSpec = new AclSpecification();
+    aclSpec.setUserId("testUser");
+    aclSpec.setRoles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)));
+
+    AclOperation aclOperation =
+        AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.GRANT).build();
+
+    MeasureSet measureSet = MeasureSet.builder().measureSetId(measureSetId).owner("owner1").build();
+
+    MeasureSet updatedMeasureSet =
+        measureSet.toBuilder().acls(new ArrayList<>(List.of(aclSpec))).build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result =
+        measureSetService.updateMeasureSetAcls(measureSetId, aclOperation, adminUser, true);
+
+    assertNotNull(result);
+    assertEquals(1, result.getAcls().size());
+    assertEquals("testUser", result.getAcls().get(0).getUserId());
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            measureSetId,
+            MeasureSet.class,
+            ActionType.SHARED,
+            adminUser,
+            "testUser",
+            "Shared with - testUser by MADiE Admin");
+  }
+
+  @Test
+  public void testUpdateMeasureSetAclsUnsharingByAdmin() {
+    String measureSetId = "measureSetId1";
+    String adminUser = "MADiE Admin";
+    AclSpecification aclSpec = new AclSpecification();
+    aclSpec.setUserId("testUser");
+    aclSpec.setRoles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)));
+
+    AclOperation aclOperation =
+        AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.REVOKE).build();
+
+    MeasureSet measureSet =
+        MeasureSet.builder()
+            .measureSetId(measureSetId)
+            .owner("owner1")
+            .acls(new ArrayList<>(List.of(aclSpec)))
+            .build();
+
+    MeasureSet updatedMeasureSet = measureSet.toBuilder().acls(new ArrayList<>()).build();
+
+    when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
+    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+
+    MeasureSet result =
+        measureSetService.updateMeasureSetAcls(measureSetId, aclOperation, adminUser, true);
+
+    assertNotNull(result);
+    assertTrue(result.getAcls().isEmpty());
+    verify(actionLogService, times(1))
+        .logShareAccessControlAction(
+            measureSetId,
+            MeasureSet.class,
+            ActionType.UNSHARED,
+            adminUser,
+            "testUser",
+            "Unshared with - testUser by MADiE Admin");
   }
 }

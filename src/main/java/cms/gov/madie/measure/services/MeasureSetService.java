@@ -4,14 +4,18 @@ import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.config.security.RoleConstants;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.excel.MeasureAccessReportDTO;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.GeneratorRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.MeasureSetActionLogRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.MeasureSetActionLog;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
@@ -19,23 +23,24 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.Map;
-import java.util.HashMap;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class MeasureSetService {
 
+  private static final DateTimeFormatter DATE_FORMATTER =
+      DateTimeFormatter.ofPattern("MM/dd/yyyy").withZone(ZoneId.systemDefault());
   private final MeasureRepository measureRepository;
   private final MeasureSetRepository measureSetRepository;
   private final GeneratorRepository generatorRepository;
   private final ActionLogService actionLogService;
   private final UserServiceClient userServiceClient;
+  private final MeasureSetActionLogRepository measureSetActionLogRepository;
 
   public void createMeasureSet(
       final String harpId, final String measureId, final String savedMeasureSetId, String cmsId) {
@@ -67,7 +72,7 @@ public class MeasureSetService {
    * @return an instance of MeasureSet
    */
   public MeasureSet updateMeasureSetAcls(
-      String measureSetId, AclOperation aclOperation, String userName) {
+      String measureSetId, AclOperation aclOperation, String userName, boolean isAdmin) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (optionalMeasureSet.isPresent()) {
       Map<String, ActionType> actionLogDetails = new HashMap<>();
@@ -173,8 +178,11 @@ public class MeasureSetService {
                 userName,
                 userId,
                 String.format(
-                    actionType == ActionType.UNSHARED ? "Unshared with - %s" : "Shared with - %s",
-                    userId));
+                    actionType == ActionType.UNSHARED
+                        ? "Unshared with - %s%s"
+                        : "Shared with - %s%s",
+                    userId,
+                    isAdmin ? " by MADiE Admin" : ""));
           });
 
       return updatedMeasureSet;
@@ -454,5 +462,50 @@ public class MeasureSetService {
     }
 
     return updatedMeasureSet;
+  }
+
+  /**
+   * Get list of users that a measure set is shared with along with the date shared. If measure set
+   * has not been shared with any users, returns an empty list. The date shared is determined by the
+   * most recent SHARED action for the user in the MeasureSetActionLog. If no SHARED action is found
+   * for the user, the date shared will be displayed as "-".
+   *
+   * @param measureSet -> measure set to get shared users for
+   * @return List of MeasureAccessReportDTO.SharedWithUser
+   */
+  public List<MeasureAccessReportDTO.SharedWithUser> getSharedUsersForMeasureSet(
+      MeasureSet measureSet) {
+    if (measureSet == null || CollectionUtils.isEmpty(measureSet.getAcls())) {
+      return Collections.emptyList();
+    }
+    MeasureSetActionLog actionLog =
+        measureSetActionLogRepository.findByTargetId(measureSet.getMeasureSetId()).orElse(null);
+    return measureSet.getAcls().stream()
+        .filter(acl -> !acl.getUserId().equals(measureSet.getOwner()))
+        .map(
+            aclSpecification -> {
+              String sharedWithUser = aclSpecification.getUserId();
+              return MeasureAccessReportDTO.SharedWithUser.builder()
+                  .userId(sharedWithUser)
+                  .dateShared(getDateShared(actionLog, sharedWithUser))
+                  .build();
+            })
+        .toList();
+  }
+
+  private String getDateShared(MeasureSetActionLog actionLog, String userId) {
+    if (actionLog == null || CollectionUtils.isEmpty(actionLog.getActions())) {
+      return "-";
+    }
+    // get date shared by finding the most recent SHARED action for the user in the action log
+    return actionLog.getActions().stream()
+        .filter(
+            action ->
+                userId.equalsIgnoreCase(action.getSharedWith())
+                    && action.getActionType() == ActionType.SHARED)
+        .map(AccessControlAction::getPerformedAt)
+        .max(Instant::compareTo)
+        .map(DATE_FORMATTER::format)
+        .orElse("-");
   }
 }

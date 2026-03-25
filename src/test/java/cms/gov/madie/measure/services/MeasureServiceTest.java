@@ -31,6 +31,7 @@ import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.locks.MeasureLock;
@@ -74,6 +75,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private CqlTemplateConfigService cqlTemplateConfigService;
   @Mock private TerminologyValidationService terminologyValidationService;
   @Mock private MeasureLockService measureLockService;
+  @Mock private UserServiceClient userServiceClient;
 
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
@@ -2019,7 +2021,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.shareMeasures(measureUserIdMap, "userName"));
+        () -> measureService.shareMeasures(measureUserIdMap, "userName", "accessToken"));
   }
 
   @Test
@@ -2079,10 +2081,10 @@ public class MeasureServiceTest implements ResourceUtil {
 
     doReturn(List.of(aclSpecification1, aclSpecification2))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-        measureService.shareMeasures(measureUserIdMap, "userName");
+        measureService.shareMeasures(measureUserIdMap, "userName", "accessToken");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
@@ -2111,7 +2113,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.unshareMeasures(measureUserIdMap, "userName"));
+        () -> measureService.unshareMeasures(measureUserIdMap, "userName", "accessToken"));
   }
 
   @Test
@@ -2169,10 +2171,10 @@ public class MeasureServiceTest implements ResourceUtil {
 
     doReturn(List.of(aclSpecification1))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-        measureService.unshareMeasures(measureUserIdMap, "userName");
+        measureService.unshareMeasures(measureUserIdMap, "userName", "accessToken");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
@@ -2738,48 +2740,35 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  void returnsEmptyListWhenIdsNullOrEmptyAndDoesNotCallRepository() {
-    List<MeasureListDTO> resultNull = measureService.getMeasuresByObjectIds(null);
-    assertNotNull(resultNull);
-    assertTrue(resultNull.isEmpty());
-    verifyNoInteractions(measureRepository);
+  void testGetMeasuresByIds() {
+    List<String> inputIds = Arrays.asList("m1", "m2", "m3");
 
-    List<MeasureListDTO> resultEmpty = measureService.getMeasuresByObjectIds(List.of());
-    assertNotNull(resultEmpty);
-    assertTrue(resultEmpty.isEmpty());
-    verifyNoMoreInteractions(measureRepository);
-  }
+    MeasureSet measureSet1 = MeasureSet.builder().id("set1").owner("owner1").build();
+    MeasureSet measureSet2 = MeasureSet.builder().id("set2").owner("owner2").build();
+    MeasureSet measureSet3 = MeasureSet.builder().id("set3").owner("owner3").build();
 
-  @Test
-  void returnsEmptyListWhenAllIdsAreNullAfterFilteringAndDoesNotCallRepository() {
-    List<String> inputIds = Arrays.asList(null, null);
-    List<MeasureListDTO> result = measureService.getMeasuresByObjectIds(inputIds);
-
-    assertNotNull(result);
-    assertTrue(result.isEmpty());
-    verifyNoInteractions(measureRepository);
-  }
-
-  @Test
-  void dedupesAndFiltersNullsThenCallsRepositoryWithUniqueIdsAndReturnsRepositoryResult() {
-    List<String> inputIds = Arrays.asList("m1", "m2", "m1", null, "m3", "m2");
     List<MeasureListDTO> repoResponse =
         List.of(
-            MeasureListDTO.builder().id("m1").measureName("Alpha").build(),
-            MeasureListDTO.builder().id("m2").measureName("Beta").build(),
-            MeasureListDTO.builder().id("m3").measureName("Gamma").build());
+            MeasureListDTO.builder().id("m1").measureName("Alpha").measureSet(measureSet1).build(),
+            MeasureListDTO.builder().id("m2").measureName("Beta").measureSet(measureSet2).build(),
+            MeasureListDTO.builder().id("m3").measureName("Gamma").measureSet(measureSet3).build());
 
-    when(measureRepository.findAllByIdIn(List.of("m1", "m2", "m3"))).thenReturn(repoResponse);
+    when(measureRepository.findAllByIdInWithMeasureSet(List.of("m1", "m2", "m3")))
+        .thenReturn(repoResponse);
 
-    List<MeasureListDTO> result = measureService.getMeasuresByObjectIds(inputIds);
+    List<MeasureListDTO> result = measureService.getMeasuresByIds(inputIds);
 
     assertNotNull(result);
     assertEquals(3, result.size());
     assertEquals("m1", result.get(0).getId());
     assertEquals("m2", result.get(1).getId());
     assertEquals("m3", result.get(2).getId());
+    // Verify measureSet is populated
+    assertNotNull(result.get(0).getMeasureSet());
+    assertNotNull(result.get(1).getMeasureSet());
+    assertNotNull(result.get(2).getMeasureSet());
 
-    verify(measureRepository, times(1)).findAllByIdIn(List.of("m1", "m2", "m3"));
+    verify(measureRepository, times(1)).findAllByIdInWithMeasureSet(List.of("m1", "m2", "m3"));
     verifyNoMoreInteractions(measureRepository);
   }
 }
