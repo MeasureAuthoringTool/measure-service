@@ -2094,15 +2094,18 @@ public class MeasureControllerMvcTest {
         .when(measureService)
         .shareMeasures(any(), anyString(), anyString());
 
-    mockMvc
-        .perform(
-            put("/measures/shared")
-                .with(user(TEST_USER_ID))
-                .with(csrf())
-                .header("Authorization", "test-okta")
-                .content("{\"measureId1\": [\"invalidUser\"]}")
-                .contentType(MediaType.APPLICATION_JSON_VALUE))
-        .andExpect(status().isBadRequest());
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/measures/shared")
+                    .with(user(TEST_USER_ID))
+                    .with(csrf())
+                    .header("Authorization", "test-okta")
+                    .content("{\"measureId1\": [\"invalidUser\"]}")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    assertEquals(400, result.getResponse().getStatus());
   }
 
   @Test
