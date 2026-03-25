@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.config.security.RoleConstants;
 import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
@@ -410,7 +411,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public List<AclSpecification> updateAccessControlList(
-      String measureId, AclOperation aclOperation, String userName) {
+      String measureId, AclOperation aclOperation, String userName, boolean isAdmin) {
     log.info(
         "User [{}] has called updateAccessControlList with measure ID [{}] and AclOperation [{}]",
         userName,
@@ -428,7 +429,8 @@ public class MeasureService extends BaseMeasureService {
 
     Measure measure = persistedMeasure;
     MeasureSet measureSet =
-        measureSetService.updateMeasureSetAcls(measure.getMeasureSetId(), aclOperation, userName);
+        measureSetService.updateMeasureSetAcls(
+            measure.getMeasureSetId(), aclOperation, userName, isAdmin);
 
     log.info(
         "User [{}] successfully called updateAccessControlList with measure ID [{}] and "
@@ -515,7 +517,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public Map<String, List<AclSpecification>> shareMeasures(
-      Map<String, List<String>> measureUserIdMap, String username) {
+      Map<String, List<String>> measureUserIdMap, String username, String accessToken) {
     log.info(
         "User [{}] has called shareMeasures with measureUserIdMap [{}]",
         username,
@@ -523,14 +525,23 @@ public class MeasureService extends BaseMeasureService {
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
-    // Restrict sharing to owners of measure only
-    verifyShareAuthorization(measureUserIdMap, username, true);
+    boolean isAdmin = userServiceClient.hasRole(username, RoleConstants.MADiE_ADMIN, accessToken);
+    if (isAdmin) {
+      log.info(
+          "User [{}] has role [{}] and is authorized to perform share operations with [{}]",
+          username,
+          RoleConstants.MADiE_ADMIN,
+          measureUserIdMap);
+    } else {
+      // Restrict sharing to owners of measure only
+      verifyShareAuthorization(measureUserIdMap, username, true);
+    }
 
     measureUserIdMap.forEach(
         (measureId, userIds) -> {
           AclOperation aclOperation = buildShareAclOperation(userIds);
           measureIdToAclSpecification.put(
-              measureId, updateAccessControlList(measureId, aclOperation, username));
+              measureId, updateAccessControlList(measureId, aclOperation, username, isAdmin));
         });
 
     log.info(
@@ -544,7 +555,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public Map<String, List<AclSpecification>> unshareMeasures(
-      Map<String, List<String>> measureUserIdMap, String username) {
+      Map<String, List<String>> measureUserIdMap, String username, String accessToken) {
     log.info(
         "User [{}] has called unshareMeasures with measureUserIdMap [{}]",
         username,
@@ -552,14 +563,23 @@ public class MeasureService extends BaseMeasureService {
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification = new HashMap<>();
 
-    // Allow unsharing by owners of measure or already shared user of measure
-    verifyShareAuthorization(measureUserIdMap, username, false);
+    boolean isAdmin = userServiceClient.hasRole(username, RoleConstants.MADiE_ADMIN, accessToken);
+    if (isAdmin) {
+      log.info(
+          "User [{}] has role [{}] and is authorized to perform unshare operations with [{}]",
+          username,
+          RoleConstants.MADiE_ADMIN,
+          measureUserIdMap);
+    } else {
+      // Allow unsharing by owners of measure or already shared user of measure
+      verifyShareAuthorization(measureUserIdMap, username, false);
+    }
 
     measureUserIdMap.forEach(
         (measureId, userIds) -> {
           AclOperation aclOperation = buildUnshareAclOperation(userIds);
           measureIdToAclSpecification.put(
-              measureId, updateAccessControlList(measureId, aclOperation, username));
+              measureId, updateAccessControlList(measureId, aclOperation, username, isAdmin));
         });
 
     log.info(

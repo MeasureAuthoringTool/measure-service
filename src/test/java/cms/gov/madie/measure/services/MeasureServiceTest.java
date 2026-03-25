@@ -2022,7 +2022,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.shareMeasures(measureUserIdMap, "userName"));
+        () -> measureService.shareMeasures(measureUserIdMap, "userName", "accessToken"));
   }
 
   @Test
@@ -2082,10 +2082,10 @@ public class MeasureServiceTest implements ResourceUtil {
 
     doReturn(List.of(aclSpecification1, aclSpecification2))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-        measureService.shareMeasures(measureUserIdMap, "userName");
+        measureService.shareMeasures(measureUserIdMap, "userName", "accessToken");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));
@@ -2114,7 +2114,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         ResourceNotFoundException.class,
-        () -> measureService.unshareMeasures(measureUserIdMap, "userName"));
+        () -> measureService.unshareMeasures(measureUserIdMap, "userName", "accessToken"));
   }
 
   @Test
@@ -2172,10 +2172,10 @@ public class MeasureServiceTest implements ResourceUtil {
 
     doReturn(List.of(aclSpecification1))
         .when(measureService)
-        .updateAccessControlList(anyString(), any(AclOperation.class), anyString());
+        .updateAccessControlList(anyString(), any(AclOperation.class), anyString(), anyBoolean());
 
     Map<String, List<AclSpecification>> measureIdToAclSpecification =
-        measureService.unshareMeasures(measureUserIdMap, "userName");
+        measureService.unshareMeasures(measureUserIdMap, "userName", "accessToken");
     assertThat(measureIdToAclSpecification.size(), is(equalTo(2)));
 
     assertTrue(measureIdToAclSpecification.containsKey(measureId1));

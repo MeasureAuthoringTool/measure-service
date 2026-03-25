@@ -30,7 +30,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StopWatch;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import cms.gov.madie.measure.dto.ImpactedMeasureValidationReport;
@@ -39,8 +38,6 @@ import cms.gov.madie.measure.dto.MeasureTestCaseValidationReportSummary;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.OrganizationRepository;
-import gov.cms.madie.models.access.AclOperation;
-import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.common.ActionType;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -604,16 +601,6 @@ public class AdminController extends AbstractMeasureController {
     return ResponseEntity.ok(
         adminService.updateCodeSystem(
             id, principal.getName().toLowerCase(), incorrectCodeSystem, correctCodeSystem));
-  }
-
-  @PutMapping("/measures/{id}/acls")
-  public ResponseEntity<List<AclSpecification>> updateAccessControl(
-      @PathVariable String id, @RequestBody @Validated AclOperation aclOperation) {
-    final Measure existingMeasure = measureService.findMeasureById(id);
-    checkMeasureLock(existingMeasure, "admin");
-    List<AclSpecification> aclSpecifications =
-        measureService.updateAccessControlList(id, aclOperation, "admin");
-    return ResponseEntity.ok().body(aclSpecifications);
   }
 
   @DeleteMapping("/measures/{measureId}/delete-cms-id")

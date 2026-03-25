@@ -72,7 +72,7 @@ public class MeasureSetService {
    * @return an instance of MeasureSet
    */
   public MeasureSet updateMeasureSetAcls(
-      String measureSetId, AclOperation aclOperation, String userName) {
+      String measureSetId, AclOperation aclOperation, String userName, boolean isAdmin) {
     Optional<MeasureSet> optionalMeasureSet = measureSetRepository.findByMeasureSetId(measureSetId);
     if (optionalMeasureSet.isPresent()) {
       Map<String, ActionType> actionLogDetails = new HashMap<>();
@@ -178,8 +178,11 @@ public class MeasureSetService {
                 userName,
                 userId,
                 String.format(
-                    actionType == ActionType.UNSHARED ? "Unshared with - %s" : "Shared with - %s",
-                    userId));
+                    actionType == ActionType.UNSHARED
+                        ? "Unshared with - %s%s"
+                        : "Shared with - %s%s",
+                    userId,
+                    isAdmin ? " by MADiE Admin" : ""));
           });
 
       return updatedMeasureSet;
