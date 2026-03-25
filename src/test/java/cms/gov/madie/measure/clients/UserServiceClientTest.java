@@ -249,6 +249,47 @@ class UserServiceClientTest {
   }
 
   @Test
+  void testGetUserDetails() {
+    UserDetailsDto expectedDetails = UserDetailsDto.builder().harpId(HARP_ID).active(true).build();
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserDetailsDto.class)))
+        .thenReturn(ResponseEntity.ok(expectedDetails));
+
+    UserDetailsDto result = userServiceClient.getUserDetails(HARP_ID, TOKEN);
+
+    assertThat(result, is(notNullValue()));
+    assertThat(result.getHarpId(), is(HARP_ID));
+    assertTrue(result.isActive());
+    verify(userServiceRestTemplate, times(1))
+        .exchange(
+            eq("http://test-url/users/" + HARP_ID + "/details"),
+            eq(HttpMethod.GET),
+            any(HttpEntity.class),
+            eq(UserDetailsDto.class));
+  }
+
+  @Test
+  void testGetUserDetailsReturnsNullWhenHarpIdIsNull() {
+    UserDetailsDto result = userServiceClient.getUserDetails(null, TOKEN);
+
+    assertNull(result);
+    verify(userServiceRestTemplate, never())
+        .exchange(
+            anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(UserDetailsDto.class));
+  }
+
+  @Test
+  void testGetUserDetailsWithException() {
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserDetailsDto.class)))
+        .thenThrow(new RestClientException("Service unavailable"));
+
+    UserDetailsDto result = userServiceClient.getUserDetails(HARP_ID, TOKEN);
+    assertNull(result);
+  }
+
+  @Test
   public void testGetUserRoles() {
     UserRolesDto expectedUserRolesDto =
         UserRolesDto.builder().harpId(HARP_ID).roles(List.of("MADiE-User")).build();
