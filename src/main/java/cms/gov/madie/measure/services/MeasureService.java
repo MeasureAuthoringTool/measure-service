@@ -11,6 +11,7 @@ import cms.gov.madie.measure.utils.*;
 import gov.cms.madie.models.access.*;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.*;
 import gov.cms.mat.cql.CqlTextParser;
 import gov.cms.mat.cql.elements.CodeProperties;
@@ -931,6 +932,13 @@ public class MeasureService extends BaseMeasureService {
       boolean retainShareAccess,
       String conductedBy,
       String accessToken) {
+    UserDetailsDto userDetailsDto = userServiceClient.getUserDetails(harpId, accessToken);
+
+    if (userDetailsDto == null || userDetailsDto.getUserStatus() != UserStatus.ACTIVE) {
+      throw new InvalidIdException(
+          "The provided HARP ID is not associated with an active MADiE user.");
+    }
+
     List<String> failedMeasures = new ArrayList<>();
 
     for (String measureId : measureIds) {

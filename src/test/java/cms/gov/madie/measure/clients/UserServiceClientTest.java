@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.clients;
 
+import gov.cms.madie.models.access.UserStatus;
 import gov.cms.madie.models.dto.DetailsRequestDto;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.dto.UserRolesDto;
@@ -246,6 +247,48 @@ class UserServiceClientTest {
 
     assertThat(capturedEntity.getHeaders(), is(notNullValue()));
     assertThat(capturedEntity.getHeaders().getContentType().toString(), is("application/json"));
+  }
+
+  @Test
+  void testGetUserDetails() {
+    UserDetailsDto expectedDetails =
+        UserDetailsDto.builder().harpId(HARP_ID).userStatus(UserStatus.ACTIVE).build();
+
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserDetailsDto.class)))
+        .thenReturn(ResponseEntity.ok(expectedDetails));
+
+    UserDetailsDto result = userServiceClient.getUserDetails(HARP_ID, TOKEN);
+
+    assertThat(result, is(notNullValue()));
+    assertThat(result.getHarpId(), is(HARP_ID));
+    assertEquals(result.getUserStatus(), UserStatus.ACTIVE);
+    verify(userServiceRestTemplate, times(1))
+        .exchange(
+            eq("http://test-url/users/" + HARP_ID + "/details"),
+            eq(HttpMethod.GET),
+            any(HttpEntity.class),
+            eq(UserDetailsDto.class));
+  }
+
+  @Test
+  void testGetUserDetailsReturnsNullWhenHarpIdIsNull() {
+    UserDetailsDto result = userServiceClient.getUserDetails(null, TOKEN);
+
+    assertNull(result);
+    verify(userServiceRestTemplate, never())
+        .exchange(
+            anyString(), any(HttpMethod.class), any(HttpEntity.class), eq(UserDetailsDto.class));
+  }
+
+  @Test
+  void testGetUserDetailsWithException() {
+    when(userServiceRestTemplate.exchange(
+            anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserDetailsDto.class)))
+        .thenThrow(new RestClientException("Service unavailable"));
+
+    UserDetailsDto result = userServiceClient.getUserDetails(HARP_ID, TOKEN);
+    assertNull(result);
   }
 
   @Test
