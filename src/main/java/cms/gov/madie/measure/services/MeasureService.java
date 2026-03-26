@@ -934,7 +934,7 @@ public class MeasureService extends BaseMeasureService {
       String accessToken) {
     UserDetailsDto userDetailsDto = userServiceClient.getUserDetails(harpId, accessToken);
 
-    if (userDetailsDto == null || !userDetailsDto.isActive()) {
+    if (userDetailsDto == null || userDetailsDto.getUserStatus() != UserStatus.ACTIVE) {
       throw new InvalidIdException(
           "The provided HARP ID is not associated with an active MADiE user.");
     }
