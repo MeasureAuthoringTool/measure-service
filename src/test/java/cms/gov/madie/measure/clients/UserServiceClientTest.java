@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.clients;
 
+import gov.cms.madie.models.access.UserStatus;
 import gov.cms.madie.models.dto.DetailsRequestDto;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.dto.UserRolesDto;
@@ -250,7 +251,8 @@ class UserServiceClientTest {
 
   @Test
   void testGetUserDetails() {
-    UserDetailsDto expectedDetails = UserDetailsDto.builder().harpId(HARP_ID).active(true).build();
+    UserDetailsDto expectedDetails =
+        UserDetailsDto.builder().harpId(HARP_ID).userStatus(UserStatus.ACTIVE).build();
 
     when(userServiceRestTemplate.exchange(
             anyString(), eq(HttpMethod.GET), any(HttpEntity.class), eq(UserDetailsDto.class)))
@@ -260,7 +262,7 @@ class UserServiceClientTest {
 
     assertThat(result, is(notNullValue()));
     assertThat(result.getHarpId(), is(HARP_ID));
-    assertTrue(result.isActive());
+    assertThat(result.getUserStatus(), is(UserStatus.ACTIVE));
     verify(userServiceRestTemplate, times(1))
         .exchange(
             eq("http://test-url/users/" + HARP_ID + "/details"),

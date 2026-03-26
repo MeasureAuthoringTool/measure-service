@@ -11,6 +11,7 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.access.UserStatus;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
@@ -64,7 +65,7 @@ public class MeasureServiceAclTest {
     when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
     when(measureLockService.findByMeasureId(anyString())).thenReturn(null);
     when(userServiceClient.getUserDetails(anyString(), anyString()))
-        .thenReturn(UserDetailsDto.builder().active(true).build());
+        .thenReturn(UserDetailsDto.builder().userStatus(UserStatus.ACTIVE).build());
     when(measureSetService.updateMeasureSetAcls(any(), any(), eq("userName"), eq(false)))
         .thenReturn(measureSet);
 
@@ -164,7 +165,8 @@ public class MeasureServiceAclTest {
 
   @Test
   public void testValidateHarpIdsWhenUserDetailsDtoIsNotActive() {
-    UserDetailsDto userDetailsDto = UserDetailsDto.builder().harpId("user1").active(false).build();
+    UserDetailsDto userDetailsDto =
+        UserDetailsDto.builder().harpId("user1").userStatus(UserStatus.DEACTIVATED).build();
     when(userServiceClient.getUserDetails(anyString(), anyString())).thenReturn(userDetailsDto);
 
     Exception exception =

@@ -452,7 +452,7 @@ public class MeasureService extends BaseMeasureService {
 
   protected void validateHarpId(String userId, String accessToken) {
     UserDetailsDto userDetailsDto = userServiceClient.getUserDetails(userId, accessToken);
-    if (userDetailsDto == null || !userDetailsDto.isActive()) {
+    if (userDetailsDto == null || userDetailsDto.getUserStatus() != UserStatus.ACTIVE) {
       throw new InvalidIdException(
           "The provided HARP ID (" + userId + ") is not associated with an active MADiE user.");
     }
