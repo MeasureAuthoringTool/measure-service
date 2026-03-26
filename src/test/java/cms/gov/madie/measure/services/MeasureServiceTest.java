@@ -38,6 +38,7 @@ import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import gov.cms.madie.models.access.AclOperation;
+import gov.cms.madie.models.access.UserStatus;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.dto.UserDetailsDto;
@@ -2349,7 +2350,8 @@ public class MeasureServiceTest implements ResourceUtil {
     Optional<Measure> persistedMeasure = Optional.of(measure);
 
     when(userServiceClient.getUserDetails(anyString(), anyString()))
-        .thenReturn(UserDetailsDto.builder().harpId("user123").active(true).build());
+        .thenReturn(
+            UserDetailsDto.builder().harpId("user123").userStatus(UserStatus.ACTIVE).build());
     when(measureRepository.findById(anyString())).thenReturn(persistedMeasure);
     when(measureSetService.changeOwnership(
             anyString(), anyString(), any(Boolean.class), anyString(), anyString()))
@@ -2365,7 +2367,8 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testTransferMeasuresNotFound() {
     when(userServiceClient.getUserDetails(anyString(), anyString()))
-        .thenReturn(UserDetailsDto.builder().harpId("user123").active(true).build());
+        .thenReturn(
+            UserDetailsDto.builder().harpId("user123").userStatus(UserStatus.ACTIVE).build());
     when(measureRepository.findById("123")).thenReturn(Optional.empty());
 
     List<String> failed =
@@ -2392,7 +2395,8 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testTransferMeasuresThrowsWhenTargetUserIsInactive() {
     when(userServiceClient.getUserDetails(anyString(), anyString()))
-        .thenReturn(UserDetailsDto.builder().harpId("user123").active(false).build());
+        .thenReturn(
+            UserDetailsDto.builder().harpId("user123").userStatus(UserStatus.DEACTIVATED).build());
 
     assertThrows(
         InvalidIdException.class,
