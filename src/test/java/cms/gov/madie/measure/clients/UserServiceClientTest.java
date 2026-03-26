@@ -262,7 +262,7 @@ class UserServiceClientTest {
 
     assertThat(result, is(notNullValue()));
     assertThat(result.getHarpId(), is(HARP_ID));
-    assertEquals(result.getUserStatus(), UserStatus.ACTIVE);
+    assertThat(result.getUserStatus(), is(UserStatus.ACTIVE));
     verify(userServiceRestTemplate, times(1))
         .exchange(
             eq("http://test-url/users/" + HARP_ID + "/details"),
