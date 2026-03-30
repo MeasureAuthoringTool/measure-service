@@ -2085,6 +2085,30 @@ public class MeasureControllerMvcTest {
   }
 
   @Test
+  public void testShareMeasuresReturns400WhenHarpIdNotActiveMADiEUser() throws Exception {
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(Measure.builder().id("measureId1").build());
+    doThrow(
+            new InvalidIdException(
+                "The provided HARP ID (invalidUser) is not associated with an active MADiE user."))
+        .when(measureService)
+        .shareMeasures(any(), anyString(), anyString());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/measures/shared")
+                    .with(user(TEST_USER_ID))
+                    .with(csrf())
+                    .header("Authorization", "test-okta")
+                    .content("{\"measureId1\": [\"invalidUser\"]}")
+                    .contentType(MediaType.APPLICATION_JSON_VALUE))
+            .andExpect(status().isBadRequest())
+            .andReturn();
+    assertEquals(400, result.getResponse().getStatus());
+  }
+
+  @Test
   public void testUnshareMeasures() throws Exception {
     AclSpecification aclSpecification2 = new AclSpecification();
     aclSpecification2.setUserId("userId2");

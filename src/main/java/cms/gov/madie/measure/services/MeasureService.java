@@ -11,6 +11,7 @@ import cms.gov.madie.measure.utils.*;
 import gov.cms.madie.models.access.*;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.*;
 import gov.cms.mat.cql.CqlTextParser;
 import gov.cms.mat.cql.elements.CodeProperties;
@@ -410,7 +411,11 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public List<AclSpecification> updateAccessControlList(
-      String measureId, AclOperation aclOperation, String userName, boolean isAdmin) {
+      String measureId,
+      AclOperation aclOperation,
+      String userName,
+      boolean isAdmin,
+      String accessToken) {
     log.info(
         "User [{}] has called updateAccessControlList with measure ID [{}] and AclOperation [{}]",
         userName,
@@ -426,6 +431,10 @@ public class MeasureService extends BaseMeasureService {
       throw new ResourceNotFoundException("Measure does not exist: " + measureId);
     }
 
+    if (AclOperation.AclAction.GRANT.equals(aclOperation.getAction())) {
+      aclOperation.getAcls().forEach(acl -> validateHarpId(acl.getUserId(), accessToken));
+    }
+
     Measure measure = persistedMeasure;
     MeasureSet measureSet =
         measureSetService.updateMeasureSetAcls(
@@ -439,6 +448,14 @@ public class MeasureService extends BaseMeasureService {
         aclOperation,
         measureSet.getAcls());
     return measureSet.getAcls();
+  }
+
+  protected void validateHarpId(String userId, String accessToken) {
+    UserDetailsDto userDetailsDto = userServiceClient.getUserDetails(userId, accessToken);
+    if (userDetailsDto == null || userDetailsDto.getUserStatus() != UserStatus.ACTIVE) {
+      throw new InvalidIdException(
+          "The provided HARP ID (" + userId + ") is not associated with an active MADiE user.");
+    }
   }
 
   public Map<String, List<SharedUser>> getSharedMeasures(List<String> measureIds, String username) {
@@ -540,7 +557,8 @@ public class MeasureService extends BaseMeasureService {
         (measureId, userIds) -> {
           AclOperation aclOperation = buildShareAclOperation(userIds);
           measureIdToAclSpecification.put(
-              measureId, updateAccessControlList(measureId, aclOperation, username, isAdmin));
+              measureId,
+              updateAccessControlList(measureId, aclOperation, username, isAdmin, accessToken));
         });
 
     log.info(
@@ -578,7 +596,8 @@ public class MeasureService extends BaseMeasureService {
         (measureId, userIds) -> {
           AclOperation aclOperation = buildUnshareAclOperation(userIds);
           measureIdToAclSpecification.put(
-              measureId, updateAccessControlList(measureId, aclOperation, username, isAdmin));
+              measureId,
+              updateAccessControlList(measureId, aclOperation, username, isAdmin, accessToken));
         });
 
     log.info(
@@ -931,6 +950,13 @@ public class MeasureService extends BaseMeasureService {
       boolean retainShareAccess,
       String conductedBy,
       String accessToken) {
+    UserDetailsDto userDetailsDto = userServiceClient.getUserDetails(harpId, accessToken);
+
+    if (userDetailsDto == null || userDetailsDto.getUserStatus() != UserStatus.ACTIVE) {
+      throw new InvalidIdException(
+          "The provided HARP ID is not associated with an active MADiE user.");
+    }
+
     List<String> failedMeasures = new ArrayList<>();
 
     for (String measureId : measureIds) {
