@@ -496,6 +496,14 @@ public class TestCaseService {
       if (!doesPopCriteriaMatch) {
         clearedExpectedValues = true;
         clearExpectedValues(dupTestCase);
+        // When the target has fewer groups than the source, drop the extra group
+        // populations to prevent IndexOutOfBoundsExceptions and stale data.
+        if (isNotEmpty(targetGroups)
+            && isNotEmpty(dupTestCase.getGroupPopulations())
+            && dupTestCase.getGroupPopulations().size() > targetGroups.size()) {
+          dupTestCase.setGroupPopulations(
+              new ArrayList<>(dupTestCase.getGroupPopulations().subList(0, targetGroups.size())));
+        }
       }
       Optional<TestCase> copiedTestCase = Optional.empty();
       try {

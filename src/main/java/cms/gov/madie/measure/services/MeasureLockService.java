@@ -43,9 +43,16 @@ public class MeasureLockService {
     } catch (DuplicateKeyException ex) {
       Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
       if (existingLock.isPresent()) {
-        String lockedBy = existingLock.get().getLockedBy();
-        boolean locked = !lockedBy.equals(userName);
-        return new LockInfo(locked, lockedBy, measureId);
+        MeasureLock existing = existingLock.get();
+        String lockedBy = existing.getLockedBy();
+        if (lockedBy.equals(userName)) {
+          // Upsert: refresh the lockedAt timestamp for the same user
+          existing.setLockedAt(now);
+          existing.setExpiresAt(expiresAt);
+          measureLockRepository.save(existing);
+          return new LockInfo(false, lockedBy, measureId);
+        }
+        return new LockInfo(true, lockedBy, measureId);
       }
       return new LockInfo(true, null, measureId); // fallback
     }
@@ -55,6 +62,12 @@ public class MeasureLockService {
     Optional<MeasureLock> existingLock = measureLockRepository.findByMeasureId(measureId);
     // it's our lock. We delete it.
     if (existingLock.isPresent() && existingLock.get().getLockedBy().equals(userName)) {
+      MeasureLock lock = existingLock.get();
+      // Block deletion if the lock was created less than 200ms ago to prevent race conditions
+      if (lock.getLockedAt() != null
+          && Duration.between(lock.getLockedAt(), Instant.now()).toMillis() < 200) {
+        return new LockInfo(true, userName, measureId); // lock too young, keep it
+      }
       measureLockRepository.deleteByMeasureId(measureId);
       return new LockInfo(false, null, measureId); // Successfully unlocked
     }
