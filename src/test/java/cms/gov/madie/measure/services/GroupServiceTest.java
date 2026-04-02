@@ -44,6 +44,7 @@ import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
 import cms.gov.madie.measure.validations.CqlDefinitionReturnTypeService;
 import cms.gov.madie.measure.validations.CqlObservationFunctionService;
+import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 
@@ -64,6 +65,7 @@ public class GroupServiceTest implements ResourceUtil {
 
   @Mock private TestCaseLockService testCaseLockService;
   @Mock private AppConfigService appConfigService;
+  @Mock private ActionLogService actionLogService;
 
   @InjectMocks private GroupService groupService;
 
@@ -2040,5 +2042,300 @@ public class GroupServiceTest implements ResourceUtil {
         () ->
             groupService.createOrUpdateGroup(
                 compositeGroup, measureWithCompositeGroup.getId(), "test.user"));
+  }
+
+  @Test
+  void testAddComponentAddsCompositeMeasureId() {
+    String componentMeasureId = "component-measure-id";
+    Measure componentMeasure =
+        Measure.builder().id(componentMeasureId).measureName("Component Measure").build();
+
+    Group existingCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(new ArrayList<>())
+            .build();
+
+    Group updatedCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(List.of(Component.builder().measureId(componentMeasureId).build()))
+            .build();
+
+    Measure compositeMeasure =
+        measure.toBuilder()
+            .measureName("Composite Measure")
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(new ArrayList<>(List.of(existingCompositeGroup)))
+            .build();
+
+    when(measureRepository.findById(compositeMeasure.getId()))
+        .thenReturn(Optional.of(compositeMeasure));
+    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.of(componentMeasure));
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+
+    groupService.createOrUpdateGroup(updatedCompositeGroup, compositeMeasure.getId(), "test.user");
+
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    verify(measureRepository, times(2)).save(measureCaptor.capture());
+    List<String> savedIds = measureCaptor.getValue().getCompositeMeasureIds();
+    assertEquals(1, savedIds.size());
+    assertTrue(savedIds.contains(compositeMeasure.getId()));
+
+    verify(actionLogService)
+        .logAction(
+            eq(componentMeasureId),
+            eq(Measure.class),
+            eq(ActionType.ADDED_TO_COMPOSITE),
+            eq("test.user"),
+            eq("Added to composite measure Composite Measure"));
+  }
+
+  @Test
+  void testAddComponentAlreadyInAnotherCompositeAppendsMeasureId() {
+    String componentMeasureId = "component-measure-id";
+    Measure componentMeasure =
+        Measure.builder()
+            .id(componentMeasureId)
+            .measureName("Component Measure")
+            .compositeMeasureIds(new ArrayList<>(List.of("other-measure-id")))
+            .build();
+
+    Group existingCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(new ArrayList<>())
+            .build();
+
+    Group updatedCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(List.of(Component.builder().measureId(componentMeasureId).build()))
+            .build();
+
+    Measure compositeMeasure =
+        measure.toBuilder()
+            .measureName("Composite Measure")
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(new ArrayList<>(List.of(existingCompositeGroup)))
+            .build();
+
+    when(measureRepository.findById(compositeMeasure.getId()))
+        .thenReturn(Optional.of(compositeMeasure));
+    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.of(componentMeasure));
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+
+    groupService.createOrUpdateGroup(updatedCompositeGroup, compositeMeasure.getId(), "test.user");
+
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    verify(measureRepository, times(2)).save(measureCaptor.capture());
+    List<String> savedIds = measureCaptor.getValue().getCompositeMeasureIds();
+    assertEquals(2, savedIds.size());
+    assertTrue(savedIds.contains("other-measure-id"));
+    assertTrue(savedIds.contains(compositeMeasure.getId()));
+
+    verify(actionLogService)
+        .logAction(
+            eq(componentMeasureId),
+            eq(Measure.class),
+            eq(ActionType.ADDED_TO_COMPOSITE),
+            eq("test.user"),
+            eq("Added to composite measure Composite Measure"));
+  }
+
+  @Test
+  void testAddComponentThrowsWhenComponentNotFound() {
+    String componentMeasureId = "component-measure-id";
+
+    Group existingCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(new ArrayList<>())
+            .build();
+
+    Group updatedCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(List.of(Component.builder().measureId(componentMeasureId).build()))
+            .build();
+
+    Measure compositeMeasure =
+        measure.toBuilder()
+            .measureName("Composite Measure")
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(new ArrayList<>(List.of(existingCompositeGroup)))
+            .build();
+
+    when(measureRepository.findById(compositeMeasure.getId()))
+        .thenReturn(Optional.of(compositeMeasure));
+    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.empty());
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+
+    assertThrows(
+        ResourceNotFoundException.class,
+        () ->
+            groupService.createOrUpdateGroup(
+                updatedCompositeGroup, compositeMeasure.getId(), "test.user"));
+  }
+
+  @Test
+  void testRemoveComponentNotInOtherCompositesRemovesMeasureId() {
+    String componentMeasureId = "component-measure-id";
+    Measure componentMeasure =
+        Measure.builder()
+            .id(componentMeasureId)
+            .measureName("Component Measure")
+            .compositeMeasureIds(new ArrayList<>(List.of(measure.getId())))
+            .build();
+
+    Group existingCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(List.of(Component.builder().measureId(componentMeasureId).build()))
+            .build();
+
+    Group updatedCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(new ArrayList<>())
+            .build();
+
+    Measure compositeMeasure =
+        measure.toBuilder()
+            .measureName("Composite Measure")
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(new ArrayList<>(List.of(existingCompositeGroup)))
+            .build();
+
+    when(measureRepository.findById(compositeMeasure.getId()))
+        .thenReturn(Optional.of(compositeMeasure));
+    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.of(componentMeasure));
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+
+    groupService.createOrUpdateGroup(updatedCompositeGroup, compositeMeasure.getId(), "test.user");
+
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    verify(measureRepository, times(2)).save(measureCaptor.capture());
+    assertTrue(measureCaptor.getValue().getCompositeMeasureIds().isEmpty());
+
+    verify(actionLogService)
+        .logAction(
+            eq(componentMeasureId),
+            eq(Measure.class),
+            eq(ActionType.REMOVED_FROM_COMPOSITE),
+            eq("test.user"),
+            eq("Removed from composite measure Composite Measure"));
+  }
+
+  @Test
+  void testRemoveComponentStillInOtherCompositeRetainsMeasureId() {
+    String componentMeasureId = "component-measure-id";
+    Measure componentMeasure =
+        Measure.builder()
+            .id(componentMeasureId)
+            .measureName("Component Measure")
+            .compositeMeasureIds(new ArrayList<>(List.of(measure.getId(), "other-measure-id")))
+            .build();
+
+    Group existingCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(List.of(Component.builder().measureId(componentMeasureId).build()))
+            .build();
+
+    Group updatedCompositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(new ArrayList<>())
+            .build();
+
+    Measure compositeMeasure =
+        measure.toBuilder()
+            .measureName("Composite Measure")
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(new ArrayList<>(List.of(existingCompositeGroup)))
+            .build();
+
+    when(measureRepository.findById(compositeMeasure.getId()))
+        .thenReturn(Optional.of(compositeMeasure));
+    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.of(componentMeasure));
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+
+    groupService.createOrUpdateGroup(updatedCompositeGroup, compositeMeasure.getId(), "test.user");
+
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    verify(measureRepository, times(2)).save(measureCaptor.capture());
+    List<String> savedIds = measureCaptor.getValue().getCompositeMeasureIds();
+    assertEquals(1, savedIds.size());
+    assertFalse(savedIds.contains(measure.getId()));
+    assertTrue(savedIds.contains("other-measure-id"));
+
+    verify(actionLogService)
+        .logAction(
+            eq(componentMeasureId),
+            eq(Measure.class),
+            eq(ActionType.REMOVED_FROM_COMPOSITE),
+            eq("test.user"),
+            eq("Removed from composite measure Composite Measure"));
+  }
+
+  @Test
+  void testNonCompositeGroupDoesNotLogComponentActions() {
+    Group nonCompositeGroup =
+        Group.builder()
+            .id(group1.getId())
+            .scoring(MeasureScoring.PROPORTION.toString())
+            .populations(new ArrayList<>())
+            .build();
+
+    Measure measureWithGroup =
+        measure.toBuilder()
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .groups(new ArrayList<>(List.of(group1)))
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measureWithGroup));
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+
+    groupService.createOrUpdateGroup(nonCompositeGroup, measureWithGroup.getId(), "test.user");
+
+    verify(actionLogService, times(0))
+        .logAction(anyString(), any(), any(ActionType.class), anyString(), anyString());
   }
 }
