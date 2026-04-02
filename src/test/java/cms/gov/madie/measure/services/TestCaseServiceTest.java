@@ -3122,6 +3122,223 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
+  void testCopyToAnotherMeasureDropsExtraGroupPopulationsWhenTargetHasFewerGroups() {
+    // Source test case has 2 group populations; target measure has only 1 group.
+    // The extra group population should be dropped to prevent stale/excess data.
+    TestCase source =
+        testCase.deepCopy().toBuilder()
+            .groupPopulations(
+                List.of(
+                    TestCaseGroupPopulation.builder()
+                        .scoring(MeasureScoring.PROPORTION.toString())
+                        .populationBasis("boolean")
+                        .populationValues(
+                            List.of(
+                                TestCasePopulationValue.builder()
+                                    .name(PopulationType.INITIAL_POPULATION)
+                                    .expected(true)
+                                    .build(),
+                                TestCasePopulationValue.builder()
+                                    .name(PopulationType.DENOMINATOR)
+                                    .expected(true)
+                                    .build()))
+                        .build(),
+                    TestCaseGroupPopulation.builder()
+                        .scoring(MeasureScoring.CONTINUOUS_VARIABLE.toString())
+                        .populationBasis("boolean")
+                        .populationValues(
+                            List.of(
+                                TestCasePopulationValue.builder()
+                                    .name(PopulationType.INITIAL_POPULATION)
+                                    .expected(true)
+                                    .build()))
+                        .build()))
+            .build();
+
+    // Target measure has only 1 group
+    Measure targetMeasure =
+        measure.toBuilder()
+            .groups(
+                List.of(
+                    Group.builder()
+                        .scoring(MeasureScoring.PROPORTION.toString())
+                        .populationBasis("boolean")
+                        .populations(
+                            List.of(
+                                Population.builder()
+                                    .name(PopulationType.INITIAL_POPULATION)
+                                    .definition("def")
+                                    .build(),
+                                Population.builder()
+                                    .name(PopulationType.NUMERATOR)
+                                    .definition("def")
+                                    .build()))
+                        .build()))
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .build();
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
+    when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(
+            invocation ->
+                (invocation.getArgument(0, TestCase.class))
+                    .toBuilder()
+                        .hapiOperationOutcome(
+                            HapiOperationOutcome.builder().code(200).successful(true).build())
+                        .validResource(true)
+                        .build());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
+
+    CopyTestCaseResult result =
+        testCaseService.copyTestCasesToMeasure(
+            targetMeasure.getId(), List.of(source), "user.name", "accessToken");
+
+    assertThat(result.getCopiedTestCases().size(), equalTo(1));
+    assertTrue(result.getDidClearExpectedValues());
+    // Extra group population should be dropped — only 1 group population remains
+    assertThat(result.getCopiedTestCases().get(0).getGroupPopulations().size(), equalTo(1));
+    // Expected values should be cleared
+    assertNull(
+        result
+            .getCopiedTestCases()
+            .get(0)
+            .getGroupPopulations()
+            .get(0)
+            .getPopulationValues()
+            .get(0)
+            .getExpected());
+  }
+
+  @Test
+  void testCopyToAnotherMeasureDoesNotTrimWhenTargetHasNoGroups() {
+    // When target has no valid groups, targetGroups is null → isNotEmpty(targetGroups) is false
+    // → trim is skipped even though pop criteria mismatch occurred.
+    TestCase source =
+        testCase.deepCopy().toBuilder()
+            .groupPopulations(
+                List.of(
+                    TestCaseGroupPopulation.builder()
+                        .scoring(MeasureScoring.PROPORTION.toString())
+                        .populationBasis("boolean")
+                        .populationValues(
+                            List.of(
+                                TestCasePopulationValue.builder()
+                                    .name(PopulationType.INITIAL_POPULATION)
+                                    .expected(true)
+                                    .build()))
+                        .build()))
+            .build();
+
+    // Target measure has no groups at all
+    Measure targetMeasure =
+        measure.toBuilder()
+            .groups(List.of())
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .build();
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
+    when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(
+            invocation ->
+                (invocation.getArgument(0, TestCase.class))
+                    .toBuilder()
+                        .hapiOperationOutcome(
+                            HapiOperationOutcome.builder().code(200).successful(true).build())
+                        .validResource(true)
+                        .build());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
+
+    CopyTestCaseResult result =
+        testCaseService.copyTestCasesToMeasure(
+            targetMeasure.getId(), List.of(source), "user.name", "accessToken");
+
+    assertThat(result.getCopiedTestCases().size(), equalTo(1));
+    assertTrue(result.getDidClearExpectedValues());
+    // Group populations are NOT trimmed because targetGroups is null/empty
+    assertThat(result.getCopiedTestCases().get(0).getGroupPopulations().size(), equalTo(1));
+  }
+
+  @Test
+  void testCopyToAnotherMeasureDoesNotTrimWhenSourceHasFewerGroupsThanTarget() {
+    // Source has 1 group population, target has 2 groups. Mismatch → expected values cleared.
+    // But source.size() < target.size() so trim condition (size() > targetGroups.size()) is false.
+    TestCase source =
+        testCase.deepCopy().toBuilder()
+            .groupPopulations(
+                List.of(
+                    TestCaseGroupPopulation.builder()
+                        .scoring(MeasureScoring.CONTINUOUS_VARIABLE.toString())
+                        .populationBasis("boolean")
+                        .populationValues(
+                            List.of(
+                                TestCasePopulationValue.builder()
+                                    .name(PopulationType.INITIAL_POPULATION)
+                                    .expected(true)
+                                    .build()))
+                        .build()))
+            .build();
+
+    // Target measure has 2 groups — more than the source
+    Measure targetMeasure =
+        measure.toBuilder()
+            .groups(
+                List.of(
+                    Group.builder()
+                        .scoring(MeasureScoring.PROPORTION.toString())
+                        .populationBasis("boolean")
+                        .populations(
+                            List.of(
+                                Population.builder()
+                                    .name(PopulationType.INITIAL_POPULATION)
+                                    .definition("def")
+                                    .build(),
+                                Population.builder()
+                                    .name(PopulationType.DENOMINATOR)
+                                    .definition("def")
+                                    .build()))
+                        .build(),
+                    Group.builder()
+                        .scoring(MeasureScoring.PROPORTION.toString())
+                        .populationBasis("boolean")
+                        .populations(
+                            List.of(
+                                Population.builder()
+                                    .name(PopulationType.INITIAL_POPULATION)
+                                    .definition("def2")
+                                    .build()))
+                        .build()))
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .build();
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
+    when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(
+            invocation ->
+                (invocation.getArgument(0, TestCase.class))
+                    .toBuilder()
+                        .hapiOperationOutcome(
+                            HapiOperationOutcome.builder().code(200).successful(true).build())
+                        .validResource(true)
+                        .build());
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
+
+    CopyTestCaseResult result =
+        testCaseService.copyTestCasesToMeasure(
+            targetMeasure.getId(), List.of(source), "user.name", "accessToken");
+
+    assertThat(result.getCopiedTestCases().size(), equalTo(1));
+    assertTrue(result.getDidClearExpectedValues());
+    // Source has fewer groups than target: no trimming — group populations count stays at 1
+    assertThat(result.getCopiedTestCases().get(0).getGroupPopulations().size(), equalTo(1));
+  }
+
+  @Test
   void testCopyToAnotherMeasureWithExistingTestCase() {
     // Set-up
     Measure targetMeasure =

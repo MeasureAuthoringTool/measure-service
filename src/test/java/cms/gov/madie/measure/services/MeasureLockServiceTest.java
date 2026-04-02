@@ -61,12 +61,15 @@ class MeasureLockServiceTest {
     MeasureLock existing = new MeasureLock();
     existing.setMeasureId(measureId);
     existing.setLockedBy(userName);
+    existing.setLockedAt(Instant.now().minusSeconds(10));
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(existing));
 
     LockInfo response = service.lockMeasure(measureId, userName);
 
     verify(repository).insert((MeasureLock) any());
     verify(repository).findByMeasureId(measureId);
+    // upsert: save called with refreshed timestamps
+    verify(repository).save(existing);
     // it's the same user
     assertThat(response.isLocked()).isFalse();
     assertThat(response.getLockedBy()).isEqualTo(userName);
@@ -108,7 +111,8 @@ class MeasureLockServiceTest {
     MeasureLock lock = new MeasureLock();
     lock.setMeasureId(measureId);
     lock.setLockedBy(userName);
-    lock.setLockedAt(Instant.now());
+    // old lock: created more than 200ms ago
+    lock.setLockedAt(Instant.now().minusSeconds(1));
     when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(lock));
 
     LockInfo response = service.unlockMeasure(measureId, userName);
@@ -116,6 +120,22 @@ class MeasureLockServiceTest {
     verify(repository).deleteByMeasureId(measureId);
     assertThat(response.isLocked()).isFalse();
     assertThat(response.getLockedBy()).isNull();
+  }
+
+  @Test
+  void testUnlockMeasureBlockedWhenLockIsTooYoung() {
+    MeasureLock lock = new MeasureLock();
+    lock.setMeasureId(measureId);
+    lock.setLockedBy(userName);
+    // young lock: created just now (well within 200ms)
+    lock.setLockedAt(Instant.now());
+    when(repository.findByMeasureId(measureId)).thenReturn(Optional.of(lock));
+
+    LockInfo response = service.unlockMeasure(measureId, userName);
+
+    verify(repository, never()).deleteByMeasureId(any());
+    assertThat(response.isLocked()).isTrue();
+    assertThat(response.getLockedBy()).isEqualTo(userName);
   }
 
   @Test
