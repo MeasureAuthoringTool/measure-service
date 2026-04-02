@@ -29,21 +29,18 @@ db = db.getSiblingDB("madie");
 
 var organizations = [
     {
-        _id: ObjectId("6660628d73978d5a60831b22"),
         name: "Joint Commission",
         oid: "1.3.6.1.4.1.33895",
         url: "https://www.jointcommission.org/",
         _class: "gov.cms.madie.models.common.Organization"
     },
     {
-        _id: ObjectId("6660628d73978d5a60831c07"),
         name: "ICF",
         oid: "e96078ba-a69f-11ea-bb37-0242ac130002",
         url: "https://www.icf.com/",
         _class: "gov.cms.madie.models.common.Organization"
     },
     {
-        _id: ObjectId("6660628d73978d5a60831bc7"),
         name: "SemanticBits",
         oid: "02c84f54-919b-4464-bf51-a1438f2710e2",
         url: "https://semanticbits.com/",
