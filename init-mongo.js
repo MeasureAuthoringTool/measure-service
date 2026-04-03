@@ -24,4 +24,36 @@ db.createUser(
   }
 );
 
+// Switch context to the madie database
+db = db.getSiblingDB("madie");
+
+var organizations = [
+    {
+        name: "Joint Commission",
+        oid: "1.3.6.1.4.1.33895",
+        url: "https://www.jointcommission.org/",
+        _class: "gov.cms.madie.models.common.Organization"
+    },
+    {
+        name: "ICF",
+        oid: "e96078ba-a69f-11ea-bb37-0242ac130002",
+        url: "https://www.icf.com/",
+        _class: "gov.cms.madie.models.common.Organization"
+    },
+    {
+        name: "SemanticBits",
+        oid: "02c84f54-919b-4464-bf51-a1438f2710e2",
+        url: "https://semanticbits.com/",
+        _class: "gov.cms.madie.models.common.Organization"
+    }
+];
+
+organizations.forEach(function(org) {
+    db.organization.updateOne(
+        { name: org.name },
+        { $setOnInsert: org },
+        { upsert: true }
+    );
+});
+
 
