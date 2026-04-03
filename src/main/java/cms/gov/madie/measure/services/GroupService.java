@@ -34,6 +34,7 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -492,73 +493,80 @@ public class GroupService {
       Measure compositeMeasure,
       String username) {
 
-    // collect the measure IDs from the component lists before and after this save
-    List<String> previousIds = previousComponents.stream().map(Component::getMeasureId).toList();
-    List<String> newIds =
+    Set<String> previousIds =
+        previousComponents.stream().map(Component::getMeasureId).collect(Collectors.toSet());
+    Set<String> newIds =
         newComponents == null
-            ? List.of()
-            : newComponents.stream().map(Component::getMeasureId).toList();
+            ? Set.of()
+            : newComponents.stream().map(Component::getMeasureId).collect(Collectors.toSet());
 
-    // diff the two lists to find which components were added or removed in this save
-    Set<String> previousSet = new HashSet<>(previousIds);
-    Set<String> newSet = new HashSet<>(newIds);
+    Set<String> addedIds =
+        newIds.stream().filter(id -> !previousIds.contains(id)).collect(Collectors.toSet());
+    Set<String> removedIds =
+        previousIds.stream().filter(id -> !newIds.contains(id)).collect(Collectors.toSet());
 
-    List<String> removedIds = previousIds.stream().filter(id -> !newSet.contains(id)).toList();
-    List<String> addedIds = newIds.stream().filter(id -> !previousSet.contains(id)).toList();
+    Set<String> allChangedIds = new HashSet<>(addedIds);
+    allChangedIds.addAll(removedIds);
 
     String compositeMeasureId = compositeMeasure.getId();
     String compositeName = compositeMeasure.getMeasureName();
 
-    // for each newly added component, record this composite's measure ID on the component measure
-    // so the component knows which composites it belongs to, then log the action
-    for (String componentMeasureId : addedIds) {
-      Measure component = measureRepository.findById(componentMeasureId).orElse(null);
+    // Fetch all added and removed components
+    Map<String, Measure> componentById =
+        measureRepository.findAllById(allChangedIds).stream()
+            .collect(Collectors.toMap(Measure::getId, m -> m));
 
-      if (component == null) {
-        throw new ResourceNotFoundException("Measure", componentMeasureId);
-      }
+    // Validate that all component measures exist first
+    allChangedIds.forEach(
+        id -> {
+          if (!componentById.containsKey(id)) {
+            throw new ResourceNotFoundException("Measure", id);
+          }
+        });
 
-      List<String> compositeMeasureIds =
-          component.getCompositeMeasureIds() == null
-              ? new ArrayList<>()
-              : new ArrayList<>(component.getCompositeMeasureIds());
+    // Update all components in memory before writing to db
+    addedIds.forEach(
+        id -> {
+          Measure component = componentById.get(id);
+          List<String> ids =
+              new ArrayList<>(
+                  Objects.requireNonNullElseGet(
+                      component.getCompositeMeasureIds(), ArrayList::new));
+          ids.add(compositeMeasureId);
+          component.setCompositeMeasureIds(ids);
+        });
 
-      compositeMeasureIds.add(compositeMeasureId);
-      component.setCompositeMeasureIds(compositeMeasureIds);
-      measureRepository.save(component);
+    removedIds.forEach(
+        id -> {
+          Measure component = componentById.get(id);
+          List<String> ids =
+              new ArrayList<>(
+                  Objects.requireNonNullElseGet(
+                      component.getCompositeMeasureIds(), ArrayList::new));
+          ids.remove(compositeMeasureId);
+          component.setCompositeMeasureIds(ids);
+        });
 
-      actionLogService.logAction(
-          componentMeasureId,
-          Measure.class,
-          ActionType.ADDED_TO_COMPOSITE,
-          username,
-          "Added to composite measure " + compositeName);
-    }
+    measureRepository.saveAll(componentById.values());
 
-    // for each removed component, remove this composite's measure ID from the component measure
-    for (String componentMeasureId : removedIds) {
-      Measure component = measureRepository.findById(componentMeasureId).orElse(null);
+    // Log after all writes succeed
+    addedIds.forEach(
+        id ->
+            actionLogService.logAction(
+                id,
+                Measure.class,
+                ActionType.ADDED_TO_COMPOSITE,
+                username,
+                "Added to composite measure " + compositeName));
 
-      if (component == null) {
-        throw new ResourceNotFoundException("Measure", componentMeasureId);
-      }
-
-      List<String> compositeMeasureIds =
-          component.getCompositeMeasureIds() == null
-              ? new ArrayList<>()
-              : new ArrayList<>(component.getCompositeMeasureIds());
-
-      compositeMeasureIds.remove(compositeMeasureId);
-      component.setCompositeMeasureIds(compositeMeasureIds);
-      measureRepository.save(component);
-
-      actionLogService.logAction(
-          componentMeasureId,
-          Measure.class,
-          ActionType.REMOVED_FROM_COMPOSITE,
-          username,
-          "Removed from composite measure " + compositeName);
-    }
+    removedIds.forEach(
+        id ->
+            actionLogService.logAction(
+                id,
+                Measure.class,
+                ActionType.REMOVED_FROM_COMPOSITE,
+                username,
+                "Removed from composite measure " + compositeName));
   }
 
   protected void handleFhirGroupReturnTypes(Group group, Measure measure) {

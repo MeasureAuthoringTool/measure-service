@@ -9,6 +9,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
@@ -2077,15 +2078,14 @@ public class GroupServiceTest implements ResourceUtil {
 
     when(measureRepository.findById(compositeMeasure.getId()))
         .thenReturn(Optional.of(compositeMeasure));
-    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.of(componentMeasure));
+    when(measureRepository.findAllById(anyCollection())).thenReturn(List.of(componentMeasure));
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
 
     groupService.createOrUpdateGroup(updatedCompositeGroup, compositeMeasure.getId(), "test.user");
 
-    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
-    verify(measureRepository, times(2)).save(measureCaptor.capture());
-    List<String> savedIds = measureCaptor.getValue().getCompositeMeasureIds();
+    verify(measureRepository).saveAll(anyCollection());
+    List<String> savedIds = componentMeasure.getCompositeMeasureIds();
     assertEquals(1, savedIds.size());
     assertTrue(savedIds.contains(compositeMeasure.getId()));
 
@@ -2135,15 +2135,14 @@ public class GroupServiceTest implements ResourceUtil {
 
     when(measureRepository.findById(compositeMeasure.getId()))
         .thenReturn(Optional.of(compositeMeasure));
-    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.of(componentMeasure));
+    when(measureRepository.findAllById(anyCollection())).thenReturn(List.of(componentMeasure));
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
 
     groupService.createOrUpdateGroup(updatedCompositeGroup, compositeMeasure.getId(), "test.user");
 
-    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
-    verify(measureRepository, times(2)).save(measureCaptor.capture());
-    List<String> savedIds = measureCaptor.getValue().getCompositeMeasureIds();
+    verify(measureRepository).saveAll(anyCollection());
+    List<String> savedIds = componentMeasure.getCompositeMeasureIds();
     assertEquals(2, savedIds.size());
     assertTrue(savedIds.contains("other-measure-id"));
     assertTrue(savedIds.contains(compositeMeasure.getId()));
@@ -2188,7 +2187,7 @@ public class GroupServiceTest implements ResourceUtil {
 
     when(measureRepository.findById(compositeMeasure.getId()))
         .thenReturn(Optional.of(compositeMeasure));
-    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.empty());
+    when(measureRepository.findAllById(anyCollection())).thenReturn(List.of());
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
 
@@ -2236,15 +2235,14 @@ public class GroupServiceTest implements ResourceUtil {
 
     when(measureRepository.findById(compositeMeasure.getId()))
         .thenReturn(Optional.of(compositeMeasure));
-    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.of(componentMeasure));
+    when(measureRepository.findAllById(anyCollection())).thenReturn(List.of(componentMeasure));
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
 
     groupService.createOrUpdateGroup(updatedCompositeGroup, compositeMeasure.getId(), "test.user");
 
-    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
-    verify(measureRepository, times(2)).save(measureCaptor.capture());
-    assertTrue(measureCaptor.getValue().getCompositeMeasureIds().isEmpty());
+    verify(measureRepository).saveAll(anyCollection());
+    assertTrue(componentMeasure.getCompositeMeasureIds().isEmpty());
 
     verify(actionLogService)
         .logAction(
@@ -2292,15 +2290,14 @@ public class GroupServiceTest implements ResourceUtil {
 
     when(measureRepository.findById(compositeMeasure.getId()))
         .thenReturn(Optional.of(compositeMeasure));
-    when(measureRepository.findById(componentMeasureId)).thenReturn(Optional.of(componentMeasure));
+    when(measureRepository.findAllById(anyCollection())).thenReturn(List.of(componentMeasure));
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
 
     groupService.createOrUpdateGroup(updatedCompositeGroup, compositeMeasure.getId(), "test.user");
 
-    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
-    verify(measureRepository, times(2)).save(measureCaptor.capture());
-    List<String> savedIds = measureCaptor.getValue().getCompositeMeasureIds();
+    verify(measureRepository).saveAll(anyCollection());
+    List<String> savedIds = componentMeasure.getCompositeMeasureIds();
     assertEquals(1, savedIds.size());
     assertFalse(savedIds.contains(measure.getId()));
     assertTrue(savedIds.contains("other-measure-id"));
