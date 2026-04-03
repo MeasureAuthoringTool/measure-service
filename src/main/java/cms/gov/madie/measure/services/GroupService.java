@@ -8,7 +8,9 @@ import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.validations.CqlDefinitionReturnTypeService;
 import cms.gov.madie.measure.validations.CqlObservationFunctionService;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.measure.Component;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureObservation;
@@ -30,9 +32,12 @@ import org.springframework.util.CollectionUtils;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
@@ -49,6 +54,7 @@ public class GroupService {
   private final ModelValidatorFactory modelValidatorFactory;
   private final TestCaseLockService testCaseLockService;
   private final AppConfigService appConfigService;
+  private final ActionLogService actionLogService;
 
   public Group createOrUpdateGroup(Group group, String measureId, String username) {
 
@@ -76,6 +82,14 @@ public class GroupService {
           "Unable to create or update measure groups. One or more test cases are locked by another user.");
     }
 
+    Optional<Group> existingGroupOpt =
+        CollectionUtils.isEmpty(measure.getGroups())
+            ? Optional.empty()
+            : measure.getGroups().stream().filter(g -> g.getId().equals(group.getId())).findFirst();
+
+    List<Component> previousComponents =
+        existingGroupOpt.map(Group::getComponents).orElse(List.of());
+
     if (measure.getModel().equalsIgnoreCase(ModelType.QDM_5_6.getValue())) {
       handleQdmGroupReturnTypes(group, measure);
     } else {
@@ -91,8 +105,6 @@ public class GroupService {
       group.setId(ObjectId.get().toString());
       measure.setGroups(List.of(group));
     } else {
-      Optional<Group> existingGroupOpt =
-          measure.getGroups().stream().filter(g -> g.getId().equals(group.getId())).findFirst();
       // if group already exists, just update it
       if (existingGroupOpt.isPresent()) {
         Group existingGroup = existingGroupOpt.get();
@@ -128,6 +140,12 @@ public class GroupService {
     measure.setLastModifiedBy(username);
     measure.setLastModifiedAt(Instant.now());
     measureRepository.save(measure);
+
+    if (MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(group.getScoring())) {
+      updateComponentCompositeRelationship(
+          previousComponents, group.getComponents(), measure, username);
+    }
+
     return group;
   }
 
@@ -467,6 +485,88 @@ public class GroupService {
               .toList();
       testCase.setGroupPopulations(remainingGroups);
     }
+  }
+
+  private void updateComponentCompositeRelationship(
+      List<Component> previousComponents,
+      List<Component> newComponents,
+      Measure compositeMeasure,
+      String username) {
+
+    Set<String> previousIds =
+        previousComponents.stream().map(Component::getMeasureId).collect(Collectors.toSet());
+    Set<String> newIds =
+        newComponents == null
+            ? Set.of()
+            : newComponents.stream().map(Component::getMeasureId).collect(Collectors.toSet());
+
+    Set<String> addedIds =
+        newIds.stream().filter(id -> !previousIds.contains(id)).collect(Collectors.toSet());
+    Set<String> removedIds =
+        previousIds.stream().filter(id -> !newIds.contains(id)).collect(Collectors.toSet());
+
+    Set<String> allChangedIds = new HashSet<>(addedIds);
+    allChangedIds.addAll(removedIds);
+
+    String compositeMeasureId = compositeMeasure.getId();
+    String compositeName = compositeMeasure.getMeasureName();
+
+    // Fetch all added and removed components
+    Map<String, Measure> componentById =
+        measureRepository.findAllById(allChangedIds).stream()
+            .collect(Collectors.toMap(Measure::getId, m -> m));
+
+    // Validate that all component measures exist first
+    allChangedIds.forEach(
+        id -> {
+          if (!componentById.containsKey(id)) {
+            throw new ResourceNotFoundException("Measure", id);
+          }
+        });
+
+    // Update all components in memory before writing to db
+    addedIds.forEach(
+        id -> {
+          Measure component = componentById.get(id);
+          List<String> ids =
+              new ArrayList<>(
+                  Objects.requireNonNullElseGet(
+                      component.getCompositeMeasureIds(), ArrayList::new));
+          ids.add(compositeMeasureId);
+          component.setCompositeMeasureIds(ids);
+        });
+
+    removedIds.forEach(
+        id -> {
+          Measure component = componentById.get(id);
+          List<String> ids =
+              new ArrayList<>(
+                  Objects.requireNonNullElseGet(
+                      component.getCompositeMeasureIds(), ArrayList::new));
+          ids.remove(compositeMeasureId);
+          component.setCompositeMeasureIds(ids);
+        });
+
+    measureRepository.saveAll(componentById.values());
+
+    // Log after all writes succeed
+    addedIds.forEach(
+        id ->
+            actionLogService.logAction(
+                id,
+                Measure.class,
+                ActionType.ADDED_TO_COMPOSITE,
+                username,
+                "Added to composite measure " + compositeName));
+
+    removedIds.forEach(
+        id ->
+            actionLogService.logAction(
+                id,
+                Measure.class,
+                ActionType.REMOVED_FROM_COMPOSITE,
+                username,
+                "Removed from composite measure " + compositeName));
   }
 
   protected void handleFhirGroupReturnTypes(Group group, Measure measure) {
