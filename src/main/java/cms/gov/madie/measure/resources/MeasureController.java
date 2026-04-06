@@ -5,7 +5,6 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.services.*;
-import cms.gov.madie.measure.utils.MeasureChangeNotificationUtil;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.common.Action;
@@ -48,7 +47,7 @@ public class MeasureController extends AbstractMeasureController {
   private final TestCaseLockService testCaseLockService;
   private final AppConfigService appConfigService;
   private final CqlDifferentiatorService cqlDifferentiatorService;
-  private final cms.gov.madie.measure.clients.NotificationServiceClient notificationServiceClient;
+  private final NotificationService notificationService;
 
   @Override
   protected AppConfigService getAppConfigService() {
@@ -235,15 +234,8 @@ public class MeasureController extends AbstractMeasureController {
       actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
     }
 
-    // Fire-and-forget: send change notifications to owner & shared users
-    try {
-      List<NotificationDTO> notifications = MeasureChangeNotificationUtil.buildNotifications(
-              existingMeasure, measure, username);
-      notificationServiceClient.sendNotifications(notifications);
-    } catch (Exception e) {
-      log.warn(
-          "Failed to send measure-change notifications for measure [{}]: {}", id, e.getMessage());
-    }
+    // Asynchronously send change notifications to owner & shared users
+    notificationService.sendMeasureChangeNotifications(existingMeasure, measure, username);
 
     return response;
   }

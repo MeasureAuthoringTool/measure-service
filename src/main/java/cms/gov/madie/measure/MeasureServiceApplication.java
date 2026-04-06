@@ -88,6 +88,22 @@ public class MeasureServiceApplication {
     return taskExecutor;
   }
 
+  /*
+   * Dedicated executor for asynchronous measure-change notifications.
+   * Uses a small pool since notification tasks are lightweight HTTP calls.
+   */
+  @Bean
+  ThreadPoolTaskExecutor notificationExecutor() {
+    ThreadPoolTaskExecutor taskExecutor = new ThreadPoolTaskExecutor();
+    taskExecutor.setCorePoolSize(5);
+    taskExecutor.setMaxPoolSize(10);
+    taskExecutor.setQueueCapacity(100);
+    taskExecutor.setAwaitTerminationSeconds(shutdownWaitSeconds);
+    taskExecutor.setWaitForTasksToCompleteOnShutdown(true);
+    taskExecutor.setThreadNamePrefix("notification-");
+    return taskExecutor;
+  }
+
   @Bean
   public ValidLibraryNameValidator libraryNameValidator() {
     return new ValidLibraryNameValidator();
