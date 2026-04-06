@@ -10,3 +10,5 @@ spring:
 madie:
   user-service:
     base-url: http://localhost:8088/api
+  notification-service:
+    base-url: http://localhost:8089/api

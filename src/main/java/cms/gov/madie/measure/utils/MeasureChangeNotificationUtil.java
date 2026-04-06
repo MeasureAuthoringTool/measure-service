@@ -1,0 +1,202 @@
+package cms.gov.madie.measure.utils;
+
+import cms.gov.madie.measure.dto.NotificationDTO;
+import gov.cms.madie.models.access.AclSpecification;
+import gov.cms.madie.models.common.Version;
+import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureMetaData;
+import gov.cms.madie.models.measure.MeasureSet;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+/**
+ * Utility class for building notification objects when a measure is updated. Compares the existing
+ * measure with the updating measure to detect which field has changed, constructs a human-readable
+ * notification message, and returns a list of {@link NotificationDTO} — one per recipient.
+ */
+@Slf4j
+public final class MeasureChangeNotificationUtil {
+
+  private MeasureChangeNotificationUtil() {
+    // utility class – prevent instantiation
+  }
+
+  /**
+   * Detects which supported field changed between {@code existingMeasure} and {@code
+   * updatingMeasure}, builds a notification message, and returns a list of {@link NotificationDTO}
+   * for every user who should be notified (owner + shared users, excluding the actor).
+   *
+   * @param existingMeasure the measure as it exists in the database before the update
+   * @param updatingMeasure the incoming measure with new values
+   * @param username the HARP ID of the user who triggered the update
+   * @return a list of notification DTOs; empty list if no supported field was changed or there are
+   *     no recipients
+   */
+  public static List<NotificationDTO> buildNotifications(
+      Measure existingMeasure, Measure updatingMeasure, String username) {
+
+    if (existingMeasure == null || updatingMeasure == null || StringUtils.isBlank(username)) {
+      return Collections.emptyList();
+    }
+
+    // 1. Figure out what changed
+    ChangedField changedField = detectChange(existingMeasure, updatingMeasure);
+    if (changedField == null) {
+      log.debug("No supported field change detected for measure [{}]", existingMeasure.getId());
+      return Collections.emptyList();
+    }
+
+    // 2. Build the message
+    String measureIdentifier = buildMeasureIdentifier(existingMeasure);
+    String message =
+        String.format(
+            "%s has updated the %s for measure %s.",
+            username, changedField.displayName, measureIdentifier);
+
+    // 3. Build the additionalLink
+    String additionalLink =
+        String.format("/measures/%s/edit/%s", existingMeasure.getId(), changedField.route);
+
+    // 4. Determine recipients (owner + shared users, excluding the actor)
+    Set<String> recipients = collectRecipients(existingMeasure, username);
+    if (recipients.isEmpty()) {
+      log.debug("No recipients to notify for measure [{}]", existingMeasure.getId());
+      return Collections.emptyList();
+    }
+
+    // 5. Create one NotificationDTO per recipient
+    return recipients.stream()
+        .map(
+            recipientUserId ->
+                NotificationDTO.builder()
+                    .userId(recipientUserId)
+                    .message(message)
+                    .additionalLink(additionalLink)
+                    .build())
+        .collect(Collectors.toList());
+  }
+
+  // ---- internal helpers ----
+
+  /**
+   * Compares the existing and updating measures for the MVP-supported fields: CQL, description, and
+   * references.
+   *
+   * @return a {@link ChangedField} if a change is detected, or {@code null} otherwise
+   */
+  static ChangedField detectChange(Measure existingMeasure, Measure updatingMeasure) {
+    // 1. CQL
+    if (!StringUtils.equals(existingMeasure.getCql(), updatingMeasure.getCql())) {
+      return ChangedField.CQL;
+    }
+
+    MeasureMetaData existingMeta = existingMeasure.getMeasureMetaData();
+    MeasureMetaData updatingMeta = updatingMeasure.getMeasureMetaData();
+
+    if (existingMeta != null && updatingMeta != null) {
+      // 2. Description
+      if (!StringUtils.equals(existingMeta.getDescription(), updatingMeta.getDescription())) {
+        return ChangedField.DESCRIPTION;
+      }
+
+      // 3. References (compare by size as a simple heuristic – a new reference added/removed)
+      int existingRefSize =
+          CollectionUtils.isEmpty(existingMeta.getReferences())
+              ? 0
+              : existingMeta.getReferences().size();
+      int updatingRefSize =
+          CollectionUtils.isEmpty(updatingMeta.getReferences())
+              ? 0
+              : updatingMeta.getReferences().size();
+      if (existingRefSize != updatingRefSize) {
+        return ChangedField.REFERENCES;
+      }
+
+      // Even if sizes match, content may have changed – do a deep equality check
+      if (!Objects.equals(existingMeta.getReferences(), updatingMeta.getReferences())) {
+        return ChangedField.REFERENCES;
+      }
+    } else if (existingMeta == null && updatingMeta != null) {
+      if (StringUtils.isNotBlank(updatingMeta.getDescription())) {
+        return ChangedField.DESCRIPTION;
+      }
+      if (CollectionUtils.isNotEmpty(updatingMeta.getReferences())) {
+        return ChangedField.REFERENCES;
+      }
+    }
+
+    return null; // no supported change detected
+  }
+
+  /**
+   * Builds a human-readable measure identifier from the measure name and version. Example: "My
+   * Measure v2.3.001"
+   */
+  static String buildMeasureIdentifier(Measure measure) {
+    String name =
+        StringUtils.isNotBlank(measure.getMeasureName())
+            ? measure.getMeasureName()
+            : "Unnamed Measure";
+    Version version = measure.getVersion();
+    if (version != null) {
+      return String.format(
+          "%s v%d.%d.%03d",
+          name, version.getMajor(), version.getMinor(), version.getRevisionNumber());
+    }
+    return name;
+  }
+
+  /**
+   * Collects all users who should receive a notification: the measure owner and all shared users,
+   * minus the user who performed the update.
+   */
+  static Set<String> collectRecipients(Measure measure, String actorUsername) {
+    Set<String> recipients = new LinkedHashSet<>();
+
+    MeasureSet measureSet = measure.getMeasureSet();
+    if (measureSet == null) {
+      return recipients;
+    }
+
+    // Add the owner
+    if (StringUtils.isNotBlank(measureSet.getOwner())) {
+      recipients.add(measureSet.getOwner().toLowerCase());
+    }
+
+    // Add shared users
+    if (CollectionUtils.isNotEmpty(measureSet.getAcls())) {
+      for (AclSpecification acl : measureSet.getAcls()) {
+        if (StringUtils.isNotBlank(acl.getUserId())) {
+          recipients.add(acl.getUserId().toLowerCase());
+        }
+      }
+    }
+
+    // Remove the actor (the person who triggered the update shouldn't be notified)
+    recipients.remove(actorUsername.toLowerCase());
+
+    return recipients;
+  }
+
+  /**
+   * Enum-like holder for each supported field change. Stores the human-readable display name and
+   * the front-end route fragment.
+   */
+  enum ChangedField {
+    CQL("CQL", "cql-editor"),
+    DESCRIPTION("Measure Description", "details/measure-description"),
+    REFERENCES("Measure References", "details/measure-references");
+
+    final String displayName;
+    final String route;
+
+    ChangedField(String displayName, String route) {
+      this.displayName = displayName;
+      this.route = route;
+    }
+  }
+}
