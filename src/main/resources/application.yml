@@ -56,7 +56,7 @@ madie:
   user-service:
     base-url: ${USER_SERVICE_URL:http://localhost:8088/api}
   notification-service:
-    base-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8089/api}
+    base-url: ${NOTIFICATION_SERVICE_URL:http://localhost:8090/api}
   excel-export-service:
     base-url: ${EXCEL_EXPORT_SERVICE:http://localhost:3000/api}
     test-cases:
