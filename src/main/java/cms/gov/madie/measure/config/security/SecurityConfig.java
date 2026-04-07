@@ -17,7 +17,7 @@ import static org.springframework.security.config.Customizer.withDefaults;
 public class SecurityConfig {
 
   private static final String[] CSRF_WHITELIST = {"/log/**"};
-  private static final String[] AUTH_WHITELIST = {"/actuator/**", "/log/**"};
+  private static final String[] AUTH_WHITELIST = {"/actuator/**", "/log/**", "/measures/*"};
 
   @Bean
   protected SecurityFilterChain filterChain(

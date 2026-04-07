@@ -117,14 +117,16 @@ public class MeasureController extends AbstractMeasureController {
 
   @GetMapping("/measures/{id}")
   public ResponseEntity<Measure> getMeasure(@PathVariable("id") String id, Principal principal) {
-    final String username = principal.getName().toLowerCase();
     Optional<Measure> measureOptional = repository.findByIdAndActive(id, true);
     if (measureOptional.isPresent()) {
       Measure measure = measureOptional.get();
       MeasureSet measureSet =
           measureSetRepository.findByMeasureSetId(measure.getMeasureSetId()).orElse(null);
       measure.setMeasureSet(measureSet);
-      measure.setMeasureLock(measureService.getMeasureLock(id, username));
+      if (principal != null) {
+        final String username = principal.getName().toLowerCase();
+        measure.setMeasureLock(measureService.getMeasureLock(id, username));
+      }
       return ResponseEntity.status(HttpStatus.OK).body(measure);
     }
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
