@@ -9,8 +9,6 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-
 /**
  * Service responsible for asynchronously building and dispatching measure-change notifications. The
  * heavy lifting (diff detection, recipient collection, HTTP call to the notification microservice)
@@ -35,7 +33,7 @@ public class NotificationService {
    *
    * <ol>
    *   <li>Detecting which field changed between the existing and updating measure
-   *   <li>Building a notification DTO per recipient
+   *   <li>Building a single notification DTO with all recipient userIds
    *   <li>Calling the notification microservice
    * </ol>
    *
@@ -44,9 +42,10 @@ public class NotificationService {
    * @param existingMeasure the measure as it was before the update
    * @param updatingMeasure the incoming measure with new values
    * @param username the HARP ID of the user who triggered the update
+   * @param accessToken the full Authorization header value
    */
   public void sendMeasureChangeNotifications(
-      Measure existingMeasure, Measure updatingMeasure, String username) {
+      Measure existingMeasure, Measure updatingMeasure, String username, String accessToken) {
     log.info(
         "Submitting async notification task for measure [{}] (queue size: {})",
         existingMeasure.getId(),
@@ -55,10 +54,10 @@ public class NotificationService {
     notificationExecutor.submit(
         () -> {
           try {
-            List<NotificationDTO> notifications =
-                MeasureChangeNotificationUtil.buildNotifications(
+            NotificationDTO notification =
+                MeasureChangeNotificationUtil.buildNotification(
                     existingMeasure, updatingMeasure, username);
-            notificationServiceClient.sendNotifications(notifications);
+            notificationServiceClient.sendNotification(notification, accessToken);
           } catch (Exception e) {
             log.error(
                 "Async notification task failed for measure [{}]: {}",

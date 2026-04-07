@@ -235,7 +235,8 @@ public class MeasureController extends AbstractMeasureController {
     }
 
     // Asynchronously send change notifications to owner & shared users
-    notificationService.sendMeasureChangeNotifications(existingMeasure, measure, username);
+    notificationService.sendMeasureChangeNotifications(
+        existingMeasure, measure, username, accessToken);
 
     return response;
   }

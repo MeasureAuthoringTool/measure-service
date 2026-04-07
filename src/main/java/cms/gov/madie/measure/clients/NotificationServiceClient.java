@@ -4,9 +4,12 @@ import cms.gov.madie.measure.dto.NotificationDTO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.client.RestTemplate;
@@ -24,31 +27,42 @@ public class NotificationServiceClient {
   private String notificationServiceBaseUrl;
 
   /**
-   * Sends a batch of notification DTOs to the notification microservice. Each DTO represents a
-   * single notification for a single user.
+   * Sends a single notification DTO (containing multiple recipient userIds) to the notification
+   * microservice. The service creates one notification per userId and returns the full list.
    *
-   * @param notifications the list of notifications to send
+   * @param notification the notification to send
+   * @param accessToken the full Authorization header value (e.g. "Bearer eyJhb...")
+   * @return the list of persisted Notification objects returned by the notification-service, or
+   *     empty list on failure
    */
-  public void sendNotifications(List<NotificationDTO> notifications) {
-    if (CollectionUtils.isEmpty(notifications)) {
-      log.debug("No notifications to send – skipping call to notification-service.");
-      return;
+  public List<NotificationDTO> sendNotification(NotificationDTO notification, String accessToken) {
+    if (notification == null || CollectionUtils.isEmpty(notification.getUserIds())) {
+      log.debug("No notification to send – skipping call to notification-service.");
+      return List.of();
     }
 
     String url = notificationServiceBaseUrl + "/notifications";
     HttpHeaders headers = new HttpHeaders();
     headers.setContentType(MediaType.APPLICATION_JSON);
+    // accessToken already contains the "Bearer " prefix from @RequestHeader("Authorization")
+    headers.set(HttpHeaders.AUTHORIZATION, accessToken);
 
-    HttpEntity<List<NotificationDTO>> request = new HttpEntity<>(notifications, headers);
+    HttpEntity<NotificationDTO> request = new HttpEntity<>(notification, headers);
 
     try {
       log.info(
-          "Sending {} notification(s) to notification-service at [{}]", notifications.size(), url);
-      notificationServiceRestTemplate.postForEntity(url, request, Void.class);
-      log.info("Successfully sent {} notification(s).", notifications.size());
+          "Sending notification for {} user(s) to notification-service at [{}]",
+          notification.getUserIds().size(),
+          url);
+      ResponseEntity<List<NotificationDTO>> response =
+          notificationServiceRestTemplate.exchange(
+              url, HttpMethod.POST, request, new ParameterizedTypeReference<>() {});
+      log.info("Successfully sent notification for {} user(s).", notification.getUserIds().size());
+      return response.getBody() != null ? response.getBody() : List.of();
     } catch (Exception e) {
       // Fire-and-forget: log and swallow so the main updateMeasure flow is not affected
-      log.error("Failed to send notifications to notification-service: {}", e.getMessage(), e);
+      log.error("Failed to send notification to notification-service: {}", e.getMessage(), e);
+      return List.of();
     }
   }
 }

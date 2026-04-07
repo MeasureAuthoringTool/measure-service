@@ -11,12 +11,12 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 /**
- * Utility class for building notification objects when a measure is updated. Compares the existing
+ * Utility class for building a notification object when a measure is updated. Compares the existing
  * measure with the updating measure to detect which field has changed, constructs a human-readable
- * notification message, and returns a list of {@link NotificationDTO} — one per recipient.
+ * notification message, and returns a single {@link NotificationDTO} containing all recipient user
+ * IDs.
  */
 @Slf4j
 public final class MeasureChangeNotificationUtil {
@@ -27,27 +27,27 @@ public final class MeasureChangeNotificationUtil {
 
   /**
    * Detects which supported field changed between {@code existingMeasure} and {@code
-   * updatingMeasure}, builds a notification message, and returns a list of {@link NotificationDTO}
-   * for every user who should be notified (owner + shared users, excluding the actor).
+   * updatingMeasure}, builds a notification message, and returns a single {@link NotificationDTO}
+   * with the list of users who should be notified (owner + shared users, excluding the actor).
    *
    * @param existingMeasure the measure as it exists in the database before the update
    * @param updatingMeasure the incoming measure with new values
    * @param username the HARP ID of the user who triggered the update
-   * @return a list of notification DTOs; empty list if no supported field was changed or there are
-   *     no recipients
+   * @return a NotificationDTO with all recipient userIds, or {@code null} if no supported field was
+   *     changed or there are no recipients
    */
-  public static List<NotificationDTO> buildNotifications(
+  public static NotificationDTO buildNotification(
       Measure existingMeasure, Measure updatingMeasure, String username) {
 
     if (existingMeasure == null || updatingMeasure == null || StringUtils.isBlank(username)) {
-      return Collections.emptyList();
+      return null;
     }
 
     // 1. Figure out what changed
     ChangedField changedField = detectChange(existingMeasure, updatingMeasure);
     if (changedField == null) {
       log.debug("No supported field change detected for measure [{}]", existingMeasure.getId());
-      return Collections.emptyList();
+      return null;
     }
 
     // 2. Build the message
@@ -65,19 +65,15 @@ public final class MeasureChangeNotificationUtil {
     Set<String> recipients = collectRecipients(existingMeasure, username);
     if (recipients.isEmpty()) {
       log.debug("No recipients to notify for measure [{}]", existingMeasure.getId());
-      return Collections.emptyList();
+      return null;
     }
 
-    // 5. Create one NotificationDTO per recipient
-    return recipients.stream()
-        .map(
-            recipientUserId ->
-                NotificationDTO.builder()
-                    .userId(recipientUserId)
-                    .message(message)
-                    .additionalLink(additionalLink)
-                    .build())
-        .collect(Collectors.toList());
+    // 5. Create a single NotificationDTO with all recipient userIds
+    return NotificationDTO.builder()
+        .userIds(new ArrayList<>(recipients))
+        .message(message)
+        .additionalLink(additionalLink)
+        .build();
   }
 
   // ---- internal helpers ----
