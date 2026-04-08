@@ -67,4 +67,67 @@ public class NotificationService {
           }
         });
   }
+
+  /**
+   * Asynchronously sends a notification when a new comment is added to a measure. Notifies all
+   * measure users (owner + shared) except the comment author.
+   *
+   * @param measure the measure the comment was added to (must have measureSet populated)
+   * @param commentAuthor the HARP ID of the comment author
+   * @param accessToken the full Authorization header value
+   */
+  public void sendCommentNotification(Measure measure, String commentAuthor, String accessToken) {
+    log.info(
+        "Submitting async comment notification task for measure [{}] (queue size: {})",
+        measure.getId(),
+        notificationExecutor.getQueueSize());
+
+    notificationExecutor.submit(
+        () -> {
+          try {
+            NotificationDTO notification =
+                MeasureChangeNotificationUtil.buildCommentNotification(measure, commentAuthor);
+            notificationServiceClient.sendNotification(notification, accessToken);
+          } catch (Exception e) {
+            log.error(
+                "Async comment notification task failed for measure [{}]: {}",
+                measure.getId(),
+                e.getMessage(),
+                e);
+          }
+        });
+  }
+
+  /**
+   * Asynchronously sends a notification when a reply is added to a comment. Notifies all measure
+   * users (owner + shared) plus the original comment author, excluding the reply author.
+   *
+   * @param measure the measure the reply belongs to (must have measureSet populated)
+   * @param commentAuthor the HARP ID of the original comment author
+   * @param replyAuthor the HARP ID of the reply author
+   * @param accessToken the full Authorization header value
+   */
+  public void sendReplyNotification(
+      Measure measure, String commentAuthor, String replyAuthor, String accessToken) {
+    log.info(
+        "Submitting async reply notification task for measure [{}] (queue size: {})",
+        measure.getId(),
+        notificationExecutor.getQueueSize());
+
+    notificationExecutor.submit(
+        () -> {
+          try {
+            NotificationDTO notification =
+                MeasureChangeNotificationUtil.buildReplyNotification(
+                    measure, commentAuthor, replyAuthor);
+            notificationServiceClient.sendNotification(notification, accessToken);
+          } catch (Exception e) {
+            log.error(
+                "Async reply notification task failed for measure [{}]: {}",
+                measure.getId(),
+                e.getMessage(),
+                e);
+          }
+        });
+  }
 }

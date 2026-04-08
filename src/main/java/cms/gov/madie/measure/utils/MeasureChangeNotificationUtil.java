@@ -13,10 +13,9 @@ import org.apache.commons.lang3.StringUtils;
 import java.util.*;
 
 /**
- * Utility class for building a notification object when a measure is updated. Compares the existing
- * measure with the updating measure to detect which field has changed, constructs a human-readable
- * notification message, and returns a single {@link NotificationDTO} containing all recipient user
- * IDs.
+ * Utility class for building notification objects when a measure is updated or when
+ * comments/replies are added. Constructs human-readable notification messages and determines
+ * recipient lists.
  */
 @Slf4j
 public final class MeasureChangeNotificationUtil {
@@ -24,6 +23,8 @@ public final class MeasureChangeNotificationUtil {
   private MeasureChangeNotificationUtil() {
     // utility class – prevent instantiation
   }
+
+  // ======================== Measure-change notifications ========================
 
   /**
    * Detects which supported field changed between {@code existingMeasure} and {@code
@@ -69,6 +70,85 @@ public final class MeasureChangeNotificationUtil {
     }
 
     // 5. Create a single NotificationDTO with all recipient userIds
+    return NotificationDTO.builder()
+        .userIds(new ArrayList<>(recipients))
+        .message(message)
+        .additionalLink(additionalLink)
+        .build();
+  }
+
+  // ======================== Comment notifications ========================
+
+  /**
+   * Builds a notification for a newly created comment on a measure. Recipients are all measure
+   * users (owner + shared) excluding the comment author.
+   *
+   * <p>If the author is an external user (not the owner and not in the ACLs), all measure users are
+   * notified. If the author is a measure user, all <i>other</i> measure users are notified.
+   *
+   * @param measure the measure on which the comment was added (must have measureSet populated)
+   * @param commentAuthor the HARP ID of the user who created the comment
+   * @return a NotificationDTO, or {@code null} if there are no recipients
+   */
+  public static NotificationDTO buildCommentNotification(Measure measure, String commentAuthor) {
+    if (measure == null || StringUtils.isBlank(commentAuthor)) {
+      return null;
+    }
+
+    Set<String> recipients = collectRecipients(measure, commentAuthor);
+    if (recipients.isEmpty()) {
+      log.debug("No recipients to notify for comment on measure [{}]", measure.getId());
+      return null;
+    }
+
+    String measureIdentifier = buildMeasureIdentifier(measure);
+    String message =
+        String.format("%s added a comment on measure %s.", commentAuthor, measureIdentifier);
+
+    String additionalLink = String.format("/measures/%s/edit/comments", measure.getId());
+
+    return NotificationDTO.builder()
+        .userIds(new ArrayList<>(recipients))
+        .message(message)
+        .additionalLink(additionalLink)
+        .build();
+  }
+
+  /**
+   * Builds a notification for a reply added to a comment. Recipients are all measure users (owner +
+   * shared) <b>plus</b> the original comment author (who may be external to the measure), excluding
+   * the reply author.
+   *
+   * @param measure the measure on which the reply was added (must have measureSet populated)
+   * @param commentAuthor the HARP ID of the original comment author
+   * @param replyAuthor the HARP ID of the user who posted the reply
+   * @return a NotificationDTO, or {@code null} if there are no recipients
+   */
+  public static NotificationDTO buildReplyNotification(
+      Measure measure, String commentAuthor, String replyAuthor) {
+    if (measure == null || StringUtils.isBlank(replyAuthor)) {
+      return null;
+    }
+
+    // Start with all measure users, excluding the reply author
+    Set<String> recipients = collectRecipients(measure, replyAuthor);
+
+    // Also include the original comment author (might be external to the measure)
+    if (StringUtils.isNotBlank(commentAuthor) && !commentAuthor.equalsIgnoreCase(replyAuthor)) {
+      recipients.add(commentAuthor.toLowerCase());
+    }
+
+    if (recipients.isEmpty()) {
+      log.debug("No recipients to notify for reply on measure [{}]", measure.getId());
+      return null;
+    }
+
+    String measureIdentifier = buildMeasureIdentifier(measure);
+    String message =
+        String.format("%s replied to a comment on measure %s.", replyAuthor, measureIdentifier);
+
+    String additionalLink = String.format("/measures/%s/edit/comments", measure.getId());
+
     return NotificationDTO.builder()
         .userIds(new ArrayList<>(recipients))
         .message(message)
