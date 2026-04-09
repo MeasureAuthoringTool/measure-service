@@ -105,7 +105,7 @@ public final class MeasureChangeNotificationUtil {
     String message =
         String.format("%s added a comment on measure %s.", commentAuthor, measureIdentifier);
 
-    String additionalLink = String.format("/measures/%s/edit/comments", measure.getId());
+    String additionalLink = String.format("/measures/%s/edit/cql-editor", measure.getId());
 
     return NotificationDTO.builder()
         .userIds(new ArrayList<>(recipients))
