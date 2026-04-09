@@ -1674,8 +1674,22 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importTestCaseAddsNewSetIdForNewTestCasesWhenFeatureFlagIsON() throws JsonProcessingException {
+  void importTestCaseAddsNewSetIdForNewTestCasesWhenFeatureFlagIsON()
+      throws JsonProcessingException {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+    group =
+        Group.builder()
+            .id("testGroupId")
+            .scoring(MeasureScoring.COHORT.name())
+            .populations(
+                List.of(
+                    Population.builder()
+                        .name(PopulationType.INITIAL_POPULATION)
+                        .definition("Initial Population")
+                        .build()))
+            .populationBasis("Boolean")
+            .build();
+    measure.setGroups(List.of(group));
     measure.setTestCases(List.of());
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
 
@@ -1683,28 +1697,31 @@ public class TestCaseServiceTest implements ResourceUtil {
     updatedTestCase.setJson(testCaseImportWithMeasureReport);
 
     doReturn(updatedTestCase)
-            .when(testCaseService)
-            .updateTestCase(any(), anyString(), anyString(), anyString(), anyString());
+        .when(testCaseService)
+        .updateTestCase(
+            testCaseCaptor.capture(), anyString(), anyString(), anyString(), anyString());
     var testCaseImportRequest =
-            TestCaseImportRequest.builder()
-                    .patientId(testCase.getPatientId())
-                    .json(testCaseImportWithMeasureReport)
-                    .build();
+        TestCaseImportRequest.builder()
+            .patientId(testCase.getPatientId())
+            .json(testCaseImportWithMeasureReport)
+            .build();
 
     var response =
-            testCaseService.importTestCases(
-                    List.of(testCaseImportRequest),
-                    measure.getId(),
-                    "test.user",
-                    "TOKEN",
-                    ModelType.QI_CORE.getValue());
+        testCaseService.importTestCases(
+            List.of(testCaseImportRequest),
+            measure.getId(),
+            "test.user",
+            "TOKEN",
+            ModelType.QI_CORE.getValue());
     assertEquals(1, response.size());
-    assertEquals(testCase.getPatientId(), response.get(0).getPatientId());
-    assertNotNull(testCase.getDescription());
-    assertNotNull(testCase.getTestCaseSetId());
-    assertEquals(
-            testCase.getDescription(), JsonUtil.getTestDescription(testCaseImportWithMeasureReport));
     assertTrue(response.get(0).isSuccessful());
+
+    TestCase capturedTestCase = testCaseCaptor.getValue();
+    assertNotNull(capturedTestCase.getTestCaseSetId());
+    assertNotNull(capturedTestCase.getDescription());
+    assertEquals(
+        capturedTestCase.getDescription(),
+        JsonUtil.getTestDescription(testCaseImportWithMeasureReport));
   }
 
   @Test

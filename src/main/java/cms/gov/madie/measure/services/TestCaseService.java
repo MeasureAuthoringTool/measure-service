@@ -610,7 +610,6 @@ public class TestCaseService {
                 return outCome;
               }
               if (isEmpty(measure.getTestCases())) {
-                // create new testCaseSet id no matter what - we consider it as a new test case
                 return validateTestCaseJsonAndCreateTestCase(
                     testCaseImportRequest, measure, userName, accessToken, model);
               }
@@ -678,7 +677,7 @@ public class TestCaseService {
                   + "values for Continuous Variable measures with multiple population criteria.";
         }
       } else {
-        if(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)) {
+        if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)) {
           newTestCase.setTestCaseSetId(UUID.randomUUID());
         }
         testCaseGroupPopulations =
