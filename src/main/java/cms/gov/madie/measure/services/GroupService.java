@@ -216,6 +216,9 @@ public class GroupService {
           "Unable to delete measure groups. One or more test cases are locked by another user.");
     }
 
+    Optional<Group> deletedGroup =
+        measure.getGroups().stream().filter(g -> g.getId().equals(groupId)).findFirst();
+
     List<Group> remainingGroups =
         measure.getGroups().stream().filter(g -> !g.getId().equals(groupId)).toList();
 
@@ -239,7 +242,18 @@ public class GroupService {
         measure.getId());
     List<TestCase> testCases = measure.getTestCases();
     removeGroupFromTestCases(groupId, testCases);
-    return measureRepository.save(measure);
+
+    Measure saved = measureRepository.save(measure);
+
+    deletedGroup.ifPresent(
+        group -> {
+          if (MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(group.getScoring())
+              && !CollectionUtils.isEmpty(group.getComponents())) {
+            updateComponentCompositeRelationship(group.getComponents(), List.of(), saved, username);
+          }
+        });
+
+    return saved;
   }
 
   public void updateTestCaseGroupWithMeasureGroup(
@@ -553,11 +567,29 @@ public class GroupService {
     addedIds.forEach(
         id ->
             actionLogService.logAction(
+                compositeMeasureId,
+                Measure.class,
+                ActionType.COMPONENT_ADDED,
+                username,
+                "Added Component measure " + componentById.get(id).getMeasureName()));
+
+    addedIds.forEach(
+        id ->
+            actionLogService.logAction(
                 id,
                 Measure.class,
                 ActionType.ADDED_TO_COMPOSITE,
                 username,
-                "Added to composite measure " + compositeName));
+                "Added to Composite measure " + compositeName));
+
+    removedIds.forEach(
+        id ->
+            actionLogService.logAction(
+                compositeMeasureId,
+                Measure.class,
+                ActionType.COMPONENT_REMOVED,
+                username,
+                "Removed Component measure " + componentById.get(id).getMeasureName()));
 
     removedIds.forEach(
         id ->
@@ -566,7 +598,7 @@ public class GroupService {
                 Measure.class,
                 ActionType.REMOVED_FROM_COMPOSITE,
                 username,
-                "Removed from composite measure " + compositeName));
+                "Removed from Composite measure " + compositeName));
   }
 
   protected void handleFhirGroupReturnTypes(Group group, Measure measure) {
