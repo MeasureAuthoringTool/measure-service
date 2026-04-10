@@ -277,6 +277,45 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
     postMatchPipeline.add(replaceRoot);
 
+    postMatchPipeline.add(SearchAggregationUtils.addIsComponentField());
+
+    // When sorting by measureMetaData.draft, substitute with the 5-tier draftSortOrder field
+    // so that the ordering follows:
+    //   DESC: 5→1 (composite draft first → non-composite versioned last)
+    //   ASC:  1→5 (non-composite versioned first → composite draft last)
+    // The original sort direction is preserved as-is.
+    if (!usePrioritySort) {
+      Sort effectiveSort = pageable.getSort();
+      boolean hasDraftSort =
+          effectiveSort.stream()
+              .anyMatch(order -> "measureMetaData.draft".equals(order.getProperty()));
+      if (hasDraftSort) {
+        postMatchPipeline.add(SearchAggregationUtils.addDraftSortOrderField());
+        // Rebuild the Sort, replacing measureMetaData.draft with draftSortOrder
+        // and flipping direction (DESC draft → ASC draftSortOrder, ASC draft → DESC draftSortOrder)
+        List<Sort.Order> replacedOrders =
+            effectiveSort.stream()
+                .map(
+                    order -> {
+                      if ("measureMetaData.draft".equals(order.getProperty())) {
+                        return new Sort.Order(order.getDirection(), "draftSortOrder");
+                      }
+                      return order;
+                    })
+                .collect(java.util.stream.Collectors.toList());
+        Sort replacedSort = Sort.by(replacedOrders);
+        facets =
+            facet(sortByCount("id"))
+                .as("count")
+                .and(
+                    sort(replacedSort),
+                    skip(pageable.getOffset()),
+                    limit(pageable.getPageSize()),
+                    project(MeasureListDTO.class))
+                .as("queryResults");
+      }
+    }
+
     postMatchPipeline.add(facets);
 
     Aggregation pipeline = newAggregation(postMatchPipeline);
