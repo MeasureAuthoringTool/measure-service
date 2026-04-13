@@ -1,10 +1,10 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.exceptions.InvalidRequestException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.TestCase;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -65,5 +66,36 @@ public class AdminService {
       measureRepository.save(targetMeasure);
     }
     return caseNumbers;
+  }
+
+  public Measure backfillTestCaseSetIds(Measure measure, String userName) {
+    List<TestCase> testCases = measure.getTestCases();
+
+    if (CollectionUtils.isEmpty(testCases)) {
+      throw new InvalidResourceStateException("Test cases cannot be empty or null");
+    }
+
+    boolean anyHasTestCaseSetId = testCases.stream().anyMatch(tc -> tc.getTestCaseSetId() != null);
+    if (anyHasTestCaseSetId) {
+      throw new TestCaseSetIdsAlreadyAssignedException(
+          "One or more test cases already have a testCaseSetId.");
+    }
+
+    List<Measure> allByMeasureSetIdAndActive =
+        measureRepository.findAllByMeasureSetIdAndActive(measure.getMeasureSetId(), true);
+    boolean measureSetHasTestCaseSetId =
+        allByMeasureSetIdAndActive.stream()
+            .filter(m -> CollectionUtils.isNotEmpty(m.getTestCases()))
+            .flatMap(m -> m.getTestCases().stream())
+            .anyMatch(tc -> tc.getTestCaseSetId() != null);
+
+    if (measureSetHasTestCaseSetId) {
+      throw new UnsupportedTypeException(
+          "One or more test cases in this measure set already have a testCaseSetId.");
+    }
+
+    testCases.forEach(tc -> tc.setTestCaseSetId(UUID.randomUUID()));
+    log.info("Admin {} had successfully added the test case set ids to test cases {}", userName);
+    return measureRepository.save(measure);
   }
 }

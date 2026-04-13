@@ -9,11 +9,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import cms.gov.madie.measure.config.security.AdminOnly;
-import cms.gov.madie.measure.exceptions.HarpIdMismatchException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import cms.gov.madie.measure.exceptions.InvalidRequestException;
-import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
-import cms.gov.madie.measure.exceptions.MeasureNotDraftableException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.services.*;
@@ -652,5 +648,22 @@ public class AdminController extends AbstractMeasureController {
             HttpHeaders.CONTENT_TYPE,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         .body(exportService.getSharedAccessReportForMeasures(measureIds, username, accessToken));
+  }
+
+  @PutMapping("/measure/{measureId}/test-cases/backfill-set-ids")
+  public ResponseEntity<Measure> backfillTestCaseSetIds(
+      Principal principal, @PathVariable String measureId) {
+    final String userName = principal.getName().toLowerCase();
+    final Measure existingMeasure = measureService.findMeasureById(measureId);
+    checkMeasureLock(existingMeasure, userName);
+
+    var isQdm = StringUtils.equals(existingMeasure.getModel(), ModelType.QDM_5_6.getValue());
+    if (isQdm) {
+      throw new UnsupportedTypeException("Please provide QI Core model measure.");
+    }
+
+    log.info("Admin {} is attempting to add test case set ids {}", userName);
+    Measure updatedMeasure = adminService.backfillTestCaseSetIds(existingMeasure, userName);
+    return ResponseEntity.ok().body(updatedMeasure);
   }
 }
