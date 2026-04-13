@@ -75,6 +75,9 @@ public class TestCaseService {
     enrichedTestCase.setHapiOperationOutcome(null);
     enrichedTestCase.setValidResource(false);
     enrichedTestCase.setPatientId(UUID.randomUUID());
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)) {
+      enrichedTestCase.setTestCaseSetId(UUID.randomUUID());
+    }
     enrichedTestCase.setCaseNumber(sequenceService.generateSequence(measureId));
 
     return enrichedTestCase;
@@ -674,6 +677,9 @@ public class TestCaseService {
                   + "values for Continuous Variable measures with multiple population criteria.";
         }
       } else {
+        if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)) {
+          newTestCase.setTestCaseSetId(UUID.randomUUID());
+        }
         testCaseGroupPopulations =
             TestCaseServiceUtil.assignStratificationValuesQiCore(testCaseGroupPopulations, groups);
       }
