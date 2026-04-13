@@ -102,6 +102,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     testCase.setLastModifiedBy("TestUser2");
     testCase.setJson("{\n  \"resourceType\" : \"Patient\"\n}");
     testCase.setPatientId(UUID.randomUUID());
+    testCase.setTestCaseSetId(UUID.randomUUID());
 
     measure = new Measure();
     measure.setModel(ModelType.QI_CORE.getValue());
@@ -191,6 +192,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testEnrichNewTestCase() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(false);
     TestCase testCase = new TestCase();
     final String username = "user01";
     TestCase output = testCaseService.enrichNewTestCase(testCase, username, "measureId");
@@ -204,11 +206,13 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(output.getResourceUri(), is(nullValue()));
     assertThat(output.getHapiOperationOutcome(), is(nullValue()));
     assertThat(output.isValidResource(), is(false));
+    assertNull(output.getTestCaseSetId());
     assertNotNull(output.getCaseNumber());
   }
 
   @Test
-  public void testEnrichNewTestCaseWithTestCaseSequence() {
+  public void testEnrichNewTestCaseWithTestCaseSequenceAndFeatureFlagIsON() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
     when(testCaseSequenceService.generateSequence(anyString())).thenReturn(1);
     TestCase testCase = new TestCase();
     final String username = "user01";
@@ -223,6 +227,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(output.getResourceUri(), is(nullValue()));
     assertThat(output.getHapiOperationOutcome(), is(nullValue()));
     assertThat(output.isValidResource(), is(false));
+    assertNotNull(output.getTestCaseSetId());
     assertThat(output.getCaseNumber(), is(equalTo(1)));
   }
 
@@ -1662,9 +1667,61 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertEquals(1, response.size());
     assertEquals(testCase.getPatientId(), response.get(0).getPatientId());
     assertNotNull(testCase.getDescription());
+    assertNotNull(testCase.getTestCaseSetId());
     assertEquals(
         testCase.getDescription(), JsonUtil.getTestDescription(testCaseImportWithMeasureReport));
     assertTrue(response.get(0).isSuccessful());
+  }
+
+  @Test
+  void importTestCaseAddsNewSetIdForNewTestCasesWhenFeatureFlagIsON()
+      throws JsonProcessingException {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+    group =
+        Group.builder()
+            .id("testGroupId")
+            .scoring(MeasureScoring.COHORT.name())
+            .populations(
+                List.of(
+                    Population.builder()
+                        .name(PopulationType.INITIAL_POPULATION)
+                        .definition("Initial Population")
+                        .build()))
+            .populationBasis("Boolean")
+            .build();
+    measure.setGroups(List.of(group));
+    measure.setTestCases(List.of());
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
+
+    TestCase updatedTestCase = testCase;
+    updatedTestCase.setJson(testCaseImportWithMeasureReport);
+
+    doReturn(updatedTestCase)
+        .when(testCaseService)
+        .updateTestCase(
+            testCaseCaptor.capture(), anyString(), anyString(), anyString(), anyString());
+    var testCaseImportRequest =
+        TestCaseImportRequest.builder()
+            .patientId(testCase.getPatientId())
+            .json(testCaseImportWithMeasureReport)
+            .build();
+
+    var response =
+        testCaseService.importTestCases(
+            List.of(testCaseImportRequest),
+            measure.getId(),
+            "test.user",
+            "TOKEN",
+            ModelType.QI_CORE.getValue());
+    assertEquals(1, response.size());
+    assertTrue(response.get(0).isSuccessful());
+
+    TestCase capturedTestCase = testCaseCaptor.getValue();
+    assertNotNull(capturedTestCase.getTestCaseSetId());
+    assertNotNull(capturedTestCase.getDescription());
+    assertEquals(
+        capturedTestCase.getDescription(),
+        JsonUtil.getTestDescription(testCaseImportWithMeasureReport));
   }
 
   @Test
