@@ -1841,17 +1841,25 @@ public class AdminControllerMvcTest {
             new TestCaseSetIdsAlreadyAssignedException(
                 "One or more test cases already have a testCaseSetId."));
 
-    mockMvc
-        .perform(
-            put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
-                .with(csrf())
-                .with(
-                    jwt()
-                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
-                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
-        .andExpect(status().isNoContent())
-        .andExpect(
-            jsonPath("$.message", equalTo("One or more test cases already have a testCaseSetId.")));
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+            .andExpect(status().isNoContent())
+            .andReturn();
+
+    assertThat(result.getResponse(), is(notNullValue()));
+    assertTrue(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains("One or more test cases already have a testCaseSetId."));
+    verify(adminService, times(1)).backfillTestCaseSetIds(any(Measure.class), anyString());
   }
 
   @Test
@@ -1871,19 +1879,24 @@ public class AdminControllerMvcTest {
             new UnsupportedTypeException(
                 "One or more test cases in this measure set already have a testCaseSetId."));
 
-    mockMvc
-        .perform(
-            put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
-                .with(csrf())
-                .with(
-                    jwt()
-                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
-                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
-        .andExpect(status().isConflict())
-        .andExpect(
-            jsonPath(
-                "$.message",
-                equalTo(
-                    "One or more test cases in this measure set already have a testCaseSetId.")));
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+            .andExpect(status().isConflict())
+            .andReturn();
+
+    assertThat(result.getResponse(), is(notNullValue()));
+    assertTrue(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains("One or more test cases in this measure set already have a testCaseSetId."));
+    verify(adminService, times(1)).backfillTestCaseSetIds(any(Measure.class), anyString());
   }
 }
