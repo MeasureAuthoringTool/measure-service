@@ -565,40 +565,36 @@ public class GroupService {
 
     // Log after all writes succeed
     addedIds.forEach(
-        id ->
-            actionLogService.logAction(
-                compositeMeasureId,
-                Measure.class,
-                ActionType.COMPONENT_ADDED,
-                username,
-                "Added Component measure " + componentById.get(id).getMeasureName()));
-
-    addedIds.forEach(
-        id ->
-            actionLogService.logAction(
-                id,
-                Measure.class,
-                ActionType.ADDED_TO_COMPOSITE,
-                username,
-                "Added to Composite measure " + compositeName));
+        id -> {
+          actionLogService.logAction(
+              compositeMeasureId,
+              Measure.class,
+              ActionType.COMPONENT_ADDED,
+              username,
+              "Added Component measure " + componentById.get(id).getMeasureName());
+          actionLogService.logAction(
+              id,
+              Measure.class,
+              ActionType.ADDED_TO_COMPOSITE,
+              username,
+              "Added to Composite measure " + compositeName);
+        });
 
     removedIds.forEach(
-        id ->
-            actionLogService.logAction(
-                compositeMeasureId,
-                Measure.class,
-                ActionType.COMPONENT_REMOVED,
-                username,
-                "Removed Component measure " + componentById.get(id).getMeasureName()));
-
-    removedIds.forEach(
-        id ->
-            actionLogService.logAction(
-                id,
-                Measure.class,
-                ActionType.REMOVED_FROM_COMPOSITE,
-                username,
-                "Removed from Composite measure " + compositeName));
+        id -> {
+          actionLogService.logAction(
+              compositeMeasureId,
+              Measure.class,
+              ActionType.COMPONENT_REMOVED,
+              username,
+              "Removed Component measure " + componentById.get(id).getMeasureName());
+          actionLogService.logAction(
+              id,
+              Measure.class,
+              ActionType.REMOVED_FROM_COMPOSITE,
+              username,
+              "Removed from Composite measure " + compositeName);
+        });
   }
 
   protected void handleFhirGroupReturnTypes(Group group, Measure measure) {
