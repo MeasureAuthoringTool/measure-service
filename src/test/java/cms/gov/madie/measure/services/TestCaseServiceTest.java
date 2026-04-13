@@ -3661,6 +3661,105 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
+  void testCopyToAnotherMeasureQiCoreSetsNewTestCaseSetIdWhenFeatureFlagIsON() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+
+    TestCase source = testCase.deepCopy();
+    UUID sourceSetId = source.getTestCaseSetId();
+    assertNotNull(sourceSetId);
+
+    Measure targetMeasure = measure.toBuilder().build();
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
+    when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
+
+    CopyTestCaseResult result =
+        testCaseService.copyTestCasesToMeasure(
+            targetMeasure.getId(), List.of(source), "user.name", "accessToken");
+
+    assertThat(result.getCopiedTestCases().size(), equalTo(1));
+    UUID copiedSetId = result.getCopiedTestCases().get(0).getTestCaseSetId();
+    assertNotNull(copiedSetId);
+    assertNotEquals(sourceSetId, copiedSetId);
+    // Original is unchanged
+    assertEquals(sourceSetId, source.getTestCaseSetId());
+  }
+
+  @Test
+  void testCopyMultipleToAnotherMeasureQiCoreEachGetsNewUniqueTestCaseSetIdWhenFeatureFlagIsON() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+
+    TestCase source1 = testCase.deepCopy().toBuilder().title("TC1").build();
+    TestCase source2 =
+        testCase.deepCopy().toBuilder().title("TC2").testCaseSetId(UUID.randomUUID()).build();
+    UUID sourceSetId1 = source1.getTestCaseSetId();
+    UUID sourceSetId2 = source2.getTestCaseSetId();
+    assertNotNull(sourceSetId1);
+    assertNotNull(sourceSetId2);
+    assertNotEquals(sourceSetId1, sourceSetId2);
+
+    Measure targetMeasure = measure.toBuilder().build();
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
+    when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
+
+    CopyTestCaseResult result =
+        testCaseService.copyTestCasesToMeasure(
+            targetMeasure.getId(), List.of(source1, source2), "user.name", "accessToken");
+
+    assertThat(result.getCopiedTestCases().size(), equalTo(2));
+    UUID copiedSetId1 = result.getCopiedTestCases().get(0).getTestCaseSetId();
+    UUID copiedSetId2 = result.getCopiedTestCases().get(1).getTestCaseSetId();
+
+    // Each copy has a non-null testCaseSetId
+    assertNotNull(copiedSetId1);
+    assertNotNull(copiedSetId2);
+    // Each copy gets a different ID from its source
+    assertNotEquals(sourceSetId1, copiedSetId1);
+    assertNotEquals(sourceSetId2, copiedSetId2);
+    // Each copy gets a unique ID (not shared across copies)
+    assertNotEquals(copiedSetId1, copiedSetId2);
+    // Sources are unchanged
+    assertEquals(sourceSetId1, source1.getTestCaseSetId());
+    assertEquals(sourceSetId2, source2.getTestCaseSetId());
+  }
+
+  @Test
+  void testCopyToAnotherMeasureQiCoreDoesNotSetTestCaseSetIdWhenFeatureFlagIsOFF() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(false);
+
+    TestCase source = testCase.deepCopy();
+    assertNotNull(source.getTestCaseSetId());
+
+    Measure targetMeasure = measure.toBuilder().build();
+    when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
+    when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
+    when(testCaseValidationService.validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString()))
+        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
+    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
+        .thenReturn(targetMeasure);
+
+    CopyTestCaseResult result =
+        testCaseService.copyTestCasesToMeasure(
+            targetMeasure.getId(), List.of(source), "user.name", "accessToken");
+
+    assertThat(result.getCopiedTestCases().size(), equalTo(1));
+    // Copied test case must NOT inherit source's testCaseSetId when feature flag is off
+    assertNull(result.getCopiedTestCases().get(0).getTestCaseSetId());
+    // Original is unchanged
+    assertNotNull(source.getTestCaseSetId());
+  }
+
+  @Test
   public void testValidateTestCaseAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());

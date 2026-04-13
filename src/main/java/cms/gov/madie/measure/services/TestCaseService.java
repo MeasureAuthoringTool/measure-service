@@ -77,6 +77,8 @@ public class TestCaseService {
     enrichedTestCase.setPatientId(UUID.randomUUID());
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)) {
       enrichedTestCase.setTestCaseSetId(UUID.randomUUID());
+    } else {
+      enrichedTestCase.setTestCaseSetId(null);
     }
     enrichedTestCase.setCaseNumber(sequenceService.generateSequence(measureId));
 
