@@ -1890,7 +1890,6 @@ public class AdminControllerMvcTest {
                             .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
             .andExpect(status().isConflict())
             .andReturn();
-
     assertThat(result.getResponse(), is(notNullValue()));
     assertTrue(
         result
