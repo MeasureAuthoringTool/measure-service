@@ -2091,11 +2091,18 @@ public class GroupServiceTest implements ResourceUtil {
 
     verify(actionLogService)
         .logAction(
+            eq(compositeMeasure.getId()),
+            eq(Measure.class),
+            eq(ActionType.COMPONENT_ADDED),
+            eq("test.user"),
+            eq("Added Component measure Component Measure"));
+    verify(actionLogService)
+        .logAction(
             eq(componentMeasureId),
             eq(Measure.class),
             eq(ActionType.ADDED_TO_COMPOSITE),
             eq("test.user"),
-            eq("Added to composite measure Composite Measure"));
+            eq("Added to Composite measure Composite Measure"));
   }
 
   @Test
@@ -2149,11 +2156,18 @@ public class GroupServiceTest implements ResourceUtil {
 
     verify(actionLogService)
         .logAction(
+            eq(compositeMeasure.getId()),
+            eq(Measure.class),
+            eq(ActionType.COMPONENT_ADDED),
+            eq("test.user"),
+            eq("Added Component measure Component Measure"));
+    verify(actionLogService)
+        .logAction(
             eq(componentMeasureId),
             eq(Measure.class),
             eq(ActionType.ADDED_TO_COMPOSITE),
             eq("test.user"),
-            eq("Added to composite measure Composite Measure"));
+            eq("Added to Composite measure Composite Measure"));
   }
 
   @Test
@@ -2246,11 +2260,18 @@ public class GroupServiceTest implements ResourceUtil {
 
     verify(actionLogService)
         .logAction(
+            eq(compositeMeasure.getId()),
+            eq(Measure.class),
+            eq(ActionType.COMPONENT_REMOVED),
+            eq("test.user"),
+            eq("Removed Component measure Component Measure"));
+    verify(actionLogService)
+        .logAction(
             eq(componentMeasureId),
             eq(Measure.class),
             eq(ActionType.REMOVED_FROM_COMPOSITE),
             eq("test.user"),
-            eq("Removed from composite measure Composite Measure"));
+            eq("Removed from Composite measure Composite Measure"));
   }
 
   @Test
@@ -2304,11 +2325,18 @@ public class GroupServiceTest implements ResourceUtil {
 
     verify(actionLogService)
         .logAction(
+            eq(compositeMeasure.getId()),
+            eq(Measure.class),
+            eq(ActionType.COMPONENT_REMOVED),
+            eq("test.user"),
+            eq("Removed Component measure Component Measure"));
+    verify(actionLogService)
+        .logAction(
             eq(componentMeasureId),
             eq(Measure.class),
             eq(ActionType.REMOVED_FROM_COMPOSITE),
             eq("test.user"),
-            eq("Removed from composite measure Composite Measure"));
+            eq("Removed from Composite measure Composite Measure"));
   }
 
   @Test
@@ -2332,6 +2360,90 @@ public class GroupServiceTest implements ResourceUtil {
 
     groupService.createOrUpdateGroup(nonCompositeGroup, measureWithGroup.getId(), "test.user");
 
+    verify(actionLogService, times(0))
+        .logAction(anyString(), any(), any(ActionType.class), anyString(), anyString());
+  }
+
+  @Test
+  void testDeleteCompositeGroupRemovesGroupAndCleansUpComponentRelationships() {
+    String componentMeasureId = "component-measure-id";
+    Measure componentMeasure =
+        Measure.builder()
+            .id(componentMeasureId)
+            .measureName("Component Measure")
+            .compositeMeasureIds(new ArrayList<>(List.of("composite-measure-id")))
+            .build();
+
+    String groupId = "composite-group-id";
+    Group compositeGroup =
+        Group.builder()
+            .id(groupId)
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .compositeScoring(CompositeMeasureScoring.OPPORTUNITY.toString())
+            .populations(new ArrayList<>())
+            .components(List.of(Component.builder().measureId(componentMeasureId).build()))
+            .build();
+
+    Measure compositeMeasure =
+        Measure.builder()
+            .id("composite-measure-id")
+            .measureName("Composite Measure")
+            .createdBy("test.user")
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .measureSet(MeasureSet.builder().owner("test.user").build())
+            .groups(new ArrayList<>(List.of(compositeGroup)))
+            .build();
+
+    when(measureService.findMeasureById(compositeMeasure.getId())).thenReturn(compositeMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(compositeMeasure);
+    when(measureRepository.findAllById(anyCollection())).thenReturn(List.of(componentMeasure));
+
+    groupService.deleteMeasureGroup(compositeMeasure.getId(), groupId, "test.user");
+
+    verify(measureRepository).saveAll(anyCollection());
+    assertTrue(compositeMeasure.getGroups().isEmpty());
+    assertTrue(componentMeasure.getCompositeMeasureIds().isEmpty());
+
+    verify(actionLogService)
+        .logAction(
+            eq(compositeMeasure.getId()),
+            eq(Measure.class),
+            eq(ActionType.COMPONENT_REMOVED),
+            eq("test.user"),
+            eq("Removed Component measure Component Measure"));
+    verify(actionLogService)
+        .logAction(
+            eq(componentMeasureId),
+            eq(Measure.class),
+            eq(ActionType.REMOVED_FROM_COMPOSITE),
+            eq("test.user"),
+            eq("Removed from Composite measure Composite Measure"));
+  }
+
+  @Test
+  void testDeleteNonCompositeGroupDoesNotLogComponentActions() {
+    Group cohortGroup =
+        Group.builder()
+            .id("testgroupid")
+            .scoring(MeasureScoring.COHORT.toString())
+            .populations(new ArrayList<>())
+            .build();
+
+    Measure existingMeasure =
+        Measure.builder()
+            .id("measure-id")
+            .createdBy("test.user")
+            .groups(new ArrayList<>(List.of(cohortGroup)))
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .measureSet(MeasureSet.builder().owner("test.user").build())
+            .build();
+
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+
+    groupService.deleteMeasureGroup("measure-id", "testgroupid", "test.user");
+
+    assertTrue(existingMeasure.getGroups().isEmpty());
     verify(actionLogService, times(0))
         .logAction(anyString(), any(), any(ActionType.class), anyString(), anyString());
   }
