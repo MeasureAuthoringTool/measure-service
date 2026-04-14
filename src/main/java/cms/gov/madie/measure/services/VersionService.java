@@ -265,7 +265,7 @@ public class VersionService {
     measureDraft.getMeasureMetaData().setVersionDate(null);
     measureDraft.setGroups(cloneMeasureGroups(measure.getGroups()));
     measureDraft.setReviewMetaData(new ReviewMetaData());
-    // back-fill test case set ids to versione measure test cases and carry them over to draft
+    // back-fill test case set ids to versioned measure test cases and carry them over to draft
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)
         && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
       boolean testCaseSetIdsExistInMeasureSet =
