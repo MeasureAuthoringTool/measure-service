@@ -276,7 +276,7 @@ public class VersionService {
             measure.getId());
 
         measure.getTestCases().forEach(testCase -> testCase.setTestCaseSetId(UUID.randomUUID()));
-        measureRepository.save(measureDraft);
+        measureRepository.save(measure);
       }
     }
 
