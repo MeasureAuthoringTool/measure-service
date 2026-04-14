@@ -65,6 +65,7 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
       }
     }
 
+    aggregationOperations.add(SearchAggregationUtils.addIsComponentField());
     MatchOperation matchOperation = match(measureCriteria);
     aggregationOperations.add(matchOperation);
     Aggregation aggregation;
