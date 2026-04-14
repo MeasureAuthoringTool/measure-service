@@ -63,7 +63,8 @@ public class TestCaseService {
     this.testCaseLockService = testCaseLockService;
   }
 
-  protected TestCase enrichNewTestCase(TestCase testCase, String username, String measureId) {
+  protected TestCase enrichNewTestCase(
+      TestCase testCase, String username, String measureId, String model) {
     final TestCase enrichedTestCase = testCase.toBuilder().build();
     Instant now = Instant.now();
     enrichedTestCase.setId(ObjectId.get().toString());
@@ -75,7 +76,8 @@ public class TestCaseService {
     enrichedTestCase.setHapiOperationOutcome(null);
     enrichedTestCase.setValidResource(false);
     enrichedTestCase.setPatientId(UUID.randomUUID());
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)
+        && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
       enrichedTestCase.setTestCaseSetId(UUID.randomUUID());
     }
     enrichedTestCase.setCaseNumber(sequenceService.generateSequence(measureId));
@@ -110,7 +112,8 @@ public class TestCaseService {
     }
     defaultTestCaseJsonForQdmMeasure(testCase, measure);
     TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase);
-    TestCase enrichedTestCase = enrichNewTestCase(testCase, username, measureId);
+    TestCase enrichedTestCase =
+        enrichNewTestCase(testCase, username, measureId, measure.getModel());
     enrichedTestCase =
         testCaseValidationService.validateTestCaseAsResource(
             enrichedTestCase, ModelType.valueOfName(measure.getModel()), accessToken);
@@ -140,7 +143,7 @@ public class TestCaseService {
     List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
     for (TestCase testCase : newTestCases) {
       TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase);
-      TestCase enriched = enrichNewTestCase(testCase, username, measureId);
+      TestCase enriched = enrichNewTestCase(testCase, username, measureId, measure.getModel());
       enriched =
           testCaseValidationService.validateTestCaseAsResource(
               enriched, ModelType.valueOfName(measure.getModel()), accessToken);
