@@ -13,7 +13,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.aggregation.TypedAggregation;
-import org.springframework.data.mongodb.core.query.Query;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +39,7 @@ public class AddTestCaseSetIdsChangeUnitTest {
   }
 
   @Test
-  void testAddTestCaseSetIds_happyPath_draftMeasure() {
+  void testAddTestCaseSetIdsHappyPathDraftMeasure() {
     // A draft QICore measure with test cases that have no testCaseSetId
     String measureSetId = "setId-1";
     TestCase tc1 = TestCase.builder().id("tc1").build();
@@ -67,7 +66,7 @@ public class AddTestCaseSetIdsChangeUnitTest {
     // testCaseSetIdExistsInSet returns false
     when(measureRepository.testCaseSetIdExistsInSet(anyString())).thenReturn(false);
 
-    when(mongoTemplate.save(any(Measure.class))).thenReturn(draftMeasure);
+    when(measureRepository.saveAll(anyList())).thenReturn(List.of(draftMeasure));
 
     changeUnit.addTestCaseSetIds(mongoTemplate, measureRepository);
 
@@ -76,12 +75,12 @@ public class AddTestCaseSetIdsChangeUnitTest {
     assertNotNull(tc2.getTestCaseSetId());
     assertNotEquals(tc1.getTestCaseSetId(), tc2.getTestCaseSetId());
 
-    // Verify save was called
-    verify(mongoTemplate, times(1)).save(any(Measure.class));
+    // Verify saveAll was called once for the page
+    verify(measureRepository, times(1)).saveAll(anyList());
   }
 
   @Test
-  void testAddTestCaseSetIds_happyPath_latestVersionedMeasure() {
+  void testAddTestCaseSetIdsHappyPathLatestVersionedMeasure() {
     // No draft exists; should pick the latest versioned measure
     String measureSetId = "setId-2";
     TestCase tc1 = TestCase.builder().id("tc1").build();
@@ -103,16 +102,16 @@ public class AddTestCaseSetIdsChangeUnitTest {
         .thenReturn(pageOne)
         .thenReturn(emptyPage);
     when(measureRepository.testCaseSetIdExistsInSet(anyString())).thenReturn(false);
-    when(mongoTemplate.save(any(Measure.class))).thenReturn(versionedMeasure);
+    when(measureRepository.saveAll(anyList())).thenReturn(List.of(versionedMeasure));
 
     changeUnit.addTestCaseSetIds(mongoTemplate, measureRepository);
 
     assertNotNull(tc1.getTestCaseSetId());
-    verify(mongoTemplate, times(1)).save(any(Measure.class));
+    verify(measureRepository, times(1)).saveAll(anyList());
   }
 
   @Test
-  void testAddTestCaseSetIds_multipleMeasureSetIds() {
+  void testAddTestCaseSetIdsMultipleMeasureSetIds() {
     TestCase tc1 = TestCase.builder().id("tc1").build();
     TestCase tc2 = TestCase.builder().id("tc2").build();
 
@@ -144,17 +143,17 @@ public class AddTestCaseSetIdsChangeUnitTest {
         .thenReturn(pageOne)
         .thenReturn(emptyPage);
     when(measureRepository.testCaseSetIdExistsInSet(anyString())).thenReturn(false);
-    when(mongoTemplate.save(any(Measure.class))).thenReturn(measure1).thenReturn(measure2);
+    when(measureRepository.saveAll(anyList())).thenReturn(List.of(measure1, measure2));
 
     changeUnit.addTestCaseSetIds(mongoTemplate, measureRepository);
 
     assertNotNull(tc1.getTestCaseSetId());
     assertNotNull(tc2.getTestCaseSetId());
-    verify(mongoTemplate, times(2)).save(any(Measure.class));
+    verify(measureRepository, times(1)).saveAll(anyList());
   }
 
   @Test
-  void testAddTestCaseSetIds_noQualifyingMeasures() {
+  void testAddTestCaseSetIdsNoQualifyingMeasures() {
     AggregationResults<Measure> emptyPage = mockAggregationResults(List.of());
 
     when(mongoTemplate.aggregate(any(TypedAggregation.class), eq(Measure.class)))
@@ -162,12 +161,12 @@ public class AddTestCaseSetIdsChangeUnitTest {
 
     changeUnit.addTestCaseSetIds(mongoTemplate, measureRepository);
 
-    verify(mongoTemplate, never()).exists(any(Query.class), eq(Measure.class));
-    verify(mongoTemplate, never()).save(any(Measure.class));
+    verify(measureRepository, never()).testCaseSetIdExistsInSet(anyString());
+    verify(measureRepository, never()).saveAll(anyList());
   }
 
   @Test
-  void testAddTestCaseSetIds_skipsWhenTestCaseSetIdAlreadyExists() {
+  void testAddTestCaseSetIdsSkipsWhenTestCaseSetIdAlreadyExists() {
     Measure measure =
         Measure.builder()
             .id("m1")
@@ -190,11 +189,11 @@ public class AddTestCaseSetIdsChangeUnitTest {
 
     changeUnit.addTestCaseSetIds(mongoTemplate, measureRepository);
 
-    verify(mongoTemplate, never()).save(any(Measure.class));
+    verify(measureRepository, never()).saveAll(anyList());
   }
 
   @Test
-  void testAddTestCaseSetIds_skipsWhenMeasureHasEmptyTestCases() {
+  void testAddTestCaseSetIdsSkipsWhenMeasureHasEmptyTestCases() {
     Measure emptyTcMeasure =
         Measure.builder()
             .id("m-empty")
@@ -216,11 +215,11 @@ public class AddTestCaseSetIdsChangeUnitTest {
 
     changeUnit.addTestCaseSetIds(mongoTemplate, measureRepository);
 
-    verify(mongoTemplate, never()).save(any(Measure.class));
+    verify(measureRepository, never()).saveAll(anyList());
   }
 
   @Test
-  void testAddTestCaseSetIds_doesNotOverwriteExistingTestCaseSetIds() {
+  void testAddTestCaseSetIdsDoesNotOverwriteExistingTestCaseSetIds() {
     UUID existingId = UUID.randomUUID();
     TestCase tc1 = TestCase.builder().id("tc1").testCaseSetId(existingId).build();
     Measure measure =
@@ -247,11 +246,11 @@ public class AddTestCaseSetIdsChangeUnitTest {
 
     // Existing id was not touched
     assertEquals(existingId, tc1.getTestCaseSetId());
-    verify(mongoTemplate, never()).save(any(Measure.class));
+    verify(measureRepository, never()).saveAll(anyList());
   }
 
   @Test
-  void testAddTestCaseSetIds_pagination() {
+  void testAddTestCaseSetIdsPagination() {
     // First page returns exactly PAGE_SIZE items, second page returns fewer
     List<Measure> firstPageList = new ArrayList<>();
     for (int i = 0; i < AddTestCaseSetIdsChangeUnit.PAGE_SIZE; i++) {
@@ -290,11 +289,11 @@ public class AddTestCaseSetIdsChangeUnitTest {
 
     // aggregate should be called twice (first page full -> continues, second page partial -> stops)
     verify(mongoTemplate, times(2)).aggregate(any(TypedAggregation.class), eq(Measure.class));
-    verify(mongoTemplate, never()).save(any(Measure.class));
+    verify(measureRepository, never()).saveAll(anyList());
   }
 
   @Test
-  void testRollbackExecution_doesNotThrow() {
+  void testRollbackExecutionDoesNotThrow() {
     assertDoesNotThrow(() -> changeUnit.rollbackExecution());
   }
 }

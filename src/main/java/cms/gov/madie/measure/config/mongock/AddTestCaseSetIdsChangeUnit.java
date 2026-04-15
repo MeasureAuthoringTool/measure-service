@@ -14,8 +14,8 @@ import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
 import org.springframework.data.mongodb.core.aggregation.TypedAggregation;
 import org.springframework.data.mongodb.core.query.Criteria;
-import org.springframework.data.mongodb.core.query.Query;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,7 +26,7 @@ public class AddTestCaseSetIdsChangeUnit {
   static final int PAGE_SIZE = 50;
 
   @Execution
-  public void addTestCaseSetIds(MongoTemplate mongoTemplate, MeasureRepository  measureRepository) {
+  public void addTestCaseSetIds(MongoTemplate mongoTemplate, MeasureRepository measureRepository) {
     log.info("Starting changelog to add test case set ids");
 
     int skip = 0;
@@ -42,6 +42,7 @@ public class AddTestCaseSetIdsChangeUnit {
         break;
       }
 
+      List<Measure> measuresToSave = new ArrayList<>();
       for (Measure measure : measures) {
         // Step 2: Check if any measure in this set already has testCaseSetId assigned
         if (measureRepository.testCaseSetIdExistsInSet(measure.getMeasureSetId())) {
@@ -57,14 +58,19 @@ public class AddTestCaseSetIdsChangeUnit {
           continue;
         }
 
-        // Step 3: Assign UUID to each test case and save
+        // Step 3: Assign UUID to each test case
         measure.getTestCases().forEach(testCase -> testCase.setTestCaseSetId(UUID.randomUUID()));
-        measureRepository.save(measure);
+        measuresToSave.add(measure);
         totalProcessed++;
         log.debug(
             "Assigned testCaseSetIds for measure [{}] in measureSetId [{}]",
             measure.getId(),
             measure.getMeasureSetId());
+      }
+
+      // Step 4: Batch persist all modified measures for this page
+      if (!measuresToSave.isEmpty()) {
+        measureRepository.saveAll(measuresToSave);
       }
 
       skip += PAGE_SIZE;
@@ -118,24 +124,6 @@ public class AddTestCaseSetIdsChangeUnit {
     AggregationResults<Measure> results = mongoTemplate.aggregate(aggregation, Measure.class);
     return results.getMappedResults();
   }
-
-//  /**
-//   * Checks if any measure in the given measureSetId has a test case with a non-null testCaseSetId.
-//   *
-//   * @param mongoTemplate the MongoTemplate instance
-//   * @param measureSetId the measureSetId to check
-//   * @return true if at least one test case has a testCaseSetId
-//   */
-//  boolean testCaseSetIdExistsInSet(MongoTemplate mongoTemplate, String measureSetId) {
-//    Query query =
-//        new Query(
-//            Criteria.where("measureSetId")
-//                .is(measureSetId)
-//                .and("testCases.testCaseSetId")
-//                .exists(true)
-//                .ne(null));
-//    return mongoTemplate.exists(query, Measure.class);
-//  }
 
   @RollbackExecution
   public void rollbackExecution() {
