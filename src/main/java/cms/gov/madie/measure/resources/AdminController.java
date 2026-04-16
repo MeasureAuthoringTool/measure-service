@@ -657,13 +657,20 @@ public class AdminController extends AbstractMeasureController {
     final Measure existingMeasure = measureService.findMeasureById(measureId);
     checkMeasureLock(existingMeasure, userName);
 
+    log.info(
+        "Admin {} is attempting to add test case set ids for measure {}",
+        userName,
+        existingMeasure.getId());
     var isQdm = StringUtils.equals(existingMeasure.getModel(), ModelType.QDM_5_6.getValue());
     if (isQdm) {
       throw new UnsupportedTypeException("Please provide QI Core model measure.");
     }
 
-    log.info("Admin {} is attempting to add test case set ids {}", userName);
     Measure updatedMeasure = adminService.backfillTestCaseSetIds(existingMeasure, userName);
+    log.info(
+        "Admin {} had successfully added the test case set ids for measure {}",
+        userName,
+        existingMeasure.getId());
     return ResponseEntity.ok().body(updatedMeasure);
   }
 }

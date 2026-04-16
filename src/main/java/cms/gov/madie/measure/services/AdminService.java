@@ -95,7 +95,6 @@ public class AdminService {
     }
 
     testCases.forEach(tc -> tc.setTestCaseSetId(UUID.randomUUID()));
-    log.info("Admin {} had successfully added the test case set ids to test cases {}", userName);
     return measureRepository.save(measure);
   }
 }
