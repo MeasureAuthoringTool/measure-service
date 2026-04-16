@@ -23,7 +23,7 @@ import java.util.UUID;
 @ChangeUnit(id = "add_test_case_set_ids", order = "2", author = "madie_dev")
 public class AddTestCaseSetIdsChangeUnit {
 
-  static final int PAGE_SIZE = 50;
+  static final int PAGE_SIZE = 100;
 
   @Execution
   public void addTestCaseSetIds(MongoTemplate mongoTemplate, MeasureRepository measureRepository) {
