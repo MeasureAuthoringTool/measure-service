@@ -21,4 +21,6 @@ public interface TestCaseRepository {
 
   Measure findAndUpdateValidationResults(
       String testCaseId, String measureId, UUID taskId, HapiOperationOutcome validationResults);
+
+  boolean testCaseSetIdExistsInSet(String measureId);
 }

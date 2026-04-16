@@ -147,6 +147,26 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
   }
 
   /**
+   * Checks if any TestCase within a Measure (identified by its measureSetId) has a non-null
+   * testCaseSetId value.
+   *
+   * @param measureSetId The measureSetId of the Measure to search within.
+   * @return {@code true} if at least one TestCase with a non-null testCaseSetId is found, {@code
+   *     false} otherwise.
+   */
+  @Override
+  public boolean testCaseSetIdExistsInSet(String measureSetId) {
+    Query query =
+        new Query(
+            Criteria.where("measureSetId")
+                .is(measureSetId)
+                .and("testCases.testCaseSetId")
+                .exists(true)
+                .ne(null));
+    return mongoOperations.exists(query, Measure.class);
+  }
+
+  /**
    * Updates the validation results of a specific TestCase within a Measure after HAPI FHIR
    * validation completes. This only applies if the current status is VALIDATING and the taskId
    * matches.

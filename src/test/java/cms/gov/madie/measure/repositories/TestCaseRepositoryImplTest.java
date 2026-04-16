@@ -177,6 +177,30 @@ class TestCaseRepositoryImplTest {
   }
 
   @Test
+  void testCaseSetIdExistsInSetShouldReturnTrueWhenExists() {
+    String measureSetId = "measureSet123";
+
+    when(mongoOperations.exists(any(Query.class), eq(Measure.class))).thenReturn(true);
+
+    boolean result = testCaseRepository.testCaseSetIdExistsInSet(measureSetId);
+
+    assertTrue(result);
+    verify(mongoOperations, times(1)).exists(any(Query.class), eq(Measure.class));
+  }
+
+  @Test
+  void testCaseSetIdExistsInSetShouldReturnFalseWhenNotExists() {
+    String measureSetId = "measureSet123";
+
+    when(mongoOperations.exists(any(Query.class), eq(Measure.class))).thenReturn(false);
+
+    boolean result = testCaseRepository.testCaseSetIdExistsInSet(measureSetId);
+
+    assertFalse(result);
+    verify(mongoOperations, times(1)).exists(any(Query.class), eq(Measure.class));
+  }
+
+  @Test
   void findAndUpdateValidationResultsShouldUpdateValidationResult() {
     String testCaseId = new ObjectId().toString();
     String measureId = "measure123";

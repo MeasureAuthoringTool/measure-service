@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BadVersionRequestException;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
@@ -1825,6 +1826,185 @@ public class VersionServiceTest {
     assertEquals(savedValue.getId(), capturedExport.getMeasureId());
     assertEquals("hex1", capturedExport.getMeasureBundleGridFsId());
     assertEquals("hex2", capturedExport.getMeasureBundleWithoutWarningsGridFsId());
+  }
+
+  @Test
+  public void testCreateDraftSkipsTestCaseSetIdBackfillWhenFeatureFlagDisabled() {
+    Measure versionedMeasure = buildBasicMeasure();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure draftCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .model(MODEL_QI_CORE)
+            .measureMetaData(metaData)
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(draftCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+
+    versionService.createDraft(
+        versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
+
+    // testCaseSetIdExistsInSet must never be consulted when the flag is off
+    verify(measureRepository, never()).testCaseSetIdExistsInSet(anyString());
+  }
+
+  @Test
+  public void testCreateDraftSkipsTestCaseSetIdBackfillForQDMMeasure() {
+    String model = ModelType.QDM_5_6.getValue();
+    Measure versionedMeasure = buildBasicMeasure();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    versionedMeasure.setModel(model);
+    Measure draftCopy =
+      versionedMeasure.toBuilder()
+        .id("2")
+        .versionId("13-13-13-13")
+        .measureName("Test")
+        .measureMetaData(metaData)
+        .model(model)
+        .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+      anyString(), anyBoolean(), anyBoolean()))
+      .thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+    when(measureRepository.save(any(Measure.class))).thenReturn(draftCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+      .thenReturn(true);
+
+    versionService.createDraft(
+      versionedMeasure.getId(), "Test", model, "test-user", TEST_ACCESS_TOKEN);
+
+    // testCaseSetIdExistsInSet must never be consulted when the flag is off
+    verify(measureRepository, never()).testCaseSetIdExistsInSet(anyString());
+  }
+
+  @Test
+  public void testCreateDraftSkipsTestCaseSetIdBackfillWhenSetIdsAlreadyExist() {
+    Measure versionedMeasure = buildBasicMeasure();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure draftCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .model(MODEL_QI_CORE)
+            .measureMetaData(metaData)
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+    // set IDs already present — no backfill required
+    when(measureRepository.testCaseSetIdExistsInSet(anyString())).thenReturn(true);
+    when(measureRepository.save(any(Measure.class))).thenReturn(draftCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+
+    versionService.createDraft(
+        versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
+
+    // repository.save is called exactly once (for the draft itself, not for backfilling)
+    verify(measureRepository, times(1)).save(any(Measure.class));
+    // test cases on the original measure must not have been mutated with set ids
+    versionedMeasure.getTestCases().forEach(tc -> assertNull(tc.getTestCaseSetId()));
+  }
+
+  @Test
+  public void testCreateDraftBackfillsTestCaseSetIdsWhenFlagEnabledAndSetIdsAbsent() {
+    // Use a fresh test case with no testCaseSetId set
+    TestCase tcWithoutSetId =
+        TestCase.builder()
+            .id("tc-no-set-id")
+            .caseNumber(1)
+            .name("NoSetId")
+            .groupPopulations(List.of(testCaseGroupPopulation))
+            .build();
+    Measure versionedMeasure = buildBasicMeasure();
+    versionedMeasure.setTestCases(List.of(tcWithoutSetId));
+
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure draftCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(metaData)
+            .model(MODEL_QI_CORE)
+            .testCases(List.of(tcWithoutSetId))
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+    // no set IDs present yet — backfill should run
+    when(measureRepository.testCaseSetIdExistsInSet(anyString())).thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(draftCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+
+    versionService.createDraft(
+        versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
+
+    // Each test case should now have a testCaseSetId assigned
+    versionedMeasure
+        .getTestCases()
+        .forEach(tc -> assertNotNull(tc.getTestCaseSetId(), "testCaseSetId should have been set"));
+
+    // save should be called twice: once for the backfill and once for the draft itself
+    verify(measureRepository, times(2)).save(any(Measure.class));
+  }
+
+  @Test
+  public void testCreateDraftDoesNotBackfillTestCaseSetIdsWhenTestCasesAreEmpty() {
+    Measure versionedMeasure = buildBasicMeasure();
+    versionedMeasure.setTestCases(List.of()); // no test cases
+
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure draftCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(metaData)
+            .testCases(List.of())
+            .model(MODEL_QI_CORE)
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+    // set IDs not present, but there are no test cases to backfill
+    when(measureRepository.testCaseSetIdExistsInSet(anyString())).thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(draftCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+
+    versionService.createDraft(
+        versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
+
+    // backfill save must not happen — only the draft save should occur
+    verify(measureRepository, times(1)).save(any(Measure.class));
   }
 
   @Test
