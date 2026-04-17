@@ -195,7 +195,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(false);
     TestCase testCase = new TestCase();
     final String username = "user01";
-    TestCase output = testCaseService.enrichNewTestCase(testCase, username, "measureId");
+    TestCase output =
+        testCaseService.enrichNewTestCase(
+            testCase, username, "measureId", ModelType.QI_CORE.getValue());
     assertThat(output, is(not(equalTo(testCase))));
     assertThat(output.getId(), is(notNullValue()));
     assertThat(output.getCreatedAt(), is(notNullValue()));
@@ -216,7 +218,9 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(testCaseSequenceService.generateSequence(anyString())).thenReturn(1);
     TestCase testCase = new TestCase();
     final String username = "user01";
-    TestCase output = testCaseService.enrichNewTestCase(testCase, username, "measureId");
+    TestCase output =
+        testCaseService.enrichNewTestCase(
+            testCase, username, "measureId", ModelType.QI_CORE.getValue());
     assertThat(output, is(not(equalTo(testCase))));
     assertThat(output.getId(), is(notNullValue()));
     assertThat(output.getCreatedAt(), is(notNullValue()));
@@ -228,6 +232,29 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(output.getHapiOperationOutcome(), is(nullValue()));
     assertThat(output.isValidResource(), is(false));
     assertNotNull(output.getTestCaseSetId());
+    assertThat(output.getCaseNumber(), is(equalTo(1)));
+  }
+
+  @Test
+  public void testEnrichNewTestCaseWithFeatureFlagIsONButModelIsQdm() {
+    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+    when(testCaseSequenceService.generateSequence(anyString())).thenReturn(1);
+    TestCase testCase = new TestCase();
+    final String username = "user01";
+    TestCase output =
+        testCaseService.enrichNewTestCase(
+            testCase, username, "measureId", ModelType.QDM_5_6.getValue());
+    assertThat(output, is(not(equalTo(testCase))));
+    assertThat(output.getId(), is(notNullValue()));
+    assertThat(output.getCreatedAt(), is(notNullValue()));
+    assertThat(output.getCreatedBy(), is(equalTo(username)));
+    assertThat(output.getLastModifiedAt(), is(notNullValue()));
+    assertThat(output.getLastModifiedAt(), is(equalTo(output.getCreatedAt())));
+    assertThat(output.getLastModifiedBy(), is(equalTo(username)));
+    assertThat(output.getResourceUri(), is(nullValue()));
+    assertThat(output.getHapiOperationOutcome(), is(nullValue()));
+    assertThat(output.isValidResource(), is(false));
+    assertNull(output.getTestCaseSetId());
     assertThat(output.getCaseNumber(), is(equalTo(1)));
   }
 

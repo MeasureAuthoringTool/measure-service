@@ -174,36 +174,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria))
             : match(measureCriteria);
 
-    // priority-based sorting based on the presence of priorityMeasureSets for composite component
-    // search
-    boolean usePrioritySort =
-        measureSearchCriteria != null
-            && measureSearchCriteria.isFromCompositeMeasureComponent()
-            && CollectionUtils.isNotEmpty(measureSearchCriteria.getPriorityMeasureSets());
-    // Build facets operation - exclude sort when using priority-based sorting
-    // to avoid overriding the priority sort
-    FacetOperation facets;
-    if (usePrioritySort) {
-      facets =
-          facet(sortByCount("id"))
-              .as("count")
-              .and(
-                  skip(pageable.getOffset()),
-                  limit(pageable.getPageSize()),
-                  project(MeasureListDTO.class))
-              .as("queryResults");
-    } else {
-      facets =
-          facet(sortByCount("id"))
-              .as("count")
-              .and(
-                  sort(pageable.getSort()),
-                  skip(pageable.getOffset()),
-                  limit(pageable.getPageSize()),
-                  project(MeasureListDTO.class))
-              .as("queryResults");
-    }
-
     aggregationOperations.add(matchOperation);
 
     aggregationOperations.add(
@@ -246,12 +216,18 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
 
-    // Group all measures that has same measureSetId and get the count and also first document
-    // which will be the latest measure in the MeasureSet
+    ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
+
+    FacetOperation facets;
+    // priority-based sorting based on the presence of priorityMeasureSets for composite component
+    // search
+    boolean usePrioritySort =
+        measureSearchCriteria != null
+            && measureSearchCriteria.isFromCompositeMeasureComponent()
+            && CollectionUtils.isNotEmpty(measureSearchCriteria.getPriorityMeasureSets());
     if (usePrioritySort) {
+      // Group: preserve sortField so the subsequent priority sort can reference it
       String sortField = pageable.getSort().stream().iterator().next().getProperty();
-      // Add a field to check if measureSetId is in the priority list
-      // Also preserve sortField for sorting
       GroupOperation groupByMeasureSet =
           group("measureSetId")
               .first("$$ROOT")
@@ -267,15 +243,54 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               .as("isPrioritySet");
       postMatchPipeline.add(groupByMeasureSet);
       // Sort by priority first, then by the provided sort (which is preserved in the group stage)
-      SortOperation sortByPriority =
-          sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(pageable.getSort()));
-      postMatchPipeline.add(sortByPriority);
+      postMatchPipeline.add(
+          sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(pageable.getSort())));
+      postMatchPipeline.add(replaceRoot);
+      postMatchPipeline.add(SearchAggregationUtils.addIsComponentField());
+      // Facet: sort already applied above, so omit it here
+      facets =
+          facet(sortByCount("id"))
+              .as("count")
+              .and(
+                  skip(pageable.getOffset()),
+                  limit(pageable.getPageSize()),
+                  project(MeasureListDTO.class))
+              .as("queryResults");
     } else {
       postMatchPipeline.add(group("measureSetId").first("$$ROOT").as("selectedDoc"));
+      postMatchPipeline.add(replaceRoot);
+      postMatchPipeline.add(SearchAggregationUtils.addIsComponentField());
+      // When sorting by measureMetaData.draft, substitute with the 5-tier draftSortOrder field
+      // so that the ordering follows:
+      //   DESC: 5→1 (composite draft first → non-composite versioned last)
+      //   ASC:  1→5 (non-composite versioned first → composite draft last)
+      // The original sort direction is preserved as-is.
+      Sort effectiveSort = pageable.getSort();
+      boolean hasDraftSort =
+          effectiveSort.stream()
+              .anyMatch(order -> "measureMetaData.draft".equals(order.getProperty()));
+      if (hasDraftSort) {
+        postMatchPipeline.add(SearchAggregationUtils.addDraftSortOrderField());
+        effectiveSort =
+            Sort.by(
+                effectiveSort.stream()
+                    .map(
+                        order ->
+                            "measureMetaData.draft".equals(order.getProperty())
+                                ? new Sort.Order(order.getDirection(), "draftSortOrder")
+                                : order)
+                    .collect(Collectors.toList()));
+      }
+      facets =
+          facet(sortByCount("id"))
+              .as("count")
+              .and(
+                  sort(effectiveSort),
+                  skip(pageable.getOffset()),
+                  limit(pageable.getPageSize()),
+                  project(MeasureListDTO.class))
+              .as("queryResults");
     }
-
-    ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
-    postMatchPipeline.add(replaceRoot);
 
     postMatchPipeline.add(facets);
 
