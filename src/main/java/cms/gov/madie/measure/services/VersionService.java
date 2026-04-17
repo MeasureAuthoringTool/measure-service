@@ -323,21 +323,13 @@ public class VersionService {
 
   private void backfillTestCaseSetIds(Measure measure) {
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)
-            && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
-
-      List<Measure> measuresInSet =
-              measureRepository.findAllByMeasureSetIdAndActive(measure.getMeasureSetId(), true);
-
+        && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
       boolean testCaseSetIdsExistInMeasureSet =
-              measuresInSet.stream()
-                      .filter(m -> CollectionUtils.isNotEmpty(m.getTestCases()))
-                      .flatMap(m -> m.getTestCases().stream())
-                      .anyMatch(tc -> tc.getTestCaseSetId() != null);
-
+          measureRepository.testCaseSetIdExistsInSet(measure.getMeasureSetId());
       if (!testCaseSetIdsExistInMeasureSet && CollectionUtils.isNotEmpty(measure.getTestCases())) {
         log.warn(
-                "Measure with id [{}] does not have test cases with set ids adding them.",
-                measure.getId());
+            "Measure with id [{}] does not have test cases with set ids adding them.",
+            measure.getId());
 
         measure.getTestCases().forEach(testCase -> testCase.setTestCaseSetId(UUID.randomUUID()));
         measureRepository.save(measure);
