@@ -75,19 +75,15 @@ public class AdminService {
       throw new InvalidResourceStateException("Test cases cannot be empty or null");
     }
 
-    boolean anyHasTestCaseSetId = testCases.stream().anyMatch(tc -> tc.getTestCaseSetId() != null);
-    if (anyHasTestCaseSetId) {
+    boolean measureHasTestCaseSetId =
+        testCases.stream().anyMatch(tc -> tc.getTestCaseSetId() != null);
+    if (measureHasTestCaseSetId) {
       throw new TestCaseSetIdsAlreadyAssignedException(
           "One or more test cases already have a testCaseSetId.");
     }
 
-    List<Measure> allByMeasureSetIdAndActive =
-        measureRepository.findAllByMeasureSetIdAndActive(measure.getMeasureSetId(), true);
     boolean measureSetHasTestCaseSetId =
-        allByMeasureSetIdAndActive.stream()
-            .filter(m -> CollectionUtils.isNotEmpty(m.getTestCases()))
-            .flatMap(m -> m.getTestCases().stream())
-            .anyMatch(tc -> tc.getTestCaseSetId() != null);
+        measureRepository.testCaseSetIdExistsInSet(measure.getMeasureSetId());
 
     if (measureSetHasTestCaseSetId) {
       throw new UnsupportedTypeException(

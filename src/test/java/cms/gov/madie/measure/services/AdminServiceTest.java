@@ -155,16 +155,7 @@ class AdminServiceTest {
             .testCases(List.of(TestCase.builder().id("tc1").build()))
             .build();
 
-    Measure otherMeasure =
-        Measure.builder()
-            .id("otherMeasureId")
-            .measureSetId("measureSetId")
-            .testCases(
-                List.of(TestCase.builder().id("tc2").testCaseSetId(UUID.randomUUID()).build()))
-            .build();
-
-    when(measureRepository.findAllByMeasureSetIdAndActive("measureSetId", true))
-        .thenReturn(List.of(measure, otherMeasure));
+    when(measureRepository.testCaseSetIdExistsInSet("measureSetId")).thenReturn(true);
 
     assertThrows(
         UnsupportedTypeException.class,
@@ -184,8 +175,7 @@ class AdminServiceTest {
             .testCases(List.of(tc1, tc2))
             .build();
 
-    when(measureRepository.findAllByMeasureSetIdAndActive("measureSetId", true))
-        .thenReturn(List.of(measure));
+    when(measureRepository.testCaseSetIdExistsInSet("measureSetId")).thenReturn(false);
     when(measureRepository.save(any(Measure.class))).thenReturn(measure);
 
     Measure result = adminService.backfillTestCaseSetIds(measure, "testUser");
