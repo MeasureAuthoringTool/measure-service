@@ -163,7 +163,7 @@ public class VersionService {
     Version oldVersion = upversionedMeasure.getVersion();
     Version newVersion = getNextVersion(upversionedMeasure, versionType);
     upversionedMeasure.setVersion(newVersion);
-    // back-fill test case set ids to versioned measure test cases and carry them over to draft
+    // back-fill test case set ids to draft measure test cases and carry them over to version
     backfillTestCaseSetIds(measure);
 
     if (!CollectionUtils.isEmpty(upversionedMeasure.getTestCases())) {
@@ -323,13 +323,21 @@ public class VersionService {
 
   private void backfillTestCaseSetIds(Measure measure) {
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)
-        && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
+            && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
+
+      List<Measure> measuresInSet =
+              measureRepository.findAllByMeasureSetIdAndActive(measure.getMeasureSetId(), true);
+
       boolean testCaseSetIdsExistInMeasureSet =
-          measureRepository.testCaseSetIdExistsInSet(measure.getMeasureSetId());
+              measuresInSet.stream()
+                      .filter(m -> CollectionUtils.isNotEmpty(m.getTestCases()))
+                      .flatMap(m -> m.getTestCases().stream())
+                      .anyMatch(tc -> tc.getTestCaseSetId() != null);
+
       if (!testCaseSetIdsExistInMeasureSet && CollectionUtils.isNotEmpty(measure.getTestCases())) {
         log.warn(
-            "Measure with id [{}] does not have test cases with set ids adding them.",
-            measure.getId());
+                "Measure with id [{}] does not have test cases with set ids adding them.",
+                measure.getId());
 
         measure.getTestCases().forEach(testCase -> testCase.setTestCaseSetId(UUID.randomUUID()));
         measureRepository.save(measure);
