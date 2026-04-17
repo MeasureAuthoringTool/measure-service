@@ -1866,25 +1866,25 @@ public class VersionServiceTest {
     metaData.setDraft(true);
     versionedMeasure.setModel(model);
     Measure draftCopy =
-      versionedMeasure.toBuilder()
-        .id("2")
-        .versionId("13-13-13-13")
-        .measureName("Test")
-        .measureMetaData(metaData)
-        .model(model)
-        .build();
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(metaData)
+            .model(model)
+            .build();
 
     when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
     when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
-      anyString(), anyBoolean(), anyBoolean()))
-      .thenReturn(false);
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
     when(measureRepository.save(any(Measure.class))).thenReturn(draftCopy);
     when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
-      .thenReturn(true);
+        .thenReturn(true);
 
     versionService.createDraft(
-      versionedMeasure.getId(), "Test", model, "test-user", TEST_ACCESS_TOKEN);
+        versionedMeasure.getId(), "Test", model, "test-user", TEST_ACCESS_TOKEN);
 
     // testCaseSetIdExistsInSet must never be consulted when the flag is off
     verify(measureRepository, never()).testCaseSetIdExistsInSet(anyString());

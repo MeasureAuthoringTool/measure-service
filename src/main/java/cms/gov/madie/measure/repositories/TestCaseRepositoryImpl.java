@@ -147,8 +147,8 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
   }
 
   /**
-   * Checks if any TestCase within an active Measure (identified by its measureSetId) has a
-   * non-null testCaseSetId value.
+   * Checks if any TestCase within an active Measure (identified by its measureSetId) has a non-null
+   * testCaseSetId value.
    *
    * @param measureSetId The measureSetId of the Measure to search within.
    * @return {@code true} if at least one TestCase with a non-null testCaseSetId is found in an
@@ -162,9 +162,8 @@ public class TestCaseRepositoryImpl implements TestCaseRepository {
                 .is(measureSetId)
                 .and("active")
                 .is(true)
-                .and("testCases.testCaseSetId")
-                .exists(true)
-                .ne(null));
+                .and("testCases")
+                .elemMatch(Criteria.where("testCaseSetId").exists(true).ne(null)));
     return mongoOperations.exists(query, Measure.class);
   }
 
