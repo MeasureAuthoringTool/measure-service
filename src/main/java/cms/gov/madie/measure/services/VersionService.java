@@ -163,6 +163,9 @@ public class VersionService {
     Version oldVersion = upversionedMeasure.getVersion();
     Version newVersion = getNextVersion(upversionedMeasure, versionType);
     upversionedMeasure.setVersion(newVersion);
+    // back-fill test case set ids to draft measure test cases and carry them over to version
+    backfillTestCaseSetIds(measure);
+
     if (!CollectionUtils.isEmpty(upversionedMeasure.getTestCases())) {
       upversionedMeasure
           .getTestCases()
@@ -266,19 +269,7 @@ public class VersionService {
     measureDraft.setGroups(cloneMeasureGroups(measure.getGroups()));
     measureDraft.setReviewMetaData(new ReviewMetaData());
     // back-fill test case set ids to versioned measure test cases and carry them over to draft
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)
-        && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
-      boolean testCaseSetIdsExistInMeasureSet =
-          measureRepository.testCaseSetIdExistsInSet(measure.getMeasureSetId());
-      if (!testCaseSetIdsExistInMeasureSet && CollectionUtils.isNotEmpty(measure.getTestCases())) {
-        log.warn(
-            "Measure with id [{}] does not have test cases with set ids adding them.",
-            measure.getId());
-
-        measure.getTestCases().forEach(testCase -> testCase.setTestCaseSetId(UUID.randomUUID()));
-        measureRepository.save(measure);
-      }
-    }
+    backfillTestCaseSetIds(measure);
 
     measureDraft.setTestCases(cloneTestCases(measure, measureDraft.getGroups(), accessToken));
     var now = Instant.now();
@@ -328,6 +319,22 @@ public class VersionService {
         String.format("Draft created from version %s", measure.getVersion()));
 
     return savedDraft;
+  }
+
+  private void backfillTestCaseSetIds(Measure measure) {
+    if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)
+        && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
+      boolean testCaseSetIdsExistInMeasureSet =
+          measureRepository.testCaseSetIdExistsInSet(measure.getMeasureSetId());
+      if (!testCaseSetIdsExistInMeasureSet && CollectionUtils.isNotEmpty(measure.getTestCases())) {
+        log.warn(
+            "Measure with id [{}] does not have test cases with set ids adding them.",
+            measure.getId());
+
+        measure.getTestCases().forEach(testCase -> testCase.setTestCaseSetId(UUID.randomUUID()));
+        measureRepository.save(measure);
+      }
+    }
   }
 
   private String updateUsingStatement(String model, String cql) {
