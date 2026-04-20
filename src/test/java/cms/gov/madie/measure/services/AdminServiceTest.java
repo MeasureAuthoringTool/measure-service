@@ -1,7 +1,6 @@
 package cms.gov.madie.measure.services;
 
-import cms.gov.madie.measure.exceptions.InvalidRequestException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Measure;
@@ -13,6 +12,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.hamcrest.CoreMatchers.*;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -111,5 +111,78 @@ class AdminServiceTest {
 
     assertThat(caseNumbers, is(notNullValue()));
     assertThat(caseNumbers.size(), is(equalTo(0)));
+  }
+
+  @Test
+  void backfillTestCaseSetIdsThrowsInvalidResourceStateExceptionWhenNoTestCases() {
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(List.of())
+            .build();
+
+    assertThrows(
+        InvalidResourceStateException.class,
+        () -> adminService.backfillTestCaseSetIds(measure, "testUser"));
+  }
+
+  @Test
+  void
+      backfillTestCaseSetIdsThrowsTestCaseSetIdsAlreadyAssignedExceptionWhenCurrentMeasureHasIds() {
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(
+                List.of(TestCase.builder().id("tc1").testCaseSetId(UUID.randomUUID()).build()))
+            .build();
+
+    assertThrows(
+        TestCaseSetIdsAlreadyAssignedException.class,
+        () -> adminService.backfillTestCaseSetIds(measure, "testUser"));
+  }
+
+  @Test
+  void backfillTestCaseSetIdsThrowsUnsupportedTypeExceptionWhenAnotherMeasureInSetHasIds() {
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(List.of(TestCase.builder().id("tc1").build()))
+            .build();
+
+    when(measureRepository.testCaseSetIdExistsInSet("measureSetId")).thenReturn(true);
+
+    assertThrows(
+        UnsupportedTypeException.class,
+        () -> adminService.backfillTestCaseSetIds(measure, "testUser"));
+  }
+
+  @Test
+  void backfillTestCaseSetIdsAssignsUUIDToEachTestCaseAndSaves() {
+    TestCase tc1 = TestCase.builder().id("tc1").build();
+    TestCase tc2 = TestCase.builder().id("tc2").build();
+
+    Measure measure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(List.of(tc1, tc2))
+            .build();
+
+    when(measureRepository.testCaseSetIdExistsInSet("measureSetId")).thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(measure);
+
+    Measure result = adminService.backfillTestCaseSetIds(measure, "testUser");
+
+    assertThat(result, is(notNullValue()));
+    assertThat(tc1.getTestCaseSetId(), is(notNullValue()));
+    assertThat(tc2.getTestCaseSetId(), is(notNullValue()));
+    verify(measureRepository, times(1)).save(measure);
   }
 }
