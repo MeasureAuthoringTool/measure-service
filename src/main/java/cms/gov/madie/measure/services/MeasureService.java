@@ -46,6 +46,7 @@ public class MeasureService extends BaseMeasureService {
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
   private final UserServiceClient userServiceClient;
+  private final CompositeRelationshipService compositeRelationshipService;
 
   @Autowired
   public MeasureService(
@@ -60,7 +61,8 @@ public class MeasureService extends BaseMeasureService {
       TerminologyValidationService terminologyValidationService,
       AppConfigService appConfigService,
       MeasureLockService measureLockService,
-      UserServiceClient userServiceClient) {
+      UserServiceClient userServiceClient,
+      CompositeRelationshipService compositeRelationshipService) {
     // Pass parent dependencies to BaseMeasureService constructor
     super(measureRepository, measureSetService, appConfigService, measureLockService);
     // Assign child-specific fields
@@ -76,6 +78,7 @@ public class MeasureService extends BaseMeasureService {
     this.appConfigService = appConfigService;
     this.measureLockService = measureLockService;
     this.userServiceClient = userServiceClient;
+    this.compositeRelationshipService = compositeRelationshipService;
   }
 
   public void verifyAuthorizationByMeasureSetId(
@@ -364,6 +367,21 @@ public class MeasureService extends BaseMeasureService {
     existingMeasure.setVersionId(existingMeasure.getVersionId());
     existingMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
     Measure saveMeasure = measureRepository.save(existingMeasure);
+
+    if (existingMeasure.getMeasureMetaData().isComposite()
+        && !CollectionUtils.isEmpty(existingMeasure.getGroups())) {
+      List<Component> allComponents =
+          existingMeasure.getGroups().stream()
+              .filter(g -> MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(g.getScoring()))
+              .filter(g -> !CollectionUtils.isEmpty(g.getComponents()))
+              .flatMap(g -> g.getComponents().stream())
+              .toList();
+      if (!allComponents.isEmpty()) {
+        compositeRelationshipService.syncComponents(
+            allComponents, List.of(), existingMeasure, username);
+      }
+    }
+
     actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
     measureLockService.unlockMeasure(id, username);
     return saveMeasure;

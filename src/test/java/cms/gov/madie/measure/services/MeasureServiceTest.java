@@ -78,6 +78,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private TerminologyValidationService terminologyValidationService;
   @Mock private MeasureLockService measureLockService;
   @Mock private UserServiceClient userServiceClient;
+  @Mock private CompositeRelationshipService compositeRelationshipService;
 
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
@@ -2674,6 +2675,143 @@ public class MeasureServiceTest implements ResourceUtil {
     verify(measureRepository).save(measureArgumentCaptor.capture());
     Measure savedMeasure = measureArgumentCaptor.getValue();
     assertThat(savedMeasure.isActive(), is(false));
+  }
+
+  @Test
+  public void testDeactivateCompositeMeasureDelegatesToSyncComponents() {
+    // Given
+    String username = "test-user";
+    String componentMeasureId = "component-measure-id";
+
+    List<Component> components = List.of(Component.builder().measureId(componentMeasureId).build());
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .components(components)
+            .build();
+
+    MeasureMetaData compositeMeasureMetaData =
+        draftMeasureMetaData.toBuilder().composite(true).build();
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(compositeMeasureMetaData)
+            .groups(new ArrayList<>(List.of(compositeGroup)))
+            .build();
+
+    // When
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
+
+    // Then
+    measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    verify(compositeRelationshipService)
+        .syncComponents(eq(components), eq(List.of()), eq(existingMeasure), eq(username));
+  }
+
+  @Test
+  public void testDeactivateCompositeMeasureWithEmptyGroupsDoesNotDelegate() {
+    // Given
+    String username = "test-user";
+
+    MeasureMetaData compositeMeasureMetaData =
+        draftMeasureMetaData.toBuilder().composite(true).build();
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(compositeMeasureMetaData)
+            .groups(new ArrayList<>())
+            .build();
+
+    // When
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
+
+    // Then
+    measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    verify(compositeRelationshipService, times(0)).syncComponents(any(), any(), any(), anyString());
+  }
+
+  @Test
+  public void testDeactivateCompositeMeasureWithNoComponentsDoesNotDelegate() {
+    // Given
+    String username = "test-user";
+
+    Group compositeGroupNoComponents =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .components(new ArrayList<>())
+            .build();
+
+    MeasureMetaData compositeMeasureMetaData =
+        draftMeasureMetaData.toBuilder().composite(true).build();
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(compositeMeasureMetaData)
+            .groups(new ArrayList<>(List.of(compositeGroupNoComponents)))
+            .build();
+
+    // When
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
+
+    // Then
+    measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    verify(compositeRelationshipService, times(0)).syncComponents(any(), any(), any(), anyString());
+  }
+
+  @Test
+  public void testDeactivateNonCompositeMeasureDoesNotDelegate() {
+    // Given
+    String username = "test-user";
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
+
+    // When
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
+
+    // Then
+    measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    verify(compositeRelationshipService, times(0)).syncComponents(any(), any(), any(), anyString());
   }
 
   @Test
