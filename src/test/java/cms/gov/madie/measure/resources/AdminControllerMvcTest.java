@@ -7,6 +7,8 @@ import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.exceptions.TestCaseSetIdsAlreadyAssignedException;
+import cms.gov.madie.measure.exceptions.UnsupportedTypeException;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -1748,5 +1750,152 @@ public class AdminControllerMvcTest {
     assertThat(result.getResponse(), is(notNullValue()));
     verify(exportService, times(1))
         .getSharedAccessReportForMeasures(any(), anyString(), anyString());
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsReturnsForbiddenForNonAdmin() throws Exception {
+    mockMvc
+        .perform(
+            put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_SOME_OTHER_ROLE"))))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(adminService);
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsThrowsConflictForQdmMeasure() throws Exception {
+    Measure qdmMeasure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(MeasureSet.builder().id("measureSetId").owner(TEST_USER_ID).build())
+            .model(ModelType.QDM_5_6.getValue())
+            .testCases(List.of(TestCase.builder().id("tc1").build()))
+            .build();
+
+    when(measureService.findMeasureById("measureId")).thenReturn(qdmMeasure);
+
+    mockMvc
+        .perform(
+            put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+        .andExpect(status().isConflict());
+
+    verifyNoInteractions(adminService);
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsReturnsOkOnSuccess() throws Exception {
+    TestCase tc1 = TestCase.builder().id("tc1").testCaseSetId(UUID.randomUUID()).build();
+    Measure updatedMeasure =
+        FhirMeasure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(MeasureSet.builder().id("measureSetId").owner(TEST_USER_ID).build())
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(List.of(tc1))
+            .build();
+
+    when(measureService.findMeasureById("measureId")).thenReturn(updatedMeasure);
+    when(adminService.backfillTestCaseSetIds(any(Measure.class), anyString()))
+        .thenReturn(updatedMeasure);
+
+    mockMvc
+        .perform(
+            put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id", equalTo("measureId")));
+
+    verify(adminService, times(1)).backfillTestCaseSetIds(any(Measure.class), anyString());
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsReturnsOkWhenAlreadyAssigned() throws Exception {
+    Measure measure =
+        FhirMeasure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(MeasureSet.builder().id("measureSetId").owner(TEST_USER_ID).build())
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(
+                List.of(TestCase.builder().id("tc1").testCaseSetId(UUID.randomUUID()).build()))
+            .build();
+
+    when(measureService.findMeasureById("measureId")).thenReturn(measure);
+    when(adminService.backfillTestCaseSetIds(any(Measure.class), anyString()))
+        .thenThrow(
+            new TestCaseSetIdsAlreadyAssignedException(
+                "One or more test cases already have a testCaseSetId."));
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+            .andExpect(status().isNoContent())
+            .andReturn();
+
+    assertThat(result.getResponse(), is(notNullValue()));
+    assertTrue(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains("One or more test cases already have a testCaseSetId."));
+    verify(adminService, times(1)).backfillTestCaseSetIds(any(Measure.class), anyString());
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsReturnsConflictWhenMeasureSetHasIds() throws Exception {
+    Measure measure =
+        FhirMeasure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(MeasureSet.builder().id("measureSetId").owner(TEST_USER_ID).build())
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(List.of(TestCase.builder().id("tc1").build()))
+            .build();
+
+    when(measureService.findMeasureById("measureId")).thenReturn(measure);
+    when(adminService.backfillTestCaseSetIds(any(Measure.class), anyString()))
+        .thenThrow(
+            new UnsupportedTypeException(
+                "One or more test cases in this measure set already have a testCaseSetId."));
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+            .andExpect(status().isConflict())
+            .andReturn();
+    assertThat(result.getResponse(), is(notNullValue()));
+    assertTrue(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains("One or more test cases in this measure set already have a testCaseSetId."));
+    verify(adminService, times(1)).backfillTestCaseSetIds(any(Measure.class), anyString());
   }
 }

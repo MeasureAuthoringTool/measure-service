@@ -79,6 +79,8 @@ public class TestCaseService {
     if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)
         && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(model)) {
       enrichedTestCase.setTestCaseSetId(UUID.randomUUID());
+    } else {
+      enrichedTestCase.setTestCaseSetId(null);
     }
     enrichedTestCase.setCaseNumber(sequenceService.generateSequence(measureId));
 
