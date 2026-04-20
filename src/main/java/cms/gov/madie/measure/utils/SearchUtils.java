@@ -84,4 +84,15 @@ public class SearchUtils {
       measureCriteria.andOperator(new Criteria().orOperator(orConditions));
     }
   }
+
+  /**
+   * Appends a filter to {@code measureCriteria} requiring at least one test case with a non-blank
+   * {@code testCaseSetId}. Used when searching for measures that are eligible as composite measure
+   * components.
+   *
+   * @param measureCriteria the criteria to append the filter to
+   */
+  public static void appendTestCaseSetIdCriteria(Criteria measureCriteria) {
+    measureCriteria.and("testCases.testCaseSetId").exists(true).ne(null).ne("");
+  }
 }

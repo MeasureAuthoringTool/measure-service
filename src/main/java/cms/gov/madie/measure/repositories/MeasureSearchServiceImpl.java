@@ -177,7 +177,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
     aggregationOperations.add(lookupOperation);
     aggregationOperations.add(unwindOperation);
-    aggregationOperations.add(initialProjection);
 
     Criteria measureCriteria = Criteria.where("active").is(true);
 
@@ -202,10 +201,14 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         measureCriteria.and("_id").nin(measureSearchCriteria.getExcludeByMeasureIds());
       }
 
-      if (measureSearchCriteria.isFromCompositeMeasureComponent()
-          && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
-        aggregationOperations.add(
-            createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+      if (measureSearchCriteria.isFromCompositeMeasureComponent()) {
+        if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+          aggregationOperations.add(
+              createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+        }
+        // Measures that have test cases with test case set IDs are allowed to be component measures
+        // Filter measures that have at least one test case with a testCaseSetId
+        SearchUtils.appendTestCaseSetIdCriteria(measureCriteria);
       }
     }
 
@@ -216,6 +219,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             : match(measureCriteria);
 
     aggregationOperations.add(matchOperation);
+    // Exclude testCases and elmJson after filtering (testCases needed for testCaseSetId filter)
+    aggregationOperations.add(initialProjection);
     aggregationOperations.add(
         group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
 
