@@ -52,9 +52,13 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
       SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
     }
 
+    // if the request is from composite component view
     if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()) {
       // filter draft measures for composite measure components search
       measureCriteria.and("measureMetaData.draft").is(false);
+
+      // filter measures that have at least one test case with a testCaseSetId
+      SearchUtils.appendTestCaseSetIdCriteria(measureCriteria);
 
       // filter measures that contains only the allowed scoring types in all their groups for
       // composite measure components search

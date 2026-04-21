@@ -11,6 +11,18 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 class SearchUtilsTest {
 
   @Test
+  void testAppendTestCaseSetIdCriteriaAddsExistsNotNullNotEmpty() {
+    Criteria base = new Criteria();
+
+    SearchUtils.appendTestCaseSetIdCriteria(base);
+
+    String json = base.getCriteriaObject().toJson();
+    assertThat(json).contains("testCases.testCaseSetId");
+    assertThat(json).contains("$exists");
+    assertThat(json).contains("$ne");
+  }
+
+  @Test
   void testAppendVersionSearchCriteriaThreePartVersion() {
     Criteria base = new Criteria();
     MeasureSearchCriteria input =
