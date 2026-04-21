@@ -268,6 +268,7 @@ public class VersionService {
     measureDraft.getMeasureMetaData().setVersionDate(null);
     measureDraft.setGroups(cloneMeasureGroups(measure.getGroups()));
     measureDraft.setReviewMetaData(new ReviewMetaData());
+    measureDraft.setCompositeMeasureIds(null);
     // back-fill test case set ids to versioned measure test cases and carry them over to draft
     backfillTestCaseSetIds(measure);
 

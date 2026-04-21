@@ -1234,6 +1234,36 @@ public class VersionServiceTest {
                 "Can not create a draft for the measure \"Test\". Only one draft is permitted per measure.")));
   }
 
+  @Test
+  public void testCreateDraftClearsCompositeMeasureIds() {
+    Measure versionedMeasure = buildBasicMeasure();
+    versionedMeasure.setCompositeMeasureIds(List.of("composite-id-1"));
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure versionedCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureMetaData(metaData)
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+
+    versionService.createDraft(
+        versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
+
+    verify(measureRepository, times(1)).save(measureCaptor.capture());
+    Measure draft = measureCaptor.getValue();
+    assertNull(draft.getCompositeMeasureIds());
+    assertThat(versionedMeasure.getCompositeMeasureIds(), is(equalTo(List.of("composite-id-1"))));
+  }
+
   private Measure buildBasicMeasure() {
     return Measure.builder()
         .id("1")
