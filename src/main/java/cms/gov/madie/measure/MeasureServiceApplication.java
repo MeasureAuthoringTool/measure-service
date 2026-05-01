@@ -3,11 +3,14 @@ package cms.gov.madie.measure;
 import cms.gov.madie.measure.services.LogInterceptor;
 import gov.cms.madie.models.validators.ValidLibraryNameValidator;
 import io.mongock.runner.springboot.EnableMongock;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.caffeine.CaffeineCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -86,6 +89,14 @@ public class MeasureServiceApplication {
     taskExecutor.setAwaitTerminationSeconds(shutdownWaitSeconds);
     taskExecutor.setWaitForTasksToCompleteOnShutdown(true);
     return taskExecutor;
+  }
+
+  @Bean
+  public CacheManager cacheManager() {
+    CaffeineCacheManager cacheManager =
+        new CaffeineCacheManager("organizations", "populationBasisValues", "endorsements");
+    cacheManager.setCaffeine(Caffeine.newBuilder().maximumSize(500));
+    return cacheManager;
   }
 
   @Bean
