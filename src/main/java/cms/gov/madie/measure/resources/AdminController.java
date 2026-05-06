@@ -22,6 +22,7 @@ import jakarta.validation.Valid;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -62,6 +63,7 @@ public class AdminController extends AbstractMeasureController {
   private final TestCaseLockService testCaseLockService;
   private final AdminService adminService;
   private final AppConfigService appConfigService;
+  private final CacheManager cacheManager;
 
   @Override
   protected AppConfigService getAppConfigService() {
@@ -672,5 +674,14 @@ public class AdminController extends AbstractMeasureController {
         userName,
         existingMeasure.getId());
     return ResponseEntity.ok().body(updatedMeasure);
+  }
+
+  @DeleteMapping("/cache/evict")
+  public ResponseEntity<List<String>> evictAllCaches(Principal principal) {
+    List<String> evictedCaches = new ArrayList<>(cacheManager.getCacheNames());
+    log.info("Admin user [{}] is evicting all caches: {}", principal.getName(), evictedCaches);
+    evictedCaches.forEach(
+        cacheName -> Objects.requireNonNull(cacheManager.getCache(cacheName)).clear());
+    return ResponseEntity.ok(evictedCaches);
   }
 }
