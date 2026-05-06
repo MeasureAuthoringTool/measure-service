@@ -1935,5 +1935,6 @@ public class AdminControllerMvcTest {
                         .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
                         .authorities(createAuthorityList("ROLE_MADIE-USER"))))
         .andExpect(status().isForbidden());
+    verifyNoInteractions(cacheManager);
   }
 }
