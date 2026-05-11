@@ -680,8 +680,7 @@ public class AdminController extends AbstractMeasureController {
   public ResponseEntity<List<String>> evictAllCaches(Principal principal) {
     List<String> evictedCaches = new ArrayList<>(cacheManager.getCacheNames());
     log.info("Admin user [{}] is evicting all caches: {}", principal.getName(), evictedCaches);
-    evictedCaches.forEach(
-        cacheName -> Objects.requireNonNull(cacheManager.getCache(cacheName)).clear());
+    evictedCaches.forEach(cacheName -> cacheManager.getCache(cacheName).clear());
     return ResponseEntity.ok(evictedCaches);
   }
 }
