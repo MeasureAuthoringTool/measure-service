@@ -17,8 +17,6 @@ public class SearchAggregationUtils {
   // are left as-is. For QI-Core measures the "FHIR" suffix is appended.
   // When cmsId is null/missing, cmsIdDisplay is null (so search doesn't match).
   public static AggregationOperation addCmsIdDisplayField() {
-    // $toString on a null cmsId returns null, and $strLenCP errors on null.
-    // Coerce to "" so the pad pipeline can always evaluate safely.
     Document safeCmsIdString =
         new Document("$ifNull", Arrays.asList(new Document("$toString", "$measureSet.cmsId"), ""));
     Document cmsIdStrLen = new Document("$strLenCP", safeCmsIdString);
