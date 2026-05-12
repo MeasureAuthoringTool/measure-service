@@ -50,6 +50,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -95,6 +98,7 @@ public class AdminControllerMvcTest {
   @MockitoBean private AdminService adminService;
   @MockitoBean private AppConfigService appConfigService;
   @MockitoBean private UserServiceClient userServiceClient;
+  @MockitoBean private CacheManager cacheManager;
 
   @Autowired private MockMvc mockMvc;
 
@@ -1897,5 +1901,40 @@ public class AdminControllerMvcTest {
             .getContentAsString()
             .contains("One or more test cases in this measure set already have a testCaseSetId."));
     verify(adminService, times(1)).backfillTestCaseSetIds(any(Measure.class), anyString());
+  }
+
+  @Test
+  public void testEvictAllCachesReturnsOkWithCacheNames() throws Exception {
+    Cache mockCache = mock(Cache.class);
+    when(cacheManager.getCacheNames())
+        .thenReturn(Set.of("organizations", "populationBasisValues", "endorsements"));
+    when(cacheManager.getCache(anyString())).thenReturn(mockCache);
+
+    mockMvc
+        .perform(
+            delete("/admin/cache/evict")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+        .andExpect(status().isOk());
+
+    verify(cacheManager, times(3)).getCache(anyString());
+    verify(mockCache, times(3)).clear();
+  }
+
+  @Test
+  public void testEvictAllCachesReturnsForbiddenForNonAdmin() throws Exception {
+    mockMvc
+        .perform(
+            delete("/admin/cache/evict")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-USER"))))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(cacheManager);
   }
 }
