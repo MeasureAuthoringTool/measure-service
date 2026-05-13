@@ -201,6 +201,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         measureCriteria.and("_id").nin(measureSearchCriteria.getExcludeByMeasureIds());
       }
 
+      if (measureSearchCriteria.isExcludeCompositeMeasures()) {
+        measureCriteria.and("measureMetaData.composite").ne(true);
+      }
+
       if (measureSearchCriteria.isFromCompositeMeasureComponent()) {
         if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
           aggregationOperations.add(

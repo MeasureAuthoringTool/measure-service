@@ -18,6 +18,7 @@ public class MeasureSearchCriteria {
   private Boolean draft;
   private List<String> excludeByMeasureIds;
   private boolean fromCompositeMeasureComponent;
+  private boolean excludeCompositeMeasures;
   private List<String>
       allowedScoringTypes; // List of scoring types to include (e.g., ["Proportion", "Ratio"])
   private List<String> priorityMeasureSets; // List of measure set IDs to prioritize in sorting
