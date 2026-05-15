@@ -321,13 +321,11 @@ public class TestCaseService {
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
       testCase.setBundleTypeUpdated(false);
-      if (appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)) {
-        try {
-          testCase.setJson(JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
-        } catch (JsonProcessingException e) {
-          log.error(
-              "Error reading testCaseJson while updating TestCase with id: " + testCase.getId(), e);
-        }
+      try {
+        testCase.setJson(JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
+      } catch (JsonProcessingException e) {
+        log.error(
+            "Error reading testCaseJson while updating TestCase with id: " + testCase.getId(), e);
       }
       if (ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
         Measure updatedMeasure = measureRepository.addOrUpdateTestCase(measureId, testCase);

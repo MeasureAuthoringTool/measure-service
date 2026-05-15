@@ -5,7 +5,6 @@ public enum MadieFeatureFlag {
   QDM_EXPORT("qdmExport"),
   QDM_TEST_CASES("qdmTestCases"),
   IMPORT_TEST_CASES("importTestCases"),
-  QICORE_ELEMENTS_TAB("qiCoreElementsTab"),
   TEST_CASE_SET_ID("testCaseSetId");
 
   private final String flag;
