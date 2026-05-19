@@ -12,24 +12,41 @@ import java.util.List;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.match;
 
 public class SearchAggregationUtils {
-  // Add string field called cmsIdDisplay. If model is QI-Core, append "FHIR" to measureSet
-  // .cmsId, else only convert measureSet.cmsId to a string
+  // Add string field called cmsIdDisplay. The CMS ID is zero-padded to 4 digits
+  // for display & search consistency. Values wider than 4 digits
+  // are left as-is. For QI-Core measures the "FHIR" suffix is appended.
+  // When cmsId is null/missing, cmsIdDisplay is null (so search doesn't match).
   public static AggregationOperation addCmsIdDisplayField() {
-    return context ->
+    Document safeCmsIdString =
+        new Document("$ifNull", Arrays.asList(new Document("$toString", "$measureSet.cmsId"), ""));
+    Document cmsIdStrLen = new Document("$strLenCP", safeCmsIdString);
+    Document padCount =
         new Document(
-            "$addFields",
-            new Document(
-                "cmsIdDisplay",
+            "$max", Arrays.asList(0, new Document("$subtract", Arrays.asList(4, cmsIdStrLen))));
+    Document paddedCmsId =
+        new Document(
+            "$concat",
+            Arrays.asList(
+                new Document("$substrCP", Arrays.asList("0000", 0, padCount)), safeCmsIdString));
+
+    Document paddedWithOptionalFhirSuffix =
+        new Document(
+            "$cond",
+            List.of(
                 new Document(
-                    "$cond",
-                    List.of(
-                        new Document(
-                            "$regexMatch",
-                            new Document("input", "$model").append("regex", "QI-Core")),
-                        new Document(
-                            "$concat",
-                            List.of(new Document("$toString", "$measureSet.cmsId"), "FHIR")),
-                        new Document("$toString", "$measureSet.cmsId")))));
+                    "$regexMatch", new Document("input", "$model").append("regex", "QI-Core")),
+                new Document("$concat", Arrays.asList(paddedCmsId, "FHIR")),
+                paddedCmsId));
+
+    Document cmsIdDisplayExpr =
+        new Document(
+            "$cond",
+            Arrays.asList(
+                new Document("$gt", Arrays.asList("$measureSet.cmsId", null)),
+                paddedWithOptionalFhirSuffix,
+                null));
+
+    return context -> new Document("$addFields", new Document("cmsIdDisplay", cmsIdDisplayExpr));
   }
 
   // Add boolean field component: true if compositeMeasureIds is not null and not empty
