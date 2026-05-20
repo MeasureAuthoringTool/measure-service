@@ -478,7 +478,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateResourceAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -539,7 +538,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCasesThrowsNoExceptionForNonDraftMeasure() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -1308,7 +1306,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testUpdateTestCaseThrowsResourceNotFoundExceptionForUnknownMeasureId() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -3788,7 +3785,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateTestCaseAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
