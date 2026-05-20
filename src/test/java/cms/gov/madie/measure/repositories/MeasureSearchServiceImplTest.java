@@ -1719,4 +1719,50 @@ public class MeasureSearchServiceImplTest {
     verify(mongoTemplate, times(2))
         .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
   }
+
+  @Test
+  public void testSearchMeasuresByCriteriaExcludesCompositeMeasures() {
+    PageRequest pageRequest = PageRequest.of(0, 5);
+    List<MeasureListDTO> nonCompositeMeasures = List.of(measure1, measure2);
+
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(nonCompositeMeasures)
+            .count(Arrays.asList(nonCompositeMeasures.toArray()))
+            .build();
+    AggregationResults<FacetDTO> pagedResults =
+        new AggregationResults<>(List.of(facetDTO), new Document());
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
+    AggregationResults<MeasureSetMatchCountDTO> measureSetResults =
+        new AggregationResults<>(List.of(dto1, dto2), new Document());
+
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+        .thenReturn(measureSetResults);
+
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(pagedResults);
+
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder().excludeCompositeMeasures(true).build();
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(2, page.getTotalElements());
+    assertEquals(2, page.getContent().size());
+    assertEquals(measure1.getId(), page.getContent().get(0).getId());
+    assertEquals(measure2.getId(), page.getContent().get(1).getId());
+
+    verify(mongoTemplate, times(2))
+        .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
+  }
 }
