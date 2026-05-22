@@ -676,7 +676,7 @@ public class AdminController extends AbstractMeasureController {
     return ResponseEntity.ok().body(updatedMeasure);
   }
 
-  @DeleteMapping("/cache/evict")
+  @DeleteMapping("/measures/cache/evict")
   public ResponseEntity<List<String>> evictAllCaches(Principal principal) {
     List<String> evictedCaches = new ArrayList<>(cacheManager.getCacheNames());
     log.info("Admin user [{}] is evicting all caches: {}", principal.getName(), evictedCaches);

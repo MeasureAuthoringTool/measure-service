@@ -1912,7 +1912,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            delete("/admin/cache/evict")
+            delete("/admin/measures/cache/evict")
                 .with(csrf())
                 .with(
                     jwt()
