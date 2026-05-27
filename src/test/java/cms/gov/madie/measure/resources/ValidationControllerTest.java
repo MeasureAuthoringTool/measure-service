@@ -32,6 +32,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,14 +61,16 @@ class ValidationControllerTest {
     final String goodOutcomeJson = "{ \"code\": 200, \"successful\": true }";
     HttpEntity<String> request = new HttpEntity<>(testCaseJson, headers);
 
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenReturn(
             ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()));
 
     when(mapper.writeValueAsString(any())).thenReturn(goodOutcomeJson);
 
     ResponseEntity<String> output =
-        validationController.validateBundle(request, ModelType.QI_CORE.getValue(), accessToken);
+        validationController.validateBundle(
+            request, ModelType.QI_CORE.getValue(), false, accessToken);
 
     assertThat(output, is(notNullValue()));
     assertThat(output.getBody(), is(notNullValue()));
@@ -76,7 +79,8 @@ class ValidationControllerTest {
         .validateBundle(
             testCaseJsonCaptor.capture(),
             testCaseModelCaptor.capture(),
-            accessTokenCaptor.capture());
+            accessTokenCaptor.capture(),
+            anyBoolean());
     assertThat(testCaseJsonCaptor.getValue(), is(equalTo(testCaseJson)));
     assertThat(accessTokenCaptor.getValue(), is(equalTo(accessToken)));
   }
@@ -88,14 +92,16 @@ class ValidationControllerTest {
     HttpHeaders headers = new HttpHeaders();
     HttpEntity<String> request = new HttpEntity<>(testCaseJson, headers);
 
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenReturn(
             ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()));
 
     when(mapper.writeValueAsString(any())).thenThrow(new JsonProcessingException("BadJson") {});
 
     ResponseEntity<String> output =
-        validationController.validateBundle(request, ModelType.QI_CORE.getValue(), accessToken);
+        validationController.validateBundle(
+            request, ModelType.QI_CORE.getValue(), false, accessToken);
 
     assertThat(output, is(notNullValue()));
     assertThat(output.getStatusCode(), is(HttpStatus.BAD_REQUEST));
@@ -110,7 +116,8 @@ class ValidationControllerTest {
         .validateBundle(
             testCaseJsonCaptor.capture(),
             testCaseModelCaptor.capture(),
-            accessTokenCaptor.capture());
+            accessTokenCaptor.capture(),
+            anyBoolean());
   }
 
   @Test

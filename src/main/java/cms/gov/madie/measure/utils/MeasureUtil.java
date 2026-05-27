@@ -292,4 +292,12 @@ public class MeasureUtil {
     }
     return null;
   }
+
+  public static boolean isInvalidTestCaseExecutionEnabled(Measure measure) {
+    TestCaseConfiguration testCaseConfiguration = measure.getTestCaseConfiguration();
+    if (testCaseConfiguration != null) {
+      return testCaseConfiguration.isExecuteInvalidTestCases();
+    }
+    return false;
+  }
 }

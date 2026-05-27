@@ -2276,7 +2276,8 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(updatedMeasure);
 
     Measure result =
-        measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig);
+        measureService.updateMeasureTestCaseConfiguration(
+            username, measureId, testCaseConfig, ACCESS_TOKEN);
 
     assertNotNull(result);
     assertEquals(updatedMeasure, result);
@@ -2292,7 +2293,9 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         InvalidIdException.class,
-        () -> measureService.updateMeasureTestCaseConfiguration(username, null, testCaseConfig));
+        () ->
+            measureService.updateMeasureTestCaseConfiguration(
+                username, null, testCaseConfig, ACCESS_TOKEN));
   }
 
   @Test
@@ -2302,7 +2305,9 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         InvalidIdException.class,
-        () -> measureService.updateMeasureTestCaseConfiguration(username, "", testCaseConfig));
+        () ->
+            measureService.updateMeasureTestCaseConfiguration(
+                username, "", testCaseConfig, ACCESS_TOKEN));
   }
 
   @Test
