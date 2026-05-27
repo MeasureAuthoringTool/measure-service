@@ -222,16 +222,15 @@ public class MeasureService extends BaseMeasureService {
         testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId);
     // on execute invalid test case config change, trigger the test case validation
     if (MeasureUtil.isInvalidTestCaseExecutionEnabled(existingMeasure)
-        != testCaseConfig.isExecuteInvalidTestCases()) {
-      if (!ModelType.QDM_5_6.getValue().equalsIgnoreCase(existingMeasure.getModel())
-          && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
+        != testCaseConfig.isExecuteInvalidTestCases()
+        && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(existingMeasure.getModel())
+        && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
         existingMeasure
             .getTestCases()
             .forEach(
                 testCase ->
                     testCaseValidationService.validateResourceAsynchronously(
                         updatedMeasure, testCase, TestCaseServiceUtil.SAVE, accessToken));
-      }
     }
     log.info(
         "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
