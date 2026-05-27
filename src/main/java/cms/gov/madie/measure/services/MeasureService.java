@@ -215,22 +215,20 @@ public class MeasureService extends BaseMeasureService {
       throw new InvalidRequestException("TestCaseConfiguration cannot be null");
     }
     final Measure existingMeasure = findActiveMeasureById(measureId);
-
     verifyAuthorization(username, existingMeasure);
-
     Measure updatedMeasure =
         testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId);
     // on execute invalid test case config change, trigger the test case validation
     if (MeasureUtil.isInvalidTestCaseExecutionEnabled(existingMeasure)
-        != testCaseConfig.isExecuteInvalidTestCases()
+            != testCaseConfig.isExecuteInvalidTestCases()
         && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(existingMeasure.getModel())
         && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
-        existingMeasure
-            .getTestCases()
-            .forEach(
-                testCase ->
-                    testCaseValidationService.validateResourceAsynchronously(
-                        updatedMeasure, testCase, TestCaseServiceUtil.SAVE, accessToken));
+      existingMeasure
+          .getTestCases()
+          .forEach(
+              testCase ->
+                  testCaseValidationService.validateResourceAsynchronously(
+                      updatedMeasure, testCase, TestCaseServiceUtil.SAVE, accessToken));
     }
     log.info(
         "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
@@ -685,9 +683,6 @@ public class MeasureService extends BaseMeasureService {
             measureSetMap.put(id, Boolean.TRUE);
           }
         });
-    // For measureSetIds that were searched, but not returned put the id & true ( is
-    // draftable )
-
     return measureSetMap;
   }
 
@@ -750,7 +745,6 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public void deleteVersionedMeasures(List<Measure> measures) {
-
     List<Measure> versionedMeasures =
         measures.stream()
             .filter(
@@ -882,7 +876,6 @@ public class MeasureService extends BaseMeasureService {
     if (qiCoreMeasure == null || qdmMeasure == null) {
       throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
     }
-
     verifyOneQiCoreAndOneQdmMeasure(qiCoreMeasure, qdmMeasure);
     verifyOwner(username, qiCoreMeasure, qdmMeasure);
     verifyQdmHasCmsId(qdmMeasure);
