@@ -385,7 +385,6 @@ public class TestCaseValidationServiceTest {
   @Test
   public void testValidateTestCasesAsResourcesNullList() {
     final String accessToken = "Bearer Token";
-    final ModelType model = ModelType.QI_CORE;
     List<TestCase> output =
         testCaseValidationService.validateTestCasesAsResources(null, accessToken);
     assertThat(output, is(notNullValue()));
@@ -395,7 +394,6 @@ public class TestCaseValidationServiceTest {
   @Test
   public void testValidateTestCasesAsResourcesEmptyList() {
     final String accessToken = "Bearer Token";
-    final ModelType model = ModelType.QI_CORE;
     final List<TestCase> testCases = List.of();
     final TestCaseConfiguration configuration = TestCaseConfiguration.builder().build();
     Measure measure =
@@ -510,8 +508,8 @@ public class TestCaseValidationServiceTest {
             eq(measure.getId()),
             eq(measure.getTestCases().get(0)),
             eq(ModelType.QI_CORE_6_0_0),
-            anyString(),
-            false);
+            eq("Bearer Token"),
+            eq(false));
   }
 
   @Test

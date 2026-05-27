@@ -201,6 +201,9 @@ public class TestCaseValidationService {
   public List<TestCase> validateTestCasesAsResources(
       final Measure measure, final String accessToken) {
     List<TestCase> validatedTestCases = new ArrayList<>();
+    if (measure == null) {
+      return validatedTestCases;
+    }
     List<TestCase> testCases = measure.getTestCases();
     ModelType modelType = ModelType.valueOfName(measure.getModel());
     boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
