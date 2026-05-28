@@ -16,6 +16,7 @@ import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.MeasureSetActionLog;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,8 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -169,6 +172,9 @@ public class MeasureSetService {
       MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
       log.info("ACL updated for Measure set [{}]", updatedMeasureSet.getId());
 
+      Map<String, UserDetailsDto> userDetailsMap =
+          userServiceClient.getBulkUserDetails(new ArrayList<>(actionLogDetails.keySet()));
+
       actionLogDetails.forEach(
           (userId, actionType) -> {
             actionLogService.logShareAccessControlAction(
@@ -181,7 +187,7 @@ public class MeasureSetService {
                     actionType == ActionType.UNSHARED
                         ? "Unshared with - %s%s"
                         : "Shared with - %s%s",
-                    userId,
+                    formatUserDisplay(userDetailsMap, userId),
                     isAdmin ? " by MADiE Admin" : ""));
           });
 
@@ -422,6 +428,10 @@ public class MeasureSetService {
         originalOwner,
         userId,
         conductedBy);
+
+    Map<String, UserDetailsDto> userDetailsMap =
+        userServiceClient.getBulkUserDetails(List.of(originalOwner, userId));
+
     actionLogService.logMeasureSetAction(
         measureSetId,
         MeasureSet.class,
@@ -429,7 +439,9 @@ public class MeasureSetService {
         conductedBy,
         String.format(
             "Transferred from %s to %s%s",
-            originalOwner, userId, isAdmin ? " by MADiE Admin" : ""));
+            formatUserDisplay(userDetailsMap, originalOwner),
+            formatUserDisplay(userDetailsMap, userId),
+            isAdmin ? " by MADiE Admin" : ""));
 
     if (retainShareAccess) {
       actionLogService.logShareAccessControlAction(
@@ -438,7 +450,9 @@ public class MeasureSetService {
           ActionType.SHARED,
           conductedBy,
           originalOwner,
-          String.format("Shared with - %s%s", originalOwner, isAdmin ? " by MADiE Admin" : ""));
+          String.format(
+              "Shared with - %s%s",
+              formatUserDisplay(userDetailsMap, originalOwner), isAdmin ? " by MADiE Admin" : ""));
 
       log.info(
           "Retained SHARED role for user [{}] on measure set [{}] after ownership transfer",
@@ -491,6 +505,18 @@ public class MeasureSetService {
                   .build();
             })
         .toList();
+  }
+
+  private String formatUserDisplay(Map<String, UserDetailsDto> userDetailsMap, String harpId) {
+    UserDetailsDto userDetailsDto = userDetailsMap.get(harpId);
+    if (userDetailsDto == null) return harpId;
+
+    String displayName =
+        Stream.of(userDetailsDto.getFirstName(), userDetailsDto.getLastName())
+            .filter(s -> s != null && !s.isBlank())
+            .collect(Collectors.joining(" "));
+
+    return displayName.isEmpty() ? harpId : displayName + " (" + harpId + ")";
   }
 
   private String getDateShared(MeasureSetActionLog actionLog, String userId) {
