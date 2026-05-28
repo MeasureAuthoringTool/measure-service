@@ -2321,7 +2321,8 @@ public class MeasureServiceTest implements ResourceUtil {
     assertNotNull(result);
     assertEquals(updatedMeasure, result);
     verify(testCaseValidationService, times(2))
-        .validateResourceAsynchronously(eq(updatedMeasure), any(TestCase.class), anyString(), eq(ACCESS_TOKEN));
+        .validateResourceAsynchronously(
+            eq(updatedMeasure), any(TestCase.class), anyString(), eq(ACCESS_TOKEN));
   }
 
   @Test

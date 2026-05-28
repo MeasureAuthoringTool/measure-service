@@ -233,9 +233,14 @@ public class TestCaseValidationService {
     } else {
       final HapiOperationOutcome hapiOperationOutcome =
           validateTestCaseJson(testCase, modelType, accessToken, lenientPatientRefs);
+      boolean isValidResource = hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful();
       return testCase.toBuilder()
           .hapiOperationOutcome(hapiOperationOutcome)
-          .validResource(hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful())
+          .validResource(isValidResource)
+          .validationStatus(
+              isValidResource
+                  ? TestCaseValidationStatus.VALID.toString()
+                  : TestCaseValidationStatus.INVALID.toString())
           .build();
     }
   }
