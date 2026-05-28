@@ -315,11 +315,7 @@ public class MeasureSetServiceTest {
         .thenReturn(
             Map.of(
                 "john",
-                UserDetailsDto.builder()
-                    .harpId("john")
-                    .firstName("John")
-                    .lastName("Doe")
-                    .build()));
+                UserDetailsDto.builder().harpId("john").firstName("John").lastName("Doe").build()));
 
     MeasureSet updatedMeasureSet =
         measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
