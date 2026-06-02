@@ -1067,7 +1067,7 @@ class MeasureControllerTest {
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
 
     when(measureService.updateMeasureTestCaseConfiguration(
-            "test.user", "measureId", testCaseConfig))
+            "test.user", "measureId", testCaseConfig, "Bearer TOKEN"))
         .thenReturn(updatedMeasure);
 
     ResponseEntity<Measure> response =
@@ -1077,7 +1077,8 @@ class MeasureControllerTest {
     assertNotNull(response.getBody());
     assertEquals(updatedMeasure, response.getBody());
     verify(measureService, times(1))
-        .updateMeasureTestCaseConfiguration("test.user", "measureId", testCaseConfig);
+        .updateMeasureTestCaseConfiguration(
+            "test.user", "measureId", testCaseConfig, "Bearer TOKEN");
     verify(actionLogService, times(1))
         .logAction("measureId", Measure.class, ActionType.UPDATED, "test.user");
   }
@@ -1092,7 +1093,8 @@ class MeasureControllerTest {
 
     doThrow(new UnauthorizedException("Measure", "measureId", "invalid.user"))
         .when(measureService)
-        .updateMeasureTestCaseConfiguration("invalid.user", "measureId", testCaseConfig);
+        .updateMeasureTestCaseConfiguration(
+            "invalid.user", "measureId", testCaseConfig, "Bearer TOKEN");
 
     assertThrows(
         UnauthorizedException.class,

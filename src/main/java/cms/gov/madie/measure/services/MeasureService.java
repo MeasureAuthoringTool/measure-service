@@ -47,6 +47,7 @@ public class MeasureService extends BaseMeasureService {
   private final MeasureLockService measureLockService;
   private final UserServiceClient userServiceClient;
   private final CompositeRelationshipService compositeRelationshipService;
+  private final TestCaseValidationService testCaseValidationService;
 
   @Autowired
   public MeasureService(
@@ -62,7 +63,8 @@ public class MeasureService extends BaseMeasureService {
       AppConfigService appConfigService,
       MeasureLockService measureLockService,
       UserServiceClient userServiceClient,
-      CompositeRelationshipService compositeRelationshipService) {
+      CompositeRelationshipService compositeRelationshipService,
+      TestCaseValidationService testCaseValidationService) {
     // Pass parent dependencies to BaseMeasureService constructor
     super(measureRepository, measureSetService, appConfigService, measureLockService);
     // Assign child-specific fields
@@ -79,6 +81,7 @@ public class MeasureService extends BaseMeasureService {
     this.measureLockService = measureLockService;
     this.userServiceClient = userServiceClient;
     this.compositeRelationshipService = compositeRelationshipService;
+    this.testCaseValidationService = testCaseValidationService;
   }
 
   public void verifyAuthorizationByMeasureSetId(
@@ -200,7 +203,7 @@ public class MeasureService extends BaseMeasureService {
    * @return Updated measure
    */
   public Measure updateMeasureTestCaseConfiguration(
-      String username, String measureId, TestCaseConfiguration testCaseConfig) {
+      String username, String measureId, TestCaseConfiguration testCaseConfig, String accessToken) {
     if (measureId == null || measureId.isEmpty()) {
       log.error("updateMeasureTestCaseConfiguration:: Measure ID is null or empty");
       throw new InvalidIdException("Measure", "Update (PUT)", "(PUT [base]/[resource]/[id])");
@@ -212,11 +215,21 @@ public class MeasureService extends BaseMeasureService {
       throw new InvalidRequestException("TestCaseConfiguration cannot be null");
     }
     final Measure existingMeasure = findActiveMeasureById(measureId);
-
     verifyAuthorization(username, existingMeasure);
-
     Measure updatedMeasure =
         testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId);
+    // on execute invalid test case config change, trigger the test case validation
+    if (MeasureUtil.isInvalidTestCaseExecutionEnabled(existingMeasure)
+            != testCaseConfig.isExecuteInvalidTestCases()
+        && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(existingMeasure.getModel())
+        && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
+      existingMeasure
+          .getTestCases()
+          .forEach(
+              testCase ->
+                  testCaseValidationService.validateResourceAsynchronously(
+                      updatedMeasure, testCase, TestCaseServiceUtil.SAVE, accessToken));
+    }
     log.info(
         "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
         updatedMeasure.getId(),
@@ -686,9 +699,6 @@ public class MeasureService extends BaseMeasureService {
             measureSetMap.put(id, Boolean.TRUE);
           }
         });
-    // For measureSetIds that were searched, but not returned put the id & true ( is
-    // draftable )
-
     return measureSetMap;
   }
 
@@ -751,7 +761,6 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public void deleteVersionedMeasures(List<Measure> measures) {
-
     List<Measure> versionedMeasures =
         measures.stream()
             .filter(
@@ -883,7 +892,6 @@ public class MeasureService extends BaseMeasureService {
     if (qiCoreMeasure == null || qdmMeasure == null) {
       throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
     }
-
     verifyOneQiCoreAndOneQdmMeasure(qiCoreMeasure, qdmMeasure);
     verifyOwner(username, qiCoreMeasure, qdmMeasure);
     verifyQdmHasCmsId(qdmMeasure);
