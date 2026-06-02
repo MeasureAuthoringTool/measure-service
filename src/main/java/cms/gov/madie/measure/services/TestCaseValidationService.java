@@ -3,6 +3,7 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
+import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -67,7 +68,11 @@ public class TestCaseValidationService {
   }
 
   public void submitOnSaveValidationTask(
-      String measureId, TestCase testCase, String accessToken, ModelType modelType) {
+      String measureId,
+      TestCase testCase,
+      String accessToken,
+      ModelType modelType,
+      boolean lenientPatientRefs) {
     UUID taskId = UUID.randomUUID();
     log.info(
         "TestCase Validation::submit::{}::{}::{}::{}",
@@ -75,11 +80,16 @@ public class TestCaseValidationService {
         taskId,
         Instant.now(),
         saveExecutor.getQueueSize());
-    saveExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
+    saveExecutor.submit(
+        () -> validate(taskId, measureId, testCase, modelType, accessToken, lenientPatientRefs));
   }
 
   public void submitOnImportValidationTask(
-      String measureId, TestCase testCase, String accessToken, ModelType modelType) {
+      String measureId,
+      TestCase testCase,
+      String accessToken,
+      ModelType modelType,
+      boolean lenientPatientRefs) {
     UUID taskId = UUID.randomUUID();
     log.info(
         "TestCase Validation Import Queue::submit::{}::{}::{}::{}",
@@ -87,7 +97,8 @@ public class TestCaseValidationService {
         taskId,
         Instant.now(),
         importExecutor.getQueueSize());
-    importExecutor.submit(() -> validate(taskId, measureId, testCase, modelType, accessToken));
+    importExecutor.submit(
+        () -> validate(taskId, measureId, testCase, modelType, accessToken, lenientPatientRefs));
   }
 
   void validate(
@@ -95,7 +106,8 @@ public class TestCaseValidationService {
       String measureId,
       TestCase submittedTestCase,
       ModelType modelType,
-      String accessToken) {
+      String accessToken,
+      boolean lenientPatientRefs) {
     // TODO replace with decorator
     Instant startTime = Instant.now();
     log.info(
@@ -121,7 +133,7 @@ public class TestCaseValidationService {
       // Consider putting a cache in front of madie-fhir-service's validation to quick return
       // duplicate requests based on the JSON hash.
       HapiOperationOutcome validationOutcome =
-          validateTestCaseJson(currentTestCase, modelType, accessToken);
+          validateTestCaseJson(currentTestCase, modelType, accessToken, lenientPatientRefs);
       measureRepository.findAndUpdateValidationResults(
           currentTestCase.getId(), measureId, taskId, validationOutcome);
       Instant stopTime = Instant.now();
@@ -149,7 +161,7 @@ public class TestCaseValidationService {
     Measure updatedMeasure =
         measureRepository.setValidationStatusToPending(testCase.getId(), measure.getId());
 
-    // If the measure is null, the test case has already has PENDING status.
+    // If the measure is null, the test case already has PENDING status.
     if (updatedMeasure == null) {
       log.info(
           "TestCase Validation::already pending::{}::measure::{}",
@@ -163,26 +175,45 @@ public class TestCaseValidationService {
             .filter((tc -> tc.getId().equals(testCase.getId())))
             .findFirst()
             .orElseThrow(() -> new ResourceNotFoundException("Test Case", testCase.getId()));
-
+    // for execute invalid test config, we want to allow patient reference validation to be lenient,
+    // meaning that if a patient resource has invalid references, present them as warnings and not
+    // error.
+    boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
     if (source.equals(TestCaseServiceUtil.SAVE)) {
       submitOnSaveValidationTask(
-          measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
+          measure.getId(),
+          updatedTestCase,
+          accessToken,
+          ModelType.valueOfName(measure.getModel()),
+          lenientPatientRefs);
     } else if (source.equals(TestCaseServiceUtil.IMPORT)) {
       submitOnImportValidationTask(
-          measure.getId(), updatedTestCase, accessToken, ModelType.valueOfName(measure.getModel()));
+          measure.getId(),
+          updatedTestCase,
+          accessToken,
+          ModelType.valueOfName(measure.getModel()),
+          lenientPatientRefs);
     }
 
     return updatedTestCase; // Return testCase with pending status and set validationOutcome to null
   }
 
   public List<TestCase> validateTestCasesAsResources(
-      final List<TestCase> testCases, final ModelType modelType, final String accessToken) {
+      final Measure measure, final String accessToken) {
     List<TestCase> validatedTestCases = new ArrayList<>();
-
+    if (measure == null) {
+      return validatedTestCases;
+    }
+    List<TestCase> testCases = measure.getTestCases();
+    ModelType modelType = ModelType.valueOfName(measure.getModel());
+    boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
     if (!isEmpty(testCases)) {
       validatedTestCases =
           testCases.stream()
-              .map(testCase -> validateTestCaseAsResource(testCase, modelType, accessToken))
+              .map(
+                  testCase ->
+                      validateTestCaseAsResource(
+                          testCase, modelType, accessToken, lenientPatientRefs))
               .collect(Collectors.toList());
     }
 
@@ -190,7 +221,10 @@ public class TestCaseValidationService {
   }
 
   public TestCase validateTestCaseAsResource(
-      final TestCase testCase, final ModelType modelType, final String accessToken) {
+      final TestCase testCase,
+      final ModelType modelType,
+      final String accessToken,
+      boolean lenientPatientRefs) {
     if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
       return testCase;
     }
@@ -198,28 +232,33 @@ public class TestCaseValidationService {
       return testCase.toBuilder().validResource(JsonUtil.isValidJson(testCase.getJson())).build();
     } else {
       final HapiOperationOutcome hapiOperationOutcome =
-          validateTestCaseJson(testCase, modelType, accessToken);
+          validateTestCaseJson(testCase, modelType, accessToken, lenientPatientRefs);
+      boolean isValidResource = hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful();
       return testCase.toBuilder()
           .hapiOperationOutcome(hapiOperationOutcome)
-          .validResource(hapiOperationOutcome != null && hapiOperationOutcome.isSuccessful())
+          .validResource(isValidResource)
+          .validationStatus(
+              isValidResource
+                  ? TestCaseValidationStatus.VALID.toString()
+                  : TestCaseValidationStatus.INVALID.toString())
           .build();
     }
   }
 
   HapiOperationOutcome validateTestCaseJson(
-      TestCase testCase, ModelType modelType, String accessToken) {
+      TestCase testCase, ModelType modelType, String accessToken, boolean lenientPatientRefs) {
     if (testCase == null || StringUtils.isBlank(testCase.getJson())) {
       return null;
     }
 
     try {
       return fhirServicesClient
-          .validateBundle(testCase.getJson(), modelType, accessToken)
+          .validateBundle(testCase.getJson(), modelType, accessToken, lenientPatientRefs)
           .getBody();
     } catch (HttpClientErrorException ex) {
       log.warn(
           "HAPI FHIR returned response code [{}] for testCaseId : {}",
-          ex.getRawStatusCode(),
+          ex.getStatusCode(),
           testCase.getId(),
           ex);
       try {
