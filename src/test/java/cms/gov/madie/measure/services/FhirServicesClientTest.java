@@ -121,7 +121,8 @@ class FhirServicesClientTest {
         .thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
     assertThrows(
         HttpClientErrorException.class,
-        () -> fhirServicesClient.validateBundle(testCaseJson, ModelType.QI_CORE, accessToken));
+        () ->
+            fhirServicesClient.validateBundle(testCaseJson, ModelType.QI_CORE, accessToken, false));
     verify(fhirServicesConfig.fhirServicesRestTemplate(), times(1))
         .exchange(
             any(URI.class), eq(HttpMethod.POST), httpEntityCaptor.capture(), any(Class.class));
@@ -145,7 +146,7 @@ class FhirServicesClientTest {
             .exchange(any(URI.class), eq(HttpMethod.POST), any(HttpEntity.class), any(Class.class)))
         .thenReturn(ResponseEntity.ok(goodOutcome));
     ResponseEntity<HapiOperationOutcome> output =
-        fhirServicesClient.validateBundle(testCaseJson, ModelType.QI_CORE, accessToken);
+        fhirServicesClient.validateBundle(testCaseJson, ModelType.QI_CORE, accessToken, false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getBody(), is(notNullValue()));
     assertThat(output.getBody(), is(equalTo(goodOutcome)));
@@ -209,7 +210,7 @@ class FhirServicesClientTest {
     Exception ex =
         assertThrows(
             UnsupportedTypeException.class,
-            () -> fhirServicesClient.validateBundle("test case json", null, accessToken));
+            () -> fhirServicesClient.validateBundle("test case json", null, accessToken, false));
     assertThat(ex.getMessage(), is(equalTo("Please provide model type.")));
   }
 }

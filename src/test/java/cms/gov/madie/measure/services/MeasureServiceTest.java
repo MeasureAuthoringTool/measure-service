@@ -79,6 +79,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private MeasureLockService measureLockService;
   @Mock private UserServiceClient userServiceClient;
   @Mock private CompositeRelationshipService compositeRelationshipService;
+  @Mock private TestCaseValidationService testCaseValidationService;
 
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
@@ -2276,7 +2277,8 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(updatedMeasure);
 
     Measure result =
-        measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig);
+        measureService.updateMeasureTestCaseConfiguration(
+            username, measureId, testCaseConfig, ACCESS_TOKEN);
 
     assertNotNull(result);
     assertEquals(updatedMeasure, result);
@@ -2286,13 +2288,53 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  void triggerTestCaseValidationOnExecuteInvalidTestCasesChange() {
+    String username = "testUser";
+    String measureId = "testMeasureId";
+    // existing measure has executeInvalidTestCases = false (default)
+    TestCase testCase1 = TestCase.builder().id("tc1").build();
+    TestCase testCase2 = TestCase.builder().id("tc2").build();
+    Measure existingMeasure =
+        Measure.builder()
+            .id(measureId)
+            .model(ModelType.QI_CORE.getValue())
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .testCaseConfiguration(
+                TestCaseConfiguration.builder().executeInvalidTestCases(false).build())
+            .testCases(List.of(testCase1, testCase2))
+            .build();
+    // new config sets executeInvalidTestCases = true (change triggers validation)
+    TestCaseConfiguration testCaseConfig =
+        TestCaseConfiguration.builder().executeInvalidTestCases(true).build();
+    Measure updatedMeasure = Measure.builder().id(measureId).build();
+
+    when(measureRepository.findByIdAndActive(measureId, true))
+        .thenReturn(Optional.of(existingMeasure));
+    doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
+    when(testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId))
+        .thenReturn(updatedMeasure);
+
+    Measure result =
+        measureService.updateMeasureTestCaseConfiguration(
+            username, measureId, testCaseConfig, ACCESS_TOKEN);
+
+    assertNotNull(result);
+    assertEquals(updatedMeasure, result);
+    verify(testCaseValidationService, times(2))
+        .validateResourceAsynchronously(
+            eq(updatedMeasure), any(TestCase.class), anyString(), eq(ACCESS_TOKEN));
+  }
+
+  @Test
   void updateMeasureTestCaseConfigurationThrowsInvalidIdExceptionForNullId() {
     String username = "testUser";
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
 
     assertThrows(
         InvalidIdException.class,
-        () -> measureService.updateMeasureTestCaseConfiguration(username, null, testCaseConfig));
+        () ->
+            measureService.updateMeasureTestCaseConfiguration(
+                username, null, testCaseConfig, ACCESS_TOKEN));
   }
 
   @Test
@@ -2302,7 +2344,9 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         InvalidIdException.class,
-        () -> measureService.updateMeasureTestCaseConfiguration(username, "", testCaseConfig));
+        () ->
+            measureService.updateMeasureTestCaseConfiguration(
+                username, "", testCaseConfig, ACCESS_TOKEN));
   }
 
   @Test
