@@ -137,11 +137,17 @@ public class TestCaseValidationServiceTest {
     when(measureRepository.findAndUpdateValidationResults(
             anyString(), anyString(), any(UUID.class), any(HapiOperationOutcome.class)))
         .thenReturn(validTestCaseMeasure);
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenReturn(hapiValidOutcome);
 
     testCaseValidationService.validate(
-        UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
+        UUID.randomUUID(),
+        measure.getId(),
+        testCase,
+        ModelType.QI_CORE_6_0_0,
+        "Bearer Token",
+        false);
     //        assertThat(
     //            testCase.getTestCaseValidationStatus(), equalTo(TestCaseValidationStatus.VALID));
   }
@@ -155,13 +161,14 @@ public class TestCaseValidationServiceTest {
             .build();
     final String accessToken = "Bearer Token";
 
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenReturn(
             ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()));
 
     TestCase output =
         testCaseValidationService.validateTestCaseAsResource(
-            testCase, ModelType.QI_CORE, accessToken);
+            testCase, ModelType.QI_CORE, accessToken, false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getJson(), is(notNullValue()));
     assertThat(output.getHapiOperationOutcome(), is(notNullValue()));
@@ -181,11 +188,11 @@ public class TestCaseValidationServiceTest {
 
     doThrow(new RuntimeException())
         .when(fhirServicesClient)
-        .validateBundle(anyString(), any(ModelType.class), anyString());
+        .validateBundle(anyString(), any(ModelType.class), anyString(), anyBoolean());
 
     TestCase output =
         testCaseValidationService.validateTestCaseAsResource(
-            testCase, ModelType.QI_CORE, "Bearer Token");
+            testCase, ModelType.QI_CORE, "Bearer Token", false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getHapiOperationOutcome(), is(notNullValue()));
     assertThat(output.getHapiOperationOutcome().getCode(), is(equalTo(500)));
@@ -201,7 +208,7 @@ public class TestCaseValidationServiceTest {
     final String accessToken = "Bearer Token";
     TestCase output =
         testCaseValidationService.validateTestCaseAsResource(
-            testCase, ModelType.QDM_5_6, accessToken);
+            testCase, ModelType.QDM_5_6, accessToken, false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getJson(), is(notNullValue()));
     assertThat(output.isValidResource(), is(true));
@@ -214,7 +221,7 @@ public class TestCaseValidationServiceTest {
     final String accessToken = "Bearer Token";
     TestCase output =
         testCaseValidationService.validateTestCaseAsResource(
-            testCase, ModelType.QDM_5_6, accessToken);
+            testCase, ModelType.QDM_5_6, accessToken, false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getJson(), is(notNullValue()));
     assertThat(output.isValidResource(), is(false));
@@ -226,7 +233,7 @@ public class TestCaseValidationServiceTest {
     TestCase testCase = TestCase.builder().id("TestID").build();
     TestCase output =
         testCaseValidationService.validateTestCaseAsResource(
-            testCase, ModelType.QDM_5_6, accessToken);
+            testCase, ModelType.QDM_5_6, accessToken, false);
     assertEquals(testCase, output);
   }
 
@@ -237,14 +244,14 @@ public class TestCaseValidationServiceTest {
 
     TestCase output =
         testCaseValidationService.validateTestCaseAsResource(
-            testCase, ModelType.QI_CORE, accessToken);
+            testCase, ModelType.QI_CORE, accessToken, false);
     assertThat(output, is(nullValue()));
   }
 
   @Test
   public void testValidateTestCaseJsonHandlesNullTestCase() {
     HapiOperationOutcome output =
-        testCaseValidationService.validateTestCaseJson(null, ModelType.QI_CORE, "TOKEN");
+        testCaseValidationService.validateTestCaseJson(null, ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(nullValue()));
   }
 
@@ -253,7 +260,7 @@ public class TestCaseValidationServiceTest {
     TestCase tc = new TestCase();
     tc.setJson(null);
     HapiOperationOutcome output =
-        testCaseValidationService.validateTestCaseJson(tc, ModelType.QI_CORE, "TOKEN");
+        testCaseValidationService.validateTestCaseJson(tc, ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(nullValue()));
   }
 
@@ -261,7 +268,7 @@ public class TestCaseValidationServiceTest {
   public void testValidateTestCaseJsonHandlesEmptyJson() {
     HapiOperationOutcome output =
         testCaseValidationService.validateTestCaseJson(
-            TestCase.builder().json("").build(), ModelType.QI_CORE, "TOKEN");
+            TestCase.builder().json("").build(), ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(nullValue()));
   }
 
@@ -269,39 +276,42 @@ public class TestCaseValidationServiceTest {
   public void testValidateTestCaseJsonHandlesWhitespaceJson() {
     HapiOperationOutcome output =
         testCaseValidationService.validateTestCaseJson(
-            TestCase.builder().json("   ").build(), ModelType.QI_CORE, "TOKEN");
+            TestCase.builder().json("   ").build(), ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(nullValue()));
   }
 
   @Test
   public void testValidateTestCaseJsonHandlesGenericException() {
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenThrow(new RuntimeException("something bad happened!"));
 
     HapiOperationOutcome output =
         testCaseValidationService.validateTestCaseJson(
-            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN");
+            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getCode(), is(equalTo(500)));
   }
 
   @Test
   public void testValidateTestCaseJsonHandlesNotFound() {
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenThrow(
             new HttpClientErrorException(
                 HttpStatus.NOT_FOUND, "path not found", "{}".getBytes(), Charset.defaultCharset()));
 
     HapiOperationOutcome output =
         testCaseValidationService.validateTestCaseJson(
-            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN");
+            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getCode(), is(equalTo(404)));
   }
 
   @Test
   public void testValidateTestCaseJsonHandlesUnsupportedMediaType() {
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenThrow(
             new HttpClientErrorException(
                 HttpStatus.UNSUPPORTED_MEDIA_TYPE,
@@ -311,21 +321,22 @@ public class TestCaseValidationServiceTest {
 
     HapiOperationOutcome output =
         testCaseValidationService.validateTestCaseJson(
-            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN");
+            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getCode(), is(equalTo(415)));
   }
 
   @Test
   public void testValidateTestCaseJsonHandlesInternalServerError() {
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenThrow(
             new HttpClientErrorException(
                 HttpStatus.INTERNAL_SERVER_ERROR, "Unsupported Media Type"));
 
     HapiOperationOutcome output =
         testCaseValidationService.validateTestCaseJson(
-            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN");
+            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getCode(), is(equalTo(500)));
   }
@@ -333,7 +344,8 @@ public class TestCaseValidationServiceTest {
   @Test
   public void testValidateTestCaseJsonHandlesProcessingErrorDuringHttpClientException()
       throws JsonProcessingException {
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenThrow(
             new HttpClientErrorException(
                 HttpStatus.INTERNAL_SERVER_ERROR, "Unsupported Media Type"));
@@ -345,7 +357,7 @@ public class TestCaseValidationServiceTest {
 
     HapiOperationOutcome output =
         testCaseValidationService.validateTestCaseJson(
-            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN");
+            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getCode(), is(equalTo(500)));
     assertThat(
@@ -357,12 +369,13 @@ public class TestCaseValidationServiceTest {
 
   @Test
   public void testValidateTestCaseJsonHandlesGoodResponse() {
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenReturn(hapiValidOutcome);
 
     HapiOperationOutcome output =
         testCaseValidationService.validateTestCaseJson(
-            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN");
+            TestCase.builder().json("{}").build(), ModelType.QI_CORE, "TOKEN", false);
     assertThat(output, is(notNullValue()));
     assertThat(output.getCode(), is(equalTo(200)));
     assertThat(output.getMessage(), is(nullValue()));
@@ -372,9 +385,8 @@ public class TestCaseValidationServiceTest {
   @Test
   public void testValidateTestCasesAsResourcesNullList() {
     final String accessToken = "Bearer Token";
-    final ModelType model = ModelType.QI_CORE;
     List<TestCase> output =
-        testCaseValidationService.validateTestCasesAsResources(null, model, accessToken);
+        testCaseValidationService.validateTestCasesAsResources(null, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.isEmpty(), is(true));
   }
@@ -382,10 +394,12 @@ public class TestCaseValidationServiceTest {
   @Test
   public void testValidateTestCasesAsResourcesEmptyList() {
     final String accessToken = "Bearer Token";
-    final ModelType model = ModelType.QI_CORE;
     final List<TestCase> testCases = List.of();
+    final TestCaseConfiguration configuration = TestCaseConfiguration.builder().build();
+    Measure measure =
+        Measure.builder().testCases(testCases).testCaseConfiguration(configuration).build();
     List<TestCase> output =
-        testCaseValidationService.validateTestCasesAsResources(testCases, model, accessToken);
+        testCaseValidationService.validateTestCasesAsResources(measure, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.isEmpty(), is(true));
   }
@@ -399,13 +413,21 @@ public class TestCaseValidationServiceTest {
             .build();
     final String accessToken = "Bearer Token";
 
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenReturn(
             ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()));
-    final ModelType model = ModelType.QI_CORE;
+    final String model = ModelType.QI_CORE.getValue();
     final List<TestCase> testCases = List.of(testCase);
+    final TestCaseConfiguration configuration = TestCaseConfiguration.builder().build();
+    Measure measure =
+        Measure.builder()
+            .model(model)
+            .testCases(testCases)
+            .testCaseConfiguration(configuration)
+            .build();
     List<TestCase> output =
-        testCaseValidationService.validateTestCasesAsResources(testCases, model, accessToken);
+        testCaseValidationService.validateTestCasesAsResources(measure, accessToken);
     assertThat(output, is(notNullValue()));
     assertThat(output.isEmpty(), is(false));
     assertThat(output.get(0), is(notNullValue()));
@@ -468,11 +490,17 @@ public class TestCaseValidationServiceTest {
             anyString(), anyString(), any(UUID.class)))
         .thenReturn(validating);
 
-    when(fhirServicesClient.validateBundle(anyString(), any(ModelType.class), anyString()))
+    when(fhirServicesClient.validateBundle(
+            anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenThrow(HttpClientErrorException.class);
 
     spyService.validate(
-        UUID.randomUUID(), measure.getId(), testCase, ModelType.QI_CORE_6_0_0, "Bearer Token");
+        UUID.randomUUID(),
+        measure.getId(),
+        testCase,
+        ModelType.QI_CORE_6_0_0,
+        "Bearer Token",
+        false);
 
     verify(spyService, times(1))
         .validate(
@@ -480,7 +508,8 @@ public class TestCaseValidationServiceTest {
             eq(measure.getId()),
             eq(measure.getTestCases().get(0)),
             eq(ModelType.QI_CORE_6_0_0),
-            anyString());
+            eq("Bearer Token"),
+            eq(false));
   }
 
   @Test
@@ -493,7 +522,7 @@ public class TestCaseValidationServiceTest {
     String accessToken = "token";
     ModelType modelType = ModelType.QI_CORE_6_0_0;
 
-    service.submitOnImportValidationTask(measureId, testCase, accessToken, modelType);
+    service.submitOnImportValidationTask(measureId, testCase, accessToken, modelType, false);
 
     verify(importExecutor, times(1)).submit(any(Runnable.class));
   }
@@ -552,6 +581,7 @@ public class TestCaseValidationServiceTest {
             eq(measureId),
             eq(pendingValidation.getTestCases().get(0)),
             eq(modelType),
-            eq(accessToken));
+            eq(accessToken),
+            eq(false));
   }
 }

@@ -153,7 +153,8 @@ public class MeasureController extends AbstractMeasureController {
     final Measure existingMeasure = measureService.findMeasureById(id);
     checkMeasureLock(existingMeasure, username);
     Measure updatedMeasure =
-        measureService.updateMeasureTestCaseConfiguration(username, id, testCaseConfig);
+        measureService.updateMeasureTestCaseConfiguration(
+            username, id, testCaseConfig, accessToken);
     actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
     return ResponseEntity.ok().body(updatedMeasure);
   }
