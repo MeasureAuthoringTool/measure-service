@@ -1900,6 +1900,13 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
     when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
         .thenReturn(measureSetActionLog);
+    when(userServiceClient.getBulkUserDetails(anyList()))
+        .thenReturn(
+            Map.of(
+                acl1.getUserId(),
+                UserDetailsDto.builder().firstName("John").lastName("Doe").build()));
+    when(measureSetService.formatDisplayName(any(), eq(acl1.getUserId())))
+        .thenReturn("John Doe (" + acl1.getUserId() + ")");
 
     Map<String, List<SharedUser>> sharedMeasures =
         measureService.getSharedMeasures(measureIds, "username");
@@ -1914,6 +1921,9 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(
         sharedMeasures.get(measureId1).get(0).getPerformedAt(),
         is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+    assertThat(
+        sharedMeasures.get(measureId1).get(0).getDisplayName(),
+        is(equalTo("John Doe (" + acl1.getUserId() + ")")));
 
     assertTrue(sharedMeasures.containsKey(measureId2));
     assertThat(sharedMeasures.get(measureId2).size(), is(equalTo(0)));
@@ -1981,6 +1991,17 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
     when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
         .thenReturn(measureSetActionLog);
+    when(userServiceClient.getBulkUserDetails(anyList()))
+        .thenReturn(
+            Map.of(
+                acl1.getUserId(),
+                UserDetailsDto.builder().firstName("John").lastName("Doe").build(),
+                acl2.getUserId(),
+                UserDetailsDto.builder().firstName("Jane").lastName("Doe").build()));
+    when(measureSetService.formatDisplayName(any(), eq(acl1.getUserId())))
+        .thenReturn("John Doe (" + acl1.getUserId() + ")");
+    when(measureSetService.formatDisplayName(any(), eq(acl2.getUserId())))
+        .thenReturn("Jane Doe (" + acl2.getUserId() + ")");
 
     Map<String, List<SharedUser>> sharedMeasures =
         measureService.getSharedMeasures(measureIds, "username");
@@ -1994,11 +2015,17 @@ public class MeasureServiceTest implements ResourceUtil {
         is(equalTo(measure1.getMeasureSet().getAcls().get(0).getUserId())));
     assertThat(sharedMeasures.get(measureId1).get(0).getPerformedAt(), is(equalTo(null)));
     assertThat(
+        sharedMeasures.get(measureId1).get(0).getDisplayName(),
+        is(equalTo("Jane Doe (" + acl2.getUserId() + ")")));
+    assertThat(
         sharedMeasures.get(measureId1).get(1).getUserId(),
         is(equalTo(measure2.getMeasureSet().getAcls().get(0).getUserId())));
     assertThat(
         sharedMeasures.get(measureId1).get(1).getPerformedAt(),
         is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+    assertThat(
+        sharedMeasures.get(measureId1).get(1).getDisplayName(),
+        is(equalTo("John Doe (" + acl1.getUserId() + ")")));
 
     assertTrue(sharedMeasures.containsKey(measureId2));
     assertThat(sharedMeasures.get(measureId1).size(), is(equalTo(2)));
@@ -2008,6 +2035,9 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(
         sharedMeasures.get(measureId2).get(0).getPerformedAt(),
         is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+    assertThat(
+        sharedMeasures.get(measureId2).get(0).getDisplayName(),
+        is(equalTo("John Doe (" + acl1.getUserId() + ")")));
   }
 
   @Test

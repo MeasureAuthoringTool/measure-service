@@ -1422,4 +1422,46 @@ public class MeasureSetServiceTest {
             "john_doe",
             "Unshared with - John Doe (john_doe) by MADiE Admin");
   }
+
+  @Test
+  void testFormatUserDisplayWithBothNames() {
+    Map<String, UserDetailsDto> userDetailsMap =
+        Map.of("harpId1", UserDetailsDto.builder().firstName("John").lastName("Doe").build());
+    assertThat(
+        measureSetService.formatDisplayName(userDetailsMap, "harpId1"),
+        is(equalTo("John Doe (harpId1)")));
+  }
+
+  @Test
+  void testFormatUserDisplayWithFirstNameOnly() {
+    Map<String, UserDetailsDto> userDetailsMap =
+        Map.of("harpId1", UserDetailsDto.builder().firstName("John").build());
+    assertThat(
+        measureSetService.formatDisplayName(userDetailsMap, "harpId1"),
+        is(equalTo("John (harpId1)")));
+  }
+
+  @Test
+  void testFormatUserDisplayWithLastNameOnly() {
+    Map<String, UserDetailsDto> userDetailsMap =
+        Map.of("harpId1", UserDetailsDto.builder().lastName("Doe").build());
+    assertThat(
+        measureSetService.formatDisplayName(userDetailsMap, "harpId1"),
+        is(equalTo("Doe (harpId1)")));
+  }
+
+  @Test
+  void testFormatUserDisplayWithBlankNames() {
+    Map<String, UserDetailsDto> userDetailsMap =
+        Map.of("harpId1", UserDetailsDto.builder().firstName("").lastName("").build());
+    assertThat(
+        measureSetService.formatDisplayName(userDetailsMap, "harpId1"), is(equalTo("harpId1")));
+  }
+
+  @Test
+  void testFormatUserDisplayWhenUserNotFound() {
+    Map<String, UserDetailsDto> userDetailsMap = Map.of();
+    assertThat(
+        measureSetService.formatDisplayName(userDetailsMap, "harpId1"), is(equalTo("harpId1")));
+  }
 }
