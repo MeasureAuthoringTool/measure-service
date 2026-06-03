@@ -108,6 +108,7 @@ public class BundleService {
     try {
       // populate all the component details required for composite measure resource generation
       populateComponentDetails(measure);
+      // get the composite measure bundle
       String compositeBundle =
           fhirServicesClient.getMeasureBundle(measure, accessToken, "export", elmErrorSeverity);
 
@@ -117,6 +118,7 @@ public class BundleService {
       // get the Packaging Utility for measure model
       String exportFileName = ExportFileNamesUtil.getExportFileName(measure);
       PackagingUtility utility = PackagingUtilityFactory.getInstance(measure.getModel());
+      // Add component resources to the composite bundle and generate the composite export package
       return PackageDto.builder()
           .fromStorage(false)
           .exportPackage(
