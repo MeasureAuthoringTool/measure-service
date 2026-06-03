@@ -223,22 +223,22 @@ public class BundleService {
           continue;
         }
         Measure componentMeasure =
-          measureRepository.findById(component.getMeasureId()).orElse(null);
+            measureRepository.findById(component.getMeasureId()).orElse(null);
         if (componentMeasure != null) {
           component.setMeasureName(componentMeasure.getMeasureName());
           component.setMeasureLibraryName(componentMeasure.getCqlLibraryName());
           component.setMeasureVersion(
-            componentMeasure.getVersion() != null
-              ? componentMeasure.getVersion().toString()
-              : null);
+              componentMeasure.getVersion() != null
+                  ? componentMeasure.getVersion().toString()
+                  : null);
           component.setDraft(componentMeasure.getMeasureMetaData().isDraft());
           component.setMultiGroupComponent(componentMeasure.getGroups().size() > 1);
           if (StringUtils.isNotBlank(component.getGroupId())
-            && !CollectionUtils.isEmpty(componentMeasure.getGroups())) {
+              && !CollectionUtils.isEmpty(componentMeasure.getGroups())) {
             componentMeasure.getGroups().stream()
-              .filter(g -> component.getGroupId().equals(g.getId()))
-              .findFirst()
-              .ifPresent(g -> component.setGroupDisplayId(g.getDisplayId()));
+                .filter(g -> component.getGroupId().equals(g.getId()))
+                .findFirst()
+                .ifPresent(g -> component.setGroupDisplayId(g.getDisplayId()));
           }
         }
       }

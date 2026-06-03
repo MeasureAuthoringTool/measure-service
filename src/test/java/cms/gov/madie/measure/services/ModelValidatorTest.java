@@ -298,6 +298,57 @@ class ModelValidatorTest {
   }
 
   @Test
+  void useQicoreModelValidatorTestCompositeMeasureWithPopulationsThrowsException() {
+    assertNotNull(modelValidatorFactory);
+    Population population = Population.builder().name(PopulationType.INITIAL_POPULATION).build();
+    Group group =
+        Group.builder()
+            .populations(List.of(population))
+            .measureGroupTypes(List.of(MeasureGroupTypes.OUTCOME))
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setComposite(true);
+    Measure measure =
+        Measure.builder().id("1").groups(List.of(group)).measureMetaData(metaData).build();
+    ModelValidator validator = modelValidatorFactory.getModelValidator(ModelType.QI_CORE);
+    assertTrue(validator instanceof QiCoreModelValidator);
+    try {
+      validator.validateGroups(measure);
+      fail("Should fail because composite measures cannot have populations or stratifications");
+    } catch (InvalidResourceStateException e) {
+      assertEquals(
+          "Response could not be completed for Measure with ID 1, since composite measures cannot have populations or stratifications in groups.",
+          e.getMessage());
+    }
+  }
+
+  @Test
+  void useQicoreModelValidatorTestCompositeMeasureWithStratificationsThrowsException() {
+    assertNotNull(modelValidatorFactory);
+    Stratification strat = new Stratification();
+    strat.setCqlDefinition("test");
+    Group group =
+        Group.builder()
+            .stratifications(List.of(strat))
+            .measureGroupTypes(List.of(MeasureGroupTypes.OUTCOME))
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setComposite(true);
+    Measure measure =
+        Measure.builder().id("1").groups(List.of(group)).measureMetaData(metaData).build();
+    ModelValidator validator = modelValidatorFactory.getModelValidator(ModelType.QI_CORE);
+    assertTrue(validator instanceof QiCoreModelValidator);
+    try {
+      validator.validateGroups(measure);
+      fail("Should fail because composite measures cannot have populations or stratifications");
+    } catch (InvalidResourceStateException e) {
+      assertEquals(
+          "Response could not be completed for Measure with ID 1, since composite measures cannot have populations or stratifications in groups.",
+          e.getMessage());
+    }
+  }
+
+  @Test
   void testQiCoreModelValidatorTestMeasureDoesHaveMeasuretypes() {
     assertNotNull(modelValidatorFactory);
     Measure measure =

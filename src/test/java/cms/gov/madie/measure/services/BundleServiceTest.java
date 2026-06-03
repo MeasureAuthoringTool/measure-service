@@ -421,9 +421,9 @@ class BundleServiceTest implements ResourceUtil {
     final String compositeBundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
     final String componentBundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
 
-    when(measureRepository.findById("comp-measure-id"))
-        .thenReturn(Optional.of(componentMeasure));
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), eq("export"), anyString()))
+    when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.of(componentMeasure));
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq("export"), anyString()))
         .thenReturn(compositeBundle);
 
     Export componentExport =
@@ -459,13 +459,13 @@ class BundleServiceTest implements ResourceUtil {
             .version(new Version(2, 1, 0))
             .model("QI-Core v4.1.1")
             .measureMetaData(MeasureMetaData.builder().draft(true).build())
-            .groups(List.of(
-                Group.builder().id("g1").displayId("Group 1").build(),
-                Group.builder().id("g2").displayId("Group 2").build()))
+            .groups(
+                List.of(
+                    Group.builder().id("g1").displayId("Group 1").build(),
+                    Group.builder().id("g2").displayId("Group 2").build()))
             .build();
 
-    Component component =
-        Component.builder().measureId("comp-measure-id").groupId("g2").build();
+    Component component = Component.builder().measureId("comp-measure-id").groupId("g2").build();
 
     Group compositeGroup =
         Group.builder()
@@ -488,9 +488,9 @@ class BundleServiceTest implements ResourceUtil {
 
     final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
 
-    when(measureRepository.findById("comp-measure-id"))
-        .thenReturn(Optional.of(componentMeasure));
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), eq("export"), anyString()))
+    when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.of(componentMeasure));
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq("export"), anyString()))
         .thenReturn(bundle);
 
     Export componentExport =
@@ -513,22 +513,18 @@ class BundleServiceTest implements ResourceUtil {
 
   @Test
   void testGetMeasureExportForCompositeDraftThrowsExceptionOnRestClientError() {
-    Component component =
-        Component.builder().measureId("comp-measure-id").build();
+    Component component = Component.builder().measureId("comp-measure-id").build();
 
     Group compositeGroup =
-        Group.builder()
-            .id("composite-group-1")
-            .components(List.of(component))
-            .build();
+        Group.builder().id("composite-group-1").components(List.of(component)).build();
 
     measure.setGroups(List.of(compositeGroup));
     measure.setModel("QI-Core v4.1.1");
-    measure.setMeasureMetaData(
-        MeasureMetaData.builder().draft(true).composite(true).build());
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(true).composite(true).build());
 
     when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.empty());
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), eq("export"), anyString()))
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq("export"), anyString()))
         .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
 
     assertThrows(
@@ -540,11 +536,11 @@ class BundleServiceTest implements ResourceUtil {
   void testGetMeasureExportForCompositeDraftWithNoGroups() {
     measure.setGroups(null);
     measure.setModel("QI-Core v4.1.1");
-    measure.setMeasureMetaData(
-        MeasureMetaData.builder().draft(true).composite(true).build());
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(true).composite(true).build());
 
     final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), eq("export"), anyString()))
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq("export"), anyString()))
         .thenReturn(bundle);
 
     PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
@@ -553,19 +549,15 @@ class BundleServiceTest implements ResourceUtil {
 
   @Test
   void testGetMeasureExportForCompositeDraftWithEmptyComponents() {
-    Group compositeGroup =
-        Group.builder()
-            .id("composite-group-1")
-            .components(null)
-            .build();
+    Group compositeGroup = Group.builder().id("composite-group-1").components(null).build();
 
     measure.setGroups(List.of(compositeGroup));
     measure.setModel("QI-Core v4.1.1");
-    measure.setMeasureMetaData(
-        MeasureMetaData.builder().draft(true).composite(true).build());
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(true).composite(true).build());
 
     final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), eq("export"), anyString()))
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq("export"), anyString()))
         .thenReturn(bundle);
 
     PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
@@ -577,18 +569,15 @@ class BundleServiceTest implements ResourceUtil {
     Component component = Component.builder().measureId("").build();
 
     Group compositeGroup =
-        Group.builder()
-            .id("composite-group-1")
-            .components(List.of(component))
-            .build();
+        Group.builder().id("composite-group-1").components(List.of(component)).build();
 
     measure.setGroups(List.of(compositeGroup));
     measure.setModel("QI-Core v4.1.1");
-    measure.setMeasureMetaData(
-        MeasureMetaData.builder().draft(true).composite(true).build());
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(true).composite(true).build());
 
     final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), eq("export"), anyString()))
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq("export"), anyString()))
         .thenReturn(bundle);
 
     PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
@@ -599,23 +588,19 @@ class BundleServiceTest implements ResourceUtil {
 
   @Test
   void testGetMeasureExportForCompositeDraftComponentMeasureNotFound() {
-    Component component =
-        Component.builder().measureId("non-existent-id").groupId("g1").build();
+    Component component = Component.builder().measureId("non-existent-id").groupId("g1").build();
 
     Group compositeGroup =
-        Group.builder()
-            .id("composite-group-1")
-            .components(List.of(component))
-            .build();
+        Group.builder().id("composite-group-1").components(List.of(component)).build();
 
     measure.setGroups(List.of(compositeGroup));
     measure.setModel("QI-Core v4.1.1");
-    measure.setMeasureMetaData(
-        MeasureMetaData.builder().draft(true).composite(true).build());
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(true).composite(true).build());
 
     final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
     when(measureRepository.findById("non-existent-id")).thenReturn(Optional.empty());
-    when(fhirServicesClient.getMeasureBundle(any(Measure.class), anyString(), eq("export"), anyString()))
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq("export"), anyString()))
         .thenReturn(bundle);
 
     // component export fetch will fail since export doesn't exist
