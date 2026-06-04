@@ -116,9 +116,13 @@ public class TestCaseService {
     TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase);
     TestCase enrichedTestCase =
         enrichNewTestCase(testCase, username, measureId, measure.getModel());
+    boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
     enrichedTestCase =
         testCaseValidationService.validateTestCaseAsResource(
-            enrichedTestCase, ModelType.valueOfName(measure.getModel()), accessToken);
+            enrichedTestCase,
+            ModelType.valueOfName(measure.getModel()),
+            accessToken,
+            lenientPatientRefs);
 
     if (enrichedTestCase != null && !measure.getMeasureMetaData().isDraft()) {
       enrichedTestCase.setCreatedBeforeVersioning(false);
@@ -143,12 +147,13 @@ public class TestCaseService {
     }
     final Measure measure = measureService.findActiveMeasureById(measureId);
     List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
+    boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
     for (TestCase testCase : newTestCases) {
       TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase);
       TestCase enriched = enrichNewTestCase(testCase, username, measureId, measure.getModel());
       enriched =
           testCaseValidationService.validateTestCaseAsResource(
-              enriched, ModelType.valueOfName(measure.getModel()), accessToken);
+              enriched, ModelType.valueOfName(measure.getModel()), accessToken, lenientPatientRefs);
       if (enriched != null && !measure.getMeasureMetaData().isDraft()) {
         enriched.setCreatedBeforeVersioning(false);
       }
@@ -220,8 +225,7 @@ public class TestCaseService {
   public List<TestCase> updateTestCaseValidResourcesForMeasure(
       Measure measure, final String accessToken) {
     List<TestCase> validatedTestCases =
-        testCaseValidationService.validateTestCasesAsResources(
-            measure.getTestCases(), ModelType.valueOfName(measure.getModel()), accessToken);
+        testCaseValidationService.validateTestCasesAsResources(measure, accessToken);
     measure.setTestCases(validatedTestCases);
     measureRepository.save(measure);
     return validatedTestCases;
@@ -288,9 +292,10 @@ public class TestCaseService {
   // common method 3 for two overloading updateTestCase() method
   private TestCase validateAndSave(
       TestCase testCase, Measure measure, String username, String accessToken) {
+    boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
     TestCase validatedTestCase =
         testCaseValidationService.validateTestCaseAsResource(
-            testCase, ModelType.valueOfName(measure.getModel()), accessToken);
+            testCase, ModelType.valueOfName(measure.getModel()), accessToken, lenientPatientRefs);
     measure.getTestCases().add(validatedTestCase);
 
     measureRepository.save(measure); // TODO MAT-8921: Replace with Test Case FindAndModify
@@ -321,13 +326,11 @@ public class TestCaseService {
       testCase.setJson(
           JsonUtil.replacePatientRefs(testCase.getJson(), testCase.getPatientId().toString()));
       testCase.setBundleTypeUpdated(false);
-      if (appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)) {
-        try {
-          testCase.setJson(JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
-        } catch (JsonProcessingException e) {
-          log.error(
-              "Error reading testCaseJson while updating TestCase with id: " + testCase.getId(), e);
-        }
+      try {
+        testCase.setJson(JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
+      } catch (JsonProcessingException e) {
+        log.error(
+            "Error reading testCaseJson while updating TestCase with id: " + testCase.getId(), e);
       }
       if (ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
         Measure updatedMeasure = measureRepository.addOrUpdateTestCase(measureId, testCase);
@@ -379,8 +382,9 @@ public class TestCaseService {
             : null);
 
     if (validate) {
+      boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
       return testCaseValidationService.validateTestCaseAsResource(
-          testCase, ModelType.valueOfName(measure.getModel()), accessToken);
+          testCase, ModelType.valueOfName(measure.getModel()), accessToken, lenientPatientRefs);
     }
     return testCase;
   }

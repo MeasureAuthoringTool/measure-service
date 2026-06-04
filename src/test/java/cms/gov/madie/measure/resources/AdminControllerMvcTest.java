@@ -1046,7 +1046,8 @@ public class AdminControllerMvcTest {
             eq("M1"),
             eq(measure.getTestCases().get(0)),
             eq("test-okta"),
-            eq(ModelType.QI_CORE_6_0_0));
+            eq(ModelType.QI_CORE_6_0_0),
+            eq(false));
     assertEquals(
         TestCaseValidationStatus.PENDING.toString(),
         measure.getTestCases().get(0).getValidationStatus());
@@ -1084,7 +1085,7 @@ public class AdminControllerMvcTest {
 
     verify(testCaseValidationService, times(1))
         .submitOnImportValidationTask(
-            eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0));
+            eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0), eq(false));
   }
 
   @Test
@@ -1120,7 +1121,7 @@ public class AdminControllerMvcTest {
 
     verify(testCaseValidationService, never())
         .submitOnImportValidationTask(
-            anyString(), any(TestCase.class), anyString(), any(ModelType.class));
+            anyString(), any(TestCase.class), anyString(), any(ModelType.class), anyBoolean());
   }
 
   @Test
@@ -1228,13 +1229,15 @@ public class AdminControllerMvcTest {
             eq("M1"),
             eq(measure.getTestCases().get(1)),
             eq("test-okta"),
-            eq(ModelType.QI_CORE_6_0_0));
+            eq(ModelType.QI_CORE_6_0_0),
+            eq(false));
     verify(testCaseValidationService, never())
         .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(2)),
             eq("test-okta"),
-            eq(ModelType.QI_CORE_6_0_0));
+            eq(ModelType.QI_CORE_6_0_0),
+            eq(false));
 
     assertEquals(
         TestCaseValidationStatus.PENDING.toString(),
@@ -1912,7 +1915,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            delete("/admin/cache/evict")
+            delete("/admin/measures/cache/evict")
                 .with(csrf())
                 .with(
                     jwt()
