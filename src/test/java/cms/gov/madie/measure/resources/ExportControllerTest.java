@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.resources;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.config.security.RoleConstants;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.excel.TestCaseExcelExportDTO;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
@@ -54,6 +56,7 @@ class ExportControllerTest {
   @Mock private ExportService exportService;
   @Mock private MeasureService measureService;
   @Mock private ActionLogService actionLogService;
+  @Mock private UserServiceClient userServiceClient;
   @InjectMocks private ExportController exportController;
 
   @Test
@@ -113,6 +116,32 @@ class ExportControllerTest {
   }
 
   @Test
+  void getZipByAdminAddsAdminActionMessage() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    final Measure measure =
+        Measure.builder()
+            .ecqmTitle("test_ecqm_title")
+            .version(new Version(0, 0, 0))
+            .model("QiCore 4.1.1")
+            .createdBy("test.user")
+            .build();
+
+    byte[] response = new byte[0];
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    when(exportService.getMeasureExport(eq(measure), anyString(), anyString()))
+        .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(response).build());
+    when(userServiceClient.hasRole(eq("test.user"), eq(RoleConstants.MADiE_ADMIN), anyString()))
+        .thenReturn(true);
+    ResponseEntity<byte[]> output =
+        exportController.getZip(principal, "test_id", "Info", "Bearer TOKEN");
+    assertEquals(HttpStatus.CREATED, output.getStatusCode());
+    verify(actionLogService, times(1))
+        .logAction(
+            "test_id", Measure.class, ActionType.EXPORTED_MEASURE, "test.user", "by MADiE Admin");
+  }
+
+  @Test
   void getTestCaseExportAll() throws IOException {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -143,6 +172,40 @@ class ExportControllerTest {
             Optional.of("COLLECTION"),
             asList("example-test-case-id-1", "example-test-case-id-2"));
     assertEquals(HttpStatus.OK, output.getStatusCode());
+  }
+
+  @Test
+  void getTestCaseExportByAdminAddsAdminActionMessage() throws IOException {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    final Measure measure =
+        Measure.builder()
+            .ecqmTitle("test_ecqm_title")
+            .version(new Version(0, 0, 0))
+            .model("QiCore 4.1.1")
+            .createdBy("test.user")
+            .build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(fhirServicesClient.getTestCaseExports(
+            any(Measure.class), anyString(), anyList(), anyString()))
+        .thenReturn(new ResponseEntity<byte[]>(HttpStatus.OK));
+    when(userServiceClient.hasRole(eq("test.user"), eq(RoleConstants.MADiE_ADMIN), anyString()))
+        .thenReturn(true);
+    ResponseEntity<byte[]> output =
+        exportController.getTestCaseExport(
+            principal,
+            "access-token",
+            "example-measure-id",
+            Optional.of("COLLECTION"),
+            asList("example-test-case-id-1", "example-test-case-id-2"));
+    assertEquals(HttpStatus.OK, output.getStatusCode());
+    verify(actionLogService, times(1))
+        .logAction(
+            "example-measure-id",
+            Measure.class,
+            ActionType.EXPORTED_TESTCASES,
+            "test.user",
+            "by MADiE Admin");
   }
 
   @Test
