@@ -343,7 +343,7 @@ class ModelValidatorTest {
       fail("Should fail because composite measures cannot have populations or stratifications");
     } catch (InvalidResourceStateException e) {
       assertEquals(
-          "Response could not be completed for Measure with ID 1, since composite measures cannot have populations or stratifications in groups.",
+          "Response could not be completed for Measure with ID 1, since composite measures cannot have populations or stratifications in groups at this time.",
           e.getMessage());
     }
   }
