@@ -1,8 +1,8 @@
 spring:
   data:
     mongodb:
-      database: ${MONGO_DATABASE:madietemp}
-      uri: mongodb://localhost:27017/madietemp?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
+      database: ${MONGO_DATABASE:madie}
+      uri: ${MONGO_URI:mongodb://${DBUSER}:${DBPASS}@localhost:27017/madie}?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
       auto-index-creation: true
   servlet:
     multipart:
