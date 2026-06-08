@@ -4,6 +4,8 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Optional;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.config.security.RoleConstants;
 import cms.gov.madie.measure.dto.excel.TestCaseExcelExportDTO;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
 import cms.gov.madie.measure.services.ActionLogService;
@@ -43,6 +45,17 @@ public class ExportController {
   private final ExportService exportService;
   private final MeasureService measureService;
   private final ActionLogService actionLogService;
+  private final UserServiceClient userServiceClient;
+
+  /**
+   * Builds the additional action message for an export audit log entry. When the user performing
+   * the export holds the MADiE Admin role, "by MADiE Admin" is added so that ADMIN-initiated
+   * exports can be distinguished from standard user exports in the measure history.
+   */
+  private String[] buildAdminActionMessage(String username, String accessToken) {
+    boolean isAdmin = userServiceClient.hasRole(username, RoleConstants.MADiE_ADMIN, accessToken);
+    return isAdmin ? new String[] {"by MADiE Admin"} : new String[0];
+  }
 
   @GetMapping(path = "/measures/{id}/exports", produces = "application/zip")
   public ResponseEntity<byte[]> getZip(
@@ -62,7 +75,12 @@ public class ExportController {
     }
     var packageDto = exportService.getMeasureExport(measure, accessToken, elmErrorSeverity);
 
-    actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_MEASURE, username);
+    actionLogService.logAction(
+        id,
+        Measure.class,
+        ActionType.EXPORTED_MEASURE,
+        username,
+        buildAdminActionMessage(username, accessToken));
 
     return ResponseEntity.status(
             packageDto.isFromStorage() ? HttpStatus.OK.value() : HttpStatus.CREATED.value())
@@ -105,13 +123,23 @@ public class ExportController {
           testCaseId.size(),
           measureId,
           username);
-      actionLogService.logAction(measureId, Measure.class, ActionType.EXPORTED_TESTCASES, username);
+      actionLogService.logAction(
+          measureId,
+          Measure.class,
+          ActionType.EXPORTED_TESTCASES,
+          username,
+          buildAdminActionMessage(username, accessToken));
     } else if (statusCode == 206) {
       log.warn(
           "Partial export for measure [{}] by user [{}]. Some test cases could not be exported.",
           measureId,
           username);
-      actionLogService.logAction(measureId, Measure.class, ActionType.EXPORTED_TESTCASES, username);
+      actionLogService.logAction(
+          measureId,
+          Measure.class,
+          ActionType.EXPORTED_TESTCASES,
+          username,
+          buildAdminActionMessage(username, accessToken));
     } else {
       log.error(
           "Failed to export test cases for measure [{}] by user [{}]. Status: [{}]",
@@ -144,7 +172,12 @@ public class ExportController {
     qrdaPackage = exportService.getQRDA(requestDTO, accessToken);
 
     log.info("QRDA export successful for measure [{}] by user [{}]", id, username);
-    actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_TESTCASES, username);
+    actionLogService.logAction(
+        id,
+        Measure.class,
+        ActionType.EXPORTED_TESTCASES,
+        username,
+        buildAdminActionMessage(username, accessToken));
 
     return ResponseEntity.ok()
         .header(
@@ -172,7 +205,12 @@ public class ExportController {
     excelBytes = excelClient.exportExcel(id, testCaseExcelExportDtos, accessToken);
 
     log.info("Excel export successful for measure [{}] by user [{}]", id, username);
-    actionLogService.logAction(id, Measure.class, ActionType.EXPORTED_TESTCASES, username);
+    actionLogService.logAction(
+        id,
+        Measure.class,
+        ActionType.EXPORTED_TESTCASES,
+        username,
+        buildAdminActionMessage(username, accessToken));
 
     return ResponseEntity.ok()
         .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"testCases.xlsx\"")
