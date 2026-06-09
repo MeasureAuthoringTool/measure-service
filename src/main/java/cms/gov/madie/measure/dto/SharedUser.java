@@ -10,5 +10,6 @@ import java.time.Instant;
 @NoArgsConstructor
 public class SharedUser {
   private String userId;
+  private String displayName;
   private Instant performedAt;
 }

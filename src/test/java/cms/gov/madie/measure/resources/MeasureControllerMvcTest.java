@@ -2022,9 +2022,17 @@ public class MeasureControllerMvcTest {
 
     List<String> measureIds = List.of(measureId1, measureId2);
     SharedUser sharedUser1 =
-        SharedUser.builder().userId("userId1").performedAt(fixedClock.instant()).build();
+        SharedUser.builder()
+            .userId("userId1")
+            .displayName("John Doe (userId1)")
+            .performedAt(fixedClock.instant())
+            .build();
     SharedUser sharedUser2 =
-        SharedUser.builder().userId("userId2").performedAt(fixedClock.instant()).build();
+        SharedUser.builder()
+            .userId("userId2")
+            .displayName("Jane Doe (userId2)")
+            .performedAt(fixedClock.instant())
+            .build();
 
     Map<String, List<SharedUser>> sharedMeasures = new HashMap<>();
     sharedMeasures.put(measureId1, List.of(sharedUser1));
@@ -2042,7 +2050,7 @@ public class MeasureControllerMvcTest {
         .andExpect(
             content()
                 .string(
-                    "{\"measureId1\":[{\"userId\":\"userId1\",\"performedAt\":\"2025-03-17T10:00:00Z\"}],\"measureId2\":[{\"userId\":\"userId1\",\"performedAt\":\"2025-03-17T10:00:00Z\"},{\"userId\":\"userId2\",\"performedAt\":\"2025-03-17T10:00:00Z\"}]}"));
+                    "{\"measureId1\":[{\"userId\":\"userId1\",\"displayName\":\"John Doe (userId1)\",\"performedAt\":\"2025-03-17T10:00:00Z\"}],\"measureId2\":[{\"userId\":\"userId1\",\"displayName\":\"John Doe (userId1)\",\"performedAt\":\"2025-03-17T10:00:00Z\"},{\"userId\":\"userId2\",\"displayName\":\"Jane Doe (userId2)\",\"performedAt\":\"2025-03-17T10:00:00Z\"}]}"));
 
     verify(measureService, times(1)).getSharedMeasures(eq(measureIds), anyString());
   }
