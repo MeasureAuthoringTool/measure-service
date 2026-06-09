@@ -560,6 +560,22 @@ public class MeasureService extends BaseMeasureService {
       }
     }
 
+    List<String> userIds =
+        sharedMeasures.values().stream()
+            .flatMap(List::stream)
+            .map(SharedUser::getUserId)
+            .distinct()
+            .toList();
+
+    Map<String, UserDetailsDto> userDetailsMap = userServiceClient.getBulkUserDetails(userIds);
+
+    sharedMeasures.values().stream()
+        .flatMap(List::stream)
+        .forEach(
+            sharedUser ->
+                sharedUser.setDisplayName(
+                    measureSetService.formatDisplayName(userDetailsMap, sharedUser.getUserId())));
+
     return sharedMeasures;
   }
 
