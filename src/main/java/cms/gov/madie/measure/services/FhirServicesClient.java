@@ -71,7 +71,7 @@ public class FhirServicesClient {
   }
 
   public ResponseEntity<HapiOperationOutcome> validateBundle(
-      String testCaseJson, ModelType modelType, String accessToken) {
+      String testCaseJson, ModelType modelType, String accessToken, boolean lenientPatientRefs) {
     if (modelType == null) {
       throw new UnsupportedTypeException("Please provide model type.");
     }
@@ -81,6 +81,7 @@ public class FhirServicesClient {
         UriComponentsBuilder.fromUriString(
                 fhirServicesConfig.getMadieFhirServiceBaseUrl()
                     + fhirServicesConfig.getMadieFhirServiceValidateBundleUri())
+            .queryParam("lenientPatientRefs", lenientPatientRefs)
             .build(modelVersion);
     HttpHeaders headers = new HttpHeaders();
     headers.set(HttpHeaders.AUTHORIZATION, accessToken);

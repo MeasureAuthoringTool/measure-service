@@ -122,7 +122,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
         .thenReturn(measure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase persistTestCase =
@@ -164,7 +164,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenReturn(measure);
 
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -467,7 +467,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             .build();
     doReturn(List.of(validatedTestCase))
         .when(testCaseValidationService)
-        .validateTestCasesAsResources(anyList(), any(ModelType.class), anyString());
+        .validateTestCasesAsResources(any(Measure.class), anyString());
 
     List<TestCase> output =
         testCaseService.updateTestCaseValidResourcesForMeasure(measure, accessToken);
@@ -478,7 +478,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateResourceAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -539,7 +538,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testPersistTestCasesThrowsNoExceptionForNonDraftMeasure() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -583,7 +581,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.getMeasureMetaData().setDraft(false);
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
     Mockito.doAnswer((args) -> args.getArgument(0))
@@ -625,7 +623,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testPersistTestCasesHandlesListToMeasureNoExistingTestCases() {
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -688,7 +686,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     String accessToken = "Bearer Token";
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     List<TestCase> output =
@@ -736,7 +734,7 @@ public class TestCaseServiceTest implements ResourceUtil {
 
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -780,7 +778,8 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(output.get(1).isCreatedBeforeVersioning(), is(false));
 
     verify(testCaseValidationService, times(2))
-        .validateTestCaseAsResource(any(TestCase.class), any(ModelType.class), anyString());
+        .validateTestCaseAsResource(
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean());
   }
 
   @Test
@@ -788,7 +787,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
     when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
         .thenReturn(measure);
@@ -951,7 +950,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .when(measureRepository)
         .save(any(Measure.class));
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase updatedTestCase =
@@ -1016,7 +1015,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .when(measureRepository)
         .save(any(Measure.class));
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase updatedTestCase =
@@ -1066,7 +1065,7 @@ public class TestCaseServiceTest implements ResourceUtil {
             .build();
     when(measureService.findMeasureById(anyString())).thenReturn(originalMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase updatingTestCase =
@@ -1142,7 +1141,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .save(any(Measure.class));
 
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase updatedTestCase =
@@ -1162,7 +1161,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   public void testUpdateTestCaseSucceedsForNonDraftMeasure() {
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
@@ -1187,7 +1186,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .when(measureRepository)
         .save(any(Measure.class));
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase upsertingTestCase =
@@ -1227,7 +1226,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .when(measureRepository)
         .save(any(Measure.class));
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase upsertingTestCase =
@@ -1273,7 +1272,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .when(measureRepository)
         .save(any(Measure.class));
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase upsertingTestCase =
@@ -1308,7 +1307,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testUpdateTestCaseThrowsResourceNotFoundExceptionForUnknownMeasureId() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(false);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -1344,7 +1342,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   @Test
   public void testGetTestCaseReturnsTestCaseByIdValidatesByUpsert() {
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenReturn(
             testCase.toBuilder()
                 .hapiOperationOutcome(
@@ -2064,7 +2062,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -2632,7 +2630,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .when(measureRepository)
         .save(any(Measure.class));
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase updatedTestCase =
@@ -2672,7 +2670,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenReturn(measure);
 
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     TestCase persistTestCase =
@@ -3066,7 +3064,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -3166,7 +3164,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -3263,7 +3261,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -3324,7 +3322,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -3400,7 +3398,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -3433,7 +3431,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -3537,7 +3535,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -3633,7 +3631,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(
             invocation ->
                 (invocation.getArgument(0, TestCase.class))
@@ -3674,7 +3672,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenReturn(targetMeasure);
 
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
 
     // Copy single Test Case to target measure
@@ -3699,7 +3697,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
     when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
         .thenReturn(targetMeasure);
@@ -3733,7 +3731,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
     when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
         .thenReturn(targetMeasure);
@@ -3770,7 +3768,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
     when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
     when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
         .thenReturn(targetMeasure);
@@ -3788,7 +3786,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateTestCaseAsynchronouslyForSTU6MeasuresWhenUpdatingTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.QICORE_ELEMENTS_TAB)).thenReturn(true);
     measure.setModel(ModelType.QI_CORE_6_0_0.getValue());
     TestCase testCase =
         TestCase.builder()
@@ -4033,7 +4030,7 @@ public class TestCaseServiceTest implements ResourceUtil {
     when(testCaseLockService.findByTestCaseId(anyString())).thenReturn(null);
 
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
@@ -4054,7 +4051,7 @@ public class TestCaseServiceTest implements ResourceUtil {
         .thenReturn(TestCaseLock.builder().lockedBy("test.user").build());
 
     when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString()))
+            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
         .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
     measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);

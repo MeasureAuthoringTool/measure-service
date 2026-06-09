@@ -16,6 +16,7 @@ import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.MeasureSetActionLog;
 import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
 import org.junit.jupiter.api.BeforeEach;
@@ -99,17 +100,25 @@ public class MeasureSetServiceTest {
   @Test
   public void testGrantOperationWithNoAclInMeasureSet() {
     AclSpecification aclSpec = new AclSpecification();
-    aclSpec.setUserId("john_1");
+    aclSpec.setUserId("john_doe");
     aclSpec.setRoles(Set.of(RoleEnum.SHARED_WITH));
     AclOperation aclOperation =
         AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.GRANT).build();
     MeasureSet updatedMeasureSet =
-        MeasureSet.builder().measureSetId("1").owner("john_1").acls(List.of(aclSpec)).build();
+        MeasureSet.builder().measureSetId("1").owner("john_doe").acls(List.of(aclSpec)).build();
 
     measureSet.setAcls(null);
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
-
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john_doe",
+                UserDetailsDto.builder()
+                    .harpId("john_doe")
+                    .firstName("John")
+                    .lastName("Doe")
+                    .build()));
 
     MeasureSet measureSet =
         measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
@@ -124,20 +133,29 @@ public class MeasureSetServiceTest {
             ActionType.SHARED,
             "userName",
             aclSpec.getUserId(),
-            "Shared with - john_1");
+            "Shared with - John Doe (john_doe)");
   }
 
   @Test
   public void testGrantOperationAsFirstNewAcl() {
     AclSpecification aclSpec = new AclSpecification();
-    aclSpec.setUserId("john_1");
+    aclSpec.setUserId("john_doe");
     aclSpec.setRoles(Set.of(RoleEnum.SHARED_WITH));
     AclOperation aclOperation =
         AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.GRANT).build();
     MeasureSet updatedMeasureSet =
-        MeasureSet.builder().measureSetId("1").owner("john_1").acls(List.of(aclSpec)).build();
+        MeasureSet.builder().measureSetId("1").owner("john_doe").acls(List.of(aclSpec)).build();
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john_doe",
+                UserDetailsDto.builder()
+                    .harpId("john_doe")
+                    .firstName("John")
+                    .lastName("Doe")
+                    .build()));
 
     MeasureSet measureSet =
         measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
@@ -152,7 +170,7 @@ public class MeasureSetServiceTest {
             ActionType.SHARED,
             "userName",
             aclSpec.getUserId(),
-            "Shared with - john_1");
+            "Shared with - John Doe (john_doe)");
   }
 
   @Test
@@ -160,7 +178,7 @@ public class MeasureSetServiceTest {
     AclSpecification aclSpec1 = new AclSpecification();
     aclSpec1.setUserId("john");
     AclSpecification aclSpec2 = new AclSpecification();
-    aclSpec2.setUserId("jane");
+    aclSpec2.setUserId("jane_doe");
     aclSpec2.setRoles(Set.of(RoleEnum.SHARED_WITH));
     AclOperation aclOperation =
         AclOperation.builder().acls(List.of(aclSpec2)).action(AclOperation.AclAction.GRANT).build();
@@ -172,6 +190,15 @@ public class MeasureSetServiceTest {
             .build();
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "jane_doe",
+                UserDetailsDto.builder()
+                    .harpId("jane_doe")
+                    .firstName("Jane")
+                    .lastName("Doe")
+                    .build()));
 
     MeasureSet measureSet =
         measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
@@ -186,7 +213,7 @@ public class MeasureSetServiceTest {
             ActionType.SHARED,
             "userName",
             aclSpec2.getUserId(),
-            "Shared with - jane");
+            "Shared with - Jane Doe (jane_doe)");
   }
 
   @Test
@@ -216,6 +243,11 @@ public class MeasureSetServiceTest {
 
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john",
+                UserDetailsDto.builder().harpId("john").firstName("John").lastName("Doe").build()));
 
     MeasureSet measureSet =
         measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
@@ -230,7 +262,7 @@ public class MeasureSetServiceTest {
             ActionType.SHARED,
             "userName",
             aclSpec.getUserId(),
-            "Shared with - john");
+            "Shared with - John Doe (john)");
   }
 
   @Test
@@ -279,6 +311,11 @@ public class MeasureSetServiceTest {
         AclOperation.builder().acls(List.of(aclSpec)).action(AclOperation.AclAction.REVOKE).build();
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(measureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john",
+                UserDetailsDto.builder().harpId("john").firstName("John").lastName("Doe").build()));
 
     MeasureSet updatedMeasureSet =
         measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false);
@@ -293,7 +330,7 @@ public class MeasureSetServiceTest {
             ActionType.UNSHARED,
             "userName",
             aclSpec.getUserId(),
-            "Unshared with - john");
+            "Unshared with - John Doe (john)");
   }
 
   @Test
@@ -758,20 +795,36 @@ public class MeasureSetServiceTest {
 
   @Test
   public void testChangeOwnershipDoNotRetainAccess() {
-    // Original owner is "user-1", new owner is "testUser"
+    // Original owner is "john_doe", new owner is "jane_doe"
     // "john" is already shared with
-    MeasureSet updatedMeasureSet = measureSet.toBuilder().owner("testUser").build();
+    measureSet.setOwner("john_doe");
+    MeasureSet updatedMeasureSet = measureSet.toBuilder().owner("jane_doe").build();
 
     when(userServiceClient.hasRole(anyString(), anyString(), anyString())).thenReturn(false);
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john_doe",
+                UserDetailsDto.builder()
+                    .harpId("john_doe")
+                    .firstName("John")
+                    .lastName("Doe")
+                    .build(),
+                "jane_doe",
+                UserDetailsDto.builder()
+                    .harpId("jane_doe")
+                    .firstName("Jane")
+                    .lastName("Doe")
+                    .build()));
 
     MeasureSet result =
         measureSetService.changeOwnership(
-            measureSet.getMeasureSetId(), "testUser", false, "user-1", ACCESS_TOKEN);
+            measureSet.getMeasureSetId(), "jane_doe", false, "john_doe", ACCESS_TOKEN);
 
     assertThat(result.getId(), is(equalTo(updatedMeasureSet.getId())));
-    assertThat(result.getOwner(), is(equalTo("testUser")));
+    assertThat(result.getOwner(), is(equalTo("jane_doe")));
     // "john" should still be technically in ACLs unless explicitly removed (logic doesn't remove
     // unrelated ACLs)
     // The previous test asserted ACL size 1, which matches "john"
@@ -783,22 +836,23 @@ public class MeasureSetServiceTest {
             "msid-2",
             MeasureSet.class,
             ActionType.OWNERSHIP_TRANSFER,
-            "user-1",
-            "Transferred from user-1 to testUser");
+            "john_doe",
+            "Transferred from John Doe (john_doe) to Jane Doe (jane_doe)");
   }
 
   @Test
   public void testChangeOwnershipRetainAccess() {
-    // Original owner "user-1"
+    // Original owner "john_doe"
+    measureSet.setOwner("john_doe");
     MeasureSet updatedMeasureSet =
         measureSet.toBuilder()
-            .owner("testUser")
+            .owner("jane_doe")
             .acls(
                 new ArrayList<>(measureSet.getAcls()) {
                   {
                     add(
                         AclSpecification.builder()
-                            .userId("user-1")
+                            .userId("john_doe")
                             .roles(Set.of(RoleEnum.SHARED_WITH))
                             .build());
                   }
@@ -807,18 +861,33 @@ public class MeasureSetServiceTest {
 
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john_doe",
+                UserDetailsDto.builder()
+                    .harpId("john_doe")
+                    .firstName("John")
+                    .lastName("Doe")
+                    .build(),
+                "jane_doe",
+                UserDetailsDto.builder()
+                    .harpId("jane_doe")
+                    .firstName("Jane")
+                    .lastName("Doe")
+                    .build()));
 
     MeasureSet result =
         measureSetService.changeOwnership(
-            measureSet.getMeasureSetId(), "testUser", true, "user-1", ACCESS_TOKEN);
+            measureSet.getMeasureSetId(), "jane_doe", true, "john_doe", ACCESS_TOKEN);
 
-    assertThat(result.getOwner(), is(equalTo("testUser")));
-    assertThat(result.getAcls().size(), is(2)); // "john" + "user-1"
+    assertThat(result.getOwner(), is(equalTo("jane_doe")));
+    assertThat(result.getAcls().size(), is(2)); // "john" + "john_doe"
     assertTrue(
         result.getAcls().stream()
             .anyMatch(
                 acl ->
-                    acl.getUserId().equals("user-1")
+                    acl.getUserId().equals("john_doe")
                         && acl.getRoles().contains(RoleEnum.SHARED_WITH)));
 
     verify(actionLogService, times(1))
@@ -826,47 +895,63 @@ public class MeasureSetServiceTest {
             "msid-2",
             MeasureSet.class,
             ActionType.OWNERSHIP_TRANSFER,
-            "user-1",
-            "Transferred from user-1 to testUser");
+            "john_doe",
+            "Transferred from John Doe (john_doe) to Jane Doe (jane_doe)");
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
             "msid-2",
             MeasureSet.class,
             ActionType.SHARED,
-            "user-1",
-            "user-1",
-            "Shared with - user-1");
+            "john_doe",
+            "john_doe",
+            "Shared with - John Doe (john_doe)");
   }
 
   @Test
   public void testChangeOwnershipRemovePreviouslySharedRole() {
-    // Setup: "newOwner" is already SHARED_WITH
+    // Setup: "jane_doe" is already SHARED_WITH
+    measureSet.setOwner("john_doe");
     AclSpecification sharedAcl =
         AclSpecification.builder()
-            .userId("newOwner")
+            .userId("jane_doe")
             .roles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)))
             .build();
 
-    // measureSet already has "john", we add "newOwner"
+    // measureSet already has "john", we add "jane_doe"
     measureSet.getAcls().add(sharedAcl);
 
     MeasureSet updatedMeasureSet =
         measureSet.toBuilder()
-            .owner("newOwner")
-            // The service logic will remove "newOwner" from ACLs
+            .owner("jane_doe")
+            // The service logic will remove "jane_doe" from ACLs
             // "john" remains
             .acls(new ArrayList<>(List.of(measureSet.getAcls().get(0))))
             .build();
 
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john_doe",
+                UserDetailsDto.builder()
+                    .harpId("john_doe")
+                    .firstName("John")
+                    .lastName("Doe")
+                    .build(),
+                "jane_doe",
+                UserDetailsDto.builder()
+                    .harpId("jane_doe")
+                    .firstName("Jane")
+                    .lastName("Doe")
+                    .build()));
 
-    // Conducted by "user-1" (original owner)
+    // Conducted by "john_doe" (original owner)
     MeasureSet result =
-        measureSetService.changeOwnership("msid-2", "newOwner", false, "user-1", ACCESS_TOKEN);
+        measureSetService.changeOwnership("msid-2", "jane_doe", false, "john_doe", ACCESS_TOKEN);
 
-    assertThat(result.getOwner(), is(equalTo("newOwner")));
+    assertThat(result.getOwner(), is(equalTo("jane_doe")));
     assertThat(result.getAcls().size(), is(1));
     assertThat(result.getAcls().get(0).getUserId(), is("john"));
 
@@ -875,17 +960,17 @@ public class MeasureSetServiceTest {
             "msid-2",
             MeasureSet.class,
             ActionType.OWNERSHIP_TRANSFER,
-            "user-1",
-            "Transferred from user-1 to newOwner");
+            "john_doe",
+            "Transferred from John Doe (john_doe) to Jane Doe (jane_doe)");
 
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
             "msid-2",
             MeasureSet.class,
             ActionType.UNSHARED,
-            "user-1",
-            "newOwner",
-            "newOwner now has owner permissions instead of share permissions");
+            "john_doe",
+            "jane_doe",
+            "jane_doe now has owner permissions instead of share permissions");
   }
 
   @Test
@@ -929,13 +1014,28 @@ public class MeasureSetServiceTest {
   public void testChangeOwnershipDoesNotThrowUnauthorizedExceptionIfConductedByAdmin() {
     // Arrange
     String admin = "admin";
-    String newOwner = "newOwner";
-    measureSet.setOwner("originalOwner");
+    String newOwner = "jane_doe";
+    measureSet.setOwner("john_doe");
 
     when(userServiceClient.hasRole(anyString(), anyString(), anyString())).thenReturn(true);
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     MeasureSet updatedMeasureSet = measureSet.toBuilder().owner(newOwner).build();
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john_doe",
+                UserDetailsDto.builder()
+                    .harpId("john_doe")
+                    .firstName("John")
+                    .lastName("Doe")
+                    .build(),
+                "jane_doe",
+                UserDetailsDto.builder()
+                    .harpId("jane_doe")
+                    .firstName("Jane")
+                    .lastName("Doe")
+                    .build()));
 
     // Act & Assert
     assertDoesNotThrow(
@@ -948,7 +1048,7 @@ public class MeasureSetServiceTest {
             MeasureSet.class,
             ActionType.OWNERSHIP_TRANSFER,
             admin,
-            "Transferred from originalOwner to " + newOwner + " by MADiE Admin");
+            "Transferred from John Doe (john_doe) to Jane Doe (jane_doe) by MADiE Admin");
   }
 
   @Test
@@ -1237,7 +1337,7 @@ public class MeasureSetServiceTest {
     String measureSetId = "measureSetId1";
     String adminUser = "MADiE Admin";
     AclSpecification aclSpec = new AclSpecification();
-    aclSpec.setUserId("testUser");
+    aclSpec.setUserId("john_doe");
     aclSpec.setRoles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)));
 
     AclOperation aclOperation =
@@ -1250,21 +1350,30 @@ public class MeasureSetServiceTest {
 
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john_doe",
+                UserDetailsDto.builder()
+                    .harpId("john_doe")
+                    .firstName("John")
+                    .lastName("Doe")
+                    .build()));
 
     MeasureSet result =
         measureSetService.updateMeasureSetAcls(measureSetId, aclOperation, adminUser, true);
 
     assertNotNull(result);
     assertEquals(1, result.getAcls().size());
-    assertEquals("testUser", result.getAcls().get(0).getUserId());
+    assertEquals("john_doe", result.getAcls().get(0).getUserId());
     verify(actionLogService, times(1))
         .logShareAccessControlAction(
             measureSetId,
             MeasureSet.class,
             ActionType.SHARED,
             adminUser,
-            "testUser",
-            "Shared with - testUser by MADiE Admin");
+            "john_doe",
+            "Shared with - John Doe (john_doe) by MADiE Admin");
   }
 
   @Test
@@ -1272,7 +1381,7 @@ public class MeasureSetServiceTest {
     String measureSetId = "measureSetId1";
     String adminUser = "MADiE Admin";
     AclSpecification aclSpec = new AclSpecification();
-    aclSpec.setUserId("testUser");
+    aclSpec.setUserId("john_doe");
     aclSpec.setRoles(new HashSet<>(Set.of(RoleEnum.SHARED_WITH)));
 
     AclOperation aclOperation =
@@ -1289,6 +1398,15 @@ public class MeasureSetServiceTest {
 
     when(measureSetRepository.findByMeasureSetId(anyString())).thenReturn(Optional.of(measureSet));
     when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedMeasureSet);
+    when(userServiceClient.getBulkUserDetails(any()))
+        .thenReturn(
+            Map.of(
+                "john_doe",
+                UserDetailsDto.builder()
+                    .harpId("john_doe")
+                    .firstName("John")
+                    .lastName("Doe")
+                    .build()));
 
     MeasureSet result =
         measureSetService.updateMeasureSetAcls(measureSetId, aclOperation, adminUser, true);
@@ -1301,7 +1419,7 @@ public class MeasureSetServiceTest {
             MeasureSet.class,
             ActionType.UNSHARED,
             adminUser,
-            "testUser",
-            "Unshared with - testUser by MADiE Admin");
+            "john_doe",
+            "Unshared with - John Doe (john_doe) by MADiE Admin");
   }
 }

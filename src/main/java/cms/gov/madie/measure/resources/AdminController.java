@@ -13,6 +13,7 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.services.*;
+import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Organization;
 import gov.cms.madie.models.common.Version;
@@ -231,6 +232,7 @@ public class AdminController extends AbstractMeasureController {
     targetQiCore6Measures.forEach(
         measure -> {
           if (CollectionUtils.isNotEmpty(measure.getTestCases())) {
+            boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
             measure
                 .getTestCases()
                 .forEach(
@@ -243,7 +245,8 @@ public class AdminController extends AbstractMeasureController {
                             measure.getId(),
                             testCase,
                             accessToken,
-                            ModelType.valueOfName(measure.getModel()));
+                            ModelType.valueOfName(measure.getModel()),
+                            lenientPatientRefs);
                       } else if (force
                           || testCase.getValidationStatus() == null
                           || TestCaseValidationStatus.VALIDATING
@@ -258,7 +261,8 @@ public class AdminController extends AbstractMeasureController {
                               measure.getId(),
                               testCase,
                               accessToken,
-                              ModelType.valueOfName(measure.getModel()));
+                              ModelType.valueOfName(measure.getModel()),
+                              lenientPatientRefs);
                         }
                       }
                     });
@@ -683,7 +687,7 @@ public class AdminController extends AbstractMeasureController {
     return ResponseEntity.ok().body(updatedMeasure);
   }
 
-  @DeleteMapping("/cache/evict")
+  @DeleteMapping("/measures/cache/evict")
   public ResponseEntity<List<String>> evictAllCaches(Principal principal) {
     List<String> evictedCaches = new ArrayList<>(cacheManager.getCacheNames());
     log.info("Admin user [{}] is evicting all caches: {}", principal.getName(), evictedCaches);
