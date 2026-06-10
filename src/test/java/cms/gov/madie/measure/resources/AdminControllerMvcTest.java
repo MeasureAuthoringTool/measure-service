@@ -3,6 +3,8 @@ package cms.gov.madie.measure.resources;
 import cms.gov.madie.measure.config.security.SecurityConfigTest;
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.JobStatus;
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
@@ -16,10 +18,7 @@ import cms.gov.madie.measure.repositories.OrganizationRepository;
 import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.Organization;
-import gov.cms.madie.models.common.Version;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.UserRolesDto;
 import gov.cms.madie.models.measure.*;
 
@@ -72,6 +71,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 @WebMvcTest({AdminController.class})
 @ActiveProfiles("test")
@@ -1939,5 +1941,57 @@ public class AdminControllerMvcTest {
                         .authorities(createAuthorityList("ROLE_MADIE-USER"))))
         .andExpect(status().isForbidden());
     verifyNoInteractions(cacheManager);
+  }
+
+  @Test
+  public void testSearchMeasuresForUserDelegatesToMeasureServiceWithHarpIdAsUsername()
+      throws Exception {
+    MeasureListDTO dto = MeasureListDTO.builder().id("m1").measureName("Measure One").build();
+    Page<MeasureListDTO> page = new PageImpl<>(List.of(dto));
+    when(measureService.getMeasuresByCriteria(any(), any(), any(Pageable.class), anyString()))
+        .thenReturn(page);
+
+    mockMvc
+        .perform(
+            put("/admin/users/test_user/measures/searches?ownershipTypes=OWNED")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].id", is("m1")))
+        .andExpect(jsonPath("$.content[0].measureName", is("Measure One")));
+
+    ArgumentCaptor<String> usernameCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<List<OwnershipType>> ownershipCaptor = ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<MeasureSearchCriteria> criteriaCaptor =
+        ArgumentCaptor.forClass(MeasureSearchCriteria.class);
+    verify(measureService)
+        .getMeasuresByCriteria(
+            criteriaCaptor.capture(),
+            ownershipCaptor.capture(),
+            any(Pageable.class),
+            usernameCaptor.capture());
+    assertEquals("test_user", usernameCaptor.getValue());
+    assertEquals(List.of(OwnershipType.OWNED), ownershipCaptor.getValue());
+  }
+
+  @Test
+  public void testSearchMeasuresForUserReturnsForbiddenForNonAdmin() throws Exception {
+    mockMvc
+        .perform(
+            put("/admin/users/some_user/measures/searches")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-USER")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(measureService);
   }
 }

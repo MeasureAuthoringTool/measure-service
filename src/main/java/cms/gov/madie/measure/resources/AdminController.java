@@ -31,12 +31,19 @@ import org.springframework.util.StopWatch;
 import org.springframework.web.bind.annotation.*;
 
 import cms.gov.madie.measure.dto.ImpactedMeasureValidationReport;
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReportSummary;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.OrganizationRepository;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.OwnershipType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -686,5 +693,24 @@ public class AdminController extends AbstractMeasureController {
     log.info("Admin user [{}] is evicting all caches: {}", principal.getName(), evictedCaches);
     evictedCaches.forEach(cacheName -> cacheManager.getCache(cacheName).clear());
     return ResponseEntity.ok(evictedCaches);
+  }
+
+  @PutMapping("/users/{harpId}/measures/searches")
+  public ResponseEntity<Page<MeasureListDTO>> searchMeasuresForUser(
+      @PathVariable("harpId") String harpId,
+      @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
+      @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
+      @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
+      @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+      @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
+      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
+    final String username = harpId.toLowerCase();
+    final Pageable pageReq =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
+
+    Page<MeasureListDTO> measures =
+        measureService.getMeasuresByCriteria(searchCriteria, ownershipTypes, pageReq, username);
+
+    return ResponseEntity.ok(measures);
   }
 }
