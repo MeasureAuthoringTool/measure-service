@@ -1953,7 +1953,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            put("/admin/users/test_user/measures/searches?ownershipTypes=OWNED")
+            put("/admin/userProfile/test_user/measures/searches?ownershipTypes=OWNED")
                 .with(csrf())
                 .with(
                     jwt()
