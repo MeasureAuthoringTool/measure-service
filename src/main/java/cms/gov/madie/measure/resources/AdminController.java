@@ -695,7 +695,7 @@ public class AdminController extends AbstractMeasureController {
     return ResponseEntity.ok(evictedCaches);
   }
 
-  @PutMapping("/users/{harpId}/measures/searches")
+  @PutMapping("/measures/users/{harpId}/measures/searches")
   public ResponseEntity<Page<MeasureListDTO>> searchMeasuresForUser(
       @PathVariable("harpId") String harpId,
       @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
