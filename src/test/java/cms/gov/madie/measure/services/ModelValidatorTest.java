@@ -485,6 +485,27 @@ class ModelValidatorTest {
   }
 
   @Test
+  void useQicoreModelValidatorTestDraftMeasureWithCohortScoringDoesNotRequireImprovementNotation() {
+    assertNotNull(modelValidatorFactory);
+    Group group =
+        Group.builder()
+            .scoring(MeasureScoring.COHORT.toString())
+            .measureGroupTypes(List.of(MeasureGroupTypes.OUTCOME))
+            .build();
+
+    Measure measure =
+        Measure.builder()
+            .id("1")
+            .groups(List.of(group))
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .build();
+
+    ModelValidator validator = modelValidatorFactory.getModelValidator(ModelType.QI_CORE);
+    assertTrue(validator instanceof QiCoreModelValidator);
+    assertDoesNotThrow(() -> validator.validateGroups(measure));
+  }
+
+  @Test
   void
       useQicoreModelValidatorTestVersionedMeasureHasNoImprovementNotationInAtLeastOnePopulationCriteria() {
     assertNotNull(modelValidatorFactory);
