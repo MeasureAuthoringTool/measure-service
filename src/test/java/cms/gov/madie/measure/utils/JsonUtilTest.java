@@ -1,8 +1,8 @@
 package cms.gov.madie.measure.utils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import gov.cms.madie.models.measure.TestCase;
 import gov.cms.madie.models.measure.Group;
@@ -184,7 +184,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  public void testGetPatientId() throws JsonProcessingException {
+  public void testGetPatientId() throws JacksonException {
     String output = JsonUtil.getPatientId(json);
     assertThat(output, is(equalTo("1")));
   }
@@ -305,55 +305,55 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  public void testGetPatientFamilyName() throws JsonProcessingException {
+  public void testGetPatientFamilyName() throws JacksonException {
     String output = JsonUtil.getPatientName(json, "family");
     assertThat(output, is(equalTo("Health")));
   }
 
   @Test
-  public void testGetPatientGivenName() throws JsonProcessingException {
+  public void testGetPatientGivenName() throws JacksonException {
     String output = JsonUtil.getPatientName(json, "given");
     assertThat(output, is(equalTo("Lizzy")));
   }
 
   @Test
-  public void testGetPatientFamilyNameNoEntries() throws JsonProcessingException {
+  public void testGetPatientFamilyNameNoEntries() throws JacksonException {
     String output = JsonUtil.getPatientName(json_noEntries, "family");
     assertThat(output, is(equalTo(null)));
   }
 
   @Test
-  public void testGetPatientFamilyNameNoResource() throws JsonProcessingException {
+  public void testGetPatientFamilyNameNoResource() throws JacksonException {
     String output = JsonUtil.getPatientName(json_noResource, "family");
     assertThat(output, is(equalTo(null)));
   }
 
   @Test
-  public void testGetPatientFamilyNameNoResourceType() throws JsonProcessingException {
+  public void testGetPatientFamilyNameNoResourceType() throws JacksonException {
     String output = JsonUtil.getPatientName(json_noResourceType, "family");
     assertThat(output, is(equalTo(null)));
   }
 
   @Test
-  public void testGetPatientFamilyNameWrongtype() throws JsonProcessingException {
+  public void testGetPatientFamilyNameWrongtype() throws JacksonException {
     String output = JsonUtil.getPatientName(json, "wrongType");
     assertThat(output, is(equalTo(null)));
   }
 
   @Test
-  public void testGetPatientFamilyNameNoName() throws JsonProcessingException {
+  public void testGetPatientFamilyNameNoName() throws JacksonException {
     String output = JsonUtil.getPatientName(json_noName, "family");
     assertThat(output, is(equalTo(null)));
   }
 
   @Test
-  public void testGetPatientFamilyNameNoGivenName() throws JsonProcessingException {
+  public void testGetPatientFamilyNameNoGivenName() throws JacksonException {
     String output = JsonUtil.getPatientName(json_noGivenName, "given");
     assertThat(output, is(equalTo(null)));
   }
 
   @Test
-  public void testGetTestCaseGroupPopulationsFromMeasureReport() throws JsonProcessingException {
+  public void testGetTestCaseGroupPopulationsFromMeasureReport() throws JacksonException {
 
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
         JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(measureReportJson, true, measure);
@@ -382,16 +382,14 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  public void testGetTestCaseGroupPopulationsFromMeasureReportNoEntries()
-      throws JsonProcessingException {
+  public void testGetTestCaseGroupPopulationsFromMeasureReportNoEntries() throws JacksonException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
         JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noEntries, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
   @Test
-  public void testGetTestCaseGroupPopulationsFromMeasureReportNoResource()
-      throws JsonProcessingException {
+  public void testGetTestCaseGroupPopulationsFromMeasureReportNoResource() throws JacksonException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
         JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noResource, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
@@ -399,15 +397,14 @@ public class JsonUtilTest implements ResourceUtil {
 
   @Test
   public void testGetTestCaseGroupPopulationsFromMeasureReportNoResourceType()
-      throws JsonProcessingException {
+      throws JacksonException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
         JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noResourceType, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
   @Test
-  public void testGetTestCaseGroupPopulationsFromMeasureReportNoGroup()
-      throws JsonProcessingException {
+  public void testGetTestCaseGroupPopulationsFromMeasureReportNoGroup() throws JacksonException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
         JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noGroup, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
@@ -415,23 +412,21 @@ public class JsonUtilTest implements ResourceUtil {
 
   @Test
   public void testGetTestCaseGroupPopulationsFromMeasureReportNoPopulation()
-      throws JsonProcessingException {
+      throws JacksonException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
         JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noPopulation, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
   @Test
-  public void testGetTestCaseGroupPopulationsFromMeasureReportNoCode()
-      throws JsonProcessingException {
+  public void testGetTestCaseGroupPopulationsFromMeasureReportNoCode() throws JacksonException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
         JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noCode, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
   }
 
   @Test
-  public void testGetTestCaseGroupPopulationsFromMeasureReportNoCount()
-      throws JsonProcessingException {
+  public void testGetTestCaseGroupPopulationsFromMeasureReportNoCount() throws JacksonException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
         JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(json_noCount, true, measure);
     assertThat(testCaseGroupPopulations.size(), is(equalTo(0)));
@@ -439,7 +434,7 @@ public class JsonUtilTest implements ResourceUtil {
 
   @Test
   public void testGetTestCaseGroupPopulationsFromMeasureReportStratifications()
-      throws JsonProcessingException {
+      throws JacksonException {
 
     String jsonWithStrat = getData("/test_case_export_w_stratification.json");
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
@@ -456,7 +451,7 @@ public class JsonUtilTest implements ResourceUtil {
 
   @Test
   public void testGetTestCaseGroupPopulationsFromMeasureReportStratificationsNonBoolean()
-      throws JsonProcessingException {
+      throws JacksonException {
 
     String jsonWithStrat = getData("/test_case_export_w_stratification.json");
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
@@ -585,7 +580,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testGetTestcaseDescriptionIfMeasureReportMissing() throws JsonProcessingException {
+  void testGetTestcaseDescriptionIfMeasureReportMissing() throws JacksonException {
     final String json =
         "{\"id\":\"6323489059967e30c06d0774\",\"resourceType\":\"Bundle\",\"type\":\"collection\",\"entry\":[]}";
     String description = JsonUtil.getTestDescription(json);
@@ -593,7 +588,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testGetTestcaseDescriptionIfNoExtension() throws JsonProcessingException {
+  void testGetTestcaseDescriptionIfNoExtension() throws JacksonException {
     final String json =
         "{\"id\":\"6323489059967e30c06d0774\",\"resourceType\":\"Bundle\",\"type\":\"collection\",\"entry\":[{\"resource\": {\"resourceType\": \"MeasureReport\"}}]}";
     String description = JsonUtil.getTestDescription(json);
@@ -601,7 +596,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testGetTestcaseDescriptionIfNoTestcaseDescriptionExtension() throws JsonProcessingException {
+  void testGetTestcaseDescriptionIfNoTestcaseDescriptionExtension() throws JacksonException {
     final String json =
         "{\"id\":\"6323489059967e30c06d0774\",\"resourceType\":\"Bundle\",\"type\":\"collection\",\"entry\":[{\"resource\": {\"resourceType\": \"MeasureReport\",\"extension\":[{\"url\":\"http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-inputParameters\",\"valueReference\":{\"reference\":\"#IPPass-parameters\"}}]}}]}";
     String description = JsonUtil.getTestDescription(json);
@@ -609,7 +604,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testGetTestcaseDescription() throws JsonProcessingException {
+  void testGetTestcaseDescription() throws JacksonException {
     final String json =
         "{\"id\":\"6323489059967e30c06d0774\",\"resourceType\":\"Bundle\",\"type\":\"collection\",\"entry\":[{\"resource\": {\"resourceType\": \"MeasureReport\", \"extension\":[{\"url\":\"http://hl7.org/fhir/us/cqfmeasures/StructureDefinition/cqfm-testCaseDescription\",\"valueMarkdown\":\"test case description\"}]}}]}";
     String description = JsonUtil.getTestDescription(json);
@@ -617,25 +612,25 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testGetPatientNameQdmWrongNodeType() throws JsonProcessingException {
+  void testGetPatientNameQdmWrongNodeType() throws JacksonException {
     String result = JsonUtil.getPatientNameQdm(qdmImportedJson, "wrongNode");
     assertNull(result);
   }
 
   @Test
-  void testGetTestDescriptionQdmNotFound() throws JsonProcessingException {
+  void testGetTestDescriptionQdmNotFound() throws JacksonException {
     String result = JsonUtil.getTestDescriptionQdm("{\"id\":\"test\"}");
     assertNull(result);
   }
 
   @Test
-  void testGGetTestCaseJsonNotFound() throws JsonProcessingException {
+  void testGGetTestCaseJsonNotFound() throws JacksonException {
     String result = JsonUtil.getTestCaseJson("{\"id\":\"test\"}");
     assertNull(result);
   }
 
   @Test
-  void testHandleStratificationValuesGroupsNull() throws JsonProcessingException {
+  void testHandleStratificationValuesGroupsNull() throws JacksonException {
     QdmMeasure qdmMeasure =
         QdmMeasure.builder().scoring(MeasureScoring.CONTINUOUS_VARIABLE.toString()).build();
 
@@ -645,7 +640,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testHandleStratificationValuesStratificationsNull() throws JsonProcessingException {
+  void testHandleStratificationValuesStratificationsNull() throws JacksonException {
     Group group = Group.builder().build();
     QdmMeasure qdmMeasure =
         QdmMeasure.builder()
@@ -659,7 +654,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testGetTestCaseGroupPopulationsQdmEmptyExpectedValues() throws JsonProcessingException {
+  void testGetTestCaseGroupPopulationsQdmEmptyExpectedValues() throws JacksonException {
     Group group = Group.builder().build();
     QdmMeasure qdmMeasure =
         QdmMeasure.builder()
@@ -673,7 +668,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testGetTestCaseGroupPopulationsQdmForRatio() throws JsonProcessingException {
+  void testGetTestCaseGroupPopulationsQdmForRatio() throws JacksonException {
     QdmMeasure qdmMeasure = QdmMeasure.builder().scoring(MeasureScoring.RATIO.toString()).build();
 
     List<TestCaseGroupPopulation> groupPopulations =
@@ -682,8 +677,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testGetTestCaseGroupPopulationsQdmForCVWithStratificationValues()
-      throws JsonProcessingException {
+  void testGetTestCaseGroupPopulationsQdmForCVWithStratificationValues() throws JacksonException {
     QdmMeasure qdmMeasure =
         QdmMeasure.builder()
             .scoring(MeasureScoring.CONTINUOUS_VARIABLE.toString())
@@ -698,7 +692,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testSetObservationValuesForCV() throws JsonProcessingException {
+  void testSetObservationValuesForCV() throws JacksonException {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode ippNode = mapper.readTree(testCasePopulationValueJsonNode);
 
@@ -715,7 +709,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testSetDenominatorValues() throws JsonProcessingException {
+  void testSetDenominatorValues() throws JacksonException {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode ippNode = mapper.readTree(testCasePopulationValueJsonNode);
 
@@ -729,7 +723,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  void testSetNumeratorValues() throws JsonProcessingException {
+  void testSetNumeratorValues() throws JacksonException {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode ippNode = mapper.readTree(testCasePopulationValueJsonNode);
 
@@ -798,7 +792,7 @@ public class JsonUtilTest implements ResourceUtil {
 
   @Test
   void testgetTestCaseGroupPopulationsFromMeasureReportWithMeasureObservation()
-      throws JsonProcessingException {
+      throws JacksonException {
     MeasureObservation observation1 =
         MeasureObservation.builder()
             .id("obsId1")
@@ -843,7 +837,7 @@ public class JsonUtilTest implements ResourceUtil {
 
   @Test
   void testgetTestCaseGroupPopulationsFromMeasureReportWithMeasureObservationEpisodeBased()
-      throws JsonProcessingException {
+      throws JacksonException {
     MeasureObservation observation1 =
         MeasureObservation.builder()
             .id("obsId1")
@@ -871,8 +865,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  public void testGetTestCaseGroupPopulationsFromMeasureReportTwoGroups()
-      throws JsonProcessingException {
+  public void testGetTestCaseGroupPopulationsFromMeasureReportTwoGroups() throws JacksonException {
     String jsonWith2Groups = getData("/test_case_export_w_two_groups.json");
     List<TestCaseGroupPopulation> testCaseGroupPopulations =
         JsonUtil.getTestCaseGroupPopulationsFromMeasureReport(jsonWith2Groups, false, measure);
@@ -906,13 +899,11 @@ public class JsonUtilTest implements ResourceUtil {
   public void removeMeasureReportEntriesHandlesInvalidJson() {
     String invalidJson =
         "{ \"type\": \"transaction\", \"entry\": [ { \"resource\": { \"resourceType\": \"Patient\" } ";
-    assertThrows(
-        JsonProcessingException.class, () -> JsonUtil.removeMeasureReportEntries(invalidJson));
+    assertThrows(JacksonException.class, () -> JsonUtil.removeMeasureReportEntries(invalidJson));
   }
 
   @Test
-  public void removeMeasureReportEntriesSuccessfullyRemovesMeasureReport()
-      throws JsonProcessingException {
+  public void removeMeasureReportEntriesSuccessfullyRemovesMeasureReport() throws JacksonException {
     String json =
         "{ \"entry\": ["
             + "{ \"resource\": { \"resourceType\": \"MeasureReport\", \"id\": \"mr1\" } },"
@@ -924,8 +915,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  public void updateBundleTypeAndRemoveRequestUpdatesTypeToCollection()
-      throws JsonProcessingException {
+  public void updateBundleTypeAndRemoveRequestUpdatesTypeToCollection() throws JacksonException {
     String json = "{ \"type\": \"transaction\", \"entry\": [] }";
     TestCase testCase = new TestCase();
     testCase.setJson(json);
@@ -935,8 +925,7 @@ public class JsonUtilTest implements ResourceUtil {
   }
 
   @Test
-  public void updateBundleTypeAndRemoveRequestRemovesRequestEntries()
-      throws JsonProcessingException {
+  public void updateBundleTypeAndRemoveRequestRemovesRequestEntries() throws JacksonException {
     String json =
         "{ \"entry\": [ { \"request\": { \"method\": \"POST\" }, \"resource\": { \"resourceType\": \"Patient\" } } ] }";
     TestCase testCase = new TestCase();
@@ -960,7 +949,6 @@ public class JsonUtilTest implements ResourceUtil {
         "{ \"type\": \"transaction\", \"entry\": [ { \"resource\": { \"resourceType\": \"Patient\" } ";
     TestCase testCase = new TestCase();
     testCase.setJson(invalidJson);
-    assertThrows(
-        JsonProcessingException.class, () -> JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
+    assertThrows(JacksonException.class, () -> JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
   }
 }

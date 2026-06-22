@@ -1,25 +1,28 @@
 package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.config.security.SecurityConfigTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
 import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.measure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.json.JsonCompareMode;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -41,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest({TestCaseController.class})
+@ExtendWith(MockitoExtension.class)
 @ActiveProfiles("test")
 @Import(SecurityConfigTest.class)
 public class TestCaseControllerMvcTest {
@@ -243,7 +247,7 @@ public class TestCaseControllerMvcTest {
         .andExpect(status().isOk())
         .andExpect(
             content()
-                .string(
+                .json(
                     "[{\"id\":\"TESTID\",\"caseNumber\":null,\"name\":\"TestName\",\"title\":\"TestTitle\",\"series\":null,"
                         + "\"description\":\"Test Description\",\"createdAt\":null,"
                         + "\"createdBy\":\"TestUser\",\"lastModifiedAt\":null,"
@@ -256,7 +260,8 @@ public class TestCaseControllerMvcTest {
                         + "\"validationTaskId\":null,"
                         + "\"testCaseLock\":null,"
                         + "\"bundleTypeUpdated\":false"
-                        + "}]"));
+                        + "}]",
+                    JsonCompareMode.STRICT));
     verify(testCaseService, times(1))
         .findTestCasesByMeasureId(measureIdCaptor.capture(), anyString());
     String measureId = measureIdCaptor.getValue();
@@ -278,7 +283,7 @@ public class TestCaseControllerMvcTest {
     assertEquals("1234", measureId);
   }
 
-  private String asJsonString(final Object obj) throws JsonProcessingException {
+  private String asJsonString(final Object obj) throws JacksonException {
     return new ObjectMapper().writeValueAsString(obj);
   }
 
@@ -297,7 +302,7 @@ public class TestCaseControllerMvcTest {
         .andExpect(status().isOk())
         .andExpect(
             content()
-                .string(
+                .json(
                     "{\"id\":\"TESTID\",\"caseNumber\":null,\"name\":\"TestName\",\"title\":\"TestTitle\",\"series\":null,"
                         + "\"description\":\"Test Description\",\"createdAt\":null,"
                         + "\"createdBy\":\"TestUser\",\"lastModifiedAt\":null,"
@@ -310,7 +315,8 @@ public class TestCaseControllerMvcTest {
                         + "\"validationTaskId\":null,"
                         + "\"testCaseLock\":null,"
                         + "\"bundleTypeUpdated\":false"
-                        + "}"));
+                        + "}",
+                    JsonCompareMode.STRICT));
     verify(testCaseService, times(1))
         .getTestCase(
             measureIdCaptor.capture(),
@@ -349,7 +355,7 @@ public class TestCaseControllerMvcTest {
         .andExpect(status().isOk())
         .andExpect(
             content()
-                .string(
+                .json(
                     "{\"id\":\"TESTID\",\"caseNumber\":null,\"name\":\"TestName\",\"title\":\"TestTitle\",\"series\":null,"
                         + "\"description\":\""
                         + modifiedDescription
@@ -364,7 +370,8 @@ public class TestCaseControllerMvcTest {
                         + "\"validationTaskId\":null,"
                         + "\"testCaseLock\":null,"
                         + "\"bundleTypeUpdated\":false"
-                        + "}"));
+                        + "}",
+                    JsonCompareMode.STRICT));
     verify(testCaseService, times(1))
         .updateTestCase(
             testCaseCaptor.capture(),

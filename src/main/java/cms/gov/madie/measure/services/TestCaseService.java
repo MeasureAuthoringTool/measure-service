@@ -7,7 +7,7 @@ import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
@@ -328,7 +328,7 @@ public class TestCaseService {
       testCase.setBundleTypeUpdated(false);
       try {
         testCase.setJson(JsonUtil.updateBundleTypeAndRemoveRequest(testCase));
-      } catch (JsonProcessingException e) {
+      } catch (JacksonException e) {
         log.error(
             "Error reading testCaseJson while updating TestCase with id: " + testCase.getId(), e);
       }
@@ -713,10 +713,10 @@ public class TestCaseService {
           accessToken,
           warningMessage,
           model);
-    } catch (JsonProcessingException ex) {
+    } catch (JacksonException ex) {
       log.info(
           "User {} is unable to import test case with patient id : "
-              + "{} because of JsonProcessingException: "
+              + "{} because of JacksonException: "
               + ex.getMessage(),
           userName,
           testCaseImportRequest.getPatientId());
@@ -728,7 +728,7 @@ public class TestCaseService {
   }
 
   private List<TestCaseGroupPopulation> getTestCaseGroupPopulationsFromImportRequest(
-      String model, String json, Measure measure) throws JsonProcessingException {
+      String model, String json, Measure measure) throws JacksonException {
     List<TestCaseGroupPopulation> testCaseGroupPopulations = null;
     if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
       testCaseGroupPopulations =
@@ -823,7 +823,7 @@ public class TestCaseService {
         testCaseImportOutcome.setMessage(warningMessage);
       }
       return testCaseImportOutcome;
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       log.info(
           "User {} is unable to import test case with patient id : "
               + "{} due to Malformed test case json bundle",
@@ -871,7 +871,7 @@ public class TestCaseService {
 
   protected String getDescription(
       String model, String json, TestCaseImportRequest testCaseImportRequest)
-      throws JsonProcessingException {
+      throws JacksonException {
     String description = null;
     if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
       String defaultDescription = JsonUtil.getTestDescription(json);

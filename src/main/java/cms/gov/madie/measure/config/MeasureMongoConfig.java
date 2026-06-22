@@ -2,9 +2,11 @@ package cms.gov.madie.measure.config;
 
 import java.util.Arrays;
 
+import org.bson.UuidRepresentation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.mongodb.autoconfigure.MongoClientSettingsBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.MongoDatabaseFactory;
@@ -21,12 +23,26 @@ import org.springframework.data.mongodb.gridfs.GridFsTemplate;
 @Configuration
 public class MeasureMongoConfig {
 
-  @Value("${spring.data.mongodb.uri}")
+  @Value("${spring.mongodb.uri}")
   private String madieMongoDbUrl;
 
   @Qualifier(value = "mongoDbFactory")
   public MongoDatabaseFactory mongoDatabaseFactory() {
     return new SimpleMongoClientDatabaseFactory(madieMongoDbUrl);
+  }
+
+  /**
+   * Spring Data MongoDB 5.x (pulled in by Spring Boot 4) no longer defaults the UUID
+   * representation, and the underlying MongoDB 5.x driver defaults it to UNSPECIFIED (the 4.x
+   * driver defaulted to JAVA_LEGACY). Existing MADiE data stores UUIDs (e.g. testCase
+   * patientId/testCaseSetId) as legacy Binary subtype 3, so every read of that data fails to
+   * convert Binary -> java.util.UUID unless we explicitly pin JAVA_LEGACY. Customizing the
+   * auto-configured client settings is the Spring Boot-idiomatic way to set this without
+   * introducing a competing MongoDatabaseFactory bean.
+   */
+  @Bean
+  public MongoClientSettingsBuilderCustomizer uuidRepresentationCustomizer() {
+    return builder -> builder.uuidRepresentation(UuidRepresentation.JAVA_LEGACY);
   }
 
   @Autowired private MongoMappingContext mongoMappingContext;

@@ -1,7 +1,7 @@
 package cms.gov.madie.measure.config.mongock;
 
 import cms.gov.madie.measure.repositories.EndorsementRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.common.EndorserOrganization;
 import io.mongock.api.annotations.ChangeUnit;
 import io.mongock.api.annotations.Execution;

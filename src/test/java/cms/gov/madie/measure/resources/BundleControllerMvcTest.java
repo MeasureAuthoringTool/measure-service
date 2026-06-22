@@ -9,8 +9,8 @@ import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureScoring;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -35,11 +35,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import(SecurityConfigTest.class)
 public class BundleControllerMvcTest {
 
-  @MockBean private MeasureRepository measureRepository;
+  @MockitoBean private MeasureRepository measureRepository;
 
   @Autowired private MockMvc mockMvc;
 
-  @MockBean private BundleService bundleService;
+  @MockitoBean private BundleService bundleService;
 
   private static final String TEST_USER_ID = "test-okta-user-id-123";
 

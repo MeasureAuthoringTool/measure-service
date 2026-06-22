@@ -12,7 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 
 import cms.gov.madie.measure.exceptions.InvalidFhirGroupException;
 import cms.gov.madie.measure.exceptions.InvalidGroupException;
@@ -63,7 +63,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesNullPopulations() throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesNullPopulations() throws JacksonException {
 
     Group group1 =
         Group.builder()
@@ -81,7 +81,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesNoDefinition() throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesNoDefinition() throws JacksonException {
 
     Group group1 =
         Group.builder()
@@ -108,8 +108,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesInvalidForStratification()
-      throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesInvalidForStratification() throws JacksonException {
     Stratification strat = new Stratification();
     strat.setId("id-2");
     strat.setDescription("test desc");
@@ -149,7 +148,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesValidForStratification() throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesValidForStratification() throws JacksonException {
     Stratification strat = new Stratification();
     strat.setId("id-2");
     strat.setDescription("test desc");
@@ -187,8 +186,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesNoStratificationDefinition()
-      throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesNoStratificationDefinition() throws JacksonException {
     Stratification strat = new Stratification();
     strat.setId("id-2");
     strat.setDescription("test desc");
@@ -222,7 +220,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
 
   @Test
   void testValidateCqlDefinitionReturnTypesThrowsInvalidReturnTypeException()
-      throws JsonProcessingException {
+      throws JacksonException {
     // new group, not in DB, so no ID
     Group group1 =
         Group.builder()
@@ -348,7 +346,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
 
   @Test
   void testValidateCqlDefinitionReturnTypesForQdmPatientBasedThrowsException()
-      throws JsonProcessingException {
+      throws JacksonException {
     Group group1 =
         Group.builder()
             .scoring("Cohort")
@@ -377,7 +375,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
 
   @Test
   void testValidateCqlDefinitionReturnTypesForQdmNonPatientBasedThrowsException()
-      throws JsonProcessingException {
+      throws JacksonException {
     Group group1 =
         Group.builder()
             .scoring("Cohort")
@@ -412,8 +410,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesForQdmPatientBasedSuccess()
-      throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesForQdmPatientBasedSuccess() throws JacksonException {
     Group group1 =
         Group.builder()
             .scoring("Cohort")
@@ -439,8 +436,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesForQdmNonPatientBasedSuccess()
-      throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesForQdmNonPatientBasedSuccess() throws JacksonException {
     Group group1 =
         Group.builder()
             .scoring("Cohort")
@@ -473,8 +469,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesForQdmFailNoPopulations()
-      throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesForQdmFailNoPopulations() throws JacksonException {
     Group group1 =
         Group.builder()
             .scoring("Cohort")
@@ -492,8 +487,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesForQdmSuccessNoDefinition()
-      throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesForQdmSuccessNoDefinition() throws JacksonException {
     Group group1 =
         Group.builder()
             .scoring("Cohort")
@@ -520,7 +514,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
 
   @Test
   void testValidateCqlDefinitionReturnTypesForQdmNonPatientBasedWithBoolean()
-      throws JsonProcessingException {
+      throws JacksonException {
     Group group1 =
         Group.builder()
             .scoring("Cohort")
@@ -548,8 +542,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testValidateCqlDefinitionReturnTypesForQdmPatientBasedWithStrats()
-      throws JsonProcessingException {
+  void testValidateCqlDefinitionReturnTypesForQdmPatientBasedWithStrats() throws JacksonException {
     Stratification strat = new Stratification();
     strat.setId("id-2");
     strat.setDescription("test desc");
@@ -591,7 +584,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
 
   @Test
   void testValidateCqlDefinitionReturnTypesForQdmNonPatientBasedWithStrats()
-      throws JsonProcessingException {
+      throws JacksonException {
     Stratification strat = new Stratification();
     strat.setId("id-2");
     strat.setDescription("test desc");
@@ -633,7 +626,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
 
   @Test
   void testValidateCqlDefinitionReturnTypesForQdmNonPatientBasedWithStratsSuccess()
-      throws JsonProcessingException {
+      throws JacksonException {
     Stratification strat = new Stratification();
     strat.setId("id-2");
     strat.setDescription("test desc");
@@ -673,7 +666,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
 
   @Test
   void testValidateCqlDefinitionReturnTypesForQdmNonPatientBasedStratNoDefinition()
-      throws JsonProcessingException {
+      throws JacksonException {
     Stratification strat = new Stratification();
     strat.setId("id-2");
     strat.setDescription("test desc");
@@ -712,7 +705,7 @@ class CqlDefinitionReturnTypeServiceTest implements ResourceUtil {
 
   @Test
   void testValidateCqlDefinitionReturnTypesForQdmPatientBasedStratDefinitionBoolean()
-      throws JsonProcessingException {
+      throws JacksonException {
     Stratification strat = new Stratification();
     strat.setId("id-2");
     strat.setDescription("test desc");

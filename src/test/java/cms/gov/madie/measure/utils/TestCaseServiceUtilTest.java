@@ -17,9 +17,9 @@ import java.util.UUID;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.SpecialCharacterException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.MeasureObservation;
 import gov.cms.madie.models.measure.MeasureScoring;
@@ -1503,7 +1503,7 @@ public class TestCaseServiceUtilTest {
 
   @Test
   public void parseAndUpdateJsonWithGroupAndTitleUpdatesFamilyAndGivenName()
-      throws JsonProcessingException {
+      throws JacksonException {
     String json =
         """
       {
@@ -1544,8 +1544,7 @@ public class TestCaseServiceUtilTest {
   }
 
   @Test
-  public void parseAndUpdateJsonWithGroupAndTitleHandlesEmptyEntryArray()
-      throws JsonProcessingException {
+  public void parseAndUpdateJsonWithGroupAndTitleHandlesEmptyEntryArray() throws JacksonException {
     String json = """
       {
         "entry": []
@@ -1560,7 +1559,7 @@ public class TestCaseServiceUtilTest {
 
   @Test
   public void parseAndUpdateJsonWithGroupAndTitleHandlesMissingEntryField()
-      throws JsonProcessingException {
+      throws JacksonException {
     String json =
         """
       {

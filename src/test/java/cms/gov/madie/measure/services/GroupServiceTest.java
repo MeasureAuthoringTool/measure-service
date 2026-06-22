@@ -37,7 +37,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.MeasureUtil;
@@ -961,12 +961,12 @@ public class GroupServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testUpdateGroupWhenElmJsonIsInvalid() throws JsonProcessingException {
+  public void testUpdateGroupWhenElmJsonIsInvalid() throws JacksonException {
     measure.setElmJson("UnpardonableElmJson");
     Optional<Measure> optional = Optional.of(measure);
     doReturn(optional).when(measureRepository).findById(any(String.class));
 
-    doThrow(new JsonProcessingException("invalid elm json") {})
+    doThrow(new JacksonException("invalid elm json") {})
         .when(cqlDefinitionReturnTypeService)
         .validateCqlDefinitionReturnTypes(any(Group.class), anyString());
 
@@ -1043,13 +1043,13 @@ public class GroupServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testCreateGroupWithEmptyElm() throws JsonProcessingException {
+  public void testCreateGroupWithEmptyElm() throws JacksonException {
     group2.setPopulations(null);
     group2.setPopulationBasis("Boolean");
     Optional<Measure> optional = Optional.of(measure);
     doReturn(optional).when(measureRepository).findById(any(String.class));
 
-    doThrow(new JsonProcessingException("invalid elm json") {})
+    doThrow(new JacksonException("invalid elm json") {})
         .when(cqlDefinitionReturnTypeService)
         .validateCqlDefinitionReturnTypes(any(Group.class), anyString());
 
@@ -1478,7 +1478,7 @@ public class GroupServiceTest implements ResourceUtil {
 
   @Test
   public void testHandleQdmGroupReturnTypesNonPatientBasisThrowsException()
-      throws JsonProcessingException {
+      throws JacksonException {
     Population population =
         Population.builder()
             .id("testId")
@@ -1498,7 +1498,7 @@ public class GroupServiceTest implements ResourceUtil {
             .elmJson(elmJson)
             .build();
 
-    doThrow(new JsonProcessingException("invalid elm json") {})
+    doThrow(new JacksonException("invalid elm json") {})
         .when(cqlDefinitionReturnTypeService)
         .validateCqlDefinitionReturnTypesForQdm(any(Group.class), anyString(), any(Boolean.class));
 

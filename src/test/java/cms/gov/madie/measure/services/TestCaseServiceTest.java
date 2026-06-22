@@ -16,11 +16,11 @@ import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.ResourceUtil;
 
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
@@ -1666,7 +1666,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importTestCasesReturnValidOutcomes() throws JsonProcessingException {
+  void importTestCasesReturnValidOutcomes() throws JacksonException {
     measure.setTestCases(List.of(testCase));
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
 
@@ -1699,8 +1699,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importTestCaseAddsNewSetIdForNewTestCasesWhenFeatureFlagIsON()
-      throws JsonProcessingException {
+  void importTestCaseAddsNewSetIdForNewTestCasesWhenFeatureFlagIsON() throws JacksonException {
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
     group =
         Group.builder()
@@ -2328,7 +2327,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importQdmTestCasesReturnValidOutcomesForProportion() throws JsonProcessingException {
+  void importQdmTestCasesReturnValidOutcomesForProportion() throws JacksonException {
     QdmMeasure qdmMeasure =
         QdmMeasure.builder()
             .id("testMeasureId")
@@ -2389,7 +2388,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importQdmTestCasesReturnValidOutcomesForRatio() throws JsonProcessingException {
+  void importQdmTestCasesReturnValidOutcomesForRatio() throws JacksonException {
     QdmMeasure qdmMeasure =
         QdmMeasure.builder()
             .id("testMeasureId")
@@ -2450,7 +2449,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importQdmTestCasesReturnValidOutcomes() throws JsonProcessingException {
+  void importQdmTestCasesReturnValidOutcomes() throws JacksonException {
     QdmMeasure qdmMeasure =
         QdmMeasure.builder()
             .id("testMeasureId")
@@ -2510,7 +2509,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importQdmTestCasesForCVMeasureWithMultipleGroups() throws JsonProcessingException {
+  void importQdmTestCasesForCVMeasureWithMultipleGroups() throws JacksonException {
     String testCaseData = getData("/cv_qdm_test_with_multiple_groups.json");
     QdmMeasure qdmMeasure =
         QdmMeasure.builder()
@@ -2751,7 +2750,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testGetDescriptionWithNullImportRequest() throws JsonProcessingException {
+  void testGetDescriptionWithNullImportRequest() throws JacksonException {
     final String bundleJson =
         """
         {
@@ -2787,7 +2786,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testGetDescriptionWithNullExportMetaData() throws JsonProcessingException {
+  void testGetDescriptionWithNullExportMetaData() throws JacksonException {
     final String bundleJson =
         """
         {
@@ -2826,7 +2825,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testGetDescriptionWithNullExportMetaDataDescription() throws JsonProcessingException {
+  void testGetDescriptionWithNullExportMetaDataDescription() throws JacksonException {
     final String bundleJson =
         """
         {
@@ -2867,7 +2866,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testGetDescriptionWithValidExportMetaDataDescription() throws JsonProcessingException {
+  void testGetDescriptionWithValidExportMetaDataDescription() throws JacksonException {
     final String bundleJson =
         """
         {
@@ -3834,7 +3833,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importTestCasesReturnValidOutcomesWhenLockingSuccessful() throws JsonProcessingException {
+  void importTestCasesReturnValidOutcomesWhenLockingSuccessful() throws JacksonException {
     measure.setTestCases(List.of(testCase));
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();
@@ -3901,7 +3900,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importTestCasesReturnValidOutcomesWhenLockedByIsSameUser() throws JsonProcessingException {
+  void importTestCasesReturnValidOutcomesWhenLockedByIsSameUser() throws JacksonException {
     measure.setTestCases(List.of(testCase));
     when(measureService.findActiveMeasureById(anyString())).thenReturn(measure);
     LockInfo lock = LockInfo.builder().lockedId(testCase.getId()).lockedBy("test.user").build();

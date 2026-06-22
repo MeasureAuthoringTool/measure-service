@@ -1,9 +1,13 @@
 spring:
+  mongodb:
+    database: ${MONGO_DATABASE:madie}
+    uri: ${MONGO_URI:mongodb://${DBUSER}:${DBPASS}@localhost:27017/madie}?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
   data:
     mongodb:
-      database: ${MONGO_DATABASE:madie}
-      uri: ${MONGO_URI:mongodb://${DBUSER}:${DBPASS}@localhost:27017/madie}?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
       auto-index-creation: true
+  jackson:
+    deserialization:
+      fail-on-null-for-primitives: false
   servlet:
     multipart:
       max-file-size: 10MB

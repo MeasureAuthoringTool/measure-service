@@ -3,7 +3,7 @@ package cms.gov.madie.measure.config.mongock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.TestCaseService;
 import cms.gov.madie.measure.utils.JsonUtil;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCase;
@@ -69,7 +69,7 @@ public class UpdateTestCaseJsonPatientUuidChangeUnit {
 
   protected String updateJsonForUuids(
       final String measureId, TestCase testCase, TestCaseService testCaseService)
-      throws JsonProcessingException {
+      throws JacksonException {
     UUID patientIdUuid = testCase.getPatientId();
     if (patientIdUuid == null) {
       patientIdUuid = UUID.randomUUID();

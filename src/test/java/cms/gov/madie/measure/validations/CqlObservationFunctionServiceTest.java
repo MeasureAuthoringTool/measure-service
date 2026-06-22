@@ -18,7 +18,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 
 @ExtendWith(MockitoExtension.class)
 public class CqlObservationFunctionServiceTest implements ResourceUtil {
@@ -102,7 +102,7 @@ public class CqlObservationFunctionServiceTest implements ResourceUtil {
   @Test
   public void
       testValidateObservationFunctionsThrowsInvalidReturnTypeExceptionWithBooleanGroupPopulationBasis()
-          throws JsonProcessingException {
+          throws JacksonException {
     String elmJson = getData("/test_elm.json");
     MeasureObservation observation =
         MeasureObservation.builder().definition("boolFunc").aggregateMethod("Count").build();
@@ -131,7 +131,7 @@ public class CqlObservationFunctionServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateObservationFunctionsThrowsInvalidReturnTypeException()
-      throws JsonProcessingException {
+      throws JacksonException {
     String elmJson = getData("/test_elm.json");
     MeasureObservation observation =
         MeasureObservation.builder().definition("boolFunc").aggregateMethod("Count").build();
@@ -242,7 +242,7 @@ public class CqlObservationFunctionServiceTest implements ResourceUtil {
   @Test
   public void
       testValidateObservationFunctionsThrowsInvalidReturnTypeExceptionWithBooleanGroupPopulationBasisForQdm()
-          throws JsonProcessingException {
+          throws JacksonException {
     String elmJson = getData("/test_elm.json");
     MeasureObservation observation =
         MeasureObservation.builder().definition("boolFunc").aggregateMethod("Count").build();
@@ -273,7 +273,7 @@ public class CqlObservationFunctionServiceTest implements ResourceUtil {
 
   @Test
   public void testValidateObservationFunctionsThrowsInvalidReturnTypeExceptionForQdm()
-      throws JsonProcessingException {
+      throws JacksonException {
     String elmJson = getData("/test_elm.json");
     MeasureObservation observation =
         MeasureObservation.builder().definition("boolFunc").aggregateMethod("Count").build();
@@ -305,7 +305,7 @@ public class CqlObservationFunctionServiceTest implements ResourceUtil {
   @Test
   public void
       testValidateObservationFunctionsThrowsInvalidReturnTypeExceptionForQdmNonPatientBased()
-          throws JsonProcessingException {
+          throws JacksonException {
     String elmJson = getData("/test_elm.json");
     MeasureObservation observation =
         MeasureObservation.builder().definition("boolFunc").aggregateMethod("Count").build();

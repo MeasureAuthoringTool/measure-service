@@ -4,8 +4,8 @@ import cms.gov.madie.measure.config.ElmTranslatorClientConfig;
 import cms.gov.madie.measure.exceptions.CqlElmTranslationServiceException;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.ElmJson;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -99,7 +99,7 @@ public class ElmTranslatorClient {
     URI uri = null;
     if (!isQdm) {
       uri =
-          UriComponentsBuilder.fromHttpUrl(
+          UriComponentsBuilder.fromUriString(
                   baseUrl + elmTranslatorClientConfig.getCqlElmServiceElmJsonUri())
               .queryParam("checkContext", true)
               .queryParam("errorSeverity", errorSeverity)
