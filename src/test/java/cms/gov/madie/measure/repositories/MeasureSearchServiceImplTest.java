@@ -1613,4 +1613,156 @@ public class MeasureSearchServiceImplTest {
     assertEquals("setA", page.getContent().get(3).getMeasureSetId());
     assertEquals("measure-id-1", page.getContent().get(3).getId());
   }
+
+  // -------------------------------------------------------------------------
+  // 5-tier draft sort tests
+  // -------------------------------------------------------------------------
+
+  private void setupMongoMocksForDraftSort(
+      List<MeasureSetMatchCountDTO> matchCounts, List<MeasureListDTO> queryResults) {
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+        .thenReturn(new AggregationResults<>(matchCounts, new Document()));
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(queryResults).count(List.of(queryResults.size())).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+  }
+
+  @Test
+  public void testSearchMeasuresSortByDraftDesc() {
+    // Sort by measureMetaData.draft DESC → draftSortOrder DESC (5 first = composite draft first,
+    // 1 last = non-composite versioned last).  Direction is preserved, not flipped.
+    PageRequest pageRequest =
+        PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "measureMetaData.draft"));
+
+    MeasureListDTO versionedMeasure =
+        MeasureListDTO.builder().id("v1").measureName("Versioned").measureSetId("set-v1").build();
+    MeasureListDTO draftMeasure =
+        MeasureListDTO.builder().id("d1").measureName("Draft").measureSetId("set-d1").build();
+
+    MeasureSetMatchCountDTO dtoV =
+        MeasureSetMatchCountDTO.builder()
+            .measureSetId("set-v1")
+            .matchCount(1)
+            .matchedMeasureId("v1")
+            .build();
+    MeasureSetMatchCountDTO dtoD =
+        MeasureSetMatchCountDTO.builder()
+            .measureSetId("set-d1")
+            .matchCount(1)
+            .matchedMeasureId("d1")
+            .build();
+
+    // The service passes the sort to the aggregation pipeline;
+    // the actual ordering here comes from the mocked Mongo response.
+    setupMongoMocksForDraftSort(List.of(dtoV, dtoD), List.of(versionedMeasure, draftMeasure));
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.ALL));
+
+    assertEquals(2, page.getContent().size());
+    assertEquals("v1", page.getContent().get(0).getId());
+    assertEquals("d1", page.getContent().get(1).getId());
+
+    // Verify the aggregation pipeline was invoked twice (first pass + post-match)
+    verify(mongoTemplate, times(2))
+        .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
+  }
+
+  @Test
+  public void testSearchMeasuresSortByDraftAsc() {
+    // Sort by measureMetaData.draft ASC → draftSortOrder ASC (1 first = non-composite versioned
+    // first, 5 last = composite draft last).  Direction is preserved, not flipped.
+    PageRequest pageRequest =
+        PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "measureMetaData.draft"));
+
+    MeasureListDTO compositeDraft =
+        MeasureListDTO.builder()
+            .id("cd1")
+            .measureName("Composite Draft")
+            .measureSetId("set-cd1")
+            .build();
+    MeasureListDTO versionedMeasure =
+        MeasureListDTO.builder().id("v1").measureName("Versioned").measureSetId("set-v1").build();
+
+    MeasureSetMatchCountDTO dtoCD =
+        MeasureSetMatchCountDTO.builder()
+            .measureSetId("set-cd1")
+            .matchCount(1)
+            .matchedMeasureId("cd1")
+            .build();
+    MeasureSetMatchCountDTO dtoV =
+        MeasureSetMatchCountDTO.builder()
+            .measureSetId("set-v1")
+            .matchCount(1)
+            .matchedMeasureId("v1")
+            .build();
+
+    setupMongoMocksForDraftSort(List.of(dtoCD, dtoV), List.of(compositeDraft, versionedMeasure));
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, null, List.of(OwnershipType.ALL));
+
+    assertEquals(2, page.getContent().size());
+    assertEquals("cd1", page.getContent().get(0).getId());
+    assertEquals("v1", page.getContent().get(1).getId());
+
+    verify(mongoTemplate, times(2))
+        .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
+  }
+
+  @Test
+  public void testSearchMeasuresByCriteriaExcludesCompositeMeasures() {
+    PageRequest pageRequest = PageRequest.of(0, 5);
+    List<MeasureListDTO> nonCompositeMeasures = List.of(measure1, measure2);
+
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(nonCompositeMeasures)
+            .count(Arrays.asList(nonCompositeMeasures.toArray()))
+            .build();
+    AggregationResults<FacetDTO> pagedResults =
+        new AggregationResults<>(List.of(facetDTO), new Document());
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    MeasureSetMatchCountDTO dto2 = MeasureSetMatchCountDTO.builder().measureSetId("set2").build();
+    AggregationResults<MeasureSetMatchCountDTO> measureSetResults =
+        new AggregationResults<>(List.of(dto1, dto2), new Document());
+
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+        .thenReturn(measureSetResults);
+
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(pagedResults);
+
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder().excludeCompositeMeasures(true).build();
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(2, page.getTotalElements());
+    assertEquals(2, page.getContent().size());
+    assertEquals(measure1.getId(), page.getContent().get(0).getId());
+    assertEquals(measure2.getId(), page.getContent().get(1).getId());
+
+    verify(mongoTemplate, times(2))
+        .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
+  }
 }

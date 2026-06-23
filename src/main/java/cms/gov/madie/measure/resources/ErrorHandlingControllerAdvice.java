@@ -222,6 +222,13 @@ public class ErrorHandlingControllerAdvice {
     return getErrorAttributes(request, HttpStatus.BAD_REQUEST);
   }
 
+  @ExceptionHandler(TestCaseSetIdsAlreadyAssignedException.class)
+  @ResponseStatus(HttpStatus.NO_CONTENT)
+  @ResponseBody
+  Map<String, Object> onTestCaseSetIdsAlreadyAssignedException(WebRequest request) {
+    return getErrorAttributes(request, HttpStatus.NO_CONTENT);
+  }
+
   @ExceptionHandler(TestCaseNameLengthException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ResponseBody

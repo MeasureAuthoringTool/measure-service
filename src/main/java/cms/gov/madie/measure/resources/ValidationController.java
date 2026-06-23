@@ -41,11 +41,13 @@ public class ValidationController {
   public ResponseEntity<String> validateBundle(
       HttpEntity<String> request,
       @RequestParam String model,
+      @RequestParam(defaultValue = "false") boolean lenientPatientRefs,
       @RequestHeader("Authorization") String accessToken) {
     try {
       ModelType modelType = ModelType.valueOfName(model);
       ResponseEntity<HapiOperationOutcome> output =
-          fhirServicesClient.validateBundle(request.getBody(), modelType, accessToken);
+          fhirServicesClient.validateBundle(
+              request.getBody(), modelType, accessToken, lenientPatientRefs);
       return ResponseEntity.ok(mapper.writeValueAsString(output.getBody()));
 
     } catch (JsonProcessingException ex) {

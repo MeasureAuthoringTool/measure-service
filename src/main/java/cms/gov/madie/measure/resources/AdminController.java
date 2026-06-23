@@ -9,14 +9,11 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 import cms.gov.madie.measure.config.security.AdminOnly;
-import cms.gov.madie.measure.exceptions.HarpIdMismatchException;
-import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import cms.gov.madie.measure.exceptions.InvalidRequestException;
-import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
-import cms.gov.madie.measure.exceptions.MeasureNotDraftableException;
+import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.services.*;
+import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Organization;
 import gov.cms.madie.models.common.Version;
@@ -26,6 +23,7 @@ import jakarta.validation.Valid;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.CacheManager;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -33,12 +31,19 @@ import org.springframework.util.StopWatch;
 import org.springframework.web.bind.annotation.*;
 
 import cms.gov.madie.measure.dto.ImpactedMeasureValidationReport;
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReportSummary;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.OrganizationRepository;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.OwnershipType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -66,6 +71,7 @@ public class AdminController extends AbstractMeasureController {
   private final TestCaseLockService testCaseLockService;
   private final AdminService adminService;
   private final AppConfigService appConfigService;
+  private final CacheManager cacheManager;
 
   @Override
   protected AppConfigService getAppConfigService() {
@@ -226,6 +232,7 @@ public class AdminController extends AbstractMeasureController {
     targetQiCore6Measures.forEach(
         measure -> {
           if (CollectionUtils.isNotEmpty(measure.getTestCases())) {
+            boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
             measure
                 .getTestCases()
                 .forEach(
@@ -238,7 +245,8 @@ public class AdminController extends AbstractMeasureController {
                             measure.getId(),
                             testCase,
                             accessToken,
-                            ModelType.valueOfName(measure.getModel()));
+                            ModelType.valueOfName(measure.getModel()),
+                            lenientPatientRefs);
                       } else if (force
                           || testCase.getValidationStatus() == null
                           || TestCaseValidationStatus.VALIDATING
@@ -253,7 +261,8 @@ public class AdminController extends AbstractMeasureController {
                               measure.getId(),
                               testCase,
                               accessToken,
-                              ModelType.valueOfName(measure.getModel()));
+                              ModelType.valueOfName(measure.getModel()),
+                              lenientPatientRefs);
                         }
                       }
                     });
@@ -652,5 +661,55 @@ public class AdminController extends AbstractMeasureController {
             HttpHeaders.CONTENT_TYPE,
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
         .body(exportService.getSharedAccessReportForMeasures(measureIds, username, accessToken));
+  }
+
+  @PutMapping("/measure/{measureId}/test-cases/backfill-set-ids")
+  public ResponseEntity<Measure> backfillTestCaseSetIds(
+      Principal principal, @PathVariable String measureId) {
+    final String userName = principal.getName().toLowerCase();
+    final Measure existingMeasure = measureService.findMeasureById(measureId);
+    checkMeasureLock(existingMeasure, userName);
+
+    log.info(
+        "Admin {} is attempting to add test case set ids for measure {}",
+        userName,
+        existingMeasure.getId());
+    var isQdm = StringUtils.equals(existingMeasure.getModel(), ModelType.QDM_5_6.getValue());
+    if (isQdm) {
+      throw new UnsupportedTypeException("Please provide QI Core model measure.");
+    }
+
+    Measure updatedMeasure = adminService.backfillTestCaseSetIds(existingMeasure, userName);
+    log.info(
+        "Admin {} had successfully added the test case set ids for measure {}",
+        userName,
+        existingMeasure.getId());
+    return ResponseEntity.ok().body(updatedMeasure);
+  }
+
+  @DeleteMapping("/measures/cache/evict")
+  public ResponseEntity<List<String>> evictAllCaches(Principal principal) {
+    List<String> evictedCaches = new ArrayList<>(cacheManager.getCacheNames());
+    log.info("Admin user [{}] is evicting all caches: {}", principal.getName(), evictedCaches);
+    evictedCaches.forEach(cacheName -> cacheManager.getCache(cacheName).clear());
+    return ResponseEntity.ok(evictedCaches);
+  }
+
+  @PutMapping("userProfile/{harpId}/measures/searches")
+  public ResponseEntity<Page<MeasureListDTO>> searchMeasuresForUser(
+      @PathVariable("harpId") String harpId,
+      @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
+      @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
+      @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
+      @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+      @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
+      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
+    final String username = harpId.toLowerCase();
+    final Pageable pageReq =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
+
+    Page<MeasureListDTO> measures =
+        measureService.getMeasuresByCriteria(searchCriteria, ownershipTypes, pageReq, username);
+    return ResponseEntity.ok(measures);
   }
 }

@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.13</version>
+    <version>3.5.14</version>
     <relativePath></relativePath>
     <!-- lookup parent from repository -->
   </parent>
@@ -108,6 +108,14 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-cache</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.github.ben-manes.caffeine</groupId>
+      <artifactId>caffeine</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
     </dependency>
     <dependency>
@@ -156,7 +164,7 @@
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-java-models</artifactId>
-      <version>0.8.8-SNAPSHOT</version>
+      <version>0.9.6-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>gov.cms.madie</groupId>
@@ -179,7 +187,7 @@
     <dependency>
       <groupId>gov.cms.madie.packaging</groupId>
       <artifactId>packaging-utility</artifactId>
-      <version>0.2.14-SNAPSHOT</version>
+      <version>0.2.15-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>org.springdoc</groupId>

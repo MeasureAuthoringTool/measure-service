@@ -78,6 +78,8 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private TerminologyValidationService terminologyValidationService;
   @Mock private MeasureLockService measureLockService;
   @Mock private UserServiceClient userServiceClient;
+  @Mock private CompositeRelationshipService compositeRelationshipService;
+  @Mock private TestCaseValidationService testCaseValidationService;
 
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
@@ -1899,6 +1901,13 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
     when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
         .thenReturn(measureSetActionLog);
+    when(userServiceClient.getBulkUserDetails(anyList()))
+        .thenReturn(
+            Map.of(
+                acl1.getUserId(),
+                UserDetailsDto.builder().firstName("John").lastName("Doe").build()));
+    when(measureSetService.formatDisplayName(any(), eq(acl1.getUserId())))
+        .thenReturn("John Doe (" + acl1.getUserId() + ")");
 
     Map<String, List<SharedUser>> sharedMeasures =
         measureService.getSharedMeasures(measureIds, "username");
@@ -1913,6 +1922,9 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(
         sharedMeasures.get(measureId1).get(0).getPerformedAt(),
         is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+    assertThat(
+        sharedMeasures.get(measureId1).get(0).getDisplayName(),
+        is(equalTo("John Doe (" + acl1.getUserId() + ")")));
 
     assertTrue(sharedMeasures.containsKey(measureId2));
     assertThat(sharedMeasures.get(measureId2).size(), is(equalTo(0)));
@@ -1980,6 +1992,17 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureService.findMeasureById(eq(measureId2))).thenReturn(measure2);
     when(actionLogService.findMeasureSetActionLogByTargetId(anyString()))
         .thenReturn(measureSetActionLog);
+    when(userServiceClient.getBulkUserDetails(anyList()))
+        .thenReturn(
+            Map.of(
+                acl1.getUserId(),
+                UserDetailsDto.builder().firstName("John").lastName("Doe").build(),
+                acl2.getUserId(),
+                UserDetailsDto.builder().firstName("Jane").lastName("Doe").build()));
+    when(measureSetService.formatDisplayName(any(), eq(acl1.getUserId())))
+        .thenReturn("John Doe (" + acl1.getUserId() + ")");
+    when(measureSetService.formatDisplayName(any(), eq(acl2.getUserId())))
+        .thenReturn("Jane Doe (" + acl2.getUserId() + ")");
 
     Map<String, List<SharedUser>> sharedMeasures =
         measureService.getSharedMeasures(measureIds, "username");
@@ -1993,11 +2016,17 @@ public class MeasureServiceTest implements ResourceUtil {
         is(equalTo(measure1.getMeasureSet().getAcls().get(0).getUserId())));
     assertThat(sharedMeasures.get(measureId1).get(0).getPerformedAt(), is(equalTo(null)));
     assertThat(
+        sharedMeasures.get(measureId1).get(0).getDisplayName(),
+        is(equalTo("Jane Doe (" + acl2.getUserId() + ")")));
+    assertThat(
         sharedMeasures.get(measureId1).get(1).getUserId(),
         is(equalTo(measure2.getMeasureSet().getAcls().get(0).getUserId())));
     assertThat(
         sharedMeasures.get(measureId1).get(1).getPerformedAt(),
         is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+    assertThat(
+        sharedMeasures.get(measureId1).get(1).getDisplayName(),
+        is(equalTo("John Doe (" + acl1.getUserId() + ")")));
 
     assertTrue(sharedMeasures.containsKey(measureId2));
     assertThat(sharedMeasures.get(measureId1).size(), is(equalTo(2)));
@@ -2007,6 +2036,9 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(
         sharedMeasures.get(measureId2).get(0).getPerformedAt(),
         is(equalTo(measureSetActionLog.getActions().get(0).getPerformedAt())));
+    assertThat(
+        sharedMeasures.get(measureId2).get(0).getDisplayName(),
+        is(equalTo("John Doe (" + acl1.getUserId() + ")")));
   }
 
   @Test
@@ -2275,7 +2307,8 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(updatedMeasure);
 
     Measure result =
-        measureService.updateMeasureTestCaseConfiguration(username, measureId, testCaseConfig);
+        measureService.updateMeasureTestCaseConfiguration(
+            username, measureId, testCaseConfig, ACCESS_TOKEN);
 
     assertNotNull(result);
     assertEquals(updatedMeasure, result);
@@ -2285,13 +2318,53 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  void triggerTestCaseValidationOnExecuteInvalidTestCasesChange() {
+    String username = "testUser";
+    String measureId = "testMeasureId";
+    // existing measure has executeInvalidTestCases = false (default)
+    TestCase testCase1 = TestCase.builder().id("tc1").build();
+    TestCase testCase2 = TestCase.builder().id("tc2").build();
+    Measure existingMeasure =
+        Measure.builder()
+            .id(measureId)
+            .model(ModelType.QI_CORE.getValue())
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .testCaseConfiguration(
+                TestCaseConfiguration.builder().executeInvalidTestCases(false).build())
+            .testCases(List.of(testCase1, testCase2))
+            .build();
+    // new config sets executeInvalidTestCases = true (change triggers validation)
+    TestCaseConfiguration testCaseConfig =
+        TestCaseConfiguration.builder().executeInvalidTestCases(true).build();
+    Measure updatedMeasure = Measure.builder().id(measureId).build();
+
+    when(measureRepository.findByIdAndActive(measureId, true))
+        .thenReturn(Optional.of(existingMeasure));
+    doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
+    when(testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId))
+        .thenReturn(updatedMeasure);
+
+    Measure result =
+        measureService.updateMeasureTestCaseConfiguration(
+            username, measureId, testCaseConfig, ACCESS_TOKEN);
+
+    assertNotNull(result);
+    assertEquals(updatedMeasure, result);
+    verify(testCaseValidationService, times(2))
+        .validateResourceAsynchronously(
+            eq(updatedMeasure), any(TestCase.class), anyString(), eq(ACCESS_TOKEN));
+  }
+
+  @Test
   void updateMeasureTestCaseConfigurationThrowsInvalidIdExceptionForNullId() {
     String username = "testUser";
     TestCaseConfiguration testCaseConfig = new TestCaseConfiguration();
 
     assertThrows(
         InvalidIdException.class,
-        () -> measureService.updateMeasureTestCaseConfiguration(username, null, testCaseConfig));
+        () ->
+            measureService.updateMeasureTestCaseConfiguration(
+                username, null, testCaseConfig, ACCESS_TOKEN));
   }
 
   @Test
@@ -2301,7 +2374,9 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         InvalidIdException.class,
-        () -> measureService.updateMeasureTestCaseConfiguration(username, "", testCaseConfig));
+        () ->
+            measureService.updateMeasureTestCaseConfiguration(
+                username, "", testCaseConfig, ACCESS_TOKEN));
   }
 
   @Test
@@ -2674,6 +2749,143 @@ public class MeasureServiceTest implements ResourceUtil {
     verify(measureRepository).save(measureArgumentCaptor.capture());
     Measure savedMeasure = measureArgumentCaptor.getValue();
     assertThat(savedMeasure.isActive(), is(false));
+  }
+
+  @Test
+  public void testDeactivateCompositeMeasureDelegatesToSyncComponents() {
+    // Given
+    String username = "test-user";
+    String componentMeasureId = "component-measure-id";
+
+    List<Component> components = List.of(Component.builder().measureId(componentMeasureId).build());
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .components(components)
+            .build();
+
+    MeasureMetaData compositeMeasureMetaData =
+        draftMeasureMetaData.toBuilder().composite(true).build();
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(compositeMeasureMetaData)
+            .groups(new ArrayList<>(List.of(compositeGroup)))
+            .build();
+
+    // When
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
+
+    // Then
+    measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    verify(compositeRelationshipService)
+        .syncComponents(eq(components), eq(List.of()), eq(existingMeasure), eq(username));
+  }
+
+  @Test
+  public void testDeactivateCompositeMeasureWithEmptyGroupsDoesNotDelegate() {
+    // Given
+    String username = "test-user";
+
+    MeasureMetaData compositeMeasureMetaData =
+        draftMeasureMetaData.toBuilder().composite(true).build();
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(compositeMeasureMetaData)
+            .groups(new ArrayList<>())
+            .build();
+
+    // When
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
+
+    // Then
+    measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    verify(compositeRelationshipService, times(0)).syncComponents(any(), any(), any(), anyString());
+  }
+
+  @Test
+  public void testDeactivateCompositeMeasureWithNoComponentsDoesNotDelegate() {
+    // Given
+    String username = "test-user";
+
+    Group compositeGroupNoComponents =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .components(new ArrayList<>())
+            .build();
+
+    MeasureMetaData compositeMeasureMetaData =
+        draftMeasureMetaData.toBuilder().composite(true).build();
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(compositeMeasureMetaData)
+            .groups(new ArrayList<>(List.of(compositeGroupNoComponents)))
+            .build();
+
+    // When
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
+
+    // Then
+    measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    verify(compositeRelationshipService, times(0)).syncComponents(any(), any(), any(), anyString());
+  }
+
+  @Test
+  public void testDeactivateNonCompositeMeasureDoesNotDelegate() {
+    // Given
+    String username = "test-user";
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(username).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
+
+    // When
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+    when(actionLogService.logAction(
+            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
+        .thenReturn(true);
+    when(measureLockService.unlockMeasure(anyString(), anyString()))
+        .thenReturn(LockInfo.builder().build());
+
+    // Then
+    measureService.deactivateMeasure(existingMeasure.getId(), username);
+
+    verify(compositeRelationshipService, times(0)).syncComponents(any(), any(), any(), anyString());
   }
 
   @Test

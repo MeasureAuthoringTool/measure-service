@@ -3,10 +3,14 @@ package cms.gov.madie.measure.resources;
 import cms.gov.madie.measure.config.security.SecurityConfigTest;
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.JobStatus;
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
+import cms.gov.madie.measure.exceptions.TestCaseSetIdsAlreadyAssignedException;
+import cms.gov.madie.measure.exceptions.UnsupportedTypeException;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -14,10 +18,7 @@ import cms.gov.madie.measure.repositories.OrganizationRepository;
 import cms.gov.madie.measure.services.*;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.Organization;
-import gov.cms.madie.models.common.Version;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.UserRolesDto;
 import gov.cms.madie.models.measure.*;
 
@@ -48,6 +49,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -67,6 +71,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 @WebMvcTest({AdminController.class})
 @ActiveProfiles("test")
@@ -93,6 +100,7 @@ public class AdminControllerMvcTest {
   @MockitoBean private AdminService adminService;
   @MockitoBean private AppConfigService appConfigService;
   @MockitoBean private UserServiceClient userServiceClient;
+  @MockitoBean private CacheManager cacheManager;
 
   @Autowired private MockMvc mockMvc;
 
@@ -1040,7 +1048,8 @@ public class AdminControllerMvcTest {
             eq("M1"),
             eq(measure.getTestCases().get(0)),
             eq("test-okta"),
-            eq(ModelType.QI_CORE_6_0_0));
+            eq(ModelType.QI_CORE_6_0_0),
+            eq(false));
     assertEquals(
         TestCaseValidationStatus.PENDING.toString(),
         measure.getTestCases().get(0).getValidationStatus());
@@ -1078,7 +1087,7 @@ public class AdminControllerMvcTest {
 
     verify(testCaseValidationService, times(1))
         .submitOnImportValidationTask(
-            eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0));
+            eq("M1"), any(TestCase.class), eq("test-okta"), eq(ModelType.QI_CORE_6_0_0), eq(false));
   }
 
   @Test
@@ -1114,7 +1123,7 @@ public class AdminControllerMvcTest {
 
     verify(testCaseValidationService, never())
         .submitOnImportValidationTask(
-            anyString(), any(TestCase.class), anyString(), any(ModelType.class));
+            anyString(), any(TestCase.class), anyString(), any(ModelType.class), anyBoolean());
   }
 
   @Test
@@ -1222,13 +1231,15 @@ public class AdminControllerMvcTest {
             eq("M1"),
             eq(measure.getTestCases().get(1)),
             eq("test-okta"),
-            eq(ModelType.QI_CORE_6_0_0));
+            eq(ModelType.QI_CORE_6_0_0),
+            eq(false));
     verify(testCaseValidationService, never())
         .submitOnImportValidationTask(
             eq("M1"),
             eq(measure.getTestCases().get(2)),
             eq("test-okta"),
-            eq(ModelType.QI_CORE_6_0_0));
+            eq(ModelType.QI_CORE_6_0_0),
+            eq(false));
 
     assertEquals(
         TestCaseValidationStatus.PENDING.toString(),
@@ -1748,5 +1759,239 @@ public class AdminControllerMvcTest {
     assertThat(result.getResponse(), is(notNullValue()));
     verify(exportService, times(1))
         .getSharedAccessReportForMeasures(any(), anyString(), anyString());
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsReturnsForbiddenForNonAdmin() throws Exception {
+    mockMvc
+        .perform(
+            put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_SOME_OTHER_ROLE"))))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(adminService);
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsThrowsConflictForQdmMeasure() throws Exception {
+    Measure qdmMeasure =
+        Measure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(MeasureSet.builder().id("measureSetId").owner(TEST_USER_ID).build())
+            .model(ModelType.QDM_5_6.getValue())
+            .testCases(List.of(TestCase.builder().id("tc1").build()))
+            .build();
+
+    when(measureService.findMeasureById("measureId")).thenReturn(qdmMeasure);
+
+    mockMvc
+        .perform(
+            put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+        .andExpect(status().isConflict());
+
+    verifyNoInteractions(adminService);
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsReturnsOkOnSuccess() throws Exception {
+    TestCase tc1 = TestCase.builder().id("tc1").testCaseSetId(UUID.randomUUID()).build();
+    Measure updatedMeasure =
+        FhirMeasure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(MeasureSet.builder().id("measureSetId").owner(TEST_USER_ID).build())
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(List.of(tc1))
+            .build();
+
+    when(measureService.findMeasureById("measureId")).thenReturn(updatedMeasure);
+    when(adminService.backfillTestCaseSetIds(any(Measure.class), anyString()))
+        .thenReturn(updatedMeasure);
+
+    mockMvc
+        .perform(
+            put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id", equalTo("measureId")));
+
+    verify(adminService, times(1)).backfillTestCaseSetIds(any(Measure.class), anyString());
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsReturnsOkWhenAlreadyAssigned() throws Exception {
+    Measure measure =
+        FhirMeasure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(MeasureSet.builder().id("measureSetId").owner(TEST_USER_ID).build())
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(
+                List.of(TestCase.builder().id("tc1").testCaseSetId(UUID.randomUUID()).build()))
+            .build();
+
+    when(measureService.findMeasureById("measureId")).thenReturn(measure);
+    when(adminService.backfillTestCaseSetIds(any(Measure.class), anyString()))
+        .thenThrow(
+            new TestCaseSetIdsAlreadyAssignedException(
+                "One or more test cases already have a testCaseSetId."));
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+            .andExpect(status().isNoContent())
+            .andReturn();
+
+    assertThat(result.getResponse(), is(notNullValue()));
+    assertTrue(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains("One or more test cases already have a testCaseSetId."));
+    verify(adminService, times(1)).backfillTestCaseSetIds(any(Measure.class), anyString());
+  }
+
+  @Test
+  public void backfillTestCaseSetIdsReturnsConflictWhenMeasureSetHasIds() throws Exception {
+    Measure measure =
+        FhirMeasure.builder()
+            .id("measureId")
+            .measureSetId("measureSetId")
+            .measureSet(MeasureSet.builder().id("measureSetId").owner(TEST_USER_ID).build())
+            .model(ModelType.QI_CORE.getValue())
+            .testCases(List.of(TestCase.builder().id("tc1").build()))
+            .build();
+
+    when(measureService.findMeasureById("measureId")).thenReturn(measure);
+    when(adminService.backfillTestCaseSetIds(any(Measure.class), anyString()))
+        .thenThrow(
+            new UnsupportedTypeException(
+                "One or more test cases in this measure set already have a testCaseSetId."));
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measure/{measureId}/test-cases/backfill-set-ids", "measureId")
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+            .andExpect(status().isConflict())
+            .andReturn();
+    assertThat(result.getResponse(), is(notNullValue()));
+    assertTrue(
+        result
+            .getResponse()
+            .getContentAsString()
+            .contains("One or more test cases in this measure set already have a testCaseSetId."));
+    verify(adminService, times(1)).backfillTestCaseSetIds(any(Measure.class), anyString());
+  }
+
+  @Test
+  public void testEvictAllCachesReturnsOkWithCacheNames() throws Exception {
+    Cache mockCache = mock(Cache.class);
+    when(cacheManager.getCacheNames())
+        .thenReturn(Set.of("organizations", "populationBasisValues", "endorsements"));
+    when(cacheManager.getCache(anyString())).thenReturn(mockCache);
+
+    mockMvc
+        .perform(
+            delete("/admin/measures/cache/evict")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN"))))
+        .andExpect(status().isOk());
+
+    verify(cacheManager, times(3)).getCache(anyString());
+    verify(mockCache, times(3)).clear();
+  }
+
+  @Test
+  public void testEvictAllCachesReturnsForbiddenForNonAdmin() throws Exception {
+    mockMvc
+        .perform(
+            delete("/admin/cache/evict")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-USER"))))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(cacheManager);
+  }
+
+  @Test
+  public void testSearchMeasuresForUserDelegatesToMeasureServiceWithHarpIdAsUsername()
+      throws Exception {
+    MeasureListDTO dto = MeasureListDTO.builder().id("m1").measureName("Measure One").build();
+    Page<MeasureListDTO> page = new PageImpl<>(List.of(dto));
+    when(measureService.getMeasuresByCriteria(any(), any(), any(Pageable.class), anyString()))
+        .thenReturn(page);
+
+    mockMvc
+        .perform(
+            put("/admin/userProfile/test_user/measures/searches?ownershipTypes=OWNED")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.content[0].id", is("m1")))
+        .andExpect(jsonPath("$.content[0].measureName", is("Measure One")));
+
+    ArgumentCaptor<String> usernameCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<List<OwnershipType>> ownershipCaptor = ArgumentCaptor.forClass(List.class);
+    ArgumentCaptor<MeasureSearchCriteria> criteriaCaptor =
+        ArgumentCaptor.forClass(MeasureSearchCriteria.class);
+    verify(measureService)
+        .getMeasuresByCriteria(
+            criteriaCaptor.capture(),
+            ownershipCaptor.capture(),
+            any(Pageable.class),
+            usernameCaptor.capture());
+    assertEquals("test_user", usernameCaptor.getValue());
+    assertEquals(List.of(OwnershipType.OWNED), ownershipCaptor.getValue());
+  }
+
+  @Test
+  public void testSearchMeasuresForUserReturnsForbiddenForNonAdmin() throws Exception {
+    mockMvc
+        .perform(
+            put("/admin/users/some_user/measures/searches")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-USER")))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}"))
+        .andExpect(status().isForbidden());
+    verifyNoInteractions(measureService);
   }
 }

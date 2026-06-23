@@ -47,7 +47,7 @@ class MeasureSetSearchRepositoryImplTest {
     verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
 
     Aggregation aggregation = captor.getValue();
-    assertEquals(3, aggregation.getPipeline().getOperations().size());
+    assertEquals(4, aggregation.getPipeline().getOperations().size());
   }
 
   @Test
@@ -64,7 +64,7 @@ class MeasureSetSearchRepositoryImplTest {
     verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
 
     Aggregation aggregation = captor.getValue();
-    assertEquals(4, aggregation.getPipeline().getOperations().size());
+    assertEquals(5, aggregation.getPipeline().getOperations().size());
   }
 
   @Test
@@ -86,7 +86,7 @@ class MeasureSetSearchRepositoryImplTest {
     verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
 
     Aggregation aggregation = captor.getValue();
-    assertEquals(3, aggregation.getPipeline().getOperations().size());
+    assertEquals(4, aggregation.getPipeline().getOperations().size());
   }
 
   @Test
@@ -113,7 +113,7 @@ class MeasureSetSearchRepositoryImplTest {
 
     Aggregation aggregation = captor.getValue();
 
-    assertEquals(4, aggregation.getPipeline().getOperations().size());
+    assertEquals(5, aggregation.getPipeline().getOperations().size());
     String pipelineString = aggregation.toString();
 
     assertThat(pipelineString).contains("cmsIdDisplay");
@@ -165,7 +165,7 @@ class MeasureSetSearchRepositoryImplTest {
     verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
 
     Aggregation aggregation = captor.getValue();
-    assertEquals(4, aggregation.getPipeline().getOperations().size());
+    assertEquals(5, aggregation.getPipeline().getOperations().size());
   }
 
   private MeasureListDTO createDTO(String name) {

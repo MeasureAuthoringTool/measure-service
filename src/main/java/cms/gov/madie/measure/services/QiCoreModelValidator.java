@@ -53,6 +53,19 @@ public class QiCoreModelValidator extends ModelValidator {
       throw new InvalidResourceStateException(
           "Measure", measure.getId(), "since there is no population criteria on the measure.");
     }
+
+    if (measure.getMeasureMetaData() != null
+        && measure.getMeasureMetaData().isComposite()
+        && measure.getGroups().stream()
+            .anyMatch(
+                group ->
+                    !CollectionUtils.isEmpty(group.getPopulations())
+                        || !CollectionUtils.isEmpty(group.getStratifications()))) {
+      throw new InvalidResourceStateException(
+          "Measure",
+          measure.getId(),
+          "since composite measures cannot have populations or stratifications in groups at this time.");
+    }
     if (measure.getGroups().stream()
         .anyMatch(g -> CollectionUtils.isEmpty(g.getMeasureGroupTypes()))) {
       throw new InvalidResourceStateException(
@@ -67,7 +80,9 @@ public class QiCoreModelValidator extends ModelValidator {
           .forEach(
               group -> {
                 if (StringUtils.isBlank(group.getImprovementNotation())
-                    && !StringUtils.equals(group.getScoring(), MeasureScoring.COHORT.toString())) {
+                    && !(StringUtils.equals(group.getScoring(), MeasureScoring.COHORT.toString())
+                        || StringUtils.equals(
+                            group.getScoring(), MeasureScoring.COMPOSITE.toString()))) {
                   throw new InvalidResourceStateException(
                       "Measure",
                       measure.getId(),

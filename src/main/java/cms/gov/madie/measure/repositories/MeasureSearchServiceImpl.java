@@ -119,22 +119,68 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
       List<OwnershipType> ownershipTypes) {
+
+    // Query 1: find all matching measureSetIds and their match counts
+    Map<String, MeasureSetMatchCountDTO> matchInfoMap =
+        findMatchedMeasureSets(userId, measureSearchCriteria, ownershipTypes);
+
+    List<String> matchedMeasureSetIds = new ArrayList<>(matchInfoMap.keySet());
+    if (matchedMeasureSetIds.isEmpty()) {
+      return new PageImpl<>(Collections.emptyList(), pageable, 0);
+    }
+
+    // Query 2: fetch paginated + sorted results for the matched measure sets
+    List<FacetDTO> results =
+        fetchFacetResults(userId, pageable, measureSearchCriteria, matchedMeasureSetIds);
+
+    List<MeasureListDTO> queryResults = results.get(0).getQueryResults();
+
+    // Annotate each result with whether associated measures exist
+    for (MeasureListDTO dto : queryResults) {
+      MeasureSetMatchCountDTO matchInfo = matchInfoMap.get(dto.getMeasureSetId());
+      if (matchInfo != null) {
+        boolean hasAssociated;
+        if (matchInfo.getMatchCount() > 1) {
+          hasAssociated = true;
+        } else {
+          String selectedId = dto.getId();
+          String matchedId = matchInfo.getMatchedMeasureId();
+          hasAssociated = matchedId != null && !matchedId.equals(selectedId);
+        }
+        dto.setHasAssociatedMeasures(hasAssociated);
+      } else {
+        dto.setHasAssociatedMeasures(false);
+      }
+    }
+
+    populateOwnerDisplayNames(queryResults);
+    return new PageImpl<>(queryResults, pageable, matchInfoMap.size());
+  }
+
+  /**
+   * Query 1: Aggregates all active measures matching the given criteria and ownership filters,
+   * grouping by measureSetId to return a map of measureSetId → match-count info.
+   *
+   * @param userId ID of the requesting user.
+   * @param measureSearchCriteria Search criteria (filters, model, draft, etc.).
+   * @param ownershipTypes Ownership filter (OWNED, SHARED, ALL).
+   * @return Map of measureSetId to {@link MeasureSetMatchCountDTO}.
+   */
+  private Map<String, MeasureSetMatchCountDTO> findMatchedMeasureSets(
+      String userId,
+      MeasureSearchCriteria measureSearchCriteria,
+      List<OwnershipType> ownershipTypes) {
     List<AggregationOperation> aggregationOperations = new ArrayList<>();
 
-    // join measure and measure_set to lookup owner and ACL info
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
-
-    // Project only needed fields from Measure to improve performance
     ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
     aggregationOperations.add(lookupOperation);
     aggregationOperations.add(unwindOperation);
-    aggregationOperations.add(initialProjection);
 
     Criteria measureCriteria = Criteria.where("active").is(true);
 
     if (measureSearchCriteria != null) {
-      // Search for searchField only in the provided filters
       if (StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
         if (CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())
             || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
@@ -143,99 +189,79 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
 
-      // If model is provided, filter out those measures with that model
       if (StringUtils.isNotBlank(measureSearchCriteria.getModel())) {
         measureCriteria.and("model").is(measureSearchCriteria.getModel());
       }
 
-      // If draft is provided, filter measures based on MeasureMetaData.draft
       if (measureSearchCriteria.getDraft() != null) {
         measureCriteria.and("measureMetaData.draft").is(measureSearchCriteria.getDraft());
       }
 
-      // If excludeMeasures is not empty, exclude those measures by their IDs
       if (CollectionUtils.isNotEmpty(measureSearchCriteria.getExcludeByMeasureIds())) {
         measureCriteria.and("_id").nin(measureSearchCriteria.getExcludeByMeasureIds());
       }
 
-      // filter measures that contains only the allowed scoring types in all their groups
-      if (measureSearchCriteria.isFromCompositeMeasureComponent()
-          && CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
-        aggregationOperations.add(
-            createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+      if (measureSearchCriteria.isExcludeCompositeMeasures()) {
+        measureCriteria.and("measureMetaData.composite").ne(true);
+      }
+
+      if (measureSearchCriteria.isFromCompositeMeasureComponent()) {
+        if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
+          aggregationOperations.add(
+              createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
+        }
+        // Measures that have test cases with test case set IDs are allowed to be component measures
+        // Filter measures that have at least one test case with a testCaseSetId
+        SearchUtils.appendTestCaseSetIdCriteria(measureCriteria);
       }
     }
 
-    // prepare measure set search criteria(user is either owner or shared with)
     Criteria measureSetCriteria = buildMeasureSetCriteria(userId, ownershipTypes);
-
     MatchOperation matchOperation =
         (measureSetCriteria != null)
             ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria))
             : match(measureCriteria);
 
-    // priority-based sorting based on the presence of priorityMeasureSets for composite component
-    // search
-    boolean usePrioritySort =
-        measureSearchCriteria != null
-            && measureSearchCriteria.isFromCompositeMeasureComponent()
-            && CollectionUtils.isNotEmpty(measureSearchCriteria.getPriorityMeasureSets());
-    // Build facets operation - exclude sort when using priority-based sorting
-    // to avoid overriding the priority sort
-    FacetOperation facets;
-    if (usePrioritySort) {
-      facets =
-          facet(sortByCount("id"))
-              .as("count")
-              .and(
-                  skip(pageable.getOffset()),
-                  limit(pageable.getPageSize()),
-                  project(MeasureListDTO.class))
-              .as("queryResults");
-    } else {
-      facets =
-          facet(sortByCount("id"))
-              .as("count")
-              .and(
-                  sort(pageable.getSort()),
-                  skip(pageable.getOffset()),
-                  limit(pageable.getPageSize()),
-                  project(MeasureListDTO.class))
-              .as("queryResults");
-    }
-
     aggregationOperations.add(matchOperation);
-
+    // Exclude testCases and elmJson after filtering (testCases needed for testCaseSetId filter)
+    aggregationOperations.add(initialProjection);
     aggregationOperations.add(
         group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
-    // Find all the measures that matches the given Criteria and fetch unique measureSetIds
+
     List<MeasureSetMatchCountDTO> matchedMeasureSetCounts =
         mongoTemplate
             .aggregate(
                 newAggregation(aggregationOperations), Measure.class, MeasureSetMatchCountDTO.class)
             .getMappedResults();
 
-    Map<String, MeasureSetMatchCountDTO> matchInfoMap =
-        matchedMeasureSetCounts.stream()
-            .collect(
-                Collectors.toMap(MeasureSetMatchCountDTO::getMeasureSetId, Function.identity()));
+    return matchedMeasureSetCounts.stream()
+        .collect(Collectors.toMap(MeasureSetMatchCountDTO::getMeasureSetId, Function.identity()));
+  }
 
-    List<String> matchedMeasureSetIds = new ArrayList<>(matchInfoMap.keySet());
-
-    if (matchedMeasureSetIds.isEmpty()) {
-      return new PageImpl<>(Collections.emptyList(), pageable, 0);
-    }
+  /**
+   * Query 2: Builds and executes the paginated facet aggregation for the given set of
+   * measureSetIds, applying lock stages, grouping, sorting, and projection.
+   *
+   * @param userId ID of the requesting user (used for lock filtering).
+   * @param pageable Pagination and sort parameters.
+   * @param measureSearchCriteria Search criteria (used for composite/priority sort logic).
+   * @param matchedMeasureSetIds The measureSetIds to include (output of Query 1).
+   * @return Raw {@link FacetDTO} results from MongoDB.
+   */
+  private List<FacetDTO> fetchFacetResults(
+      String userId,
+      Pageable pageable,
+      MeasureSearchCriteria measureSearchCriteria,
+      List<String> matchedMeasureSetIds) {
+    LookupOperation lookupOperation = getLookupOperation();
+    UnwindOperation unwindOperation = unwind("measureSet");
+    ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
 
     List<AggregationOperation> postMatchPipeline = new ArrayList<>();
     postMatchPipeline.add(lookupOperation);
     postMatchPipeline.add(unwindOperation);
     postMatchPipeline.add(initialProjection);
-
-    MatchOperation matchMeasureSetIds =
-        match(Criteria.where("measureSetId").in(matchedMeasureSetIds));
-    postMatchPipeline.add(matchMeasureSetIds);
-
-    // lock stages
+    postMatchPipeline.add(match(Criteria.where("measureSetId").in(matchedMeasureSetIds)));
     postMatchPipeline.addAll(getLockStages(userId));
 
     // Sort those measures based on active status, version and draft status
@@ -246,12 +272,18 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
 
-    // Group all measures that has same measureSetId and get the count and also first document
-    // which will be the latest measure in the MeasureSet
+    ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
+
+    FacetOperation facets;
+    // priority-based sorting based on the presence of priorityMeasureSets for composite component
+    // search
+    boolean usePrioritySort =
+        measureSearchCriteria != null
+            && measureSearchCriteria.isFromCompositeMeasureComponent()
+            && CollectionUtils.isNotEmpty(measureSearchCriteria.getPriorityMeasureSets());
     if (usePrioritySort) {
+      // Group: preserve sortField so the subsequent priority sort can reference it
       String sortField = pageable.getSort().stream().iterator().next().getProperty();
-      // Add a field to check if measureSetId is in the priority list
-      // Also preserve sortField for sorting
       GroupOperation groupByMeasureSet =
           group("measureSetId")
               .first("$$ROOT")
@@ -267,42 +299,59 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               .as("isPrioritySet");
       postMatchPipeline.add(groupByMeasureSet);
       // Sort by priority first, then by the provided sort (which is preserved in the group stage)
-      SortOperation sortByPriority =
-          sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(pageable.getSort()));
-      postMatchPipeline.add(sortByPriority);
+      postMatchPipeline.add(
+          sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(pageable.getSort())));
+      postMatchPipeline.add(replaceRoot);
+      postMatchPipeline.add(SearchAggregationUtils.addIsComponentField());
+      // Facet: sort already applied above, so omit it here
+      facets =
+          facet(sortByCount("id"))
+              .as("count")
+              .and(
+                  skip(pageable.getOffset()),
+                  limit(pageable.getPageSize()),
+                  project(MeasureListDTO.class))
+              .as("queryResults");
     } else {
       postMatchPipeline.add(group("measureSetId").first("$$ROOT").as("selectedDoc"));
+      postMatchPipeline.add(replaceRoot);
+      postMatchPipeline.add(SearchAggregationUtils.addIsComponentField());
+      // When sorting by measureMetaData.draft, substitute with the 5-tier draftSortOrder field
+      // so that the ordering follows:
+      //   DESC: 5→1 (composite draft first → non-composite versioned last)
+      //   ASC:  1→5 (non-composite versioned first → composite draft last)
+      // The original sort direction is preserved as-is.
+      Sort effectiveSort = pageable.getSort();
+      boolean hasDraftSort =
+          effectiveSort.stream()
+              .anyMatch(order -> "measureMetaData.draft".equals(order.getProperty()));
+      if (hasDraftSort) {
+        postMatchPipeline.add(SearchAggregationUtils.addDraftSortOrderField());
+        effectiveSort =
+            Sort.by(
+                effectiveSort.stream()
+                    .map(
+                        order ->
+                            "measureMetaData.draft".equals(order.getProperty())
+                                ? new Sort.Order(order.getDirection(), "draftSortOrder")
+                                : order)
+                    .collect(Collectors.toList()));
+      }
+      facets =
+          facet(sortByCount("id"))
+              .as("count")
+              .and(
+                  sort(effectiveSort),
+                  skip(pageable.getOffset()),
+                  limit(pageable.getPageSize()),
+                  project(MeasureListDTO.class))
+              .as("queryResults");
     }
-
-    ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
-    postMatchPipeline.add(replaceRoot);
 
     postMatchPipeline.add(facets);
-
-    Aggregation pipeline = newAggregation(postMatchPipeline);
-    List<FacetDTO> results =
-        mongoTemplate.aggregate(pipeline, Measure.class, FacetDTO.class).getMappedResults();
-    for (MeasureListDTO dto : results.get(0).getQueryResults()) {
-      MeasureSetMatchCountDTO matchInfo = matchInfoMap.get(dto.getMeasureSetId());
-
-      if (matchInfo != null) {
-        boolean hasAssociated;
-        if (matchInfo.getMatchCount() > 1) {
-          hasAssociated = true;
-        } else {
-          String selectedId = dto.getId();
-          String matchedId = matchInfo.getMatchedMeasureId();
-          hasAssociated = matchedId != null && !matchedId.equals(selectedId);
-        }
-        dto.setHasAssociatedMeasures(hasAssociated);
-      } else {
-        dto.setHasAssociatedMeasures(false);
-      }
-    }
-    long totalSize = matchInfoMap.size();
-    List<MeasureListDTO> queryResults = results.get(0).getQueryResults();
-    populateOwnerDisplayNames(queryResults);
-    return new PageImpl<>(queryResults, pageable, totalSize);
+    return mongoTemplate
+        .aggregate(newAggregation(postMatchPipeline), Measure.class, FacetDTO.class)
+        .getMappedResults();
   }
 
   /**

@@ -46,6 +46,8 @@ public class MeasureService extends BaseMeasureService {
   private final AppConfigService appConfigService;
   private final MeasureLockService measureLockService;
   private final UserServiceClient userServiceClient;
+  private final CompositeRelationshipService compositeRelationshipService;
+  private final TestCaseValidationService testCaseValidationService;
 
   @Autowired
   public MeasureService(
@@ -60,7 +62,9 @@ public class MeasureService extends BaseMeasureService {
       TerminologyValidationService terminologyValidationService,
       AppConfigService appConfigService,
       MeasureLockService measureLockService,
-      UserServiceClient userServiceClient) {
+      UserServiceClient userServiceClient,
+      CompositeRelationshipService compositeRelationshipService,
+      TestCaseValidationService testCaseValidationService) {
     // Pass parent dependencies to BaseMeasureService constructor
     super(measureRepository, measureSetService, appConfigService, measureLockService);
     // Assign child-specific fields
@@ -76,6 +80,8 @@ public class MeasureService extends BaseMeasureService {
     this.appConfigService = appConfigService;
     this.measureLockService = measureLockService;
     this.userServiceClient = userServiceClient;
+    this.compositeRelationshipService = compositeRelationshipService;
+    this.testCaseValidationService = testCaseValidationService;
   }
 
   public void verifyAuthorizationByMeasureSetId(
@@ -197,7 +203,7 @@ public class MeasureService extends BaseMeasureService {
    * @return Updated measure
    */
   public Measure updateMeasureTestCaseConfiguration(
-      String username, String measureId, TestCaseConfiguration testCaseConfig) {
+      String username, String measureId, TestCaseConfiguration testCaseConfig, String accessToken) {
     if (measureId == null || measureId.isEmpty()) {
       log.error("updateMeasureTestCaseConfiguration:: Measure ID is null or empty");
       throw new InvalidIdException("Measure", "Update (PUT)", "(PUT [base]/[resource]/[id])");
@@ -209,11 +215,21 @@ public class MeasureService extends BaseMeasureService {
       throw new InvalidRequestException("TestCaseConfiguration cannot be null");
     }
     final Measure existingMeasure = findActiveMeasureById(measureId);
-
     verifyAuthorization(username, existingMeasure);
-
     Measure updatedMeasure =
         testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId);
+    // on execute invalid test case config change, trigger the test case validation
+    if (MeasureUtil.isInvalidTestCaseExecutionEnabled(existingMeasure)
+            != testCaseConfig.isExecuteInvalidTestCases()
+        && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(existingMeasure.getModel())
+        && !CollectionUtils.isEmpty(existingMeasure.getTestCases())) {
+      existingMeasure
+          .getTestCases()
+          .forEach(
+              testCase ->
+                  testCaseValidationService.validateResourceAsynchronously(
+                      updatedMeasure, testCase, TestCaseServiceUtil.SAVE, accessToken));
+    }
     log.info(
         "Measure ID {}, Test Case Configuration has been updated to [{}] by User : [{}] ",
         updatedMeasure.getId(),
@@ -364,6 +380,21 @@ public class MeasureService extends BaseMeasureService {
     existingMeasure.setVersionId(existingMeasure.getVersionId());
     existingMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
     Measure saveMeasure = measureRepository.save(existingMeasure);
+
+    if (existingMeasure.getMeasureMetaData().isComposite()
+        && !CollectionUtils.isEmpty(existingMeasure.getGroups())) {
+      List<Component> allComponents =
+          existingMeasure.getGroups().stream()
+              .filter(g -> MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(g.getScoring()))
+              .filter(g -> !CollectionUtils.isEmpty(g.getComponents()))
+              .flatMap(g -> g.getComponents().stream())
+              .toList();
+      if (!allComponents.isEmpty()) {
+        compositeRelationshipService.syncComponents(
+            allComponents, List.of(), existingMeasure, username);
+      }
+    }
+
     actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
     measureLockService.unlockMeasure(id, username);
     return saveMeasure;
@@ -529,6 +560,22 @@ public class MeasureService extends BaseMeasureService {
       }
     }
 
+    List<String> userIds =
+        sharedMeasures.values().stream()
+            .flatMap(List::stream)
+            .map(SharedUser::getUserId)
+            .distinct()
+            .toList();
+
+    Map<String, UserDetailsDto> userDetailsMap = userServiceClient.getBulkUserDetails(userIds);
+
+    sharedMeasures.values().stream()
+        .flatMap(List::stream)
+        .forEach(
+            sharedUser ->
+                sharedUser.setDisplayName(
+                    measureSetService.formatDisplayName(userDetailsMap, sharedUser.getUserId())));
+
     return sharedMeasures;
   }
 
@@ -652,9 +699,6 @@ public class MeasureService extends BaseMeasureService {
             measureSetMap.put(id, Boolean.TRUE);
           }
         });
-    // For measureSetIds that were searched, but not returned put the id & true ( is
-    // draftable )
-
     return measureSetMap;
   }
 
@@ -717,7 +761,6 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public void deleteVersionedMeasures(List<Measure> measures) {
-
     List<Measure> versionedMeasures =
         measures.stream()
             .filter(
@@ -849,7 +892,6 @@ public class MeasureService extends BaseMeasureService {
     if (qiCoreMeasure == null || qdmMeasure == null) {
       throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
     }
-
     verifyOneQiCoreAndOneQdmMeasure(qiCoreMeasure, qdmMeasure);
     verifyOwner(username, qiCoreMeasure, qdmMeasure);
     verifyQdmHasCmsId(qdmMeasure);
