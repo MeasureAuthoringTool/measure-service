@@ -132,6 +132,76 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   @Test
+  void testBundleMeasureReturnsBundleStringForCompositeDraftMeasure() {
+    // Setup component measure
+    Measure componentMeasure =
+        Measure.builder()
+            .id("comp-measure-id")
+            .measureName("ComponentMeasure")
+            .cqlLibraryName("ComponentLib")
+            .version(new Version(1, 0, 0))
+            .model("QI-Core v4.1.1")
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .groups(List.of(Group.builder().id("comp-group-1").displayId("Group 1").build()))
+            .build();
+
+    Component component =
+        Component.builder().measureId("comp-measure-id").groupId("comp-group-1").build();
+
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-1")
+            .components(List.of(component))
+            .populationBasis("boolean")
+            .measureGroupTypes(List.of(MeasureGroupTypes.PROCESS))
+            .build();
+
+    measure.setGroups(List.of(compositeGroup));
+    measure.setModel("QI-Core v4.1.1");
+    measure.setMeasureMetaData(
+        MeasureMetaData.builder()
+            .draft(true)
+            .composite(true)
+            .steward(Organization.builder().name("SemanticBits").build())
+            .description("Composite measure")
+            .developers(List.of(Organization.builder().name("ICF").build()))
+            .build());
+
+    final String compositeBundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
+    final String componentBundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
+
+    when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.of(componentMeasure));
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq("calculation"), anyString()))
+        .thenReturn(compositeBundle);
+
+    Export componentExport =
+        Export.builder()
+            .measureId("comp-measure-id")
+            .measureBundleGridFsId("comp-grid-fs-id")
+            .build();
+    when(exportRepository.findByMeasureId("comp-measure-id"))
+        .thenReturn(Optional.of(componentExport));
+    when(mongoGridFsService.findById("comp-grid-fs-id")).thenReturn(componentBundle);
+
+    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", "calculation", "Info");
+
+    assertNotNull(output);
+    // verify component details were populated
+    assertEquals("ComponentMeasure", component.getMeasureName());
+    assertEquals("ComponentLib", component.getMeasureLibraryName());
+    assertEquals("1.0.000", component.getMeasureVersion());
+    assertFalse(component.isDraft());
+    assertFalse(component.isMultiGroupComponent());
+    assertEquals("Group 1", component.getGroupDisplayId());
+
+    verify(fhirServicesClient)
+        .getMeasureBundle(any(Measure.class), eq("Bearer TOKEN"), eq("calculation"), eq("Info"));
+    verify(exportRepository).findByMeasureId("comp-measure-id");
+    verify(mongoGridFsService).findById("comp-grid-fs-id");
+  }
+
+  @Test
   void testBundleMeasureReturnsBundleStringForVersionedMeasure() {
     final String json = "{\"message\": \"GOOD JSON\"}";
     Export export = Export.builder().measureId(measure.getId()).measureBundleJson(json).build();

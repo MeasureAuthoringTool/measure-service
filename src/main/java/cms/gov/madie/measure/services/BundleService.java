@@ -3,6 +3,8 @@ package cms.gov.madie.measure.services;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.stream.Stream;
 
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
@@ -48,31 +50,13 @@ public class BundleService {
     }
     // for draft measures
     if (measure.getMeasureMetaData().isDraft()) {
-      try {
-        elmToJsonService.retrieveElmJson(measure, elmErrorSeverity, accessToken);
-        return fhirServicesClient.getMeasureBundle(
-            measure, accessToken, bundleType, elmErrorSeverity);
-      } catch (RestClientException | IllegalArgumentException ex) {
-        log.error("An error occurred while bundling measure {}", measure.getId(), ex);
-        throw new BundleOperationException("Measure", measure.getId(), ex);
+      if (measure.getMeasureMetaData().isComposite()) {
+        return bundleCompositeMeasure(measure, accessToken, bundleType, elmErrorSeverity);
       }
+      return bundleStandardMeasure(measure, accessToken, bundleType, elmErrorSeverity);
     }
     // for versioned measures
-    Export export = exportRepository.findByMeasureId(measure.getId()).orElse(null);
-    if (export == null) {
-      log.error("Export not available for versioned measure with id: {}", measure.getId());
-      throw new BundleOperationException("Measure", measure.getId(), null);
-    }
-
-    if (StringUtils.isNotBlank(export.getMeasureBundleJson())) {
-      return export.getMeasureBundleJson();
-    }
-    if (StringUtils.isNotBlank(export.getMeasureBundleGridFsId())) {
-      return mongoGridFsService.findById(export.getMeasureBundleGridFsId());
-    }
-    log.error(
-        "Bundle with warnings is not available for versioned measure with id: {}", measure.getId());
-    throw new BundleOperationException("Measure", measure.getId(), null);
+    return getVersionedMeasureBundle(measure);
   }
 
   public PackageDto getMeasureExport(Measure measure, String elmErrorSeverity, String accessToken) {
@@ -106,19 +90,13 @@ public class BundleService {
   PackageDto getMeasureExportForCompositeDraft(
       Measure measure, String elmErrorSeverity, String accessToken) {
     try {
-      // populate all the component details required for composite measure resource generation
       populateComponentDetails(measure);
-      // get the composite measure bundle
       String compositeBundle =
           fhirServicesClient.getMeasureBundle(measure, accessToken, "export", elmErrorSeverity);
-
-      // fetch component measure bundles from database
       List<Export> componentExports = getComponentExports(measure, elmErrorSeverity);
 
-      // get the Packaging Utility for measure model
       String exportFileName = ExportFileNamesUtil.getExportFileName(measure);
-      PackagingUtility utility = PackagingUtilityFactory.getInstance(measure.getModel());
-      // Add component resources to the composite bundle and generate the composite export package
+      PackagingUtility utility = getPackagingUtility(measure.getModel());
       return PackageDto.builder()
           .fromStorage(false)
           .exportPackage(
@@ -137,8 +115,7 @@ public class BundleService {
 
   PackageDto getMeasureExportForVersion(Measure measure, String elmErrorSeverity) {
     try {
-      // get the Packaging Utility for measure model
-      PackagingUtility utility = PackagingUtilityFactory.getInstance(measure.getModel());
+      PackagingUtility utility = getPackagingUtility(measure.getModel());
       String exportFileName = ExportFileNamesUtil.getExportFileName(measure);
       Export export = fetchExportForMeasure(measure.getId(), elmErrorSeverity);
       return PackageDto.builder()
@@ -158,12 +135,65 @@ public class BundleService {
     }
   }
 
-  private Export fetchExportForMeasure(String measureId, String elmErrorSeverity) {
-    Export export = exportRepository.findByMeasureId(measureId).orElse(null);
-    if (export == null) {
-      log.error("Export not available for versioned measure with id: {}", measureId);
-      throw new ResourceNotFoundException("saved export for Measure", measureId);
+  private String bundleCompositeMeasure(
+      Measure measure, String accessToken, String bundleType, String elmErrorSeverity) {
+    try {
+      populateComponentDetails(measure);
+      String compositeBundle =
+          fhirServicesClient.getMeasureBundle(measure, accessToken, bundleType, elmErrorSeverity);
+      List<Export> componentExports = getComponentExports(measure, elmErrorSeverity);
+      PackagingUtility utility = getPackagingUtility(measure.getModel());
+      return utility.buildCompositeMeasureBundle(compositeBundle, componentExports);
+    } catch (RestClientException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException
+        | NoSuchMethodException
+        | ClassNotFoundException ex) {
+      log.error("An error occurred while bundling composite measure {}", measure.getId(), ex);
+      throw new BundleOperationException("Measure", measure.getId(), ex);
     }
+  }
+
+  private String bundleStandardMeasure(
+      Measure measure, String accessToken, String bundleType, String elmErrorSeverity) {
+    try {
+      elmToJsonService.retrieveElmJson(measure, elmErrorSeverity, accessToken);
+      return fhirServicesClient.getMeasureBundle(
+          measure, accessToken, bundleType, elmErrorSeverity);
+    } catch (RestClientException | IllegalArgumentException ex) {
+      log.error("An error occurred while bundling measure {}", measure.getId(), ex);
+      throw new BundleOperationException("Measure", measure.getId(), ex);
+    }
+  }
+
+  private String getVersionedMeasureBundle(Measure measure) {
+    Export export = exportRepository.findByMeasureId(measure.getId()).orElse(null);
+    if (export == null) {
+      log.error("Export not available for versioned measure with id: {}", measure.getId());
+      throw new BundleOperationException("Measure", measure.getId(), null);
+    }
+    if (StringUtils.isNotBlank(export.getMeasureBundleJson())) {
+      return export.getMeasureBundleJson();
+    }
+    if (StringUtils.isNotBlank(export.getMeasureBundleGridFsId())) {
+      return mongoGridFsService.findById(export.getMeasureBundleGridFsId());
+    }
+    log.error(
+        "Bundle with warnings is not available for versioned measure with id: {}", measure.getId());
+    throw new BundleOperationException("Measure", measure.getId(), null);
+  }
+
+  private Export fetchExportForMeasure(String measureId, String elmErrorSeverity) {
+    Export export =
+        exportRepository
+            .findByMeasureId(measureId)
+            .orElseThrow(
+                () -> {
+                  log.error("Export not available for versioned measure with id: {}", measureId);
+                  return new ResourceNotFoundException("saved export for Measure", measureId);
+                });
+
     String measureBundle;
     if ("Error".equalsIgnoreCase(elmErrorSeverity)) {
       measureBundle = mongoGridFsService.findById(export.getMeasureBundleWithoutWarningsGridFsId());
@@ -187,61 +217,71 @@ public class BundleService {
 
   /** Fetches the measure bundle for each component across all groups from the export repository. */
   private List<Export> getComponentExports(Measure measure, String elmErrorSeverity) {
-    List<Export> exports = new ArrayList<>();
     if (CollectionUtils.isEmpty(measure.getGroups())) {
-      return exports;
+      return new ArrayList<>();
     }
-    for (Group group : measure.getGroups()) {
-      if (CollectionUtils.isEmpty(group.getComponents())) {
-        continue;
-      }
-      for (Component component : group.getComponents()) {
-        if (StringUtils.isBlank(component.getMeasureId())) {
-          continue;
-        }
-        Export componentExport = fetchExportForMeasure(component.getMeasureId(), elmErrorSeverity);
-        exports.add(componentExport);
-      }
-    }
-    return exports;
+    return measure.getGroups().stream()
+        .filter(group -> !CollectionUtils.isEmpty(group.getComponents()))
+        .flatMap(group -> group.getComponents().stream())
+        .filter(component -> StringUtils.isNotBlank(component.getMeasureId()))
+        .map(component -> fetchExportForMeasure(component.getMeasureId(), elmErrorSeverity))
+        .toList();
   }
 
   /**
    * Populates transient fields (measureName, measureLibraryName, measureVersion, draft,
-   * groupDisplayId) on each Component by fetching the referenced measure from the database.
+   * multiGroupComponent, groupDisplayId) on each Component by fetching the referenced measure.
    */
   private void populateComponentDetails(Measure measure) {
     if (CollectionUtils.isEmpty(measure.getGroups())) {
       return;
     }
-    for (Group group : measure.getGroups()) {
-      if (CollectionUtils.isEmpty(group.getComponents())) {
-        continue;
-      }
-      for (Component component : group.getComponents()) {
-        if (StringUtils.isBlank(component.getMeasureId())) {
-          continue;
-        }
-        Measure componentMeasure =
-            measureRepository.findById(component.getMeasureId()).orElse(null);
-        if (componentMeasure != null) {
-          component.setMeasureName(componentMeasure.getMeasureName());
-          component.setMeasureLibraryName(componentMeasure.getCqlLibraryName());
-          component.setMeasureVersion(
-              componentMeasure.getVersion() != null
-                  ? componentMeasure.getVersion().toString()
-                  : null);
-          component.setDraft(componentMeasure.getMeasureMetaData().isDraft());
-          component.setMultiGroupComponent(componentMeasure.getGroups().size() > 1);
-          if (StringUtils.isNotBlank(component.getGroupId())
-              && !CollectionUtils.isEmpty(componentMeasure.getGroups())) {
-            componentMeasure.getGroups().stream()
-                .filter(g -> component.getGroupId().equals(g.getId()))
-                .findFirst()
-                .ifPresent(g -> component.setGroupDisplayId(g.getDisplayId()));
-          }
-        }
-      }
+    streamComponents(measure).forEach(this::populateSingleComponent);
+  }
+
+  private void populateSingleComponent(Component component) {
+    measureRepository
+        .findById(component.getMeasureId())
+        .ifPresent(
+            componentMeasure -> {
+              component.setMeasureName(componentMeasure.getMeasureName());
+              component.setMeasureLibraryName(componentMeasure.getCqlLibraryName());
+              component.setMeasureVersion(
+                  componentMeasure.getVersion() != null
+                      ? componentMeasure.getVersion().toString()
+                      : null);
+              component.setDraft(componentMeasure.getMeasureMetaData().isDraft());
+              component.setMultiGroupComponent(componentMeasure.getGroups().size() > 1);
+              populateGroupDisplayId(component, componentMeasure);
+            });
+  }
+
+  private void populateGroupDisplayId(Component component, Measure componentMeasure) {
+    if (StringUtils.isBlank(component.getGroupId())
+        || CollectionUtils.isEmpty(componentMeasure.getGroups())) {
+      return;
     }
+    componentMeasure.getGroups().stream()
+        .filter(g -> component.getGroupId().equals(g.getId()))
+        .findFirst()
+        .ifPresent(g -> component.setGroupDisplayId(g.getDisplayId()));
+  }
+
+  /** Returns a stream of all components with non-blank measureId across all groups. */
+  private Stream<Component> streamComponents(Measure measure) {
+    return measure.getGroups().stream()
+        .map(Group::getComponents)
+        .filter(Objects::nonNull)
+        .flatMap(List::stream)
+        .filter(component -> StringUtils.isNotBlank(component.getMeasureId()));
+  }
+
+  private PackagingUtility getPackagingUtility(String model)
+      throws InstantiationException,
+          IllegalAccessException,
+          InvocationTargetException,
+          NoSuchMethodException,
+          ClassNotFoundException {
+    return PackagingUtilityFactory.getInstance(model);
   }
 }
