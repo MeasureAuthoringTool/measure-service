@@ -961,7 +961,7 @@ public class GroupServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testUpdateGroupWhenElmJsonIsInvalid() throws JacksonException {
+  public void testUpdateGroupWhenElmJsonIsInvalid() {
     measure.setElmJson("UnpardonableElmJson");
     Optional<Measure> optional = Optional.of(measure);
     doReturn(optional).when(measureRepository).findById(any(String.class));
@@ -1043,7 +1043,7 @@ public class GroupServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testCreateGroupWithEmptyElm() throws JacksonException {
+  public void testCreateGroupWithEmptyElm() {
     group2.setPopulations(null);
     group2.setPopulationBasis("Boolean");
     Optional<Measure> optional = Optional.of(measure);
@@ -1477,8 +1477,7 @@ public class GroupServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testHandleQdmGroupReturnTypesNonPatientBasisThrowsException()
-      throws JacksonException {
+  public void testHandleQdmGroupReturnTypesNonPatientBasisThrowsException() {
     Population population =
         Population.builder()
             .id("testId")

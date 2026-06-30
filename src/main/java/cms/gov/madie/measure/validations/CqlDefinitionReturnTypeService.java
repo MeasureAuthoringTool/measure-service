@@ -29,8 +29,7 @@ public class CqlDefinitionReturnTypeService {
    * Validate cql definition return types of a group against population basis. Group can have cql
    * definitions for populations, stratifications and observations
    */
-  public void validateCqlDefinitionReturnTypes(Group group, String elmJson)
-      throws JacksonException {
+  public void validateCqlDefinitionReturnTypes(Group group, String elmJson) {
     if (group.getScoring().equals(MeasureScoring.COMPOSITE.toString())) {
       return;
     }
@@ -97,9 +96,8 @@ public class CqlDefinitionReturnTypeService {
    *
    * @param elmJson
    * @return
-   * @throws JacksonException
    */
-  private Map<String, String> getCqlDefinitionReturnTypes(String elmJson) throws JacksonException {
+  private Map<String, String> getCqlDefinitionReturnTypes(String elmJson) {
     Map<String, String> returnTypes = new HashMap<>();
     if (StringUtils.isEmpty(elmJson)) {
       return returnTypes;
@@ -125,7 +123,7 @@ public class CqlDefinitionReturnTypeService {
   }
 
   public String validateCqlDefinitionReturnTypesForQdm(
-      Group group, String elmJson, boolean patientBased) throws JacksonException {
+      Group group, String elmJson, boolean patientBased) {
     Map<String, String> cqlDefinitionReturnTypes = getCqlDefinitionReturnTypes(elmJson);
     if (cqlDefinitionReturnTypes.isEmpty()) {
       throw new IllegalArgumentException("No definitions found.");

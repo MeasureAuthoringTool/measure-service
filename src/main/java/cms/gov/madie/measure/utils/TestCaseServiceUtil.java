@@ -10,7 +10,6 @@ import java.util.regex.Pattern;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.SpecialCharacterException;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.node.ArrayNode;
@@ -622,8 +621,7 @@ public class TestCaseServiceUtil {
     }
   }
 
-  public static String getPatientFamilyNameFromJson(String model, String json)
-      throws JacksonException {
+  public static String getPatientFamilyNameFromJson(String model, String json) {
     String patientFamilyName = null;
     if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
       patientFamilyName = JsonUtil.getPatientName(json, "family");
@@ -633,8 +631,7 @@ public class TestCaseServiceUtil {
     return patientFamilyName;
   }
 
-  public static String getPatientGivenNameFromJson(String model, String json)
-      throws JacksonException {
+  public static String getPatientGivenNameFromJson(String model, String json) {
     String patientGivenName = null;
     if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
       patientGivenName = JsonUtil.getPatientName(json, "given");
@@ -690,8 +687,8 @@ public class TestCaseServiceUtil {
     }
   }
 
-  public static String parseAndUpdateJsonWithGroupAndTitle(String json, String group, String title)
-      throws JacksonException {
+  public static String parseAndUpdateJsonWithGroupAndTitle(
+      String json, String group, String title) {
 
     JsonNode rootNode = OBJECT_MAPPER.readTree(json);
     boolean isUpdated = false; // Flag to track if any updates are done
@@ -740,7 +737,7 @@ public class TestCaseServiceUtil {
     return StringUtils.isBlank(series) ? title : series + " - " + title;
   }
 
-  public static String getJson(String model, String json) throws JacksonException {
+  public static String getJson(String model, String json) {
     String jsonFromImportRequest = null;
     if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
       jsonFromImportRequest = JsonUtil.removeMeasureReportEntries(json);

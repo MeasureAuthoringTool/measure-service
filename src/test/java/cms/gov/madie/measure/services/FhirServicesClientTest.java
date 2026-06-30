@@ -36,7 +36,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
-import tools.jackson.core.JacksonException;
 
 import cms.gov.madie.measure.config.FhirServicesConfig;
 import gov.cms.madie.models.measure.HapiOperationOutcome;
@@ -135,7 +134,7 @@ class FhirServicesClientTest {
   }
 
   @Test
-  void testValidateBundleReturnsStringData() throws JacksonException {
+  void testValidateBundleReturnsStringData() {
     final String testCaseJson = "{ \"resourceType\": \"GOOD JSON\" }";
     final HapiOperationOutcome goodOutcome =
         HapiOperationOutcome.builder().code(200).successful(true).build();

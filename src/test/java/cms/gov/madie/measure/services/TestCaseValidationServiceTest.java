@@ -4,7 +4,6 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import tools.jackson.core.JsonParser;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.DatabindException;
 import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.common.ModelType;
@@ -343,8 +342,7 @@ public class TestCaseValidationServiceTest {
   }
 
   @Test
-  public void testValidateTestCaseJsonHandlesProcessingErrorDuringHttpClientException()
-      throws JacksonException {
+  public void testValidateTestCaseJsonHandlesProcessingErrorDuringHttpClientException() {
     when(fhirServicesClient.validateBundle(
             anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenThrow(

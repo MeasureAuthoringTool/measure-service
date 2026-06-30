@@ -37,7 +37,6 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.cfg.DateTimeFeature;
 import tools.jackson.databind.json.JsonMapper;
@@ -1389,7 +1388,7 @@ public class AdminControllerMvcTest {
     assertTrue(result.getResponse().getContentAsString().contains("false"));
   }
 
-  private String toJsonString(Object obj) throws JacksonException {
+  private String toJsonString(Object obj) {
     ObjectMapper mapper =
         JsonMapper.builder().disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS).build();
     return mapper.writeValueAsString(obj);

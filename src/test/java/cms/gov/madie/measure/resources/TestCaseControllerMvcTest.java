@@ -9,7 +9,6 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.*;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.measure.*;
 import org.junit.jupiter.api.BeforeEach;
@@ -284,7 +283,7 @@ public class TestCaseControllerMvcTest {
     assertEquals("1234", measureId);
   }
 
-  private String asJsonString(final Object obj) throws JacksonException {
+  private String asJsonString(final Object obj) {
     return new ObjectMapper().writeValueAsString(obj);
   }
 

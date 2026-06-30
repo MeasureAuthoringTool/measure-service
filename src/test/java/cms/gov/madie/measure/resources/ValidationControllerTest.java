@@ -54,7 +54,7 @@ class ValidationControllerTest {
   @Captor ArgumentCaptor<String> accessTokenCaptor;
 
   @Test
-  void testValidateBundleProxiesRequest() throws JacksonException {
+  void testValidateBundleProxiesRequest() {
     final String accessToken = "Bearer TOKEN";
     final String testCaseJson = "{ \"resourceType\": \"GOOD JSON\" }";
     HttpHeaders headers = new HttpHeaders();
@@ -86,7 +86,7 @@ class ValidationControllerTest {
   }
 
   @Test
-  void testValidateBundleBadRequest() throws JacksonException {
+  void testValidateBundleBadRequest() {
     final String accessToken = "Bearer TOKEN";
     final String testCaseJson = "{ \"resourceType\": \"GOOD JSON\" }";
     HttpHeaders headers = new HttpHeaders();

@@ -728,7 +728,7 @@ public class TestCaseService {
   }
 
   private List<TestCaseGroupPopulation> getTestCaseGroupPopulationsFromImportRequest(
-      String model, String json, Measure measure) throws JacksonException {
+      String model, String json, Measure measure) {
     List<TestCaseGroupPopulation> testCaseGroupPopulations = null;
     if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
       testCaseGroupPopulations =
@@ -870,8 +870,7 @@ public class TestCaseService {
   }
 
   protected String getDescription(
-      String model, String json, TestCaseImportRequest testCaseImportRequest)
-      throws JacksonException {
+      String model, String json, TestCaseImportRequest testCaseImportRequest) {
     String description = null;
     if (ModelType.QI_CORE.getValue().equalsIgnoreCase(model)) {
       String defaultDescription = JsonUtil.getTestDescription(json);

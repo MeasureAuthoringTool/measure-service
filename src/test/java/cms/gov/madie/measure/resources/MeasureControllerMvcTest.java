@@ -13,7 +13,6 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import cms.gov.madie.measure.services.*;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.cfg.DateTimeFeature;
 import tools.jackson.databind.json.JsonMapper;
@@ -105,7 +104,7 @@ public class MeasureControllerMvcTest {
   private static final String LIBRARY_NAME_VALIDATION_ERROR =
       "Library name must start with an upper case letter, followed by alpha-numeric character(s) and must not contain spaces or other special characters except of underscore for QDM.";
 
-  public String toJsonString(Object obj) throws JacksonException {
+  public String toJsonString(Object obj) {
     ObjectMapper mapper =
         JsonMapper.builder().disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS).build();
     return mapper.writeValueAsString(obj);

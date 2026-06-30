@@ -17,7 +17,6 @@ import java.util.UUID;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.SpecialCharacterException;
-import tools.jackson.core.JacksonException;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.measure.Group;
@@ -1502,8 +1501,7 @@ public class TestCaseServiceUtilTest {
   }
 
   @Test
-  public void parseAndUpdateJsonWithGroupAndTitleUpdatesFamilyAndGivenName()
-      throws JacksonException {
+  public void parseAndUpdateJsonWithGroupAndTitleUpdatesFamilyAndGivenName() {
     String json =
         """
       {
@@ -1544,7 +1542,7 @@ public class TestCaseServiceUtilTest {
   }
 
   @Test
-  public void parseAndUpdateJsonWithGroupAndTitleHandlesEmptyEntryArray() throws JacksonException {
+  public void parseAndUpdateJsonWithGroupAndTitleHandlesEmptyEntryArray() {
     String json = """
       {
         "entry": []
@@ -1558,8 +1556,7 @@ public class TestCaseServiceUtilTest {
   }
 
   @Test
-  public void parseAndUpdateJsonWithGroupAndTitleHandlesMissingEntryField()
-      throws JacksonException {
+  public void parseAndUpdateJsonWithGroupAndTitleHandlesMissingEntryField() {
     String json =
         """
       {

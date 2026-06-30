@@ -69,7 +69,7 @@ public final class JsonUtil {
     return false;
   }
 
-  public static String getPatientId(String json) throws JacksonException {
+  public static String getPatientId(String json) {
     ObjectMapper mapper = new ObjectMapper();
 
     JsonNode jsonNode = mapper.readTree(json);
@@ -90,7 +90,7 @@ public final class JsonUtil {
     return existingPatientId;
   }
 
-  public static String getPatientFullUrl(String json) throws JacksonException {
+  public static String getPatientFullUrl(String json) {
     ObjectMapper mapper = new ObjectMapper();
 
     JsonNode jsonNode = mapper.readTree(json);
@@ -146,7 +146,7 @@ public final class JsonUtil {
     return false;
   }
 
-  public static JsonNode getResourceNode(String json, String resourceType) throws JacksonException {
+  public static JsonNode getResourceNode(String json, String resourceType) {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode jsonNode = mapper.readTree(json);
     JsonNode entries = jsonNode.get("entry");
@@ -165,7 +165,7 @@ public final class JsonUtil {
     return null;
   }
 
-  public static String getPatientName(String json, String type) throws JacksonException {
+  public static String getPatientName(String json, String type) {
     JsonNode resourceNode = getResourceNode(json, "patient");
     if (resourceNode == null) {
       return null;
@@ -188,7 +188,7 @@ public final class JsonUtil {
     return null;
   }
 
-  public static String getTestDescription(String testCaseBundle) throws JacksonException {
+  public static String getTestDescription(String testCaseBundle) {
     JsonNode resourceNode = getResourceNode(testCaseBundle, "MeasureReport");
     if (resourceNode == null || resourceNode.get("extension") == null) {
       return null;
@@ -210,10 +210,9 @@ public final class JsonUtil {
    * @param json
    * @param measurePopulationBasis (whether it's a boolean basis or not )
    * @return
-   * @throws JacksonException
    */
   public static List<TestCaseGroupPopulation> getTestCaseGroupPopulationsFromMeasureReport(
-      String json, boolean measurePopulationBasis, Measure measure) throws JacksonException {
+      String json, boolean measurePopulationBasis, Measure measure) {
     List<TestCaseGroupPopulation> groupPopulations = new ArrayList<>();
     JsonNode resourceNode = getResourceNode(json, "MeasureReport");
     if (resourceNode != null) {
@@ -381,7 +380,7 @@ public final class JsonUtil {
   }
 
   // Use Case 1: All three actions
-  public static String removeMeasureReportEntries(String testCaseJson) throws JacksonException {
+  public static String removeMeasureReportEntries(String testCaseJson) {
     if (!StringUtils.isEmpty(testCaseJson)) {
       ObjectMapper objectMapper = new ObjectMapper();
       JsonNode rootNode = objectMapper.readTree(testCaseJson);
@@ -406,7 +405,7 @@ public final class JsonUtil {
   }
 
   // Use Case 2: Only first two actions
-  public static String updateBundleTypeAndRemoveRequest(TestCase testCase) throws JacksonException {
+  public static String updateBundleTypeAndRemoveRequest(TestCase testCase) {
     if (!StringUtils.isEmpty(testCase.getJson())) {
       ObjectMapper objectMapper = new ObjectMapper();
       JsonNode rootNode = objectMapper.readTree(testCase.getJson());
@@ -501,7 +500,7 @@ public final class JsonUtil {
     return bout.toString();
   }
 
-  public static String getPatientNameQdm(String json, String type) throws JacksonException {
+  public static String getPatientNameQdm(String json, String type) {
     JsonNode resourceNode = getResourceNodeQdm(json, type);
     if (resourceNode == null) {
       return null;
@@ -514,15 +513,14 @@ public final class JsonUtil {
     return resourceNode.asText();
   }
 
-  public static JsonNode getResourceNodeQdm(String json, String resourceType)
-      throws JacksonException {
+  public static JsonNode getResourceNodeQdm(String json, String resourceType) {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode jsonNode = mapper.readTree(json);
     return jsonNode.get(resourceType);
   }
 
   public static List<TestCaseGroupPopulation> getTestCaseGroupPopulationsQdm(
-      String json, Measure measure) throws JacksonException {
+      String json, Measure measure) {
     List<TestCaseGroupPopulation> groupPopulations = new ArrayList<>();
     JsonNode populations = getResourceNodeQdm(json, "expectedValues");
     if (populations != null) {
@@ -718,7 +716,7 @@ public final class JsonUtil {
     return null;
   }
 
-  public static String getTestDescriptionQdm(String json) throws JacksonException {
+  public static String getTestDescriptionQdm(String json) {
     JsonNode notesNode = getResourceNodeQdm(json, "notes");
     if (notesNode != null) {
       return notesNode.asText();
@@ -726,7 +724,7 @@ public final class JsonUtil {
     return null;
   }
 
-  public static String getTestCaseJson(String json) throws JacksonException {
+  public static String getTestCaseJson(String json) {
     JsonNode patientNode = getResourceNodeQdm(json, "qdmPatient");
     if (patientNode != null) {
       return patientNode.toPrettyString();
