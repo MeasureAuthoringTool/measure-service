@@ -5,7 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
 import cms.gov.madie.measure.repositories.EndorsementRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.common.EndorserOrganization;
 import java.io.IOException;
 import java.util.List;

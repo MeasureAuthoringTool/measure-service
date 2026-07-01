@@ -3,9 +3,9 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
-import com.fasterxml.jackson.core.JsonParseException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JsonParser;
+import tools.jackson.databind.DatabindException;
+import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.*;
@@ -342,16 +342,13 @@ public class TestCaseValidationServiceTest {
   }
 
   @Test
-  public void testValidateTestCaseJsonHandlesProcessingErrorDuringHttpClientException()
-      throws JsonProcessingException {
+  public void testValidateTestCaseJsonHandlesProcessingErrorDuringHttpClientException() {
     when(fhirServicesClient.validateBundle(
             anyString(), any(ModelType.class), anyString(), anyBoolean()))
         .thenThrow(
             new HttpClientErrorException(
                 HttpStatus.INTERNAL_SERVER_ERROR, "Unsupported Media Type"));
-    doThrow(
-            new JsonParseException(
-                mapper.getDeserializationContext().getParser(), "Something bad happened!"))
+    doThrow(DatabindException.from((JsonParser) null, "Something bad happened!"))
         .when(mapper)
         .readValue(anyString(), any(Class.class));
 

@@ -2,8 +2,8 @@ package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.services.FhirServicesClient;
 import cms.gov.madie.measure.services.VirusScanClient;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.HapiOperationOutcome;
 import gov.cms.madie.models.scanner.ScanValidationDto;
@@ -54,7 +54,7 @@ class ValidationControllerTest {
   @Captor ArgumentCaptor<String> accessTokenCaptor;
 
   @Test
-  void testValidateBundleProxiesRequest() throws JsonProcessingException {
+  void testValidateBundleProxiesRequest() {
     final String accessToken = "Bearer TOKEN";
     final String testCaseJson = "{ \"resourceType\": \"GOOD JSON\" }";
     HttpHeaders headers = new HttpHeaders();
@@ -86,7 +86,7 @@ class ValidationControllerTest {
   }
 
   @Test
-  void testValidateBundleBadRequest() throws JsonProcessingException {
+  void testValidateBundleBadRequest() {
     final String accessToken = "Bearer TOKEN";
     final String testCaseJson = "{ \"resourceType\": \"GOOD JSON\" }";
     HttpHeaders headers = new HttpHeaders();
@@ -97,7 +97,7 @@ class ValidationControllerTest {
         .thenReturn(
             ResponseEntity.ok(HapiOperationOutcome.builder().code(200).successful(true).build()));
 
-    when(mapper.writeValueAsString(any())).thenThrow(new JsonProcessingException("BadJson") {});
+    when(mapper.writeValueAsString(any())).thenThrow(new JacksonException("BadJson") {});
 
     ResponseEntity<String> output =
         validationController.validateBundle(

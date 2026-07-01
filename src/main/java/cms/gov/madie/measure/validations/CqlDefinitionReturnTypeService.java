@@ -2,7 +2,6 @@ package cms.gov.madie.measure.validations;
 
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -11,10 +10,10 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 
 import cms.gov.madie.measure.exceptions.InvalidFhirGroupException;
 import cms.gov.madie.measure.exceptions.InvalidGroupException;
@@ -30,8 +29,7 @@ public class CqlDefinitionReturnTypeService {
    * Validate cql definition return types of a group against population basis. Group can have cql
    * definitions for populations, stratifications and observations
    */
-  public void validateCqlDefinitionReturnTypes(Group group, String elmJson)
-      throws JsonProcessingException {
+  public void validateCqlDefinitionReturnTypes(Group group, String elmJson) {
     if (group.getScoring().equals(MeasureScoring.COMPOSITE.toString())) {
       return;
     }
@@ -85,7 +83,7 @@ public class CqlDefinitionReturnTypeService {
     try {
       Map<String, String> cqlDefinitionReturnTypes = getCqlDefinitionReturnTypes(elmJson);
       result = cqlDefinitionReturnTypes.containsKey(sde.getDefinition());
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       log.error("Error reading elmJson", e);
       result = false;
     }
@@ -98,10 +96,8 @@ public class CqlDefinitionReturnTypeService {
    *
    * @param elmJson
    * @return
-   * @throws JsonProcessingException
    */
-  private Map<String, String> getCqlDefinitionReturnTypes(String elmJson)
-      throws JsonProcessingException {
+  private Map<String, String> getCqlDefinitionReturnTypes(String elmJson) {
     Map<String, String> returnTypes = new HashMap<>();
     if (StringUtils.isEmpty(elmJson)) {
       return returnTypes;
@@ -115,9 +111,7 @@ public class CqlDefinitionReturnTypeService {
         String dataType = node.get("resultTypeName").asText();
         returnTypes.put(node.get("name").asText(), dataType.split("}")[1]);
       } else if (node.get("resultTypeSpecifier") != null) {
-        Iterator<JsonNode> typeSpecifierIterator = node.get("resultTypeSpecifier").elements();
-        while (typeSpecifierIterator.hasNext()) {
-          JsonNode current = typeSpecifierIterator.next();
+        for (JsonNode current : node.get("resultTypeSpecifier").values()) {
           if (current.has("type") && current.get("type").asText().equals("NamedTypeSpecifier")) {
             returnTypes.put(node.get("name").asText(), current.get("name").asText().split("}")[1]);
           }
@@ -129,7 +123,7 @@ public class CqlDefinitionReturnTypeService {
   }
 
   public String validateCqlDefinitionReturnTypesForQdm(
-      Group group, String elmJson, boolean patientBased) throws JsonProcessingException {
+      Group group, String elmJson, boolean patientBased) {
     Map<String, String> cqlDefinitionReturnTypes = getCqlDefinitionReturnTypes(elmJson);
     if (cqlDefinitionReturnTypes.isEmpty()) {
       throw new IllegalArgumentException("No definitions found.");

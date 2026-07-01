@@ -140,7 +140,7 @@ public class FhirServicesClient {
   }
 
   private URI buildMadieFhirServiceUri(String bundleType, String fhirServiceUri) {
-    return UriComponentsBuilder.fromHttpUrl(
+    return UriComponentsBuilder.fromUriString(
             fhirServicesConfig.getMadieFhirServiceBaseUrl() + fhirServiceUri)
         .queryParam("bundleType", bundleType)
         .build()

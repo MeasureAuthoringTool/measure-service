@@ -1,5 +1,4 @@
 spring:
-   data:
-      mongodb:
-         uri: mongodb://gakins:E5press0@madie-mongo:27017/madie?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
+   mongodb:
+      uri: mongodb://gakins:E5press0@madie-mongo:27017/madie?authSource=admin&maxPoolSize=50&connectTimeoutMS=2000&serverSelectionTimeoutMS=2000
 

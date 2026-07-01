@@ -2,10 +2,9 @@ mongock:
   enabled: false
 
 spring:
-  data:
-    mongodb:
-      database: test
-      uri: mongodb://test/test
+  mongodb:
+    database: test
+    uri: mongodb://test/test
 
 madie:
   user-service:
