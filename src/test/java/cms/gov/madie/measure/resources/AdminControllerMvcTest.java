@@ -27,7 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -37,10 +37,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 import java.security.Principal;
 import java.util.ArrayList;
@@ -1389,10 +1388,9 @@ public class AdminControllerMvcTest {
     assertTrue(result.getResponse().getContentAsString().contains("false"));
   }
 
-  private String toJsonString(Object obj) throws JsonProcessingException {
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.registerModule(new JavaTimeModule());
-    mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+  private String toJsonString(Object obj) {
+    ObjectMapper mapper =
+        JsonMapper.builder().disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS).build();
     return mapper.writeValueAsString(obj);
   }
 
@@ -1643,7 +1641,7 @@ public class AdminControllerMvcTest {
     ObjectMapper mapper = new ObjectMapper();
     List<Organization> persistedOrganizations =
         mapper.readValue(
-            content, new com.fasterxml.jackson.core.type.TypeReference<List<Organization>>() {});
+            content, new tools.jackson.core.type.TypeReference<List<Organization>>() {});
     assertEquals(organizationList.size(), persistedOrganizations.size());
     for (int i = 0; i < organizationList.size(); i++) {
       assertEquals(organizationList.get(i).getName(), persistedOrganizations.get(i).getName());

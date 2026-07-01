@@ -4,7 +4,6 @@ import cms.gov.madie.measure.exceptions.InvalidMeasureObservationException;
 import cms.gov.madie.measure.exceptions.InvalidReturnTypeException;
 import cms.gov.madie.measure.validations.CqlDefinitionReturnTypeService;
 import cms.gov.madie.measure.validations.CqlObservationFunctionService;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import gov.cms.madie.models.measure.*;
 import gov.cms.madie.models.validators.ValidLibraryNameValidator;
 import gov.cms.madie.models.common.IncludedLibrary;
@@ -58,7 +57,7 @@ class MeasureUtilTest {
   }
 
   @Test
-  public void testNoSupplementalData_ValidJson() throws JsonProcessingException {
+  public void testNoSupplementalData_ValidJson() {
 
     Measure measure = Measure.builder().elmJson("{}").build();
 
@@ -72,8 +71,7 @@ class MeasureUtilTest {
   }
 
   @Test
-  public void testCqlDefinitionNotPresentForSupplementalData_ValidJson()
-      throws JsonProcessingException {
+  public void testCqlDefinitionNotPresentForSupplementalData_ValidJson() {
     DefDescPair supplementalData =
         DefDescPair.builder()
             .definition("THIS_DEFINITION")
@@ -102,8 +100,7 @@ class MeasureUtilTest {
   }
 
   @Test
-  public void testCqlDefinitionNotPresentForRiskAdjustmentValidJson()
-      throws JsonProcessingException {
+  public void testCqlDefinitionNotPresentForRiskAdjustmentValidJson() {
     DefDescPair riskAdjustmentVariables =
         DefDescPair.builder()
             .definition("THIS_DEFINITION")
@@ -132,8 +129,7 @@ class MeasureUtilTest {
   }
 
   @Test
-  public void testCqlDefinitionPresentForSupplementalDataValidJson()
-      throws JsonProcessingException {
+  public void testCqlDefinitionPresentForSupplementalDataValidJson() {
     DefDescPair supplementalData =
         DefDescPair.builder()
             .definition("THIS_DEFINITION")
@@ -162,8 +158,7 @@ class MeasureUtilTest {
   }
 
   @Test
-  public void testCqlDefinitionNotPresentForSupplementalDataNullElm()
-      throws JsonProcessingException {
+  public void testCqlDefinitionNotPresentForSupplementalDataNullElm() {
     DefDescPair supplementalData =
         DefDescPair.builder()
             .definition("THIS_DEFINITION")
@@ -350,8 +345,8 @@ class MeasureUtilTest {
   }
 
   @Test
-  public void testValidateAllMeasureGroupReturnTypesReturnsMeasureWithErrorForGroupsExistButNoElm()
-      throws JsonProcessingException {
+  public void
+      testValidateAllMeasureGroupReturnTypesReturnsMeasureWithErrorForGroupsExistButNoElm() {
     Measure measure =
         Measure.builder()
             .elmJson(null)
@@ -434,7 +429,7 @@ class MeasureUtilTest {
   }
 
   @Test
-  public void testIsGroupReturnTypesValidReturnsTrue() throws JsonProcessingException {
+  public void testIsGroupReturnTypesValidReturnsTrue() {
     doNothing()
         .when(cqlDefinitionReturnTypeService)
         .validateCqlDefinitionReturnTypes(any(Group.class), anyString());
@@ -447,8 +442,7 @@ class MeasureUtilTest {
   }
 
   @Test
-  public void testIsGroupReturnTypesValidReturnsFalseForCqlDefinitionReturnTypesException()
-      throws JsonProcessingException {
+  public void testIsGroupReturnTypesValidReturnsFalseForCqlDefinitionReturnTypesException() {
     doThrow(new InvalidReturnTypeException("DEFINITIONS"))
         .when(cqlDefinitionReturnTypeService)
         .validateCqlDefinitionReturnTypes(any(Group.class), anyString());
@@ -461,8 +455,7 @@ class MeasureUtilTest {
   }
 
   @Test
-  public void testIsGroupReturnTypesValidReturnsFalseForObservationsReturnTypesException()
-      throws JsonProcessingException {
+  public void testIsGroupReturnTypesValidReturnsFalseForObservationsReturnTypesException() {
     doNothing()
         .when(cqlDefinitionReturnTypeService)
         .validateCqlDefinitionReturnTypes(any(Group.class), anyString());

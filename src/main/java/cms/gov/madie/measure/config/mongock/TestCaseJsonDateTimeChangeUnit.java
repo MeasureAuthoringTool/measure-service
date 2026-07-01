@@ -1,13 +1,13 @@
 package cms.gov.madie.measure.config.mongock;
 
-import java.io.IOException;
+import tools.jackson.core.JacksonException;
 import java.util.List;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
@@ -54,7 +54,7 @@ public class TestCaseJsonDateTimeChangeUnit {
                               JsonUtil.replaceNestedDateTimeStringValue(rootNode);
                               String modifiedJsonString = mapper.writeValueAsString(rootNode);
                               testCase.setJson(modifiedJsonString);
-                            } catch (IOException e) {
+                            } catch (JacksonException e) {
                               log.error("Invalid test case json");
                             }
                           }

@@ -7,7 +7,7 @@ import cms.gov.madie.measure.utils.GroupPopulationUtil;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.validations.CqlDefinitionReturnTypeService;
 import cms.gov.madie.measure.validations.CqlObservationFunctionService;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import tools.jackson.core.JacksonException;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Component;
 import gov.cms.madie.models.measure.Group;
@@ -503,7 +503,7 @@ public class GroupService {
     try {
       cqlDefinitionReturnTypeService.validateCqlDefinitionReturnTypes(group, measure.getElmJson());
       cqlObservationFunctionService.validateObservationFunctions(group, measure.getElmJson());
-    } catch (JsonProcessingException ex) {
+    } catch (JacksonException ex) {
       log.error(
           "An error occurred while validating population "
               + "definition return types for FHIR measure {}",
@@ -519,7 +519,7 @@ public class GroupService {
     try {
       cqlDefinitionReturnTypeService.validateCqlDefinitionReturnTypesForQdm(
           group, measure.getElmJson(), qdmMeasure.isPatientBasis());
-    } catch (JsonProcessingException ex) {
+    } catch (JacksonException ex) {
       log.error(
           "An error occurred while validating population "
               + "definition return types for QDM measure {}",

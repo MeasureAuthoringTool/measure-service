@@ -2,8 +2,8 @@ package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.services.FhirServicesClient;
 import cms.gov.madie.measure.services.VirusScanClient;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.HapiOperationOutcome;
 import gov.cms.madie.models.scanner.ScanValidationDto;
@@ -50,7 +50,7 @@ public class ValidationController {
               request.getBody(), modelType, accessToken, lenientPatientRefs);
       return ResponseEntity.ok(mapper.writeValueAsString(output.getBody()));
 
-    } catch (JsonProcessingException ex) {
+    } catch (JacksonException ex) {
       return ResponseEntity.badRequest()
           .body(
               "Unable to validate test case JSON due to errors,"

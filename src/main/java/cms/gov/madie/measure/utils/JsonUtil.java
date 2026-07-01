@@ -1,10 +1,10 @@
 package cms.gov.madie.measure.utils;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.node.ObjectNode;
 
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
@@ -23,7 +23,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -64,13 +63,13 @@ public final class JsonUtil {
     try {
       mapper.readTree(json);
       return true;
-    } catch (JsonProcessingException | IllegalArgumentException e) {
+    } catch (JacksonException | IllegalArgumentException e) {
       // do nothing
     }
     return false;
   }
 
-  public static String getPatientId(String json) throws JsonProcessingException {
+  public static String getPatientId(String json) {
     ObjectMapper mapper = new ObjectMapper();
 
     JsonNode jsonNode = mapper.readTree(json);
@@ -91,7 +90,7 @@ public final class JsonUtil {
     return existingPatientId;
   }
 
-  public static String getPatientFullUrl(String json) throws JsonProcessingException {
+  public static String getPatientFullUrl(String json) {
     ObjectMapper mapper = new ObjectMapper();
 
     JsonNode jsonNode = mapper.readTree(json);
@@ -147,8 +146,7 @@ public final class JsonUtil {
     return false;
   }
 
-  public static JsonNode getResourceNode(String json, String resourceType)
-      throws JsonProcessingException {
+  public static JsonNode getResourceNode(String json, String resourceType) {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode jsonNode = mapper.readTree(json);
     JsonNode entries = jsonNode.get("entry");
@@ -167,7 +165,7 @@ public final class JsonUtil {
     return null;
   }
 
-  public static String getPatientName(String json, String type) throws JsonProcessingException {
+  public static String getPatientName(String json, String type) {
     JsonNode resourceNode = getResourceNode(json, "patient");
     if (resourceNode == null) {
       return null;
@@ -190,7 +188,7 @@ public final class JsonUtil {
     return null;
   }
 
-  public static String getTestDescription(String testCaseBundle) throws JsonProcessingException {
+  public static String getTestDescription(String testCaseBundle) {
     JsonNode resourceNode = getResourceNode(testCaseBundle, "MeasureReport");
     if (resourceNode == null || resourceNode.get("extension") == null) {
       return null;
@@ -212,10 +210,9 @@ public final class JsonUtil {
    * @param json
    * @param measurePopulationBasis (whether it's a boolean basis or not )
    * @return
-   * @throws JsonProcessingException
    */
   public static List<TestCaseGroupPopulation> getTestCaseGroupPopulationsFromMeasureReport(
-      String json, boolean measurePopulationBasis, Measure measure) throws JsonProcessingException {
+      String json, boolean measurePopulationBasis, Measure measure) {
     List<TestCaseGroupPopulation> groupPopulations = new ArrayList<>();
     JsonNode resourceNode = getResourceNode(json, "MeasureReport");
     if (resourceNode != null) {
@@ -383,8 +380,7 @@ public final class JsonUtil {
   }
 
   // Use Case 1: All three actions
-  public static String removeMeasureReportEntries(String testCaseJson)
-      throws JsonProcessingException {
+  public static String removeMeasureReportEntries(String testCaseJson) {
     if (!StringUtils.isEmpty(testCaseJson)) {
       ObjectMapper objectMapper = new ObjectMapper();
       JsonNode rootNode = objectMapper.readTree(testCaseJson);
@@ -409,8 +405,7 @@ public final class JsonUtil {
   }
 
   // Use Case 2: Only first two actions
-  public static String updateBundleTypeAndRemoveRequest(TestCase testCase)
-      throws JsonProcessingException {
+  public static String updateBundleTypeAndRemoveRequest(TestCase testCase) {
     if (!StringUtils.isEmpty(testCase.getJson())) {
       ObjectMapper objectMapper = new ObjectMapper();
       JsonNode rootNode = objectMapper.readTree(testCase.getJson());
@@ -453,7 +448,7 @@ public final class JsonUtil {
           }
         }
         return modifiedJsonString;
-      } catch (JsonProcessingException e) {
+      } catch (JacksonException e) {
         log.error("Error reading testCaseJson testCaseId = " + testCase.getId(), e);
       }
     }
@@ -489,7 +484,7 @@ public final class JsonUtil {
       } else {
         return jsonNodeToString(mapper, rootNode);
       }
-    } catch (JsonProcessingException ex) {
+    } catch (JacksonException ex) {
       log.error("Error reading testCaseJson testCaseId = " + testCase.getId(), ex);
     }
     return testCase.getJson();
@@ -505,7 +500,7 @@ public final class JsonUtil {
     return bout.toString();
   }
 
-  public static String getPatientNameQdm(String json, String type) throws JsonProcessingException {
+  public static String getPatientNameQdm(String json, String type) {
     JsonNode resourceNode = getResourceNodeQdm(json, type);
     if (resourceNode == null) {
       return null;
@@ -518,15 +513,14 @@ public final class JsonUtil {
     return resourceNode.asText();
   }
 
-  public static JsonNode getResourceNodeQdm(String json, String resourceType)
-      throws JsonProcessingException {
+  public static JsonNode getResourceNodeQdm(String json, String resourceType) {
     ObjectMapper mapper = new ObjectMapper();
     JsonNode jsonNode = mapper.readTree(json);
     return jsonNode.get(resourceType);
   }
 
   public static List<TestCaseGroupPopulation> getTestCaseGroupPopulationsQdm(
-      String json, Measure measure) throws JsonProcessingException {
+      String json, Measure measure) {
     List<TestCaseGroupPopulation> groupPopulations = new ArrayList<>();
     JsonNode populations = getResourceNodeQdm(json, "expectedValues");
     if (populations != null) {
@@ -722,7 +716,7 @@ public final class JsonUtil {
     return null;
   }
 
-  public static String getTestDescriptionQdm(String json) throws JsonProcessingException {
+  public static String getTestDescriptionQdm(String json) {
     JsonNode notesNode = getResourceNodeQdm(json, "notes");
     if (notesNode != null) {
       return notesNode.asText();
@@ -730,7 +724,7 @@ public final class JsonUtil {
     return null;
   }
 
-  public static String getTestCaseJson(String json) throws JsonProcessingException {
+  public static String getTestCaseJson(String json) {
     JsonNode patientNode = getResourceNodeQdm(json, "qdmPatient");
     if (patientNode != null) {
       return patientNode.toPrettyString();
@@ -746,7 +740,7 @@ public final class JsonUtil {
         JsonNode rootNode = mapper.readTree(json);
         JsonUtil.replaceNestedDateTimeStringValue(rootNode);
         convertedJson = mapper.writeValueAsString(rootNode);
-      } catch (IOException e) {
+      } catch (JacksonException e) {
         log.error("Invalid test case json");
       }
     }
@@ -758,15 +752,13 @@ public final class JsonUtil {
     if (node.isObject()) {
       ObjectNode objectNode = (ObjectNode) node;
       objectNode
-          .fields()
-          .forEachRemaining(
+          .properties()
+          .forEach(
               entry -> {
                 String fieldName = entry.getKey();
                 JsonNode childNode = entry.getValue();
-                String currentValue = childNode.asText();
-                String newValue = getNewValue(currentValue);
                 if (childNode.isTextual()) {
-                  objectNode.put(fieldName, newValue);
+                  objectNode.put(fieldName, getNewValue(childNode.asText()));
                 } else {
                   replaceNestedDateTimeStringValue(childNode);
                 }

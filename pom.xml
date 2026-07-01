@@ -4,7 +4,7 @@
   <parent>
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
-    <version>3.5.14</version>
+    <version>4.0.7</version>
     <relativePath></relativePath>
     <!-- lookup parent from repository -->
   </parent>
@@ -16,13 +16,12 @@
   <properties>
     <cqframework.version>3.27.0</cqframework.version>
     <java.version>17</java.version>
-    <junit-jupiter.version>5.10.3</junit-jupiter.version>
     <mvn.checkstyle.file>madie-checkstyle.xml</mvn.checkstyle.file>
     <mvn.checkstyle.version>3.1.2</mvn.checkstyle.version>
     <mvnreports.version>3.1.1</mvnreports.version>
     <mvnsite.version>3.9.1</mvnsite.version>
     <org.fhir.ucum.version>1.0.9</org.fhir.ucum.version>
-    <springdoc.version>2.8.10</springdoc.version>
+    <springdoc.version>3.0.3</springdoc.version>
   </properties>
 
   <!--  https://docs.mongock.io/index.html  -->
@@ -32,26 +31,6 @@
 
       <!-- START: needed to fix mismatched versions coming from above
 			mongock -->
-      <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter-api</artifactId>
-        <version>${junit-jupiter.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter</artifactId>
-        <version>${junit-jupiter.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter-params</artifactId>
-        <version>${junit-jupiter.version}</version>
-      </dependency>
-      <dependency>
-        <groupId>org.junit.jupiter</groupId>
-        <artifactId>junit-jupiter-engine</artifactId>
-        <version>${junit-jupiter.version}</version>
-      </dependency>
       <dependency>
         <groupId>org.fhir</groupId>
         <artifactId>ucum</artifactId>
@@ -94,7 +73,7 @@
 
     <dependency>
       <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-web</artifactId>
+      <artifactId>spring-boot-starter-webmvc</artifactId>
       <exclusions>
         <exclusion>
           <artifactId>log4j-to-slf4j</artifactId>
@@ -108,6 +87,10 @@
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-restclient</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-cache</artifactId>
     </dependency>
     <dependency>
@@ -117,6 +100,14 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-security-oauth2-client</artifactId>
     </dependency>
     <dependency>
       <groupId>org.springframework.boot</groupId>
@@ -137,7 +128,7 @@
     <dependency>
       <groupId>com.okta.spring</groupId>
       <artifactId>okta-spring-boot-starter</artifactId>
-      <version>3.0.7</version>
+      <version>3.1.0</version>
       <exclusions>
         <exclusion>
           <artifactId>spring-security-web</artifactId>
@@ -164,12 +155,12 @@
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-java-models</artifactId>
-      <version>0.9.8-SNAPSHOT</version>
+      <version>0.10.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-rest-commons</artifactId>
-      <version>1.0.6-SNAPSHOT</version>
+      <version>1.1.0-SNAPSHOT</version>
     </dependency>
     <dependency>
       <groupId>info.cqframework</groupId>
@@ -262,6 +253,11 @@
       </exclusions>
     </dependency>
 
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-webmvc-test</artifactId>
+      <scope>test</scope>
+    </dependency>
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-test</artifactId>

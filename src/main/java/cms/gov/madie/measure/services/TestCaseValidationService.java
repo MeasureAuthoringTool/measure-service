@@ -5,8 +5,8 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.JsonUtil;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.HapiOperationOutcome;
 import gov.cms.madie.models.measure.Measure;
@@ -263,11 +263,11 @@ public class TestCaseValidationService {
           ex);
       try {
         return HapiOperationOutcome.builder()
-            .code(ex.getRawStatusCode())
+            .code(ex.getStatusCode().value())
             .message("Unable to validate test case JSON due to errors")
             .outcomeResponse(mapper.readValue(ex.getResponseBodyAsString(), Object.class))
             .build();
-      } catch (JsonProcessingException e) {
+      } catch (JacksonException e) {
         return handleJsonProcessingException();
       }
     } catch (Exception ex) {

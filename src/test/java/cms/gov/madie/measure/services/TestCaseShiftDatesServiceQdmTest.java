@@ -9,6 +9,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+
+import org.json.JSONException;
+import org.skyscreamer.jsonassert.JSONAssert;
+import org.skyscreamer.jsonassert.JSONCompareMode;
 import static org.mockito.Mockito.doReturn;
 
 import java.security.Principal;
@@ -101,7 +105,7 @@ public class TestCaseShiftDatesServiceQdmTest {
   }
 
   @Test
-  public void shiftDatesForTestCaseNoDataElement() {
+  public void shiftDatesForTestCaseNoDataElement() throws JSONException {
     String jsonInvalid =
         "{\"_id\":\"66698bcec3b50c0000acc383\",\"qdmVersion\":\"5.6\",\"dataElements\":[]}";
     testCase.setJson(jsonInvalid);
@@ -110,7 +114,7 @@ public class TestCaseShiftDatesServiceQdmTest {
 
     assertNotNull(modified);
     assertFalse(modified.getJson().contains("2025"));
-    assertEquals(jsonInvalid, modified.getJson());
+    JSONAssert.assertEquals(jsonInvalid, modified.getJson(), JSONCompareMode.STRICT);
   }
 
   @Test

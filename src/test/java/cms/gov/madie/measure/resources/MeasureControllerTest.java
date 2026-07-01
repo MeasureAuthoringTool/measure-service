@@ -211,7 +211,7 @@ class MeasureControllerTest {
     doReturn(empty).when(repository).findByIdAndActive(id, true);
     response = controller.getMeasure(id, principal);
     assertNull(response.getBody());
-    assertEquals(response.getStatusCodeValue(), 404);
+    assertEquals(response.getStatusCode().value(), 404);
   }
 
   @Test
@@ -1406,7 +1406,7 @@ class MeasureControllerTest {
     ResponseEntity<List<MeasureListDTO>> response = controller.getMeasuresByIds(emptyIds);
 
     assertNotNull(response);
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(200, response.getStatusCode().value());
     assertNotNull(response.getBody());
     assertTrue(response.getBody().isEmpty());
 
@@ -1431,7 +1431,7 @@ class MeasureControllerTest {
     ResponseEntity<List<MeasureListDTO>> response = controller.getMeasuresByIds(ids);
 
     assertNotNull(response);
-    assertEquals(200, response.getStatusCodeValue());
+    assertEquals(200, response.getStatusCode().value());
     assertNotNull(response.getBody());
     assertEquals(2, response.getBody().size());
 

@@ -1,7 +1,7 @@
 package cms.gov.madie.measure.config.mongock;
 
 import cms.gov.madie.measure.repositories.PopulationBasisRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.common.PopulationBasis;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;

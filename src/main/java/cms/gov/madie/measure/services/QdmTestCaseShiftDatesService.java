@@ -12,9 +12,9 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.core.JacksonException;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 
 import cms.gov.madie.measure.dto.LockInfo;
 import cms.gov.madie.measure.exceptions.CqmConversionException;
@@ -34,9 +34,10 @@ public class QdmTestCaseShiftDatesService {
   private final AppConfigService appConfigService;
 
   private ObjectMapper mapper =
-      new ObjectMapper()
-          .registerModule(new JavaTimeModule())
-          .setSerializationInclusion(JsonInclude.Include.NON_NULL);
+      JsonMapper.builder()
+          .changeDefaultPropertyInclusion(
+              incl -> incl.withValueInclusion(JsonInclude.Include.NON_NULL))
+          .build();
 
   private static final String SEPARATOR = " |\n";
 
@@ -120,11 +121,11 @@ public class QdmTestCaseShiftDatesService {
       }
       String newJson = mapper.writeValueAsString(testCaseJson);
       testCase.setJson(newJson);
-    } catch (JsonProcessingException e) {
+    } catch (JacksonException e) {
       log.error(
           "An issue occurred while shifting the test case dates for the test case id: "
               + testCase.getId()
-              + " JsonProcessingException -> "
+              + " JacksonException -> "
               + e.getMessage());
       throw new CqmConversionException(testCase.getTitle() + " - " + testCase.getId() + SEPARATOR);
     } catch (Exception e) {

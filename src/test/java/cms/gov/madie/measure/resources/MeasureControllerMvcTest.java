@@ -1,6 +1,10 @@
 package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.config.security.SecurityConfigTest;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.skyscreamer.jsonassert.JSONAssert;
+import org.skyscreamer.jsonassert.JSONCompareMode;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.SharedUser;
@@ -9,10 +13,9 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.repositories.TestCasePatchRepository;
 import cms.gov.madie.measure.services.*;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
 import com.google.gson.Gson;
 
 import gov.cms.madie.models.access.AclSpecification;
@@ -27,7 +30,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -60,6 +63,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest({MeasureController.class})
+@ExtendWith(MockitoExtension.class)
 @ActiveProfiles("test")
 @Import(SecurityConfigTest.class)
 public class MeasureControllerMvcTest {
@@ -100,10 +104,9 @@ public class MeasureControllerMvcTest {
   private static final String LIBRARY_NAME_VALIDATION_ERROR =
       "Library name must start with an upper case letter, followed by alpha-numeric character(s) and must not contain spaces or other special characters except of underscore for QDM.";
 
-  public String toJsonString(Object obj) throws JsonProcessingException {
-    ObjectMapper mapper = new ObjectMapper();
-    mapper.registerModule(new JavaTimeModule());
-    mapper.configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
+  public String toJsonString(Object obj) {
+    ObjectMapper mapper =
+        JsonMapper.builder().disable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS).build();
     return mapper.writeValueAsString(obj);
   }
 
@@ -2006,9 +2009,10 @@ public class MeasureControllerMvcTest {
                     .with(csrf()))
             .andReturn();
     assertEquals(result.getResponse().getStatus(), HttpStatus.OK.value());
-    assertEquals(
+    JSONAssert.assertEquals(
+        "[{\"name\":\"Helper\",\"version\":null,\"owner\":\"john\"}]",
         result.getResponse().getContentAsString(),
-        "[{\"name\":\"Helper\",\"version\":null,\"owner\":\"john\"}]");
+        JSONCompareMode.STRICT);
   }
 
   @Test
@@ -2087,9 +2091,10 @@ public class MeasureControllerMvcTest {
             .andExpect(status().isOk())
             .andReturn();
     verify(measureService, times(1)).shareMeasures(any(), anyString(), anyString());
-    assertEquals(
+    JSONAssert.assertEquals(
+        "{\"measureId1\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]}],\"measureId2\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]},{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}",
         result.getResponse().getContentAsString(),
-        "{\"measureId1\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]}],\"measureId2\":[{\"userId\":\"userId1\",\"roles\":[\"SHARED_WITH\"]},{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");
+        JSONCompareMode.STRICT);
   }
 
   @Test
@@ -2143,9 +2148,10 @@ public class MeasureControllerMvcTest {
             .andExpect(status().isOk())
             .andReturn();
     verify(measureService, times(1)).unshareMeasures(any(), anyString(), anyString());
-    assertEquals(
+    JSONAssert.assertEquals(
+        "{\"measureId2\":[{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}",
         result.getResponse().getContentAsString(),
-        "{\"measureId2\":[{\"userId\":\"userId2\",\"roles\":[\"SHARED_WITH\"]}]}");
+        JSONCompareMode.STRICT);
   }
 
   @Test

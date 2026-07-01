@@ -2,10 +2,9 @@ package cms.gov.madie.measure.validations;
 
 import cms.gov.madie.measure.exceptions.InvalidMeasureObservationException;
 import cms.gov.madie.measure.exceptions.InvalidReturnTypeException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.ArrayNode;
 import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.MeasureObservation;
 
@@ -18,8 +17,7 @@ import java.util.*;
 @Service
 public class CqlObservationFunctionService {
 
-  public void validateObservationFunctions(Group group, String elmJson)
-      throws JsonProcessingException {
+  public void validateObservationFunctions(Group group, String elmJson) {
     Map<String, String> observationsToValidPopBasis = mapObservationsToValidPopBasis(elmJson);
 
     List<MeasureObservation> observations = group.getMeasureObservations();
@@ -61,10 +59,8 @@ public class CqlObservationFunctionService {
    *
    * @param elmJson
    * @return
-   * @throws JsonProcessingException
    */
-  private Map<String, String> mapObservationsToValidPopBasis(String elmJson)
-      throws JsonProcessingException {
+  private Map<String, String> mapObservationsToValidPopBasis(String elmJson) {
     // Determine which Population Basis the MO would be valid against.
     Map<String, String> observationPopBasis = new HashMap<>();
     if (StringUtils.isEmpty(elmJson)) {
@@ -107,8 +103,7 @@ public class CqlObservationFunctionService {
   }
 
   public void validateObservationFunctionsForQdm(
-      Group group, String elmJson, boolean patientBasis, String cqlDefinitionReturnType)
-      throws JsonProcessingException {
+      Group group, String elmJson, boolean patientBasis, String cqlDefinitionReturnType) {
     Map<String, String> observationsToValidPopBasis = mapObservationsToValidPopBasis(elmJson);
 
     List<MeasureObservation> observations = group.getMeasureObservations();
