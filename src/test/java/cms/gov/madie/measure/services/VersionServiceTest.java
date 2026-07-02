@@ -1071,6 +1071,66 @@ public class VersionServiceTest {
   }
 
   @Test
+  public void testCreateDraftWithUpdatedModelSuccessfullyUsCore() {
+    ArgumentCaptor<Measure> measureArgumentCaptor = ArgumentCaptor.forClass(Measure.class);
+
+    TestCaseGroupPopulation clonedTestCaseGroupPopulation =
+        TestCaseGroupPopulation.builder()
+            .groupId("clonedGroupId1")
+            .scoring("Cohort")
+            .populationBasis("boolean")
+            .build();
+    Measure versionedMeasure = buildBasicMeasure();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure versionedCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(metaData)
+            .model(ModelType.QI_CORE_6_0_0.getValue())
+            .cql("library TestCQLLib version '2.3.001'\nusing QICore version '6.0.0'\n")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .testCases(
+                List.of(
+                    testCase.toBuilder()
+                        .id(ObjectId.get().toString())
+                        .groupPopulations(List.of(clonedTestCaseGroupPopulation))
+                        .build()))
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
+    when(actionLogService.logAction(anyString(), any(), any(), anyString(), anyString()))
+        .thenReturn(true);
+
+    versionService.createDraft(
+        versionedMeasure.getId(), "Test", "US Quality Core v0.5.0", "test-user", TEST_ACCESS_TOKEN);
+    verify(measureRepository, times(1)).save(measureArgumentCaptor.capture());
+    Measure draft = measureArgumentCaptor.getValue();
+
+    assertThat(draft.getMeasureName(), is(equalTo("Test")));
+    // draft flag to true
+    assertThat(draft.getMeasureMetaData().isDraft(), is(equalTo(true)));
+    // version remains same
+    assertThat(draft.getVersion().getMajor(), is(equalTo(2)));
+    assertThat(draft.getVersion().getMinor(), is(equalTo(3)));
+    assertThat(draft.getVersion().getRevisionNumber(), is(equalTo(1)));
+    assertThat(draft.getGroups().size(), is(equalTo(1)));
+    assertFalse(draft.getGroups().stream().anyMatch(item -> "xyz-p12r-12ert".equals(item.getId())));
+    assertThat(draft.getTestCases().size(), is(equalTo(1)));
+    assertFalse(draft.getGroups().stream().anyMatch(item -> "testId1".equals(item.getId())));
+    assertThat(
+        draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(), notNullValue());
+    assertThat(draft.getModel(), is(equalTo(ModelType.US_QUALITY_CORE_0_5_0.getValue())));
+    assertThat(draft.getCql(), containsStringIgnoringCase("using USCore version '0.5.0'"));
+  }
+
+  @Test
   public void testCreateDraftDropsExtraGroupPopulationsWhenTestCaseHasMoreGroupsThanMeasure() {
     // Test case has 2 group populations but target measure only has 1 group.
     // The extra group population should be silently dropped to prevent IndexOutOfBoundsException.

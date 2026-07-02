@@ -19,6 +19,7 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
@@ -76,6 +77,7 @@ public class VersionService {
     return VersionValidationResult.VALID;
   }
 
+  @Transactional
   public Measure createVersion(String id, String versionType, String username, String accessToken) {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
@@ -223,6 +225,7 @@ public class VersionService {
     return measure;
   }
 
+  @Transactional
   public Measure createDraft(
       String id, String measureName, String model, String username, String accessToken) {
     Measure measure =
@@ -341,10 +344,18 @@ public class VersionService {
   private String updateUsingStatement(String model, String cql) {
     Pattern qicorePattern = Pattern.compile("using QICore .*version '[0-9]\\.[0-9](\\.[0-9])?'");
     Matcher matcher = qicorePattern.matcher(cql);
+    String standards = "QICore";
+    if (model.equalsIgnoreCase(ModelType.US_QUALITY_CORE_0_5_0.getValue())) {
+      standards = "USCore";
+    }
     if (matcher.find()) {
       cql =
           matcher.replaceAll(
-              "using QICore version '" + model.substring(model.lastIndexOf("v") + 1) + "'");
+              "using "
+                  + standards
+                  + " version '"
+                  + model.substring(model.lastIndexOf("v") + 1)
+                  + "'");
     }
     return cql;
   }
