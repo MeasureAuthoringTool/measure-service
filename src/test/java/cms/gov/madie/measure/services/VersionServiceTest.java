@@ -73,6 +73,8 @@ public class VersionServiceTest {
 
   @Mock private MeasureLockService measureLockService;
 
+  @Mock private BundleService bundleService;
+
   @Captor private ArgumentCaptor<Measure> measureCaptor;
   @Captor private ArgumentCaptor<CqmMeasure> cqmMeasureCaptor;
   @Captor private ArgumentCaptor<Export> exportArgumentCaptor;
@@ -665,6 +667,119 @@ public class VersionServiceTest {
     assertEquals(savedValue.getId(), capturedExport.getMeasureId());
     assertEquals("hex1", capturedExport.getMeasureBundleGridFsId());
     assertEquals("hex2", capturedExport.getMeasureBundleWithoutWarningsGridFsId());
+  }
+
+  @Test
+  public void testCreateVersionCompositeMeasureSuccessWithNoCql() {
+    FhirMeasure existingMeasure =
+        FhirMeasure.builder()
+            .id("testMeasureId")
+            .measureSetId("testMeasureSetId")
+            .createdBy("testUser")
+            .cql(null)
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .model(ModelType.QI_CORE.getValue())
+            .measureSet(measureSet)
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    metaData.setComposite(true);
+    existingMeasure.setMeasureMetaData(metaData);
+    existingMeasure.setVersion(Version.builder().major(2).minor(3).revisionNumber(1).build());
+
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+    when(measureRepository.findMaxVersionByMeasureSetId(anyString()))
+        .thenReturn(Optional.of(Version.builder().major(2).minor(3).revisionNumber(1).build()));
+
+    Measure updatedMeasure = existingMeasure.toBuilder().build();
+    updatedMeasure.setVersion(Version.builder().major(3).minor(0).revisionNumber(0).build());
+    MeasureMetaData updatedMetaData = new MeasureMetaData();
+    updatedMetaData.setDraft(false);
+    updatedMetaData.setComposite(true);
+    updatedMeasure.setMeasureMetaData(updatedMetaData);
+    when(measureRepository.save(any(Measure.class))).thenReturn(updatedMeasure);
+
+    factory.when(() -> PackagingUtilityFactory.getInstance(MODEL_QI_CORE)).thenReturn(utility);
+
+    String compositeBundleJson =
+        """
+            {"resourceType": "Bundle","entry": [ {
+                "resource": {
+                  "resourceType": "Measure","text":{"div":"humanReadable"}}}]}""";
+    List<Export.ComponentHumanReadable> componentHumanReadables =
+        List.of(
+            Export.ComponentHumanReadable.builder()
+                .componentId("component-measure-id")
+                .fileName("ComponentMeasure-v1.0.000-FHIR")
+                .humanReadable("<html>component human readable</html>")
+                .build());
+    when(bundleService.buildCompositeVersionArtifacts(any(Measure.class), anyString()))
+        .thenReturn(
+            new BundleService.CompositeVersionArtifacts(
+                compositeBundleJson, compositeBundleJson, componentHumanReadables));
+
+    Export measureExport =
+        Export.builder()
+            .id("testId")
+            .measureId("testMeasureId")
+            .measureBundleJson(compositeBundleJson)
+            .build();
+    when(exportRepository.save(any(Export.class))).thenReturn(measureExport);
+
+    ObjectId measureBundleId = mock(ObjectId.class);
+    when(measureBundleId.toHexString()).thenReturn("hex1");
+    ObjectId measureBundleWithoutWarningsId = mock(ObjectId.class);
+    when(measureBundleWithoutWarningsId.toHexString()).thenReturn("hex2");
+    when(mongoGridFsService.save(any(ByteArrayInputStream.class), anyString(), anyString()))
+        .thenReturn(measureBundleId, measureBundleWithoutWarningsId);
+
+    versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken");
+
+    verify(bundleService, times(1)).buildCompositeVersionArtifacts(any(Measure.class), anyString());
+    // composites skip CQL/ELM validation
+    verify(elmTranslatorClient, never()).getElmJson(anyString(), anyString(), anyString());
+    verify(elmToJsonService, never()).retrieveElmJson(any(Measure.class), anyString(), anyString());
+
+    verify(measureRepository, times(1)).save(measureCaptor.capture());
+    Measure savedValue = measureCaptor.getValue();
+    assertEquals(3, savedValue.getVersion().getMajor());
+    assertFalse(savedValue.getMeasureMetaData().isDraft());
+
+    verify(exportRepository, times(1)).save(exportArgumentCaptor.capture());
+    Export capturedExport = exportArgumentCaptor.getValue();
+    assertEquals(savedValue.getId(), capturedExport.getMeasureId());
+    assertEquals("hex1", capturedExport.getMeasureBundleGridFsId());
+    assertEquals("hex2", capturedExport.getMeasureBundleWithoutWarningsGridFsId());
+    assertEquals(componentHumanReadables, capturedExport.getComponentHumanReadables());
+  }
+
+  @Test
+  public void testCreateVersionCompositeMeasureFailsWithNoPopulationCriteria() {
+    FhirMeasure existingMeasure =
+        FhirMeasure.builder()
+            .id("testMeasureId")
+            .measureSetId("testMeasureSetId")
+            .createdBy("testUser")
+            .cql(null)
+            .groups(List.of())
+            .model(ModelType.QI_CORE.getValue())
+            .measureSet(measureSet)
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    metaData.setComposite(true);
+    existingMeasure.setMeasureMetaData(metaData);
+    existingMeasure.setVersion(Version.builder().major(1).minor(0).revisionNumber(0).build());
+
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+
+    BadVersionRequestException ex =
+        assertThrows(
+            BadVersionRequestException.class,
+            () ->
+                versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+    assertTrue(ex.getMessage().contains("Population Criteria"));
+    verify(bundleService, never()).buildCompositeVersionArtifacts(any(Measure.class), anyString());
   }
 
   @Test

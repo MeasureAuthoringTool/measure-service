@@ -2,7 +2,9 @@ package cms.gov.madie.measure.services;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -137,22 +139,7 @@ public class BundleService {
 
   private String bundleCompositeMeasure(
       Measure measure, String accessToken, String bundleType, String elmErrorSeverity) {
-    try {
-      populateComponentDetails(measure);
-      String compositeBundle =
-          fhirServicesClient.getMeasureBundle(measure, accessToken, bundleType, elmErrorSeverity);
-      List<Export> componentExports = getComponentExports(measure, elmErrorSeverity);
-      PackagingUtility utility = getPackagingUtility(measure.getModel());
-      return utility.buildCompositeMeasureBundle(compositeBundle, componentExports);
-    } catch (RestClientException
-        | InstantiationException
-        | IllegalAccessException
-        | InvocationTargetException
-        | NoSuchMethodException
-        | ClassNotFoundException ex) {
-      log.error("An error occurred while bundling composite measure {}", measure.getId(), ex);
-      throw new BundleOperationException("Measure", measure.getId(), ex);
-    }
+    return generateCompositeBundle(measure, accessToken, bundleType, elmErrorSeverity).bundleJson();
   }
 
   private String bundleStandardMeasure(
@@ -182,6 +169,68 @@ public class BundleService {
     log.error(
         "Bundle with warnings is not available for versioned measure with id: {}", measure.getId());
     throw new BundleOperationException("Measure", measure.getId(), null);
+  }
+
+  /**
+   * Builds the artifacts persisted when versioning a composite: the merged composite bundle both
+   * with ELM warnings ("Info" severity) and without ("Error" severity) and a snapshot of each
+   * component's human-readable.
+   */
+  CompositeVersionArtifacts buildCompositeVersionArtifacts(Measure measure, String accessToken) {
+    CompositeBundleResult withWarnings =
+        generateCompositeBundle(measure, accessToken, "export", "Info");
+    CompositeBundleResult withoutWarnings =
+        generateCompositeBundle(measure, accessToken, "export", "Error");
+    List<Export.ComponentHumanReadable> componentHumanReadables =
+        buildComponentHumanReadables(withWarnings.componentExports());
+    return new CompositeVersionArtifacts(
+        withWarnings.bundleJson(), withoutWarnings.bundleJson(), componentHumanReadables);
+  }
+
+  private CompositeBundleResult generateCompositeBundle(
+      Measure measure, String accessToken, String bundleType, String elmErrorSeverity) {
+    try {
+      populateComponentDetails(measure);
+      String compositeBundle =
+          fhirServicesClient.getMeasureBundle(measure, accessToken, bundleType, elmErrorSeverity);
+      List<Export> componentExports = getComponentExports(measure, elmErrorSeverity);
+      PackagingUtility utility = getPackagingUtility(measure.getModel());
+      String bundleJson = utility.buildCompositeMeasureBundle(compositeBundle, componentExports);
+      return new CompositeBundleResult(bundleJson, componentExports);
+    } catch (RestClientException
+        | InstantiationException
+        | IllegalAccessException
+        | InvocationTargetException
+        | NoSuchMethodException
+        | ClassNotFoundException ex) {
+      log.error("An error occurred while bundling composite measure {}", measure.getId(), ex);
+      throw new BundleOperationException("Measure", measure.getId(), ex);
+    }
+  }
+
+  /** Snapshots each component's stored human-readable */
+  private List<Export.ComponentHumanReadable> buildComponentHumanReadables(
+      List<Export> componentExports) {
+    List<Export.ComponentHumanReadable> componentHumanReadables = new ArrayList<>();
+    if (CollectionUtils.isEmpty(componentExports)) {
+      return componentHumanReadables;
+    }
+    Map<String, Measure> measuresById = new HashMap<>();
+    measureRepository
+        .findAllById(componentExports.stream().map(Export::getMeasureId).toList())
+        .forEach(componentMeasure -> measuresById.put(componentMeasure.getId(), componentMeasure));
+    for (Export componentExport : componentExports) {
+      Measure componentMeasure = measuresById.get(componentExport.getMeasureId());
+      if (componentMeasure != null) {
+        componentHumanReadables.add(
+            Export.ComponentHumanReadable.builder()
+                .componentId(componentExport.getMeasureId())
+                .fileName(ExportFileNamesUtil.getExportFileName(componentMeasure))
+                .humanReadable(componentExport.getHumanReadable())
+                .build());
+      }
+    }
+    return componentHumanReadables;
   }
 
   private Export fetchExportForMeasure(String measureId, String elmErrorSeverity) {
@@ -284,4 +333,13 @@ public class BundleService {
           ClassNotFoundException {
     return PackagingUtilityFactory.getInstance(model);
   }
+
+  /** The merged composite bundle plus the component exports it was assembled from. */
+  private record CompositeBundleResult(String bundleJson, List<Export> componentExports) {}
+
+  /** Composite versioning artifacts: the with-/without-warnings bundles + component HR snapshot. */
+  public record CompositeVersionArtifacts(
+      String bundleJson,
+      String bundleJsonWithoutWarnings,
+      List<Export.ComponentHumanReadable> componentHumanReadables) {}
 }
