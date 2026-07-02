@@ -10,6 +10,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 
 import cms.gov.madie.measure.clients.UserServiceRoleConverter;
+import org.springframework.security.web.header.writers.XXssProtectionHeaderWriter;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
@@ -49,7 +50,10 @@ public class SecurityConfig {
         .headers(
             headers ->
                 headers
-                    .xssProtection(withDefaults())
+                    .xssProtection(
+                        xss ->
+                            xss.headerValue(
+                                XXssProtectionHeaderWriter.HeaderValue.ENABLED_MODE_BLOCK))
                     .contentSecurityPolicy(
                         contentSecurityPolicyConfig ->
                             contentSecurityPolicyConfig.policyDirectives("script-src 'self'")))
