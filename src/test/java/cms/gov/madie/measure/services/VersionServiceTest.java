@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BadVersionRequestException;
@@ -730,7 +731,7 @@ public class VersionServiceTest {
                 .build());
     when(bundleService.buildCompositeVersionArtifacts(any(Measure.class), anyString()))
         .thenReturn(
-            new BundleService.CompositeVersionArtifacts(
+            new CompositeVersionArtifacts(
                 compositeBundleJson, compositeBundleJson, componentHumanReadables));
 
     Export measureExport =

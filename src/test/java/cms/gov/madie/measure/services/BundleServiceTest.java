@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
@@ -255,7 +256,7 @@ class BundleServiceTest implements ResourceUtil {
     when(mongoGridFsService.findById("comp-grid-fs-id")).thenReturn(bundle);
     when(mongoGridFsService.findById("comp-grid-fs-id-nw")).thenReturn(bundle);
 
-    BundleService.CompositeVersionArtifacts artifacts =
+    CompositeVersionArtifacts artifacts =
         bundleService.buildCompositeVersionArtifacts(measure, "Bearer TOKEN");
 
     assertNotNull(artifacts);

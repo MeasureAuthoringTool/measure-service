@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
+import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
@@ -336,10 +337,4 @@ public class BundleService {
 
   /** The merged composite bundle plus the component exports it was assembled from. */
   private record CompositeBundleResult(String bundleJson, List<Export> componentExports) {}
-
-  /** Composite versioning artifacts: the with-/without-warnings bundles + component HR snapshot. */
-  public record CompositeVersionArtifacts(
-      String bundleJson,
-      String bundleJsonWithoutWarnings,
-      List<Export.ComponentHumanReadable> componentHumanReadables) {}
 }

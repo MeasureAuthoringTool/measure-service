@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
@@ -142,7 +143,7 @@ public class VersionService {
     Measure upversionedMeasure = version(versionType, username, measure);
 
     if (upversionedMeasure.getMeasureMetaData().isComposite()) {
-      BundleService.CompositeVersionArtifacts compositeVersionArtifacts =
+      CompositeVersionArtifacts compositeVersionArtifacts =
           bundleService.buildCompositeVersionArtifacts(upversionedMeasure, accessToken);
 
       saveMeasureBundle(
