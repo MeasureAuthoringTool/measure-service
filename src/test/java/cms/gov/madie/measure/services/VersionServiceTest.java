@@ -325,6 +325,7 @@ public class VersionServiceTest {
             .id("testMeasureId")
             .createdBy("testUser")
             .cqlErrors(true)
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .measureSet(measureSet)
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
@@ -333,26 +334,36 @@ public class VersionServiceTest {
 
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
-    assertThrows(
-        BadVersionRequestException.class,
-        () -> versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+    Exception ex =
+        assertThrows(
+            BadVersionRequestException.class,
+            () ->
+                versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+    assertTrue(ex.getMessage().contains("Measure has CQL errors."));
   }
 
   @Test
   public void testCheckValidVersioningThrowsBadVersionRequestExceptionForCqlErrors() {
     Measure existingMeasure =
-        Measure.builder().id("testMeasureId").createdBy("testUser").cqlErrors(true).build();
+        Measure.builder()
+            .id("testMeasureId")
+            .createdBy("testUser")
+            .cqlErrors(true)
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .build();
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setDraft(true);
     existingMeasure.setMeasureMetaData(metaData);
 
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
-    assertThrows(
-        BadVersionRequestException.class,
-        () ->
-            versionService.checkValidVersioning(
-                "testMeasureId", "MAJOR", "testUser", "accesstoken"));
+    Exception ex =
+        assertThrows(
+            BadVersionRequestException.class,
+            () ->
+                versionService.checkValidVersioning(
+                    "testMeasureId", "MAJOR", "testUser", "accesstoken"));
+    assertTrue(ex.getMessage().contains("Measure has CQL errors."));
   }
 
   @Test
@@ -363,6 +374,7 @@ public class VersionServiceTest {
             .createdBy("testUser")
             .cqlErrors(false)
             .cql("")
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
             .measureSet(measureSet)
             .build();
     MeasureMetaData metaData = new MeasureMetaData();
@@ -371,9 +383,12 @@ public class VersionServiceTest {
 
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
-    assertThrows(
-        BadVersionRequestException.class,
-        () -> versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+    Exception ex =
+        assertThrows(
+            BadVersionRequestException.class,
+            () ->
+                versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+    assertTrue(ex.getMessage().contains("Measure has no CQL."));
   }
 
   @Test
