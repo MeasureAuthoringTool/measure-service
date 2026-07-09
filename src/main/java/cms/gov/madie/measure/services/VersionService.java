@@ -19,7 +19,6 @@ import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.bson.types.ObjectId;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
@@ -77,7 +76,6 @@ public class VersionService {
     return VersionValidationResult.VALID;
   }
 
-  @Transactional
   public Measure createVersion(String id, String versionType, String username, String accessToken) {
     Measure measure = validateVersionOptions(id, versionType, username, accessToken);
 
@@ -225,7 +223,6 @@ public class VersionService {
     return measure;
   }
 
-  @Transactional
   public Measure createDraft(
       String id, String measureName, String model, String username, String accessToken) {
     Measure measure =
