@@ -1252,7 +1252,7 @@ public class MeasureServiceTest implements ResourceUtil {
   public void testCheckDuplicateCqlLibraryNameDoesNotThrowException() {
     List<Measure> measureOpt = new ArrayList<>();
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(measureOpt);
-    measureService.checkDuplicateCqlLibraryName("testCQLLibraryName");
+    measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", null);
     verify(measureRepository, times(1)).findAllByCqlLibraryName(eq("testCQLLibraryName"));
   }
 
@@ -1265,7 +1265,48 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(measureOpt);
     assertThrows(
         DuplicateKeyException.class,
-        () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName"));
+        () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", null));
+  }
+
+  @Test
+  public void testCheckDuplicateCqlLibraryNameDoesNotThrowWhenSameMeasureSetId() {
+    final Measure measure =
+        Measure.builder()
+            .cqlLibraryName("testCQLLibraryName")
+            .measureSetId("sameMeasureSetId")
+            .active(true)
+            .build();
+    when(measureRepository.findAllByCqlLibraryName(anyString()))
+        .thenReturn(Collections.singletonList(measure));
+    // Should not throw because the existing measure belongs to the same measure set
+    assertDoesNotThrow(
+        () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", "sameMeasureSetId"));
+    verify(measureRepository, times(1)).findAllByCqlLibraryName(eq("testCQLLibraryName"));
+  }
+
+  @Test
+  public void testCheckDuplicateCqlLibraryNameThrowsWhenDifferentMeasureSetId() {
+    final Measure measure =
+        Measure.builder()
+            .cqlLibraryName("testCQLLibraryName")
+            .measureSetId("differentMeasureSetId")
+            .active(true)
+            .build();
+    when(measureRepository.findAllByCqlLibraryName(anyString()))
+        .thenReturn(Collections.singletonList(measure));
+    // Should throw because the existing measure belongs to a different measure set
+    assertThrows(
+        DuplicateKeyException.class,
+        () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", "myMeasureSetId"));
+  }
+
+  @Test
+  public void testCheckDuplicateCqlLibraryNameDoesNotThrowWhenNoMatchesWithMeasureSetId() {
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+    // Should not throw because no measures exist with that library name
+    assertDoesNotThrow(
+        () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", "anyMeasureSetId"));
+    verify(measureRepository, times(1)).findAllByCqlLibraryName(eq("testCQLLibraryName"));
   }
 
   @Test
