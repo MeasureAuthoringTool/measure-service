@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
@@ -199,6 +200,76 @@ class BundleServiceTest implements ResourceUtil {
         .getMeasureBundle(any(Measure.class), eq("Bearer TOKEN"), eq("calculation"), eq("Info"));
     verify(exportRepository).findByMeasureId("comp-measure-id");
     verify(mongoGridFsService).findById("comp-grid-fs-id");
+  }
+
+  @Test
+  void testBuildCompositeVersionArtifactsSnapshotsComponentHumanReadables() {
+    Measure componentMeasure =
+        Measure.builder()
+            .id("comp-measure-id")
+            .measureName("ComponentMeasure")
+            .ecqmTitle("ComponentMeasure")
+            .cqlLibraryName("ComponentLib")
+            .version(new Version(1, 0, 0))
+            .model("QI-Core v4.1.1")
+            .measureMetaData(MeasureMetaData.builder().draft(false).build())
+            .groups(List.of(Group.builder().id("comp-group-1").displayId("Group 1").build()))
+            .build();
+
+    Component component =
+        Component.builder().measureId("comp-measure-id").groupId("comp-group-1").build();
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-1")
+            .components(List.of(component))
+            .populationBasis("boolean")
+            .measureGroupTypes(List.of(MeasureGroupTypes.PROCESS))
+            .build();
+
+    measure.setGroups(List.of(compositeGroup));
+    measure.setModel("QI-Core v4.1.1");
+    measure.setMeasureMetaData(
+        MeasureMetaData.builder()
+            .draft(true)
+            .composite(true)
+            .steward(Organization.builder().name("SemanticBits").build())
+            .description("Composite measure")
+            .developers(List.of(Organization.builder().name("ICF").build()))
+            .build());
+
+    final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
+    when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.of(componentMeasure));
+    when(measureRepository.findAllById(any())).thenReturn(List.of(componentMeasure));
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq("export"), anyString()))
+        .thenReturn(bundle);
+
+    Export componentExport =
+        Export.builder()
+            .measureId("comp-measure-id")
+            .measureBundleGridFsId("comp-grid-fs-id")
+            .measureBundleWithoutWarningsGridFsId("comp-grid-fs-id-nw")
+            .humanReadable("<html>component HR</html>")
+            .build();
+    when(exportRepository.findByMeasureId("comp-measure-id"))
+        .thenReturn(Optional.of(componentExport));
+    when(mongoGridFsService.findById("comp-grid-fs-id")).thenReturn(bundle);
+    when(mongoGridFsService.findById("comp-grid-fs-id-nw")).thenReturn(bundle);
+
+    CompositeVersionArtifacts artifacts =
+        bundleService.buildCompositeVersionArtifacts(measure, "Bearer TOKEN");
+
+    assertNotNull(artifacts);
+    assertNotNull(artifacts.bundleJson());
+    assertNotNull(artifacts.bundleJsonWithoutWarnings());
+    assertEquals(
+        List.of(
+            Export.ComponentHumanReadable.builder()
+                .componentId("comp-measure-id")
+                .fileName("ComponentMeasure-v1.0.000-FHIR")
+                .humanReadable("<html>component HR</html>")
+                .build()),
+        artifacts.componentHumanReadables());
   }
 
   @Test

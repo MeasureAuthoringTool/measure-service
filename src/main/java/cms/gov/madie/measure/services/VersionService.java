@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
@@ -50,6 +51,7 @@ public class VersionService {
   private final AppConfigService appConfigService;
   private final TestCaseValidationService testCaseValidationService;
   private final MeasureLockService measureLockService;
+  private final BundleService bundleService;
 
   public enum VersionValidationResult {
     VALID,
@@ -140,6 +142,20 @@ public class VersionService {
       String versionType, String username, String accessToken, Measure measure) {
     Measure upversionedMeasure = version(versionType, username, measure);
 
+    if (upversionedMeasure.getMeasureMetaData().isComposite()) {
+      CompositeVersionArtifacts compositeVersionArtifacts =
+          bundleService.buildCompositeVersionArtifacts(upversionedMeasure, accessToken);
+
+      saveMeasureBundle(
+          upversionedMeasure,
+          compositeVersionArtifacts.bundleJson(),
+          compositeVersionArtifacts.bundleJsonWithoutWarnings(),
+          compositeVersionArtifacts.componentHumanReadables(),
+          username);
+
+      return applyMeasureVersion(versionType, username, upversionedMeasure);
+    }
+
     // Generate Bundle for versioned Measure with ELM at error severity Info
     elmToJsonService.retrieveElmJson(measure, "Info", accessToken);
     var measureBundle =
@@ -150,7 +166,8 @@ public class VersionService {
     var measureBundleWithoutWarnings =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Error");
 
-    saveMeasureBundle(upversionedMeasure, measureBundle, measureBundleWithoutWarnings, username);
+    saveMeasureBundle(
+        upversionedMeasure, measureBundle, measureBundleWithoutWarnings, null, username);
     return applyMeasureVersion(versionType, username, upversionedMeasure);
   }
 
@@ -171,13 +188,18 @@ public class VersionService {
           .getTestCases()
           .forEach(testCase -> testCase.setCreatedBeforeVersioning(true));
     }
-    String newCql =
-        upversionedMeasure
-            .getCql()
-            .replace(
-                generateLibraryContentLine(upversionedMeasure.getCqlLibraryName(), oldVersion),
-                generateLibraryContentLine(upversionedMeasure.getCqlLibraryName(), newVersion));
-    upversionedMeasure.setCql(newCql);
+
+    // Composite measures have no CQL; only rewrite the library version line when CQL exists.
+    if (StringUtils.isNotBlank(upversionedMeasure.getCql())) {
+      String newCql =
+          upversionedMeasure
+              .getCql()
+              .replace(
+                  generateLibraryContentLine(upversionedMeasure.getCqlLibraryName(), oldVersion),
+                  generateLibraryContentLine(upversionedMeasure.getCqlLibraryName(), newVersion));
+      upversionedMeasure.setCql(newCql);
+    }
+
     return upversionedMeasure;
   }
 
@@ -456,22 +478,10 @@ public class VersionService {
       throw new BadVersionRequestException(
           "Measure", measure.getId(), username, "Measure is not in a draft state.");
     }
-    if (measure.isCqlErrors()) {
-      log.error(
-          "User [{}] attempted to version measure with id [{}] which has CQL errors",
-          username,
-          measure.getId());
-      throw new BadVersionRequestException(
-          "Measure", measure.getId(), username, "Measure has CQL errors.");
-    }
-    if (StringUtils.isBlank(measure.getCql())) {
-      log.error(
-          "User [{}] attempted to version measure with id [{}] which has empty CQL",
-          username,
-          measure.getId());
-      throw new BadVersionRequestException(
-          "Measure", measure.getId(), username, "Measure has no CQL.");
-    }
+
+    boolean isComposite =
+        measure.getMeasureMetaData() != null && measure.getMeasureMetaData().isComposite();
+
     if (CollectionUtils.isEmpty(measure.getGroups())) {
       log.error(
           "User [{}] attempted to version measure with id [{}] which does not have at least "
@@ -485,10 +495,29 @@ public class VersionService {
           "Measure does not have at least one Population Criteria.");
     }
 
-    final ElmJson elmJson =
-        elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), accessToken);
-    if (elmTranslatorClient.hasErrors(elmJson)) {
-      throw new CqlElmTranslationErrorException(measure.getMeasureName());
+    if (!isComposite) {
+      if (measure.isCqlErrors()) {
+        log.error(
+            "User [{}] attempted to version measure with id [{}] which has CQL errors",
+            username,
+            measure.getId());
+        throw new BadVersionRequestException(
+            "Measure", measure.getId(), username, "Measure has CQL errors.");
+      }
+      if (StringUtils.isBlank(measure.getCql())) {
+        log.error(
+            "User [{}] attempted to version measure with id [{}] which has empty CQL",
+            username,
+            measure.getId());
+        throw new BadVersionRequestException(
+            "Measure", measure.getId(), username, "Measure has no CQL.");
+      }
+
+      final ElmJson elmJson =
+          elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), accessToken);
+      if (elmTranslatorClient.hasErrors(elmJson)) {
+        throw new CqlElmTranslationErrorException(measure.getMeasureName());
+      }
     }
   }
 
@@ -532,7 +561,8 @@ public class VersionService {
       Measure savedMeasure,
       String measureBundle,
       String measureBundleWithoutWarnings,
-      String humanReadableWithCss) {
+      String humanReadableWithCss,
+      List<Export.ComponentHumanReadable> componentHumanReadables) {
     ObjectId measureBundleId =
         mongoGridFsService.save(
             new ByteArrayInputStream(measureBundle.getBytes()),
@@ -552,6 +582,7 @@ public class VersionService {
             .measureBundleGridFsId(measureBundleId.toHexString())
             .measureBundleWithoutWarningsGridFsId(measureBundleWithoutWarningsId.toHexString())
             .humanReadable(humanReadableWithCss)
+            .componentHumanReadables(componentHumanReadables)
             .build();
 
     return exportRepository.save(export);
@@ -561,6 +592,7 @@ public class VersionService {
       Measure savedMeasure,
       String measureBundle,
       String measureBundleWithoutWarnings,
+      List<Export.ComponentHumanReadable> componentHumanReadables,
       String username) {
     String humanReadableWithCss;
     try {
@@ -575,7 +607,12 @@ public class VersionService {
     }
 
     Export savedExport =
-        saveExport(savedMeasure, measureBundle, measureBundleWithoutWarnings, humanReadableWithCss);
+        saveExport(
+            savedMeasure,
+            measureBundle,
+            measureBundleWithoutWarnings,
+            humanReadableWithCss,
+            componentHumanReadables);
     log.info(
         "User [{}] successfully saved versioned measure's export data with ID [{}]",
         username,
