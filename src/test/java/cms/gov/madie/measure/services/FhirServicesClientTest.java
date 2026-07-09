@@ -36,7 +36,6 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.client.RestTemplate;
 
-
 import cms.gov.madie.measure.config.FhirServicesConfig;
 import gov.cms.madie.models.measure.HapiOperationOutcome;
 import gov.cms.madie.models.measure.Measure;

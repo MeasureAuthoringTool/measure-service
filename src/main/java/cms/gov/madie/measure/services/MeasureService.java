@@ -122,7 +122,7 @@ public class MeasureService extends BaseMeasureService {
   public Measure createMeasure(
       Measure measure, final String username, String accessToken, boolean addDefaultCQL) {
     log.info("User [{}] is attempting to create a new measure", username);
-    checkDuplicateCqlLibraryName(measure.getCqlLibraryName());
+    checkDuplicateCqlLibraryName(measure.getCqlLibraryName(), null);
     MeasureServiceUtil.validateMeasurementPeriod(
         measure.getMeasurementPeriodStart(), measure.getMeasurementPeriodEnd());
     updateMeasurementPeriods(measure);
@@ -245,7 +245,8 @@ public class MeasureService extends BaseMeasureService {
       final Measure updatingMeasure,
       final String accessToken) {
     if (measureUtil.isCqlLibraryNameChanged(updatingMeasure, existingMeasure)) {
-      checkDuplicateCqlLibraryName(updatingMeasure.getCqlLibraryName());
+      checkDuplicateCqlLibraryName(
+          updatingMeasure.getCqlLibraryName(), existingMeasure.getMeasureSetId());
     }
     if (StringUtils.isBlank(existingMeasure.getVersionId())) {
       existingMeasure.setVersionId(UUID.randomUUID().toString());
@@ -412,10 +413,22 @@ public class MeasureService extends BaseMeasureService {
     measure.setMeasurementPeriodEnd(Date.from(endInstant));
   }
 
-  public void checkDuplicateCqlLibraryName(String cqlLibraryName) {
+  /**
+   * Checks for duplicate CQL library name. When measureSetId is provided, measures within the same
+   * measure family (i.e., same measureSetId) are allowed to share a library name.
+   *
+   * @param cqlLibraryName the CQL library name to check
+   * @param measureSetId the measure set ID to exclude from duplicate check, or null to check all
+   */
+  public void checkDuplicateCqlLibraryName(String cqlLibraryName, @Nullable String measureSetId) {
     if (StringUtils.isNotEmpty(cqlLibraryName)) {
       List<Measure> measureList = measureRepository.findAllByCqlLibraryName(cqlLibraryName);
-      if (!measureList.isEmpty()) {
+      boolean hasDuplicate =
+          measureSetId == null
+              ? !measureList.isEmpty()
+              : measureList.stream()
+                  .anyMatch(measure -> !Strings.CS.equals(measure.getMeasureSetId(), measureSetId));
+      if (hasDuplicate) {
         throw new DuplicateKeyException(
             "cqlLibraryName", "CQL library with given name already exists.");
       }
