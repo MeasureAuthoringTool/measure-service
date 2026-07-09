@@ -647,7 +647,7 @@ public class MeasureControllerMvcTest {
     saved.setEcqmTitle(ecqmTitle);
     saved.setVersionId(measureId);
     when(measureRepository.save(any(Measure.class))).thenReturn(saved);
-    doNothing().when(measureService).checkDuplicateCqlLibraryName(any(String.class));
+    doNothing().when(measureService).checkDuplicateCqlLibraryName(anyString(), anyString());
 
     final String measureAsJson =
         "{\"measureName\": \"%s\", \"cqlLibraryName\": \"%s\" , \"ecqmTitle\": \"%s\", \"model\": \"%s\", \"versionId\":\"%s\"}"
