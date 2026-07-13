@@ -363,10 +363,18 @@ public class VersionService {
   private String updateUsingStatement(String model, String cql) {
     Pattern qicorePattern = Pattern.compile("using QICore .*version '[0-9]\\.[0-9](\\.[0-9])?'");
     Matcher matcher = qicorePattern.matcher(cql);
+    String standards = "QICore";
+    if (model.equalsIgnoreCase(ModelType.US_QUALITY_CORE_0_5_0.getValue())) {
+      standards = "USCore";
+    }
     if (matcher.find()) {
       cql =
           matcher.replaceAll(
-              "using QICore version '" + model.substring(model.lastIndexOf("v") + 1) + "'");
+              "using "
+                  + standards
+                  + " version '"
+                  + model.substring(model.lastIndexOf("v") + 1)
+                  + "'");
     }
     return cql;
   }
