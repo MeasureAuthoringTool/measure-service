@@ -239,10 +239,12 @@ public class MeasureController extends AbstractMeasureController {
 
   @DeleteMapping("/measures/{id}/delete")
   public ResponseEntity<Measure> deactivateMeasure(
-      @PathVariable("id") String id, Principal principal) {
+      @PathVariable("id") String id,
+      Principal principal,
+      @RequestHeader("Authorization") String accessToken) {
 
     return ResponseEntity.ok()
-        .body(measureService.deactivateMeasure(id, principal.getName().toLowerCase()));
+        .body(measureService.deactivateMeasure(id, principal.getName().toLowerCase(), accessToken));
   }
 
   @GetMapping("/measures/shared")
