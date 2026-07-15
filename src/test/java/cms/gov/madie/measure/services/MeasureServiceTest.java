@@ -2538,22 +2538,15 @@ public class MeasureServiceTest implements ResourceUtil {
 
     when(measureRepository.findById(measureId)).thenReturn(Optional.of(measure));
     when(actionLogService.findMeasureHistory(measureId, "measureSetId")).thenReturn(actions);
-    when(userServiceClient.getBulkUserDetails(List.of("testuser")))
-        .thenReturn(
-            Map.of(
-                "testuser", UserDetailsDto.builder().firstName("Test").lastName("User").build()));
-    when(measureSetService.formatDisplayName(anyMap(), eq("testuser")))
-        .thenReturn("Test User (testuser)");
 
     List<Action> result = measureService.getMeasureHistory(measureId, userName);
 
     assertNotNull(result);
     assertEquals(1, result.size());
     assertEquals(ActionType.CREATED, result.get(0).getActionType());
-    assertEquals("Test User (testuser)", result.get(0).getPerformedBy());
     verify(measureRepository, times(1)).findById(measureId);
     verify(actionLogService, times(1)).findMeasureHistory(measureId, "measureSetId");
-    verify(userServiceClient, times(1)).getBulkUserDetails(List.of("testuser"));
+    verify(measureSetService, times(1)).populatePerformedByDisplayNames(actions);
   }
 
   @Test

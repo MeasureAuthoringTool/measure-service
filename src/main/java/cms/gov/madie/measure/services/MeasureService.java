@@ -1039,34 +1039,12 @@ public class MeasureService extends BaseMeasureService {
     }
     List<Action> measureHistory =
         actionLogService.findMeasureHistory(measureId, persistedMeasure.getMeasureSetId());
-    populatePerformedByDisplayNames(measureHistory);
+    measureSetService.populatePerformedByDisplayNames(measureHistory);
     log.info(
         "User [{}] successfully retrieved the history of the measure with ID [{}]",
         userName,
         measureId);
     return measureHistory;
-  }
-
-  private void populatePerformedByDisplayNames(List<Action> actions) {
-    if (CollectionUtils.isEmpty(actions)) {
-      return;
-    }
-    List<String> harpIds =
-        actions.stream()
-            .map(Action::getPerformedBy)
-            .filter(StringUtils::isNotBlank)
-            .distinct()
-            .toList();
-    if (harpIds.isEmpty()) {
-      return;
-    }
-    Map<String, UserDetailsDto> userDetailsMap = userServiceClient.getBulkUserDetails(harpIds);
-    actions.stream()
-        .filter(action -> StringUtils.isNotBlank(action.getPerformedBy()))
-        .forEach(
-            action ->
-                action.setPerformedBy(
-                    measureSetService.formatDisplayName(userDetailsMap, action.getPerformedBy())));
   }
 
   // Returns Lock info if measure is locked by non-current user, else (locked by current user or no
