@@ -350,7 +350,8 @@ public class MeasureService extends BaseMeasureService {
     }
   }
 
-  public Measure deactivateMeasure(final String id, final String username) {
+  public Measure deactivateMeasure(
+      final String id, final String username, final String accessToken) {
     if (StringUtils.isBlank(id) || StringUtils.isBlank(username)) {
       throw new InvalidIdException("Username and Measure Id is required.");
     }
@@ -358,7 +359,10 @@ public class MeasureService extends BaseMeasureService {
     if (existingMeasure == null) {
       throw new ResourceNotFoundException("Measure does not exist.");
     }
-    if (!username.equalsIgnoreCase(existingMeasure.getMeasureSet().getOwner())) {
+    // Owners of a draft measure or Admins can delete the draft measure
+    boolean isAdmin = userServiceClient.hasRole(username, RoleConstants.MADiE_ADMIN, accessToken);
+
+    if (!isAdmin && !username.equalsIgnoreCase(existingMeasure.getMeasureSet().getOwner())) {
       throw new UnauthorizedException("User is not authorized to delete this measure.");
     }
 
@@ -382,19 +386,7 @@ public class MeasureService extends BaseMeasureService {
     existingMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
     Measure saveMeasure = measureRepository.save(existingMeasure);
 
-    if (existingMeasure.getMeasureMetaData().isComposite()
-        && !CollectionUtils.isEmpty(existingMeasure.getGroups())) {
-      List<Component> allComponents =
-          existingMeasure.getGroups().stream()
-              .filter(g -> MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(g.getScoring()))
-              .filter(g -> !CollectionUtils.isEmpty(g.getComponents()))
-              .flatMap(g -> g.getComponents().stream())
-              .toList();
-      if (!allComponents.isEmpty()) {
-        compositeRelationshipService.syncComponents(
-            allComponents, List.of(), existingMeasure, username);
-      }
-    }
+    compositeRelationshipService.removeCompositeRelationships(existingMeasure, username);
 
     actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
     measureLockService.unlockMeasure(id, username);

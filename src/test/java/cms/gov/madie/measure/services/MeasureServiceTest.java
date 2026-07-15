@@ -32,6 +32,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.config.security.RoleConstants;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.locks.MeasureLock;
@@ -1280,7 +1281,8 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(Collections.singletonList(measure));
     // Should not throw because the existing measure belongs to the same measure set
     assertDoesNotThrow(
-        () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", "sameMeasureSetId"));
+        () ->
+            measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", "sameMeasureSetId"));
     verify(measureRepository, times(1)).findAllByCqlLibraryName(eq("testCQLLibraryName"));
   }
 
@@ -2581,7 +2583,8 @@ public class MeasureServiceTest implements ResourceUtil {
     // When & Then
     InvalidIdException exception =
         assertThrows(
-            InvalidIdException.class, () -> measureService.deactivateMeasure(measureId, username));
+            InvalidIdException.class,
+            () -> measureService.deactivateMeasure(measureId, username, ACCESS_TOKEN));
 
     assertThat(exception.getMessage(), is(equalTo("Username and Measure Id is required.")));
   }
@@ -2595,7 +2598,8 @@ public class MeasureServiceTest implements ResourceUtil {
     // When & Then
     InvalidIdException exception =
         assertThrows(
-            InvalidIdException.class, () -> measureService.deactivateMeasure(measureId, username));
+            InvalidIdException.class,
+            () -> measureService.deactivateMeasure(measureId, username, ACCESS_TOKEN));
 
     assertThat(exception.getMessage(), is(equalTo("Username and Measure Id is required.")));
   }
@@ -2608,7 +2612,7 @@ public class MeasureServiceTest implements ResourceUtil {
     Exception exception =
         assertThrows(
             ResourceNotFoundException.class,
-            () -> measureService.deactivateMeasure(measureId, username));
+            () -> measureService.deactivateMeasure(measureId, username, ACCESS_TOKEN));
 
     assertThat(exception.getMessage(), is(equalTo("Measure does not exist.")));
   }
@@ -2632,7 +2636,7 @@ public class MeasureServiceTest implements ResourceUtil {
     UnauthorizedException exception =
         assertThrows(
             UnauthorizedException.class,
-            () -> measureService.deactivateMeasure(measureId, username));
+            () -> measureService.deactivateMeasure(measureId, username, ACCESS_TOKEN));
 
     assertThat(
         exception.getMessage(), is(equalTo("User is not authorized to delete this measure.")));
@@ -2660,7 +2664,7 @@ public class MeasureServiceTest implements ResourceUtil {
     Exception exception =
         assertThrows(
             InvalidDraftStatusException.class,
-            () -> measureService.deactivateMeasure(measureId, username));
+            () -> measureService.deactivateMeasure(measureId, username, ACCESS_TOKEN));
 
     assertThat(
         exception.getMessage(),
@@ -2689,7 +2693,7 @@ public class MeasureServiceTest implements ResourceUtil {
     Exception exception =
         assertThrows(
             InvalidResourceStateException.class,
-            () -> measureService.deactivateMeasure(measureId, username));
+            () -> measureService.deactivateMeasure(measureId, username, ACCESS_TOKEN));
 
     assertThat(exception.getMessage(), is(equalTo("Measure is inactive.")));
   }
@@ -2720,7 +2724,7 @@ public class MeasureServiceTest implements ResourceUtil {
     Exception exception =
         assertThrows(
             LockNotObtainedException.class,
-            () -> measureService.deactivateMeasure(measureId, currentUser));
+            () -> measureService.deactivateMeasure(measureId, currentUser, ACCESS_TOKEN));
 
     assertThat(
         exception.getMessage(),
@@ -2750,7 +2754,8 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(true);
 
     // Then
-    Measure result = measureService.deactivateMeasure(existingMeasure.getId(), username);
+    Measure result =
+        measureService.deactivateMeasure(existingMeasure.getId(), username, ACCESS_TOKEN);
 
     assertThat(result, is(notNullValue()));
     assertThat(result.isActive(), is(false));
@@ -2758,6 +2763,38 @@ public class MeasureServiceTest implements ResourceUtil {
     verify(measureRepository).save(measureArgumentCaptor.capture());
     Measure savedMeasure = measureArgumentCaptor.getValue();
     assertThat(savedMeasure.isActive(), is(false));
+  }
+
+  @Test
+  public void testDeactivateMeasureAsAdminWhoIsNotOwner() {
+    // Given: an admin deleting a draft they do not own (MAT-9811)
+    String adminUser = "admin-user";
+    String owner = "some-other-owner";
+
+    Measure existingMeasure =
+        measure1.toBuilder()
+            .active(true)
+            .measureSet(MeasureSet.builder().owner(owner).build())
+            .measureMetaData(draftMeasureMetaData)
+            .build();
+
+    // When
+    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
+    when(userServiceClient.hasRole(adminUser, RoleConstants.MADiE_ADMIN, ACCESS_TOKEN))
+        .thenReturn(true);
+    when(measureLockService.checkMeasureAndTestCaseLock(
+            anyString(), any(Measure.class), anyString()))
+        .thenReturn(false);
+    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
+
+    // Then
+    Measure result =
+        measureService.deactivateMeasure(existingMeasure.getId(), adminUser, ACCESS_TOKEN);
+
+    assertThat(result, is(notNullValue()));
+    assertThat(result.isActive(), is(false));
+    verify(measureRepository).save(measureArgumentCaptor.capture());
+    assertThat(measureArgumentCaptor.getValue().isActive(), is(false));
   }
 
   @Test
@@ -2782,7 +2819,8 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(LockInfo.builder().build());
 
     // Then
-    Measure result = measureService.deactivateMeasure(existingMeasure.getId(), username);
+    Measure result =
+        measureService.deactivateMeasure(existingMeasure.getId(), username, ACCESS_TOKEN);
 
     assertThat(result, is(notNullValue()));
     assertThat(result.isActive(), is(false));
@@ -2793,7 +2831,7 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testDeactivateCompositeMeasureDelegatesToSyncComponents() {
+  public void testDeactivateMeasureDelegatesCompositeCleanup() {
     // Given
     String username = "test-user";
     String componentMeasureId = "component-measure-id";
@@ -2827,106 +2865,9 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(LockInfo.builder().build());
 
     // Then
-    measureService.deactivateMeasure(existingMeasure.getId(), username);
+    measureService.deactivateMeasure(existingMeasure.getId(), username, ACCESS_TOKEN);
 
-    verify(compositeRelationshipService)
-        .syncComponents(eq(components), eq(List.of()), eq(existingMeasure), eq(username));
-  }
-
-  @Test
-  public void testDeactivateCompositeMeasureWithEmptyGroupsDoesNotDelegate() {
-    // Given
-    String username = "test-user";
-
-    MeasureMetaData compositeMeasureMetaData =
-        draftMeasureMetaData.toBuilder().composite(true).build();
-
-    Measure existingMeasure =
-        measure1.toBuilder()
-            .active(true)
-            .measureSet(MeasureSet.builder().owner(username).build())
-            .measureMetaData(compositeMeasureMetaData)
-            .groups(new ArrayList<>())
-            .build();
-
-    // When
-    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
-    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
-    when(actionLogService.logAction(
-            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
-        .thenReturn(true);
-    when(measureLockService.unlockMeasure(anyString(), anyString()))
-        .thenReturn(LockInfo.builder().build());
-
-    // Then
-    measureService.deactivateMeasure(existingMeasure.getId(), username);
-
-    verify(compositeRelationshipService, times(0)).syncComponents(any(), any(), any(), anyString());
-  }
-
-  @Test
-  public void testDeactivateCompositeMeasureWithNoComponentsDoesNotDelegate() {
-    // Given
-    String username = "test-user";
-
-    Group compositeGroupNoComponents =
-        Group.builder()
-            .id("composite-group-id")
-            .scoring(MeasureScoring.COMPOSITE.toString())
-            .components(new ArrayList<>())
-            .build();
-
-    MeasureMetaData compositeMeasureMetaData =
-        draftMeasureMetaData.toBuilder().composite(true).build();
-
-    Measure existingMeasure =
-        measure1.toBuilder()
-            .active(true)
-            .measureSet(MeasureSet.builder().owner(username).build())
-            .measureMetaData(compositeMeasureMetaData)
-            .groups(new ArrayList<>(List.of(compositeGroupNoComponents)))
-            .build();
-
-    // When
-    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
-    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
-    when(actionLogService.logAction(
-            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
-        .thenReturn(true);
-    when(measureLockService.unlockMeasure(anyString(), anyString()))
-        .thenReturn(LockInfo.builder().build());
-
-    // Then
-    measureService.deactivateMeasure(existingMeasure.getId(), username);
-
-    verify(compositeRelationshipService, times(0)).syncComponents(any(), any(), any(), anyString());
-  }
-
-  @Test
-  public void testDeactivateNonCompositeMeasureDoesNotDelegate() {
-    // Given
-    String username = "test-user";
-
-    Measure existingMeasure =
-        measure1.toBuilder()
-            .active(true)
-            .measureSet(MeasureSet.builder().owner(username).build())
-            .measureMetaData(draftMeasureMetaData)
-            .build();
-
-    // When
-    when(measureService.findMeasureById(existingMeasure.getId())).thenReturn(existingMeasure);
-    when(measureRepository.save(any(Measure.class))).thenReturn(existingMeasure);
-    when(actionLogService.logAction(
-            existingMeasure.getId(), Measure.class, ActionType.DELETED, username))
-        .thenReturn(true);
-    when(measureLockService.unlockMeasure(anyString(), anyString()))
-        .thenReturn(LockInfo.builder().build());
-
-    // Then
-    measureService.deactivateMeasure(existingMeasure.getId(), username);
-
-    verify(compositeRelationshipService, times(0)).syncComponents(any(), any(), any(), anyString());
+    verify(compositeRelationshipService).removeCompositeRelationships(existingMeasure, username);
   }
 
   @Test
