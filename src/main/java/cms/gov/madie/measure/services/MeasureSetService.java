@@ -14,6 +14,7 @@ import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.AccessControlAction;
+import gov.cms.madie.models.common.Action;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.MeasureSetActionLog;
 import gov.cms.madie.models.dto.UserDetailsDto;
@@ -22,6 +23,7 @@ import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -536,5 +538,26 @@ public class MeasureSetService {
         .max(Instant::compareTo)
         .map(DATE_FORMATTER::format)
         .orElse("-");
+  }
+
+  public void populatePerformedByDisplayNames(List<Action> actions) {
+    if (org.springframework.util.CollectionUtils.isEmpty(actions)) {
+      return;
+    }
+    List<String> harpIds =
+        actions.stream()
+            .map(Action::getPerformedBy)
+            .filter(StringUtils::isNotBlank)
+            .distinct()
+            .toList();
+    if (harpIds.isEmpty()) {
+      return;
+    }
+    Map<String, UserDetailsDto> userDetailsMap = userServiceClient.getBulkUserDetails(harpIds);
+    actions.stream()
+        .filter(action -> StringUtils.isNotBlank(action.getPerformedBy()))
+        .forEach(
+            action ->
+                action.setPerformedBy(formatDisplayName(userDetailsMap, action.getPerformedBy())));
   }
 }

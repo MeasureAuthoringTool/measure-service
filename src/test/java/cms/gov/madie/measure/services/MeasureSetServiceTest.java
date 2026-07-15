@@ -12,10 +12,7 @@ import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.AccessControlAction;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.MeasureSetActionLog;
-import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
@@ -1463,5 +1460,50 @@ public class MeasureSetServiceTest {
     Map<String, UserDetailsDto> userDetailsMap = Map.of();
     assertThat(
         measureSetService.formatDisplayName(userDetailsMap, "harpId1"), is(equalTo("harpId1")));
+  }
+
+  @Test
+  void populatePerformedByDisplayNamesReplacesHarpIdsWithDisplayNames() {
+    List<Action> actions =
+        new ArrayList<>(
+            List.of(
+                Action.builder().actionType(ActionType.CREATED).performedBy("harpId1").build(),
+                Action.builder().actionType(ActionType.UPDATED).performedBy("harpId2").build()));
+
+    when(userServiceClient.getBulkUserDetails(List.of("harpId1", "harpId2")))
+        .thenReturn(
+            Map.of(
+                "harpId1", UserDetailsDto.builder().firstName("John").lastName("Doe").build(),
+                "harpId2", UserDetailsDto.builder().firstName("Jane").lastName("Doe").build()));
+
+    measureSetService.populatePerformedByDisplayNames(actions);
+
+    assertThat(actions.get(0).getPerformedBy(), is(equalTo("John Doe (harpId1)")));
+    assertThat(actions.get(1).getPerformedBy(), is(equalTo("Jane Doe (harpId2)")));
+    verify(userServiceClient, times(1)).getBulkUserDetails(List.of("harpId1", "harpId2"));
+  }
+
+  @Test
+  void populatePerformedByDisplayNamesFallsBackToHarpIdWhenUserNotFound() {
+    List<Action> actions =
+        new ArrayList<>(
+            List.of(
+                Action.builder().actionType(ActionType.CREATED).performedBy("harpId1").build()));
+
+    when(userServiceClient.getBulkUserDetails(List.of("harpId1"))).thenReturn(Map.of());
+
+    measureSetService.populatePerformedByDisplayNames(actions);
+
+    assertThat(actions.get(0).getPerformedBy(), is(equalTo("harpId1")));
+  }
+
+  @Test
+  void populatePerformedByDisplayNamesSkipsUserServiceForEmptyHistory() {
+    List<Action> actions = new ArrayList<>();
+
+    measureSetService.populatePerformedByDisplayNames(actions);
+
+    assertThat(actions.isEmpty(), is(true));
+    verify(userServiceClient, never()).getBulkUserDetails(anyList());
   }
 }
