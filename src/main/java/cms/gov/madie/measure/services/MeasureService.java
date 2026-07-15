@@ -1039,6 +1039,7 @@ public class MeasureService extends BaseMeasureService {
     }
     List<Action> measureHistory =
         actionLogService.findMeasureHistory(measureId, persistedMeasure.getMeasureSetId());
+    measureSetService.populatePerformedByDisplayNames(measureHistory);
     log.info(
         "User [{}] successfully retrieved the history of the measure with ID [{}]",
         userName,

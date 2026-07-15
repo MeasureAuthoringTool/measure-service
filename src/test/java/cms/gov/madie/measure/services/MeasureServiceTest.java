@@ -1280,7 +1280,8 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(Collections.singletonList(measure));
     // Should not throw because the existing measure belongs to the same measure set
     assertDoesNotThrow(
-        () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", "sameMeasureSetId"));
+        () ->
+            measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", "sameMeasureSetId"));
     verify(measureRepository, times(1)).findAllByCqlLibraryName(eq("testCQLLibraryName"));
   }
 
@@ -2531,9 +2532,9 @@ public class MeasureServiceTest implements ResourceUtil {
     Action createdAction = new Action();
     createdAction.setActionType(ActionType.CREATED);
     createdAction.setPerformedAt(Instant.now());
-    createdAction.setPerformedBy("test.user@gmail.com");
+    createdAction.setPerformedBy("testuser");
     createdAction.setAdditionalActionMessage("");
-    List<Action> actions = List.of(createdAction);
+    List<Action> actions = new ArrayList<>(List.of(createdAction));
 
     when(measureRepository.findById(measureId)).thenReturn(Optional.of(measure));
     when(actionLogService.findMeasureHistory(measureId, "measureSetId")).thenReturn(actions);
@@ -2545,6 +2546,24 @@ public class MeasureServiceTest implements ResourceUtil {
     assertEquals(ActionType.CREATED, result.get(0).getActionType());
     verify(measureRepository, times(1)).findById(measureId);
     verify(actionLogService, times(1)).findMeasureHistory(measureId, "measureSetId");
+    verify(measureSetService, times(1)).populatePerformedByDisplayNames(actions);
+  }
+
+  @Test
+  void getMeasureHistoryReturnsEmptyHistoryWithoutFetchingUserDetails() {
+    String measureId = "validMeasureId";
+    String userName = "testUser";
+    Measure measure = Measure.builder().id(measureId).measureSetId("measureSetId").build();
+
+    when(measureRepository.findById(measureId)).thenReturn(Optional.of(measure));
+    when(actionLogService.findMeasureHistory(measureId, "measureSetId"))
+        .thenReturn(new ArrayList<>());
+
+    List<Action> result = measureService.getMeasureHistory(measureId, userName);
+
+    assertNotNull(result);
+    assertTrue(result.isEmpty());
+    verify(userServiceClient, never()).getBulkUserDetails(anyList());
   }
 
   @Test
