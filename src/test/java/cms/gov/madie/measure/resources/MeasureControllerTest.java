@@ -1449,4 +1449,254 @@ class MeasureControllerTest {
     verify(measureService, times(1)).getMeasuresByIds(ids);
     verifyNoMoreInteractions(measureService);
   }
+
+  // ─── Review status action-log tests ────────────────────────────────────────
+
+  /** Helper: build a draft measure with the given id, ready to be "found" by the service. */
+  private Measure buildDraftMeasure(String id, Review existingReview) {
+    MeasureMetaData meta = new MeasureMetaData();
+    meta.setDraft(true);
+    return Measure.builder()
+        .id(id)
+        .model(ModelType.QI_CORE.toString())
+        .active(true)
+        .measureSetId("IDIDID")
+        .measureName("MSR01")
+        .version(new Version(0, 0, 1))
+        .measureMetaData(meta)
+        .review(existingReview)
+        .measureSet(MeasureSet.builder().owner("test.user").build())
+        .build();
+  }
+
+  @Test
+  void updateMeasureLogsReadyForReview_whenExistingReviewIsNull() {
+    when(principal.getName()).thenReturn("test.user");
+
+    Measure existing = buildDraftMeasure("measure-id-1", null);
+    Measure incoming =
+        existing.toBuilder()
+            .review(Review.builder().status(ReviewStatus.READY_FOR_REVIEW).build())
+            .build();
+
+    when(measureService.findMeasureById("measure-id-1")).thenReturn(existing);
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(incoming);
+
+    ResponseEntity<Measure> response =
+        controller.updateMeasure("measure-id-1", incoming, principal, "Bearer TOKEN");
+
+    assertThat(response.getStatusCode().value(), is(equalTo(200)));
+
+    verify(actionLogService, times(1))
+        .logAction(
+            targetIdArgumentCaptor.capture(),
+            targetClassArgumentCaptor.capture(),
+            actionTypeArgumentCaptor.capture(),
+            performedByArgumentCaptor.capture());
+    assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.READY_FOR_REVIEW)));
+    assertThat(performedByArgumentCaptor.getValue(), is(equalTo("test.user")));
+  }
+
+  @Test
+  void updateMeasureLogsReadyForReview_whenExistingStatusIsNotReady() {
+    when(principal.getName()).thenReturn("test.user");
+
+    Review existingReview = Review.builder().status(ReviewStatus.NOT_READY_FOR_REVIEW).build();
+    Measure existing = buildDraftMeasure("measure-id-2", existingReview);
+    Measure incoming =
+        existing.toBuilder()
+            .review(Review.builder().status(ReviewStatus.READY_FOR_REVIEW).build())
+            .build();
+
+    when(measureService.findMeasureById("measure-id-2")).thenReturn(existing);
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(incoming);
+
+    ResponseEntity<Measure> response =
+        controller.updateMeasure("measure-id-2", incoming, principal, "Bearer TOKEN");
+
+    assertThat(response.getStatusCode().value(), is(equalTo(200)));
+
+    verify(actionLogService, times(1))
+        .logAction(
+            targetIdArgumentCaptor.capture(),
+            targetClassArgumentCaptor.capture(),
+            actionTypeArgumentCaptor.capture(),
+            performedByArgumentCaptor.capture());
+    assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.READY_FOR_REVIEW)));
+  }
+
+  @Test
+  void updateMeasureLogsNotReadyForReview_whenExistingReviewIsNull() {
+    when(principal.getName()).thenReturn("test.user");
+
+    Measure existing = buildDraftMeasure("measure-id-3", null);
+    Measure incoming =
+        existing.toBuilder()
+            .review(Review.builder().status(ReviewStatus.NOT_READY_FOR_REVIEW).build())
+            .build();
+
+    when(measureService.findMeasureById("measure-id-3")).thenReturn(existing);
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(incoming);
+
+    ResponseEntity<Measure> response =
+        controller.updateMeasure("measure-id-3", incoming, principal, "Bearer TOKEN");
+
+    assertThat(response.getStatusCode().value(), is(equalTo(200)));
+
+    verify(actionLogService, times(1))
+        .logAction(
+            targetIdArgumentCaptor.capture(),
+            targetClassArgumentCaptor.capture(),
+            actionTypeArgumentCaptor.capture(),
+            performedByArgumentCaptor.capture());
+    assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.NOT_READY_FOR_REVIEW)));
+    assertThat(performedByArgumentCaptor.getValue(), is(equalTo("test.user")));
+  }
+
+  @Test
+  void updateMeasureLogsNotReadyForReview_whenExistingStatusIsReady() {
+    when(principal.getName()).thenReturn("test.user");
+
+    Review existingReview = Review.builder().status(ReviewStatus.READY_FOR_REVIEW).build();
+    Measure existing = buildDraftMeasure("measure-id-4", existingReview);
+    Measure incoming =
+        existing.toBuilder()
+            .review(Review.builder().status(ReviewStatus.NOT_READY_FOR_REVIEW).build())
+            .build();
+
+    when(measureService.findMeasureById("measure-id-4")).thenReturn(existing);
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(incoming);
+
+    controller.updateMeasure("measure-id-4", incoming, principal, "Bearer TOKEN");
+
+    verify(actionLogService, times(1))
+        .logAction(
+            targetIdArgumentCaptor.capture(),
+            targetClassArgumentCaptor.capture(),
+            actionTypeArgumentCaptor.capture(),
+            performedByArgumentCaptor.capture());
+    assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.NOT_READY_FOR_REVIEW)));
+  }
+
+  @Test
+  void updateMeasureLogsUpdated_whenReviewStatusUnchanged() {
+    when(principal.getName()).thenReturn("test.user");
+
+    Review sameReview = Review.builder().status(ReviewStatus.READY_FOR_REVIEW).build();
+    Measure existing = buildDraftMeasure("measure-id-5", sameReview);
+    // incoming has same review status – only the name changed
+    Measure incoming =
+        existing.toBuilder()
+            .measureName("Updated Name")
+            .review(Review.builder().status(ReviewStatus.READY_FOR_REVIEW).build())
+            .build();
+
+    when(measureService.findMeasureById("measure-id-5")).thenReturn(existing);
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(incoming);
+
+    controller.updateMeasure("measure-id-5", incoming, principal, "Bearer TOKEN");
+
+    verify(actionLogService, times(1))
+        .logAction(
+            targetIdArgumentCaptor.capture(),
+            targetClassArgumentCaptor.capture(),
+            actionTypeArgumentCaptor.capture(),
+            performedByArgumentCaptor.capture());
+    assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.UPDATED)));
+  }
+
+  @Test
+  void updateMeasureLogsUpdated_whenIncomingReviewIsNull() {
+    when(principal.getName()).thenReturn("test.user");
+
+    Review existingReview = Review.builder().status(ReviewStatus.READY_FOR_REVIEW).build();
+    Measure existing = buildDraftMeasure("measure-id-6", existingReview);
+    Measure incoming = existing.toBuilder().review(null).measureName("New Name").build();
+
+    when(measureService.findMeasureById("measure-id-6")).thenReturn(existing);
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(incoming);
+
+    controller.updateMeasure("measure-id-6", incoming, principal, "Bearer TOKEN");
+
+    verify(actionLogService, times(1))
+        .logAction(
+            targetIdArgumentCaptor.capture(),
+            targetClassArgumentCaptor.capture(),
+            actionTypeArgumentCaptor.capture(),
+            performedByArgumentCaptor.capture());
+    assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.UPDATED)));
+  }
+
+  @Test
+  void updateMeasureLogsUpdated_whenIncomingReviewStatusIsNull() {
+    when(principal.getName()).thenReturn("test.user");
+
+    Measure existing = buildDraftMeasure("measure-id-7", null);
+    // review object present but status is null – should NOT be treated as a status change
+    Measure incoming =
+        existing.toBuilder().review(Review.builder().comment("some comment").build()).build();
+
+    when(measureService.findMeasureById("measure-id-7")).thenReturn(existing);
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(incoming);
+
+    controller.updateMeasure("measure-id-7", incoming, principal, "Bearer TOKEN");
+
+    verify(actionLogService, times(1))
+        .logAction(
+            targetIdArgumentCaptor.capture(),
+            targetClassArgumentCaptor.capture(),
+            actionTypeArgumentCaptor.capture(),
+            performedByArgumentCaptor.capture());
+    assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.UPDATED)));
+  }
+
+  @Test
+  void updateMeasureLogsReadyForReview_withComment() {
+    when(principal.getName()).thenReturn("reviewer");
+
+    Measure existing = buildDraftMeasure("measure-id-8", null);
+    Measure incoming =
+        existing.toBuilder()
+            .review(
+                Review.builder()
+                    .status(ReviewStatus.READY_FOR_REVIEW)
+                    .comment("Looks good!")
+                    .build())
+            .build();
+
+    when(measureService.findMeasureById("measure-id-8")).thenReturn(existing);
+    when(measureService.updateMeasure(
+            any(Measure.class), anyString(), any(Measure.class), anyString()))
+        .thenReturn(incoming);
+
+    ResponseEntity<Measure> response =
+        controller.updateMeasure("measure-id-8", incoming, principal, "Bearer TOKEN");
+
+    assertThat(
+        response.getBody().getReview().getStatus(), is(equalTo(ReviewStatus.READY_FOR_REVIEW)));
+    assertThat(response.getBody().getReview().getComment(), is(equalTo("Looks good!")));
+
+    verify(actionLogService, times(1))
+        .logAction(
+            targetIdArgumentCaptor.capture(),
+            targetClassArgumentCaptor.capture(),
+            actionTypeArgumentCaptor.capture(),
+            performedByArgumentCaptor.capture());
+    assertThat(actionTypeArgumentCaptor.getValue(), is(equalTo(ActionType.READY_FOR_REVIEW)));
+    assertThat(performedByArgumentCaptor.getValue(), is(equalTo("reviewer")));
+  }
 }

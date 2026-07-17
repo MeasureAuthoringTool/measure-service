@@ -3,8 +3,8 @@ package cms.gov.madie.measure.dto;
 import cms.gov.madie.measure.locks.MeasureLock;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import tools.jackson.databind.annotation.JsonDeserialize;
-import tools.jackson.databind.annotation.JsonSerialize;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
