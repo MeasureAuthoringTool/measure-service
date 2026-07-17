@@ -100,6 +100,7 @@ public class AdminControllerMvcTest {
   @MockitoBean private AppConfigService appConfigService;
   @MockitoBean private UserServiceClient userServiceClient;
   @MockitoBean private CacheManager cacheManager;
+  @MockitoBean private CompositeRelationshipService compositeRelationshipService;
 
   @Autowired private MockMvc mockMvc;
 
@@ -532,6 +533,38 @@ public class AdminControllerMvcTest {
                 .header("harpId", "owner1"))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id", equalTo("12345")));
+
+    verify(compositeRelationshipService, times(1))
+        .removeCompositeRelationships(eq(testMsr), anyString());
+  }
+
+  @Test
+  public void testAdminMeasurePermaDeleteCompositeCleansUpComponentRelationships()
+      throws Exception {
+    Measure composite =
+        Measure.builder()
+            .id("12345")
+            .measureSet(MeasureSet.builder().owner("owner1").build())
+            .measureMetaData(MeasureMetaData.builder().composite(true).build())
+            .build();
+    when(measureService.findMeasureById(anyString())).thenReturn(composite);
+    doNothing().when(measureRepository).delete(any(Measure.class));
+
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.delete("/admin/measures/{id}", "12345")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .header("Authorization", "test-okta")
+                .header("harpId", "owner1"))
+        .andExpect(status().isOk());
+
+    verify(compositeRelationshipService, times(1))
+        .removeCompositeRelationships(eq(composite), anyString());
+    verify(measureRepository, times(1)).delete(composite);
   }
 
   @Test
