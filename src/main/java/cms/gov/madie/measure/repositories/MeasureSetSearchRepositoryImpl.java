@@ -57,9 +57,6 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
       // filter draft measures for composite measure components search
       measureCriteria.and("measureMetaData.draft").is(false);
 
-      // filter measures that have at least one test case with a testCaseSetId
-      SearchUtils.appendTestCaseSetIdCriteria(measureCriteria);
-
       // filter measures that contains only the allowed scoring types in all their groups for
       // composite measure components search
       if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {

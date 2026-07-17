@@ -210,9 +210,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           aggregationOperations.add(
               createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
         }
-        // Measures that have test cases with test case set IDs are allowed to be component measures
-        // Filter measures that have at least one test case with a testCaseSetId
-        SearchUtils.appendTestCaseSetIdCriteria(measureCriteria);
       }
     }
 
@@ -223,7 +220,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             : match(measureCriteria);
 
     aggregationOperations.add(matchOperation);
-    // Exclude testCases and elmJson after filtering (testCases needed for testCaseSetId filter)
+    // Exclude testCases and elmJson after filtering
     aggregationOperations.add(initialProjection);
     aggregationOperations.add(
         group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));

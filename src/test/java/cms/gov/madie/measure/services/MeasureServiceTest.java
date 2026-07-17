@@ -1280,7 +1280,8 @@ public class MeasureServiceTest implements ResourceUtil {
         .thenReturn(Collections.singletonList(measure));
     // Should not throw because the existing measure belongs to the same measure set
     assertDoesNotThrow(
-        () -> measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", "sameMeasureSetId"));
+        () ->
+            measureService.checkDuplicateCqlLibraryName("testCQLLibraryName", "sameMeasureSetId"));
     verify(measureRepository, times(1)).findAllByCqlLibraryName(eq("testCQLLibraryName"));
   }
 
