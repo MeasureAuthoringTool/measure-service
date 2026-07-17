@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -16,8 +17,10 @@ import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.measure.Component;
+import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureMetaData;
+import gov.cms.madie.models.measure.MeasureScoring;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -234,5 +237,75 @@ public class CompositeRelationshipServiceTest {
             eq(ActionType.REMOVED_FROM_COMPOSITE),
             eq("test.user"),
             eq("Removed from Composite measure Composite Measure"));
+  }
+
+  @Test
+  void testRemoveCompositeRelationshipsDetachesComponents() {
+    String componentMeasureId = "component-measure-id";
+    Measure componentMeasure =
+        Measure.builder()
+            .id(componentMeasureId)
+            .measureName("Component Measure")
+            .compositeMeasureIds(new ArrayList<>(List.of("composite-measure-id")))
+            .build();
+
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .components(List.of(Component.builder().measureId(componentMeasureId).build()))
+            .build();
+
+    Measure compositeMeasure =
+        Measure.builder()
+            .id("composite-measure-id")
+            .measureName("Composite Measure")
+            .measureMetaData(MeasureMetaData.builder().draft(false).composite(true).build())
+            .groups(new ArrayList<>(List.of(compositeGroup)))
+            .build();
+
+    when(measureRepository.findAllById(anyCollection())).thenReturn(List.of(componentMeasure));
+
+    compositeRelationshipService.removeCompositeRelationships(compositeMeasure, "test.user");
+
+    verify(measureRepository).saveAll(anyCollection());
+    assertTrue(componentMeasure.getCompositeMeasureIds().isEmpty());
+  }
+
+  @Test
+  void testRemoveCompositeRelationshipsNoOpForNonComposite() {
+    Measure nonComposite =
+        Measure.builder()
+            .id("measure-id")
+            .measureMetaData(MeasureMetaData.builder().draft(false).composite(false).build())
+            .groups(new ArrayList<>())
+            .build();
+
+    compositeRelationshipService.removeCompositeRelationships(nonComposite, "test.user");
+
+    verifyNoInteractions(measureRepository);
+    verifyNoInteractions(actionLogService);
+  }
+
+  @Test
+  void testRemoveCompositeRelationshipsNoOpWhenCompositeHasNoComponents() {
+    Group compositeGroupNoComponents =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .components(new ArrayList<>())
+            .build();
+
+    Measure compositeMeasure =
+        Measure.builder()
+            .id("composite-measure-id")
+            .measureMetaData(MeasureMetaData.builder().draft(false).composite(true).build())
+            .groups(new ArrayList<>(List.of(compositeGroupNoComponents)))
+            .build();
+
+    compositeRelationshipService.removeCompositeRelationships(compositeMeasure, "test.user");
+
+    verifyNoInteractions(measureRepository);
+    verifyNoInteractions(actionLogService);
   }
 }
