@@ -5,8 +5,10 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.measure.Component;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureScoring;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -117,5 +119,26 @@ public class CompositeRelationshipService {
               username,
               "Removed from Composite measure " + compositeName);
         });
+  }
+
+  /**
+   * Removes {@code compositeMeasure} from the {@code compositeMeasureIds} of each of its component
+   * measures. Used when a composite measure is deleted so its components are not left referencing a
+   * composite that no longer exists.
+   */
+  public void removeCompositeRelationships(Measure compositeMeasure, String username) {
+    if (compositeMeasure.getMeasureMetaData() != null
+        && compositeMeasure.getMeasureMetaData().isComposite()
+        && !CollectionUtils.isEmpty(compositeMeasure.getGroups())) {
+      List<Component> allComponents =
+          compositeMeasure.getGroups().stream()
+              .filter(g -> MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(g.getScoring()))
+              .filter(g -> !CollectionUtils.isEmpty(g.getComponents()))
+              .flatMap(g -> g.getComponents().stream())
+              .toList();
+      if (!allComponents.isEmpty()) {
+        syncComponents(allComponents, List.of(), compositeMeasure, username);
+      }
+    }
   }
 }
