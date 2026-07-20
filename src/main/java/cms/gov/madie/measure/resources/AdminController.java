@@ -72,6 +72,7 @@ public class AdminController extends AbstractMeasureController {
   private final AdminService adminService;
   private final AppConfigService appConfigService;
   private final CacheManager cacheManager;
+  private final CompositeRelationshipService compositeRelationshipService;
 
   @Override
   protected AppConfigService getAppConfigService() {
@@ -310,6 +311,8 @@ public class AdminController extends AbstractMeasureController {
             harpId, measureToDelete.getMeasureSet().getOwner(), measureToDelete.getId());
       }
 
+      compositeRelationshipService.removeCompositeRelationships(
+          measureToDelete, principal.getName().toLowerCase());
       measureRepository.delete(measureToDelete);
       actionLogService.logAction(
           id, Measure.class, ActionType.DELETED, principal.getName().toLowerCase());

@@ -2317,7 +2317,7 @@ public class MeasureControllerMvcTest {
   public void testDeactivateMeasureSuccessfully() throws Exception {
     String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
 
-    when(measureService.deactivateMeasure(eq(measureId), eq(TEST_USER_ID)))
+    when(measureService.deactivateMeasure(eq(measureId), eq(TEST_USER_ID), eq(ACCESS_TOKEN)))
         .thenReturn(Measure.builder().active(false).id(measureId).build());
     MvcResult result =
         mockMvc
@@ -2332,7 +2332,8 @@ public class MeasureControllerMvcTest {
             .andExpect(status().isOk())
             .andReturn();
 
-    verify(measureService, times(1)).deactivateMeasure(eq(measureId), eq(TEST_USER_ID));
+    verify(measureService, times(1))
+        .deactivateMeasure(eq(measureId), eq(TEST_USER_ID), eq(ACCESS_TOKEN));
     assertThat(result.getResponse().getContentAsString(), containsString("\"active\":false"));
   }
 
@@ -2342,7 +2343,7 @@ public class MeasureControllerMvcTest {
     String reason = "Lock can't be obtained to deactivate";
     doThrow(new LockNotObtainedException(reason))
         .when(measureService)
-        .deactivateMeasure(eq(measureId), eq(TEST_USER_ID));
+        .deactivateMeasure(eq(measureId), eq(TEST_USER_ID), eq("test-okta"));
     MvcResult result =
         mockMvc
             .perform(
@@ -2356,7 +2357,8 @@ public class MeasureControllerMvcTest {
             .andExpect(status().isLocked())
             .andReturn();
 
-    verify(measureService, times(1)).deactivateMeasure(eq(measureId), eq(TEST_USER_ID));
+    verify(measureService, times(1))
+        .deactivateMeasure(eq(measureId), eq(TEST_USER_ID), eq("test-okta"));
     assertThat(result.getResponse().getContentAsString(), containsString(reason));
   }
 }
