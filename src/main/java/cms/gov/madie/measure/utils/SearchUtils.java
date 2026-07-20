@@ -86,13 +86,24 @@ public class SearchUtils {
   }
 
   /**
-   * Appends a filter to {@code measureCriteria} requiring at least one test case with a non-blank
-   * {@code testCaseSetId}. Used when searching for measures that are eligible as composite measure
-   * components.
+   * Appends a filter to {@code measureCriteria} for composite component eligibility.
+   *
+   * <p>Include measures that have no test cases.
+   *
+   * <p>Include measures that have at least one test case with a non-blank {@code testCaseSetId}.
    *
    * @param measureCriteria the criteria to append the filter to
    */
   public static void appendTestCaseSetIdCriteria(Criteria measureCriteria) {
-    measureCriteria.and("testCases.testCaseSetId").exists(true).ne(null).ne("");
+    Criteria noTestCasesCriteria =
+        new Criteria()
+            .orOperator(
+                Criteria.where("testCases").exists(false), Criteria.where("testCases").size(0));
+    Criteria hasValidTestCaseSetIdCriteria =
+        Criteria.where("testCases")
+            .elemMatch(Criteria.where("testCaseSetId").exists(true).ne(null).ne(""));
+
+    measureCriteria.andOperator(
+        new Criteria().orOperator(noTestCasesCriteria, hasValidTestCaseSetIdCriteria));
   }
 }

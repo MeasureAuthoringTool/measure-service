@@ -210,6 +210,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           aggregationOperations.add(
               createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
         }
+        // Allow measures with no test cases, or measures whose test cases have a non-blank
+        // testCaseSetId.
+        SearchUtils.appendTestCaseSetIdCriteria(measureCriteria);
       }
     }
 
@@ -220,7 +223,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             : match(measureCriteria);
 
     aggregationOperations.add(matchOperation);
-    // Exclude testCases and elmJson after filtering
+    // Exclude testCases and elmJson after filtering (testCases needed for testCaseSetId filter)
     aggregationOperations.add(initialProjection);
     aggregationOperations.add(
         group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
