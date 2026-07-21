@@ -230,12 +230,6 @@ public class MeasureController extends AbstractMeasureController {
             .body(measureService.updateMeasure(existingMeasure, username, measure, accessToken));
     if (!measure.isActive()) {
       actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
-    } else if (isReviewStatusChanged(existingMeasure, measure)) {
-      ActionType reviewActionType =
-          ReviewStatus.READY_FOR_REVIEW.equals(measure.getReview().getStatus())
-              ? ActionType.READY_FOR_REVIEW
-              : ActionType.NOT_READY_FOR_REVIEW;
-      actionLogService.logAction(id, Measure.class, reviewActionType, username);
     } else {
       actionLogService.logAction(id, Measure.class, ActionType.UPDATED, username);
     }
@@ -601,15 +595,5 @@ public class MeasureController extends AbstractMeasureController {
     List<MeasureListDTO> results = measureService.getMeasuresByIds(ids);
 
     return ResponseEntity.ok(results);
-  }
-
-  private boolean isReviewStatusChanged(Measure existingMeasure, Measure updatingMeasure) {
-    if (updatingMeasure.getReview() == null || updatingMeasure.getReview().getStatus() == null) {
-      return false;
-    }
-    if (existingMeasure.getReview() == null || existingMeasure.getReview().getStatus() == null) {
-      return true;
-    }
-    return !updatingMeasure.getReview().getStatus().equals(existingMeasure.getReview().getStatus());
   }
 }
