@@ -65,9 +65,6 @@ public class MeasureReviewService {
 
     existing.setStatus(newStatus);
     existing.setComment(review.getComment());
-    if (review.getMeasureSetId() != null) {
-      existing.setMeasureSetId(review.getMeasureSetId());
-    }
 
     MeasureReview saved = measureReviewRepository.save(existing);
     log.info("Updated review [{}] for Measure [{}]", saved.getId(), measureId);

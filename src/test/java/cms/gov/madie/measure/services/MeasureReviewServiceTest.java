@@ -118,7 +118,7 @@ class MeasureReviewServiceTest {
     assertEquals("review-1", result.getId());
     assertEquals(ReviewStatus.READY_FOR_REVIEW, result.getStatus());
     assertEquals("updated", result.getComment());
-    assertEquals("set-2", result.getMeasureSetId());
+    assertEquals("set-1", result.getMeasureSetId());
     verify(actionLogService, times(1))
         .logAction("m1", Measure.class, ActionType.READY_FOR_REVIEW, USERNAME);
   }
@@ -151,7 +151,7 @@ class MeasureReviewServiceTest {
   }
 
   @Test
-  void updateReviewKeepsExistingMeasureSetIdWhenNotProvided() {
+  void updateReviewIgnoresMeasureSetIdFromPayload() {
     MeasureReview existing =
         MeasureReview.builder()
             .id("review-1")
@@ -161,8 +161,13 @@ class MeasureReviewServiceTest {
             .comment("old")
             .build();
 
+    // Payload attempts to change measureSetId; it must be ignored.
     MeasureReview update =
-        MeasureReview.builder().status(ReviewStatus.READY_FOR_REVIEW).comment("updated").build();
+        MeasureReview.builder()
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comment("updated")
+            .measureSetId("hacked-set")
+            .build();
 
     when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
     when(measureReviewRepository.save(any(MeasureReview.class)))
