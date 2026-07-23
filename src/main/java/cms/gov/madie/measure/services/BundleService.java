@@ -97,14 +97,16 @@ public class BundleService {
       String compositeBundle =
           fhirServicesClient.getMeasureBundle(measure, accessToken, "export", elmErrorSeverity);
       List<Export> componentExports = getComponentExports(measure, elmErrorSeverity);
-      List<Export.ComponentHumanReadable> componentHumanReadables = buildComponentHumanReadables(componentExports);
+      List<Export.ComponentHumanReadable> componentHumanReadables =
+          buildComponentHumanReadables(componentExports);
 
       String exportFileName = ExportFileNamesUtil.getExportFileName(measure);
       PackagingUtility utility = getPackagingUtility(measure.getModel());
       return PackageDto.builder()
           .fromStorage(false)
           .exportPackage(
-              utility.buildCompositeExport(compositeBundle, componentExports, componentHumanReadables, exportFileName))
+              utility.buildCompositeExport(
+                  compositeBundle, componentExports, componentHumanReadables, exportFileName))
           .build();
     } catch (RestClientException
         | ClassNotFoundException
