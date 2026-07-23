@@ -365,7 +365,7 @@ public class VersionService {
     Matcher matcher = qicorePattern.matcher(cql);
     String standards = "QICore";
     if (model.equalsIgnoreCase(ModelType.US_QUALITY_CORE_0_5_0.getValue())) {
-      standards = "USCore";
+      standards = "USQualityCore";
     }
     if (matcher.find()) {
       cql =

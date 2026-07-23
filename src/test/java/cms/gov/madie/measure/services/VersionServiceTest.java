@@ -1258,7 +1258,7 @@ public class VersionServiceTest {
     assertThat(
         draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(), notNullValue());
     assertThat(draft.getModel(), is(equalTo(ModelType.US_QUALITY_CORE_0_5_0.getValue())));
-    assertThat(draft.getCql(), containsStringIgnoringCase("using USCore version '0.5.0'"));
+    assertThat(draft.getCql(), containsStringIgnoringCase("using USQualityCore version '0.5.0'"));
   }
 
   @Test
