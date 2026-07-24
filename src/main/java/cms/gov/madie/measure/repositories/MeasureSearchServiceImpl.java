@@ -210,7 +210,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           aggregationOperations.add(
               createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
         }
-        // Allow measures with no test cases, or measures whose test cases have a non-blank
+        // Allow measures with no test cases, or measures where all test cases have a non-blank
         // testCaseSetId.
         SearchUtils.appendTestCaseSetIdCriteria(measureCriteria);
       }

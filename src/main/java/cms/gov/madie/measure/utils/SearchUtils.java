@@ -90,7 +90,7 @@ public class SearchUtils {
    *
    * <p>Include measures that have no test cases.
    *
-   * <p>Include measures that have at least one test case with a non-blank {@code testCaseSetId}.
+     * <p>Include measures where all test cases have a non-blank {@code testCaseSetId}.
    *
    * @param measureCriteria the criteria to append the filter to
    */
@@ -99,11 +99,20 @@ public class SearchUtils {
         new Criteria()
             .orOperator(
                 Criteria.where("testCases").exists(false), Criteria.where("testCases").size(0));
-    Criteria hasValidTestCaseSetIdCriteria =
-        Criteria.where("testCases")
-            .elemMatch(Criteria.where("testCaseSetId").exists(true).ne(null).ne(""));
+
+    // Reject a measure if any test case has a missing/null/blank testCaseSetId.
+    Criteria anyInvalidTestCaseSetIdCriteria =
+      Criteria.where("testCases")
+        .elemMatch(
+          new Criteria()
+            .orOperator(
+              Criteria.where("testCaseSetId").exists(false),
+              Criteria.where("testCaseSetId").is(null),
+              Criteria.where("testCaseSetId").is("")));
+    Criteria allTestCasesHaveValidSetIdCriteria =
+      new Criteria().norOperator(anyInvalidTestCaseSetIdCriteria);
 
     measureCriteria.andOperator(
-        new Criteria().orOperator(noTestCasesCriteria, hasValidTestCaseSetIdCriteria));
+      new Criteria().orOperator(noTestCasesCriteria, allTestCasesHaveValidSetIdCriteria));
   }
 }
