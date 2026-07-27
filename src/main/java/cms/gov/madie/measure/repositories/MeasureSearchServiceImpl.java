@@ -210,8 +210,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           aggregationOperations.add(
               createScoringTypeFilter(measureSearchCriteria.getAllowedScoringTypes()));
         }
-        // Measures that have test cases with test case set IDs are allowed to be component measures
-        // Filter measures that have at least one test case with a testCaseSetId
+        // Allow measures with no test cases, or measures where all test cases have a non-blank
+        // testCaseSetId.
         SearchUtils.appendTestCaseSetIdCriteria(measureCriteria);
       }
     }
