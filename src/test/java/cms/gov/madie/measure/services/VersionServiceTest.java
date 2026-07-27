@@ -2372,4 +2372,84 @@ public class VersionServiceTest {
                     !CollectionUtils.isEmpty(m.getTestCases())
                         && m.getTestCases().stream().allMatch(t -> t.getTestCaseSetId() != null)));
   }
+
+  @Test
+  void testUpdateUsingStatementUSQualityCoreAddsUSCoreWhenNotExists() throws Exception {
+    String cql = "using USQualityCore version '0.5.0'\ndefine x: 1";
+    String result =
+            (String)
+                    invokeUpdateUsingStatement(ModelType.US_QUALITY_CORE_0_5_0.getValue(), cql);
+
+    assertTrue(result.contains("using USCore version '6.1.0-derived'"));
+    assertTrue(result.contains("using FHIR version '4.0.1'"));
+  }
+
+  @Test
+  void testUpdateUsingStatementUSQualityCoreReplacesUSCoreWhenExists() throws Exception {
+    String cql =
+            "using USQualityCore version '0.5.0'\nusing USCore version '3.0.0'\ndefine x: 1";
+    String result =
+            (String)
+                    invokeUpdateUsingStatement(ModelType.US_QUALITY_CORE_0_5_0.getValue(), cql);
+
+    assertFalse(result.contains("using USCore version '3.0.0'"));
+    assertTrue(result.contains("using USCore version '6.1.0-derived'"));
+    assertTrue(result.contains("using FHIR version '4.0.1'"));
+  }
+
+  @Test
+  void testUpdateUsingStatementUSQualityCoreDoesNotAddFHIRWhenExists() throws Exception {
+    String cql =
+            "using USQualityCore version '0.5.0'\nusing FHIR version '4.0.0'\ndefine x: 1";
+    String result =
+            (String)
+                    invokeUpdateUsingStatement(ModelType.US_QUALITY_CORE_0_5_0.getValue(), cql);
+
+    assertTrue(result.contains("using USCore version '6.1.0-derived'"));
+    assertTrue(result.contains("using FHIR version '4.0.0'"));
+    assertFalse(result.contains("using FHIR version '4.0.1'\nusing FHIR"));
+  }
+
+  @Test
+  void testUpdateUsingStatementUSQualityCoreWithBothUSCoreAndFHIRPresent() throws Exception {
+    String cql =
+            "using USQualityCore version '0.5.0'\nusing USCore version '5.0.0'\nusing FHIR version '4.0.0'\ndefine x: 1";
+    String result =
+            (String)
+                    invokeUpdateUsingStatement(ModelType.US_QUALITY_CORE_0_5_0.getValue(), cql);
+
+    assertTrue(result.contains("using USCore version '6.1.0-derived'"));
+    assertTrue(result.contains("using FHIR version '4.0.0'"));
+    assertFalse(result.contains("using FHIR version '4.0.1'"));
+  }
+
+  @Test
+  void testUpdateUsingStatementQICoreReplacesQICoreOnly() throws Exception {
+    String cql = "using QICore version '4.1.1'\ndefine x: 1";
+    String result =
+            (String) invokeUpdateUsingStatement(ModelType.QI_CORE_6_0_0.getValue(), cql);
+
+    assertTrue(result.contains("using QICore version '6.0.0'"));
+    assertFalse(result.contains("using USCore"));
+    assertFalse(result.contains("using FHIR"));
+  }
+
+  @Test
+  void testUpdateUsingStatementUSQualityCoreMultipleUSCoreMatches() throws Exception {
+    String cql =
+            "using USQualityCore version '0.5.0'\nusing USCore version '3.0.0'\ndefine x: using USCore version '2.0.0'";
+    String result =
+            (String)
+                    invokeUpdateUsingStatement(ModelType.US_QUALITY_CORE_0_5_0.getValue(), cql);
+
+    assertTrue(result.contains("using USCore version '6.1.0-derived'"));
+    assertTrue(result.contains("using FHIR version '4.0.1'"));
+  }
+
+  private Object invokeUpdateUsingStatement(String model, String cql) throws Exception {
+    var method =
+            VersionService.class.getDeclaredMethod("updateUsingStatement", String.class, String.class);
+    method.setAccessible(true);
+    return method.invoke(versionService, model, cql);
+  }
 }
