@@ -52,6 +52,7 @@ class FhirServicesClientTest {
   @InjectMocks private FhirServicesClient fhirServicesClient;
 
   @Captor ArgumentCaptor<HttpEntity> httpEntityCaptor;
+  @Captor ArgumentCaptor<URI> uriCaptor;
 
   @BeforeEach
   void beforeEach() {
@@ -63,7 +64,7 @@ class FhirServicesClientTest {
         .thenReturn("/api/fhir/measures/bundles");
     lenient()
         .when(fhirServicesConfig.getMadieFhirServiceValidateBundleUri())
-        .thenReturn("/api/fhir/validations/bundles");
+        .thenReturn("/api/fhir/validations/{model}/bundles");
   }
 
   @Test
@@ -123,7 +124,13 @@ class FhirServicesClientTest {
             fhirServicesClient.validateBundle(testCaseJson, ModelType.QI_CORE, accessToken, false));
     verify(fhirServicesConfig.fhirServicesRestTemplate(), times(1))
         .exchange(
-            any(URI.class), eq(HttpMethod.POST), httpEntityCaptor.capture(), any(Class.class));
+            uriCaptor.capture(), eq(HttpMethod.POST), httpEntityCaptor.capture(), any(Class.class));
+    assertThat(
+        uriCaptor.getValue(),
+        is(
+            equalTo(
+                URI.create(
+                    "http://fhir-services/api/fhir/validations/qicore/bundles?lenientPatientRefs=false"))));
     HttpEntity httpEntity = httpEntityCaptor.getValue();
     assertThat(httpEntity.getHeaders(), is(notNullValue()));
     List<String> authorization = httpEntity.getHeaders().get(HttpHeaders.AUTHORIZATION);

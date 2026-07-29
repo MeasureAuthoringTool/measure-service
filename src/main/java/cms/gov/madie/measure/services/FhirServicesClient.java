@@ -76,13 +76,12 @@ public class FhirServicesClient {
       throw new UnsupportedTypeException("Please provide model type.");
     }
 
-    String modelVersion = modelType.getVersionNumber().replace(".", "-");
     URI uri =
         UriComponentsBuilder.fromUriString(
                 fhirServicesConfig.getMadieFhirServiceBaseUrl()
                     + fhirServicesConfig.getMadieFhirServiceValidateBundleUri())
             .queryParam("lenientPatientRefs", lenientPatientRefs)
-            .build(modelVersion);
+            .build(modelType.getShortValue());
     HttpHeaders headers = new HttpHeaders();
     headers.set(HttpHeaders.AUTHORIZATION, accessToken);
     headers.set(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
