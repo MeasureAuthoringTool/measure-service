@@ -7,6 +7,7 @@ import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
@@ -113,6 +114,32 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             .build());
   }
 
+  private List<AggregationOperation> getReviewStages() {
+    return Arrays.asList(
+        addFields()
+            .addField("measureIdString")
+            .withValue(ConvertOperators.ToString.toString("$_id"))
+            .build(),
+
+        lookup("measureReview", "measureIdString", "measureId", "review"),
+        addFields()
+            .addField("reviewStatus")
+            .withValue(
+                ConditionalOperators.when(
+                        ComparisonOperators.Eq.valueOf(
+                                ArrayOperators.ArrayElemAt.arrayOf("$review.status").elementAt(0))
+                            .equalToValue(ReviewStatus.READY_FOR_REVIEW.name()))
+                    .then("Ready")
+                    .otherwise(""))
+            .build());
+  }
+
+  private boolean isReviewSearch(MeasureSearchCriteria measureSearchCriteria) {
+    return measureSearchCriteria != null
+        && CollectionUtils.isNotEmpty(measureSearchCriteria.getOptionalSearchProperties())
+        && measureSearchCriteria.getOptionalSearchProperties().contains("review");
+  }
+
   @Override
   public Page<MeasureListDTO> searchMeasuresByCriteria(
       String userId,
@@ -185,6 +212,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         if (CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())
             || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
           aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
+        }
+        if (isReviewSearch(measureSearchCriteria)) {
+          aggregationOperations.addAll(getReviewStages());
         }
         SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
@@ -263,6 +293,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     postMatchPipeline.add(initialProjection);
     postMatchPipeline.add(match(Criteria.where("measureSetId").in(matchedMeasureSetIds)));
     postMatchPipeline.addAll(getLockStages(userId));
+    postMatchPipeline.addAll(getReviewStages());
 
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version

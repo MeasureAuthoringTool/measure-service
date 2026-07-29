@@ -140,6 +140,22 @@ class SearchUtilsTest {
   }
 
   @Test
+  void testAppendReviewSearchCriteria() {
+    Criteria base = new Criteria();
+    MeasureSearchCriteria input =
+        MeasureSearchCriteria.builder()
+            .searchField("Ready")
+            .optionalSearchProperties(List.of("review"))
+            .build();
+
+    SearchUtils.appendAdditionalSearchCriteria(base, input);
+
+    String json = base.getCriteriaObject().toString();
+    assertThat(json).contains("reviewStatus");
+    assertThat(json).contains("Ready");
+  }
+
+  @Test
   void testAppendWithNullOptionalPropertiesDefaultsToAll() {
     Criteria base = new Criteria();
 
@@ -149,6 +165,8 @@ class SearchUtilsTest {
 
     String json = base.getCriteriaObject().toString();
     assertThat(json).contains("version").contains("model").contains("measureName");
+    // review is opt-in only; it must not widen the default search
+    assertThat(json).doesNotContain("reviewStatus");
   }
 
   @Test

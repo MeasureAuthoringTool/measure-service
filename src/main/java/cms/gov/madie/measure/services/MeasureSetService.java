@@ -8,6 +8,7 @@ import cms.gov.madie.measure.dto.excel.MeasureAccessReportDTO;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.GeneratorRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.MeasureReviewRepository;
 import cms.gov.madie.measure.repositories.MeasureSetActionLogRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import gov.cms.madie.models.access.AclOperation;
@@ -17,8 +18,10 @@ import gov.cms.madie.models.common.AccessControlAction;
 import gov.cms.madie.models.common.Action;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.MeasureSetActionLog;
+import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureReview;
 import gov.cms.madie.models.measure.MeasureSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -46,6 +49,7 @@ public class MeasureSetService {
   private final ActionLogService actionLogService;
   private final UserServiceClient userServiceClient;
   private final MeasureSetActionLogRepository measureSetActionLogRepository;
+  private final MeasureReviewRepository measureReviewRepository;
 
   public void createMeasureSet(
       final String harpId, final String measureId, final String savedMeasureSetId, String cmsId) {
@@ -322,8 +326,29 @@ public class MeasureSetService {
       String measureSetId,
       boolean sortByLatestVersion,
       MeasureSearchCriteria measureSearchCriteria) {
-    return measureSetRepository.findMeasuresByMeasureSetId(
-        measureSetId, sortByLatestVersion, measureSearchCriteria);
+    List<MeasureListDTO> measuresByMeasureSetId =
+        measureSetRepository.findMeasuresByMeasureSetId(
+            measureSetId, sortByLatestVersion, measureSearchCriteria);
+
+    enrichWithReviewStatus(measureSetId, measuresByMeasureSetId);
+
+    return measuresByMeasureSetId;
+  }
+
+  private void enrichWithReviewStatus(String measureSetId, List<MeasureListDTO> measures) {
+    if (CollectionUtils.isEmpty(measures)) {
+      return;
+    }
+    Set<String> readyForReviewMeasureIds =
+        measureReviewRepository.findAllByMeasureSetId(measureSetId).stream()
+            .filter(review -> ReviewStatus.READY_FOR_REVIEW.equals(review.getStatus()))
+            .map(MeasureReview::getMeasureId)
+            .filter(Objects::nonNull)
+            .collect(Collectors.toSet());
+    measures.forEach(
+        measure ->
+            measure.setReviewStatus(
+                readyForReviewMeasureIds.contains(measure.getId()) ? "Ready" : ""));
   }
 
   public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {

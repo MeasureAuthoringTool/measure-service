@@ -61,4 +61,5 @@ public class MeasureListDTO {
   private boolean hasLockedTestCases;
   private String ownerDisplayName;
   private boolean component;
+  private String reviewStatus;
 }
