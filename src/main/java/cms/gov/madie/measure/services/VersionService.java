@@ -52,6 +52,8 @@ public class VersionService {
   private final TestCaseValidationService testCaseValidationService;
   private final MeasureLockService measureLockService;
   private final BundleService bundleService;
+  private static final String USCORE_PATTERN = "using USCore version '6.1.0-derived'";
+  private static final String FHIR_PATTERN = "using FHIR version '4.0.1'";
 
   public enum VersionValidationResult {
     VALID,
@@ -363,9 +365,15 @@ public class VersionService {
   private String updateUsingStatement(String model, String cql) {
     Pattern qicorePattern = Pattern.compile("using QICore .*version '[0-9]\\.[0-9](\\.[0-9])?'");
     Matcher matcher = qicorePattern.matcher(cql);
+
+    Pattern usCorePattern = Pattern.compile("using USCore .*version '[0-9]\\.[0-9](\\.[0-9])?'");
+    Matcher usCoreMatcher = usCorePattern.matcher(cql);
+    Pattern fhirPattern = Pattern.compile("using FHIR .*version '[0-9]\\.[0-9](\\.[0-9])?'");
+    Matcher fhirMatcher = fhirPattern.matcher(cql);
+
     String standards = "QICore";
     if (model.equalsIgnoreCase(ModelType.US_QUALITY_CORE_0_5_0.getValue())) {
-      standards = "USCore";
+      standards = "USQualityCore";
     }
     if (matcher.find()) {
       cql =
@@ -375,6 +383,26 @@ public class VersionService {
                   + " version '"
                   + model.substring(model.lastIndexOf("v") + 1)
                   + "'");
+    }
+
+    if (model.equalsIgnoreCase(ModelType.US_QUALITY_CORE_0_5_0.getValue())) {
+
+      usCoreMatcher.reset(cql);
+      if (usCoreMatcher.find()) {
+        cql = usCoreMatcher.replaceAll(USCORE_PATTERN);
+      } else {
+        cql =
+            cql.replaceAll(
+                "(using USQualityCore version '[0-9]\\.[0-9](\\.[0-9])?')",
+                "$1\n" + USCORE_PATTERN);
+      }
+
+      fhirMatcher.reset(cql);
+      if (!fhirMatcher.find()) {
+        cql =
+            cql.replaceAll(
+                    "(using USCore version '6\\.1\\.0-derived')", "$1\n" + FHIR_PATTERN);
+      }
     }
     return cql;
   }
