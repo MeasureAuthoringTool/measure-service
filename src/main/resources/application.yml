@@ -32,7 +32,7 @@ madie:
           bundle-uri: /fhir/measures/bundles
           export-uri: /fhir/measures/export
         validation:
-          bundle-uri: /fhir/validations/qicore/{model}/bundles
+          bundle-uri: /fhir/validations/{model}/bundles
       test-cases: /fhir/test-cases
   cql-elm:
     service:
