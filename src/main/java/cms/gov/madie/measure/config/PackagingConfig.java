@@ -16,7 +16,7 @@ public class PackagingConfig {
 
   @Bean(
       name = {
-          ServiceConstants.USQUALITYCORE_05_PACKAGE_SERVICE
+        ServiceConstants.USQUALITYCORE_05_PACKAGE_SERVICE
       }) // add future US Quality Core versions here unless they have their own packaging rules
   public PackageService createPackageService(@Autowired QicorePackageService qicorePackageService) {
     return qicorePackageService;
