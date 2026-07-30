@@ -136,8 +136,6 @@ class MeasureSetSearchRepositoryImplTest {
     ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
     verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
 
-    // Without the join, reviewStatus would not exist on the document and the filter would
-    // silently match nothing, leaving the expanded row empty
     String pipelineString = captor.getValue().toString();
     assertThat(pipelineString).contains("measureReview");
     assertThat(pipelineString).contains("reviewStatus");

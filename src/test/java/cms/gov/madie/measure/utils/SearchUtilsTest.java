@@ -165,7 +165,6 @@ class SearchUtilsTest {
 
     String json = base.getCriteriaObject().toString();
     assertThat(json).contains("version").contains("model").contains("measureName");
-    // review is opt-in only; it must not widen the default search
     assertThat(json).doesNotContain("reviewStatus");
   }
 
