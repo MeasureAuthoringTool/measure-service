@@ -399,9 +399,7 @@ public class VersionService {
 
       fhirMatcher.reset(cql);
       if (!fhirMatcher.find()) {
-        cql =
-            cql.replaceAll(
-                    "(using USCore version '6\\.1\\.0-derived')", "$1\n" + FHIR_PATTERN);
+        cql = cql.replaceAll("(using USCore version '6\\.1\\.0-derived')", "$1\n" + FHIR_PATTERN);
       }
     }
     return cql;

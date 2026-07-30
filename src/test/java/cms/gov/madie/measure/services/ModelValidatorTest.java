@@ -117,6 +117,15 @@ class ModelValidatorTest {
   }
 
   @Test
+  void createUsQualityCoreModelValidatorAliasTest() {
+    assertNotNull(modelValidatorFactory);
+
+    ModelValidator validator =
+        modelValidatorFactory.getModelValidator(ModelType.US_QUALITY_CORE_0_5_0);
+    assertTrue(validator instanceof QiCoreModelValidator);
+  }
+
+  @Test
   void useQicoreModelValidatorTestNoStratifications() {
     assertNotNull(modelValidatorFactory);
     Group group =
