@@ -120,6 +120,51 @@ class MeasureSetSearchRepositoryImplTest {
   }
 
   @Test
+  void shouldJoinReviewCollectionWhenFilteringAssociatedMeasuresByReview() {
+    MeasureSearchCriteria criteria =
+        MeasureSearchCriteria.builder()
+            .searchField("Ready")
+            .optionalSearchProperties(List.of("review"))
+            .build();
+
+    List<MeasureListDTO> mockResults = List.of(createDTO("Ready Associated Measure"));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq("measure"), eq(MeasureListDTO.class)))
+        .thenReturn(new AggregationResults<>(mockResults, new Document()));
+
+    repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
+
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
+
+    // Without the join, reviewStatus would not exist on the document and the filter would
+    // silently match nothing, leaving the expanded row empty
+    String pipelineString = captor.getValue().toString();
+    assertThat(pipelineString).contains("measureReview");
+    assertThat(pipelineString).contains("reviewStatus");
+    assertThat(pipelineString).contains("READY_FOR_REVIEW");
+  }
+
+  @Test
+  void shouldNotJoinReviewCollectionForNonReviewSearches() {
+    MeasureSearchCriteria criteria =
+        MeasureSearchCriteria.builder()
+            .searchField("Measure 1")
+            .optionalSearchProperties(List.of("measure"))
+            .build();
+
+    List<MeasureListDTO> mockResults = List.of(createDTO("Measure 1"));
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq("measure"), eq(MeasureListDTO.class)))
+        .thenReturn(new AggregationResults<>(mockResults, new Document()));
+
+    repository.findMeasuresByMeasureSetId(MEASURE_SET_ID, false, criteria);
+
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    verify(mongoTemplate).aggregate(captor.capture(), eq("measure"), eq(MeasureListDTO.class));
+
+    assertThat(captor.getValue().toString()).doesNotContain("measureReview");
+  }
+
+  @Test
   void shouldApplyDraftFilterForCompositeMeasureComponents() {
     MeasureSearchCriteria criteria =
         MeasureSearchCriteria.builder().fromCompositeMeasureComponent(true).build();
