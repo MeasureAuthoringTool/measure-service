@@ -186,6 +186,9 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
           aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
         }
+        if (SearchAggregationUtils.isReviewSearch(measureSearchCriteria)) {
+          aggregationOperations.addAll(SearchAggregationUtils.getReviewStages());
+        }
         SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
 
@@ -263,6 +266,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     postMatchPipeline.add(initialProjection);
     postMatchPipeline.add(match(Criteria.where("measureSetId").in(matchedMeasureSetIds)));
     postMatchPipeline.addAll(getLockStages(userId));
+    postMatchPipeline.addAll(SearchAggregationUtils.getReviewStages());
 
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version

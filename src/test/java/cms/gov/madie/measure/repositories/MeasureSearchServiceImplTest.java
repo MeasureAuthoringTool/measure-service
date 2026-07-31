@@ -17,6 +17,7 @@ import org.junit.jupiter.api.BeforeEach;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -113,6 +114,105 @@ public class MeasureSearchServiceImplTest {
     assertEquals(page1Measures.get(0).getId(), measure1.getId());
     assertEquals(page1Measures.get(1).getId(), measure2.getId());
     assertEquals(page1Measures.get(2).getId(), measure3.getId());
+  }
+
+  private ArgumentCaptor<Aggregation> stubAggregatesReturning(List<MeasureListDTO> queryResults) {
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(queryResults)
+            .count(Arrays.asList(queryResults.toArray()))
+            .build();
+    AggregationResults<FacetDTO> pagedResults =
+        new AggregationResults<>(List.of(facetDTO), new Document());
+    AggregationResults<MeasureSetMatchCountDTO> measureSetResults =
+        new AggregationResults<>(
+            List.of(MeasureSetMatchCountDTO.builder().measureSetId("1-1").build()), new Document());
+
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+        .thenReturn(measureSetResults);
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(pagedResults);
+
+    return ArgumentCaptor.forClass(Aggregation.class);
+  }
+
+  @Test
+  public void testFacetQueryAlwaysJoinsReviewSoStatusIsDisplayed() {
+    ArgumentCaptor<Aggregation> captor = stubAggregatesReturning(List.of(measure1));
+
+    measureAclRepository.searchMeasuresByCriteria(
+        "john", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+
+    String pipeline = captor.getValue().toString();
+    assertTrue(pipeline.contains("measureReview"), "facet query should join the review collection");
+    assertTrue(pipeline.contains("reviewStatus"), "facet query should project reviewStatus");
+    assertTrue(pipeline.contains("READY_FOR_REVIEW"));
+  }
+
+  @Test
+  public void testMatchQueryJoinsReviewOnlyWhenSearchingByReview() {
+    ArgumentCaptor<Aggregation> captor = stubAggregatesReturning(List.of(measure1));
+    MeasureSearchCriteria criteria =
+        MeasureSearchCriteria.builder()
+            .searchField("Ready")
+            .optionalSearchProperties(List.of("review"))
+            .build();
+
+    measureAclRepository.searchMeasuresByCriteria(
+        "john", PageRequest.of(0, 10), criteria, List.of(OwnershipType.OWNED));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class));
+
+    String pipeline = captor.getValue().toString();
+    assertTrue(pipeline.contains("measureReview"), "match query should join review when filtering");
+    assertTrue(pipeline.contains("reviewStatus"));
+  }
+
+  @Test
+  public void testMatchQuerySkipsReviewJoinForNonReviewSearch() {
+    ArgumentCaptor<Aggregation> captor = stubAggregatesReturning(List.of(measure1));
+    MeasureSearchCriteria criteria =
+        MeasureSearchCriteria.builder().searchField("test measure").build();
+
+    measureAclRepository.searchMeasuresByCriteria(
+        "john", PageRequest.of(0, 10), criteria, List.of(OwnershipType.OWNED));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class));
+
+    assertFalse(captor.getValue().toString().contains("measureReview"));
+  }
+
+  @Test
+  public void testReviewStatusIsCarriedThroughToResults() {
+    MeasureListDTO reviewed =
+        MeasureListDTO.builder().id("1").measureSetId("1-1").reviewStatus("Ready").build();
+    stubAggregatesReturning(List.of(reviewed));
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    assertEquals("Ready", page.getContent().get(0).getReviewStatus());
   }
 
   @Test

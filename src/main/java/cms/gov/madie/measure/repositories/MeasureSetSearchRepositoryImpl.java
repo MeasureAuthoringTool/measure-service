@@ -49,6 +49,9 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
           || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
         aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
       }
+      if (SearchAggregationUtils.isReviewSearch(measureSearchCriteria)) {
+        aggregationOperations.addAll(SearchAggregationUtils.getReviewStages());
+      }
       SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
     }
 

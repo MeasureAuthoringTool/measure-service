@@ -7,6 +7,7 @@ import cms.gov.madie.measure.dto.excel.MeasureAccessReportDTO;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.GeneratorRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.MeasureReviewRepository;
 import cms.gov.madie.measure.repositories.MeasureSetActionLogRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import gov.cms.madie.models.access.AclOperation;
@@ -15,6 +16,7 @@ import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureReview;
 import gov.cms.madie.models.measure.MeasureSet;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,6 +45,7 @@ public class MeasureSetServiceTest {
   @Mock private ActionLogService actionLogService;
   @Mock private UserServiceClient userServiceClient;
   @Mock private MeasureSetActionLogRepository measureSetActionLogRepository;
+  @Mock private MeasureReviewRepository measureReviewRepository;
 
   private final String MEASURE_SET_ID = "measureSet1";
   private final String ACCESS_TOKEN = "test-token";
@@ -725,6 +728,46 @@ public class MeasureSetServiceTest {
     assertEquals("Test Measure", actualList.get(0).getMeasureName());
 
     verify(measureSetRepository).findMeasuresByMeasureSetId(MEASURE_SET_ID, true, criteria);
+  }
+
+  @Test
+  void testGetMeasuresByMeasureSetIdMarksOnlyReadyForReviewMeasures() {
+    MeasureListDTO readyMeasure = MeasureListDTO.builder().id("m1").build();
+    MeasureListDTO notReadyMeasure = MeasureListDTO.builder().id("m2").build();
+    MeasureListDTO noReviewMeasure = MeasureListDTO.builder().id("m3").build();
+
+    when(measureSetRepository.findMeasuresByMeasureSetId(MEASURE_SET_ID, true, null))
+        .thenReturn(List.of(readyMeasure, notReadyMeasure, noReviewMeasure));
+    when(measureReviewRepository.findAllByMeasureSetId(MEASURE_SET_ID))
+        .thenReturn(
+            List.of(
+                MeasureReview.builder()
+                    .measureId("m1")
+                    .status(ReviewStatus.READY_FOR_REVIEW)
+                    .build(),
+                MeasureReview.builder()
+                    .measureId("m2")
+                    .status(ReviewStatus.NOT_READY_FOR_REVIEW)
+                    .build()));
+
+    List<MeasureListDTO> actual =
+        measureSetService.getMeasuresByMeasureSetId(MEASURE_SET_ID, true, null);
+
+    assertEquals("Ready", actual.get(0).getReviewStatus());
+    assertEquals("", actual.get(1).getReviewStatus());
+    assertEquals("", actual.get(2).getReviewStatus());
+  }
+
+  @Test
+  void testGetMeasuresByMeasureSetIdSkipsReviewLookupWhenNoMeasures() {
+    when(measureSetRepository.findMeasuresByMeasureSetId(MEASURE_SET_ID, true, null))
+        .thenReturn(List.of());
+
+    List<MeasureListDTO> actual =
+        measureSetService.getMeasuresByMeasureSetId(MEASURE_SET_ID, true, null);
+
+    assertTrue(actual.isEmpty());
+    verify(measureReviewRepository, never()).findAllByMeasureSetId(anyString());
   }
 
   @Test
