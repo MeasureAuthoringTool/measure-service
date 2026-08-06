@@ -1,17 +1,54 @@
 package cms.gov.madie.measure.utils;
 
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import gov.cms.madie.models.common.ReviewStatus;
+import org.apache.commons.collections4.CollectionUtils;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.aggregation.AggregationExpression;
 import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
+import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
+import org.springframework.data.mongodb.core.aggregation.ComparisonOperators;
+import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
+import org.springframework.data.mongodb.core.aggregation.ConvertOperators;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.addFields;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.lookup;
 import static org.springframework.data.mongodb.core.aggregation.Aggregation.match;
 
 public class SearchAggregationUtils {
+
+  public static List<AggregationOperation> getReviewStages() {
+    return Arrays.asList(
+        addFields()
+            .addField("measureIdString")
+            .withValue(ConvertOperators.ToString.toString("$_id"))
+            .build(),
+
+        lookup("measureReview", "measureIdString", "measureId", "review"),
+
+        addFields()
+            .addField("reviewStatus")
+            .withValue(
+                ConditionalOperators.when(
+                        ComparisonOperators.Eq.valueOf(
+                                ArrayOperators.ArrayElemAt.arrayOf("$review.status").elementAt(0))
+                            .equalToValue(ReviewStatus.READY_FOR_REVIEW.name()))
+                    .then("Ready")
+                    .otherwise(""))
+            .build());
+  }
+
+  public static boolean isReviewSearch(MeasureSearchCriteria measureSearchCriteria) {
+    return measureSearchCriteria != null
+        && CollectionUtils.isNotEmpty(measureSearchCriteria.getOptionalSearchProperties())
+        && measureSearchCriteria.getOptionalSearchProperties().contains("review");
+  }
+
   // Add string field called cmsIdDisplay. The CMS ID is zero-padded to 4 digits
   // for display & search consistency. Values wider than 4 digits
   // are left as-is. For QI-Core measures the "FHIR" suffix is appended.
