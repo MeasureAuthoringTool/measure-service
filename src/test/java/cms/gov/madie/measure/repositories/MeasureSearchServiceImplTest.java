@@ -106,7 +106,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, null, List.of(OwnershipType.OWNED));
+            "john", pageRequest, null, List.of(OwnershipType.OWNED), false);
     assertEquals(page.getTotalElements(), 3);
     assertEquals(page.getTotalPages(), 1);
     assertEquals(page.getContent().size(), 3);
@@ -147,7 +147,7 @@ public class MeasureSearchServiceImplTest {
     ArgumentCaptor<Aggregation> captor = stubAggregatesReturning(List.of(measure1));
 
     measureAclRepository.searchMeasuresByCriteria(
-        "john", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+        "john", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED), false);
 
     verify(mongoTemplate)
         .aggregate(
@@ -171,7 +171,7 @@ public class MeasureSearchServiceImplTest {
             .build();
 
     measureAclRepository.searchMeasuresByCriteria(
-        "john", PageRequest.of(0, 10), criteria, List.of(OwnershipType.OWNED));
+        "john", PageRequest.of(0, 10), criteria, List.of(OwnershipType.OWNED), false);
 
     verify(mongoTemplate)
         .aggregate(
@@ -191,7 +191,7 @@ public class MeasureSearchServiceImplTest {
         MeasureSearchCriteria.builder().searchField("test measure").build();
 
     measureAclRepository.searchMeasuresByCriteria(
-        "john", PageRequest.of(0, 10), criteria, List.of(OwnershipType.OWNED));
+        "john", PageRequest.of(0, 10), criteria, List.of(OwnershipType.OWNED), false);
 
     verify(mongoTemplate)
         .aggregate(
@@ -210,7 +210,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+            "john", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED), false);
 
     assertEquals("Ready", page.getContent().get(0).getReviewStatus());
   }
@@ -250,7 +250,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
@@ -297,7 +297,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
@@ -344,7 +344,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
@@ -391,7 +391,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
@@ -438,7 +438,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
@@ -485,7 +485,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(page.getTotalElements(), 2);
     assertEquals(page.getTotalPages(), 1);
@@ -531,7 +531,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(2, page.getTotalElements());
     assertEquals(1, page.getTotalPages());
@@ -567,7 +567,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(page.getTotalElements(), 1);
     assertEquals(page.getTotalPages(), 1);
@@ -602,7 +602,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(page.getTotalElements(), 1);
     assertEquals(page.getTotalPages(), 1);
@@ -638,7 +638,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(page.getTotalElements(), 1);
     assertEquals(page.getTotalPages(), 1);
@@ -808,7 +808,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getTotalElements());
     assertEquals(1, page.getTotalPages());
@@ -869,7 +869,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(2, page.getContent().size());
     assertEquals("John Doe", page.getContent().get(0).getOwnerDisplayName());
@@ -910,7 +910,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("John", page.getContent().get(0).getOwnerDisplayName());
@@ -950,7 +950,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("Doe", page.getContent().get(0).getOwnerDisplayName());
@@ -990,7 +990,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("harpId1", page.getContent().get(0).getOwnerDisplayName());
@@ -1029,7 +1029,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("-", page.getContent().get(0).getOwnerDisplayName());
@@ -1064,7 +1064,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     // Should not call userServiceClient when measureSet is null
@@ -1100,7 +1100,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     // Should not call userServiceClient when owner is null
@@ -1127,7 +1127,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(0, page.getContent().size());
     // Should not call userServiceClient when list is empty
@@ -1182,7 +1182,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(2, page.getContent().size());
     assertEquals("John Doe", page.getContent().get(0).getOwnerDisplayName());
@@ -1223,7 +1223,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1260,7 +1260,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("cohort-measure", page.getContent().get(0).getMeasureName());
@@ -1297,7 +1297,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1334,7 +1334,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1371,7 +1371,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1412,7 +1412,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(2, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1444,7 +1444,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1480,7 +1480,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(1, page.getContent().size());
     assertEquals("measure1", page.getContent().get(0).getMeasureName());
@@ -1532,7 +1532,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "testUser", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "testUser", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertNotNull(page);
     assertEquals(1, page.getContent().size());
@@ -1589,7 +1589,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, null, List.of(OwnershipType.OWNED), false);
     assertEquals(2, page.getContent().size());
     assertEquals("harpId1", page.getContent().get(0).getOwnerDisplayName());
     assertEquals("-", page.getContent().get(1).getOwnerDisplayName());
@@ -1694,7 +1694,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, searchCriteria, List.of(OwnershipType.OWNED));
+            "userId", pageRequest, searchCriteria, List.of(OwnershipType.OWNED), false);
 
     // Verify results
     assertEquals(4, page.getContent().size());
@@ -1766,7 +1766,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.ALL));
+            "userId", pageRequest, null, List.of(OwnershipType.ALL), false);
 
     assertEquals(2, page.getContent().size());
     assertEquals("v1", page.getContent().get(0).getId());
@@ -1810,7 +1810,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, null, List.of(OwnershipType.ALL));
+            "userId", pageRequest, null, List.of(OwnershipType.ALL), false);
 
     assertEquals(2, page.getContent().size());
     assertEquals("cd1", page.getContent().get(0).getId());
@@ -1855,7 +1855,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED));
+            "john", pageRequest, measureSearchCriteria, List.of(OwnershipType.OWNED), false);
 
     assertEquals(2, page.getTotalElements());
     assertEquals(2, page.getContent().size());

@@ -7,6 +7,7 @@ import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
@@ -118,11 +119,12 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       String userId,
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
-      List<OwnershipType> ownershipTypes) {
+      List<OwnershipType> ownershipTypes,
+      boolean isReview) {
 
     // Query 1: find all matching measureSetIds and their match counts
     Map<String, MeasureSetMatchCountDTO> matchInfoMap =
-        findMatchedMeasureSets(userId, measureSearchCriteria, ownershipTypes);
+        findMatchedMeasureSets(userId, measureSearchCriteria, ownershipTypes, isReview);
 
     List<String> matchedMeasureSetIds = new ArrayList<>(matchInfoMap.keySet());
     if (matchedMeasureSetIds.isEmpty()) {
@@ -131,7 +133,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     // Query 2: fetch paginated + sorted results for the matched measure sets
     List<FacetDTO> results =
-        fetchFacetResults(userId, pageable, measureSearchCriteria, matchedMeasureSetIds);
+        fetchFacetResults(userId, pageable, measureSearchCriteria, matchedMeasureSetIds, isReview);
 
     List<MeasureListDTO> queryResults = results.get(0).getQueryResults();
 
@@ -169,7 +171,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   private Map<String, MeasureSetMatchCountDTO> findMatchedMeasureSets(
       String userId,
       MeasureSearchCriteria measureSearchCriteria,
-      List<OwnershipType> ownershipTypes) {
+      List<OwnershipType> ownershipTypes,
+      boolean isReview) {
     List<AggregationOperation> aggregationOperations = new ArrayList<>();
 
     LookupOperation lookupOperation = getLookupOperation();
@@ -187,7 +190,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
         }
         if (SearchAggregationUtils.isReviewSearch(measureSearchCriteria)) {
-          aggregationOperations.addAll(SearchAggregationUtils.getReviewStages());
+          aggregationOperations.addAll(SearchAggregationUtils.getReviewStages(isReview));
         }
         SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
@@ -255,7 +258,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       String userId,
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
-      List<String> matchedMeasureSetIds) {
+      List<String> matchedMeasureSetIds,
+      boolean isReview) {
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
     ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
@@ -266,7 +270,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     postMatchPipeline.add(initialProjection);
     postMatchPipeline.add(match(Criteria.where("measureSetId").in(matchedMeasureSetIds)));
     postMatchPipeline.addAll(getLockStages(userId));
-    postMatchPipeline.addAll(SearchAggregationUtils.getReviewStages());
+    postMatchPipeline.addAll(SearchAggregationUtils.getReviewStages(isReview));
 
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version
@@ -490,6 +494,50 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     Aggregation aggregation =
         newAggregation(
             lookupOperation, matchOperation, groupOperation, group().count().as("count"));
+
+    List<Map> results =
+        mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
+
+    return results.isEmpty() ? 0 : Integer.parseInt(results.get(0).get("count").toString());
+  }
+
+  @Override
+  public int countMeasuresByReview(
+      boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
+    LookupOperation lookupOperation = getLookupOperation();
+    Criteria measureCriteria = Criteria.where("active").is(isActive);
+
+    Criteria measureSetCriteria = buildMeasureSetCriteria(userId, ownershipTypes);
+
+    LookupOperation reviewLookup =
+        LookupOperation.newLookup()
+            .from("measureReview")
+            .localField("measureSetId")
+            .foreignField("measureSetId")
+            .as("review");
+
+    Criteria reviewCriteria =
+        new Criteria()
+            .orOperator(
+                Criteria.where("review.status").is(ReviewStatus.READY_FOR_REVIEW),
+                Criteria.where("review.status").is(ReviewStatus.IN_PROGRESS),
+                Criteria.where("review.status").is(ReviewStatus.COMPLETE));
+
+    MatchOperation matchOperation =
+        (measureSetCriteria != null)
+            ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria, reviewCriteria))
+            : match(new Criteria().andOperator(measureCriteria, reviewCriteria));
+
+    GroupOperation groupOperation = group("measureSetId");
+
+    Aggregation aggregation =
+        newAggregation(
+            lookupOperation,
+            reviewLookup,
+            unwind("review"),
+            matchOperation,
+            groupOperation,
+            group().count().as("count"));
 
     List<Map> results =
         mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();

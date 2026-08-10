@@ -21,7 +21,8 @@ public interface MeasureSearchService {
       String userId,
       Pageable pageable,
       MeasureSearchCriteria searchCriteria,
-      List<OwnershipType> ownershipTypes);
+      List<OwnershipType> ownershipTypes,
+      boolean isReview);
 
   /**
    * Get all the measures(name, version and owner) if they include any version of given library name
@@ -32,4 +33,6 @@ public interface MeasureSearchService {
   List<LibraryUsage> findLibraryUsageByLibraryName(String name);
 
   int countMeasuresByOwnership(boolean isActive, String userId, List<OwnershipType> ownershipTypes);
+
+  int countMeasuresByReview(boolean isActive, String userId, List<OwnershipType> ownershipTypes);
 }

@@ -1368,7 +1368,7 @@ public class MeasureControllerMvcTest {
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(null), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null), eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID)))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1383,7 +1383,8 @@ public class MeasureControllerMvcTest {
     assertTrue(resultStr.contains("Measure3"));
 
     verify(measureService, times(1))
-        .getMeasuresByCriteria(eq(null), eq(null), any(Pageable.class), eq(TEST_USER_ID));
+        .getMeasuresByCriteria(
+            eq(null), eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1399,7 +1400,11 @@ public class MeasureControllerMvcTest {
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null),
+            eq(List.of(OwnershipType.ALL)),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID)))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1419,7 +1424,11 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq(TEST_USER_ID));
+            eq(null),
+            eq(List.of(OwnershipType.ALL)),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID));
 
     verifyNoMoreInteractions(measureService);
   }
@@ -1435,7 +1444,11 @@ public class MeasureControllerMvcTest {
 
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null),
+            eq(List.of(OwnershipType.ALL)),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID)))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1459,6 +1472,7 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             eq(null),
             eq(List.of(OwnershipType.ALL)),
+            eq(false),
             pageRequestCaptor.capture(),
             eq(TEST_USER_ID));
 
@@ -1484,7 +1498,11 @@ public class MeasureControllerMvcTest {
     final Page<MeasureListDTO> measures = new PageImpl<>(List.of(m1, m2));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null),
+            eq(List.of(OwnershipType.OWNED)),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID)))
         .thenReturn(measures);
 
     MvcResult result =
@@ -1503,7 +1521,11 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq(TEST_USER_ID));
+            eq(null),
+            eq(List.of(OwnershipType.OWNED)),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1522,7 +1544,11 @@ public class MeasureControllerMvcTest {
     final Page<MeasureListDTO> measures = new PageImpl<>(List.of(m1, m2));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null),
+            eq(List.of(OwnershipType.SHARED)),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID)))
         .thenReturn(measures);
 
     MvcResult result =
@@ -1541,7 +1567,11 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq(TEST_USER_ID));
+            eq(null),
+            eq(List.of(OwnershipType.SHARED)),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1772,7 +1802,11 @@ public class MeasureControllerMvcTest {
     doReturn(allMeasures)
         .when(measureService)
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(null), any(Pageable.class), eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class),
+            eq(null),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID));
     MvcResult result =
         mockMvc
             .perform(
@@ -1794,7 +1828,11 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class), eq(null), any(Pageable.class), eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class),
+            eq(null),
+            eq(false),
+            any(Pageable.class),
+            eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureRepository);
   }
 
@@ -1814,6 +1852,7 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.ALL)),
+            eq(false),
             any(Pageable.class),
             eq(TEST_USER_ID));
     MvcResult result =
@@ -1842,6 +1881,7 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.ALL)),
+            eq(false),
             any(Pageable.class),
             eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureRepository);
@@ -1863,6 +1903,7 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.OWNED)),
+            eq(false),
             any(Pageable.class),
             eq(TEST_USER_ID));
     MvcResult result =
@@ -1891,6 +1932,7 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.OWNED)),
+            eq(false),
             any(Pageable.class),
             eq(TEST_USER_ID));
 
