@@ -1024,10 +1024,10 @@ class MeasureControllerTest {
         .thenReturn(10);
 
     when(measureService.countMeasuresByReview(true, "test.user", List.of(OwnershipType.OWNED)))
-            .thenReturn(2);
+        .thenReturn(2);
 
     when(measureService.countMeasuresByReview(true, "test.user", List.of(OwnershipType.ALL)))
-            .thenReturn(5);
+        .thenReturn(5);
 
     // when(measureService.countMyMeasures(anyString())).thenReturn(5);
     ResponseEntity<Map<String, Integer>> response = controller.getCounts(principal);
