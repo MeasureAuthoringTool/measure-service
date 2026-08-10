@@ -407,11 +407,7 @@ public class MeasureServiceTest implements ResourceUtil {
             eq(false));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria,
-            List.of(OwnershipType.OWNED),
-            false,
-            initialPage,
-            "test.user");
+            measureSearchCriteria, List.of(OwnershipType.OWNED), false, initialPage, "test.user");
     assertNotNull(measures);
   }
 
@@ -433,11 +429,7 @@ public class MeasureServiceTest implements ResourceUtil {
             eq(false));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria,
-            List.of(OwnershipType.SHARED),
-            false,
-            initialPage,
-            "test.user");
+            measureSearchCriteria, List.of(OwnershipType.SHARED), false, initialPage, "test.user");
     assertNotNull(measures);
   }
 

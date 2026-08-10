@@ -1865,4 +1865,27 @@ public class MeasureSearchServiceImplTest {
     verify(mongoTemplate, times(2))
         .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
   }
+
+  @Test
+  public void countMeasuresByReviewReturnsCorrectCount() {
+    String owner = "john";
+    Map<String, String> resultMap = new HashMap<>();
+    resultMap.put("count", "4");
+    AggregationResults result = new AggregationResults<>(List.of(resultMap), new Document());
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(result);
+    int count =
+        measureAclRepository.countMeasuresByReview(true, owner, List.of(OwnershipType.OWNED));
+    assertEquals(4, count);
+  }
+
+  @Test
+  public void countMeasuresByReviewReturnsZeroWhenNoResults() {
+    AggregationResults result = new AggregationResults<>(new ArrayList<>(), new Document());
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(result);
+    int count =
+        measureAclRepository.countMeasuresByReview(true, "john", List.of(OwnershipType.OWNED));
+    assertEquals(0, count);
+  }
 }
