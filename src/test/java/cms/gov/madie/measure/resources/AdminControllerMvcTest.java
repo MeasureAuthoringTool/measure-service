@@ -1980,7 +1980,7 @@ public class AdminControllerMvcTest {
     MeasureListDTO dto = MeasureListDTO.builder().id("m1").measureName("Measure One").build();
     Page<MeasureListDTO> page = new PageImpl<>(List.of(dto));
     when(measureService.getMeasuresByCriteria(
-            any(), any(), any(), any(Pageable.class), anyString()))
+            any(), any(), anyBoolean(), any(Pageable.class), anyString()))
         .thenReturn(page);
 
     mockMvc
@@ -2005,7 +2005,7 @@ public class AdminControllerMvcTest {
         .getMeasuresByCriteria(
             criteriaCaptor.capture(),
             ownershipCaptor.capture(),
-            any(),
+            any(boolean.class),
             any(Pageable.class),
             usernameCaptor.capture());
     assertEquals("test_user", usernameCaptor.getValue());
