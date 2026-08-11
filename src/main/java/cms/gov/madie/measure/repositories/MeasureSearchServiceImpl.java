@@ -189,10 +189,11 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
           aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
         }
-        if (SearchAggregationUtils.isReviewSearch(measureSearchCriteria)) {
-          aggregationOperations.addAll(SearchAggregationUtils.getReviewStages(isReview));
-        }
         SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
+      }
+
+      if (SearchAggregationUtils.isReviewSearch(measureSearchCriteria) || isReview) {
+        aggregationOperations.addAll(SearchAggregationUtils.getReviewStages(isReview));
       }
 
       if (StringUtils.isNotBlank(measureSearchCriteria.getModel())) {
