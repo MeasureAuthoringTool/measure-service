@@ -717,10 +717,11 @@ public class MeasureService extends BaseMeasureService {
   public Page<MeasureListDTO> getMeasuresByCriteria(
       MeasureSearchCriteria searchCriteria,
       List<OwnershipType> ownershipTypes,
+      boolean isReview,
       Pageable pageReq,
       String username) {
     return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, ownershipTypes);
+        username, pageReq, searchCriteria, ownershipTypes, isReview);
   }
 
   protected void updateReferences(MeasureMetaData metaData) {
@@ -989,6 +990,11 @@ public class MeasureService extends BaseMeasureService {
   public int countMeasuresByOwnership(
       boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
     return measureRepository.countMeasuresByOwnership(isActive, userId, ownershipTypes);
+  }
+
+  public int countMeasuresByReview(
+      boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
+    return measureRepository.countMeasuresByReview(isActive, userId, ownershipTypes);
   }
 
   public List<String> transferMeasures(

@@ -712,7 +712,8 @@ public class AdminController extends AbstractMeasureController {
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
 
     Page<MeasureListDTO> measures =
-        measureService.getMeasuresByCriteria(searchCriteria, ownershipTypes, pageReq, username);
+        measureService.getMeasuresByCriteria(
+            searchCriteria, ownershipTypes, false, pageReq, username);
     return ResponseEntity.ok(measures);
   }
 }

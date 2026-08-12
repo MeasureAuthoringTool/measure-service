@@ -50,7 +50,7 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
         aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
       }
       if (SearchAggregationUtils.isReviewSearch(measureSearchCriteria)) {
-        aggregationOperations.addAll(SearchAggregationUtils.getReviewStages());
+        aggregationOperations.addAll(SearchAggregationUtils.getReviewStages(false));
       }
       SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
     }

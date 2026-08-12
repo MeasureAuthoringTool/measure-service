@@ -92,7 +92,7 @@ public class MeasureController extends AbstractMeasureController {
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
     // TODO Remove parameter "measures" when either measureSearch or EditTestsOnVersionedMeasure is
     // removed.
-    measures = measureService.getMeasuresByCriteria(null, ownershipTypes, pageReq, username);
+    measures = measureService.getMeasuresByCriteria(null, ownershipTypes, false, pageReq, username);
     return ResponseEntity.ok(measures);
   }
 
@@ -110,6 +110,15 @@ public class MeasureController extends AbstractMeasureController {
     results.put(
         "allMeasures",
         measureService.countMeasuresByOwnership(
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.ALL)));
+
+    results.put(
+        "ownedReviews",
+        measureService.countMeasuresByReview(
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.OWNED)));
+    results.put(
+        "allReviews",
+        measureService.countMeasuresByReview(
             true, principal.getName().toLowerCase(), List.of(OwnershipType.ALL)));
 
     return ResponseEntity.ok(results);
@@ -394,6 +403,7 @@ public class MeasureController extends AbstractMeasureController {
   public ResponseEntity<Page<MeasureListDTO>> measureSearchByCriteria(
       Principal principal,
       @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
+      @RequestParam(name = "isReview", required = false) boolean isReview,
       @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
       @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
@@ -404,7 +414,8 @@ public class MeasureController extends AbstractMeasureController {
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
 
     Page<MeasureListDTO> measures =
-        measureService.getMeasuresByCriteria(searchCriteria, ownershipTypes, pageReq, username);
+        measureService.getMeasuresByCriteria(
+            searchCriteria, ownershipTypes, isReview, pageReq, username);
 
     return ResponseEntity.ok(measures);
   }

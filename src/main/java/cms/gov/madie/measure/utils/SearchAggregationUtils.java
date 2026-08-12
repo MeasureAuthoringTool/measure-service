@@ -4,43 +4,64 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import gov.cms.madie.models.common.ReviewStatus;
 import org.apache.commons.collections4.CollectionUtils;
 import org.bson.Document;
-import org.springframework.data.mongodb.core.aggregation.AggregationExpression;
-import org.springframework.data.mongodb.core.aggregation.AggregationOperation;
-import org.springframework.data.mongodb.core.aggregation.ArrayOperators;
-import org.springframework.data.mongodb.core.aggregation.ComparisonOperators;
-import org.springframework.data.mongodb.core.aggregation.ConditionalOperators;
-import org.springframework.data.mongodb.core.aggregation.ConvertOperators;
+import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.addFields;
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.lookup;
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.match;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.*;
 
 public class SearchAggregationUtils {
 
-  public static List<AggregationOperation> getReviewStages() {
-    return Arrays.asList(
-        addFields()
-            .addField("measureIdString")
-            .withValue(ConvertOperators.ToString.toString("$_id"))
-            .build(),
+  public static List<AggregationOperation> getReviewStages(boolean isReview) {
 
-        lookup("measureReview", "measureIdString", "measureId", "review"),
+    List<AggregationOperation> reviewStages =
+        new ArrayList<>(
+            Arrays.asList(
+                addFields()
+                    .addField("measureIdString")
+                    .withValue(ConvertOperators.ToString.toString("$_id"))
+                    .build(),
+                lookup("measureReview", "measureIdString", "measureId", "review"),
+                addFields()
+                    .addField("reviewStatus")
+                    .withValue(
+                        switchCases(
+                                Switch.CaseOperator.when(
+                                        ComparisonOperators.Eq.valueOf(
+                                                ArrayOperators.ArrayElemAt.arrayOf("$review.status")
+                                                    .elementAt(0))
+                                            .equalToValue(ReviewStatus.READY_FOR_REVIEW.name()))
+                                    .then("Ready"),
+                                Switch.CaseOperator.when(
+                                        ComparisonOperators.Eq.valueOf(
+                                                ArrayOperators.ArrayElemAt.arrayOf("$review.status")
+                                                    .elementAt(0))
+                                            .equalToValue(ReviewStatus.IN_PROGRESS.name()))
+                                    .then("In Progress"),
+                                Switch.CaseOperator.when(
+                                        ComparisonOperators.Eq.valueOf(
+                                                ArrayOperators.ArrayElemAt.arrayOf("$review.status")
+                                                    .elementAt(0))
+                                            .equalToValue(ReviewStatus.COMPLETE.name()))
+                                    .then("Complete"))
+                            .defaultTo(""))
+                    .build()));
+    if (isReview) {
 
-        addFields()
-            .addField("reviewStatus")
-            .withValue(
-                ConditionalOperators.when(
-                        ComparisonOperators.Eq.valueOf(
-                                ArrayOperators.ArrayElemAt.arrayOf("$review.status").elementAt(0))
-                            .equalToValue(ReviewStatus.READY_FOR_REVIEW.name()))
-                    .then("Ready")
-                    .otherwise(""))
-            .build());
+      reviewStages.add(
+          match(
+              new Criteria()
+                  .orOperator(
+                      Criteria.where("reviewStatus").is("Ready"),
+                      Criteria.where("reviewStatus").is("In Progress"),
+                      Criteria.where("reviewStatus").is("Complete"))));
+    }
+    return reviewStages;
   }
 
   public static boolean isReviewSearch(MeasureSearchCriteria measureSearchCriteria) {
