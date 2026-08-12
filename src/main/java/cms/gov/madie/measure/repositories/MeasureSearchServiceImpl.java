@@ -510,11 +510,17 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     Criteria measureSetCriteria = buildMeasureSetCriteria(userId, ownershipTypes);
 
+    AddFieldsOperation addFields =
+        addFields()
+            .addField("measureIdString")
+            .withValue(ConvertOperators.ToString.toString("$_id"))
+            .build();
+
     LookupOperation reviewLookup =
         LookupOperation.newLookup()
             .from("measureReview")
-            .localField("measureSetId")
-            .foreignField("measureSetId")
+            .localField("measureIdString")
+            .foreignField("measureId")
             .as("review");
 
     Criteria reviewCriteria =
@@ -533,6 +539,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     Aggregation aggregation =
         newAggregation(
+            addFields,
             lookupOperation,
             reviewLookup,
             unwind("review"),

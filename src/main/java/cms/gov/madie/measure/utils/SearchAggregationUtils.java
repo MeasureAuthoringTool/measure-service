@@ -22,7 +22,11 @@ public class SearchAggregationUtils {
     List<AggregationOperation> reviewStages =
         new ArrayList<>(
             Arrays.asList(
-                lookup("measureReview", "measureSetId", "measureSetId", "review"),
+                addFields()
+                    .addField("measureIdString")
+                    .withValue(ConvertOperators.ToString.toString("$_id"))
+                    .build(),
+                lookup("measureReview", "measureIdString", "measureId", "review"),
                 addFields()
                     .addField("reviewStatus")
                     .withValue(
