@@ -58,7 +58,7 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
     // if the request is from composite component view
     if (measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent()) {
       // filter draft measures for composite measure components search
-      measureCriteria.and("measureMetaData.draft").is(false);
+      measureCriteria = measureCriteria.and("measureMetaData.draft").is(false);
 
       // Allow measures with no test cases, or measures where all test cases have a non-blank
       // testCaseSetId.
