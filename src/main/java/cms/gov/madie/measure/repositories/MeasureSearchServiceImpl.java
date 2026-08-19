@@ -382,8 +382,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     pipeline.addAll(getLockStages(userId));
     pipeline.add(SearchAggregationUtils.addIsComponentField());
 
-    // When sorting by measureMetaData.draft, substitute with the 5-tier draftSortOrder field,
-    // the same substitution the paginated measure search makes.
     Sort effectiveSort = pageable.getSort();
     if (effectiveSort.stream()
         .anyMatch(order -> "measureMetaData.draft".equals(order.getProperty()))) {
