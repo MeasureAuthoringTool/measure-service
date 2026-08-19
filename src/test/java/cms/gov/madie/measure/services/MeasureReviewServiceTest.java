@@ -11,6 +11,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
@@ -28,6 +30,9 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class MeasureReviewServiceTest {
@@ -37,6 +42,8 @@ class MeasureReviewServiceTest {
   @Mock private MeasureReviewRepository measureReviewRepository;
 
   @Mock private ActionLogService actionLogService;
+
+  @Mock private MeasureService measureService;
 
   @InjectMocks private MeasureReviewService measureReviewService;
 
@@ -367,5 +374,24 @@ class MeasureReviewServiceTest {
     verify(measureReviewRepository, times(1)).findAllByMeasureSetId("set-1");
     verify(actionLogService, never())
         .logAction(anyString(), any(), any(ActionType.class), eq(USERNAME));
+  }
+
+  @Test
+  void getMeasuresInReviewReturnsMeasuresFromMeasureService() {
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    MeasureListDTO measureInReview =
+        MeasureListDTO.builder().id("m1").measureName("Measure 1").reviewStatus("Ready").build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    when(measureService.getMeasuresInReview(searchCriteria, pageRequest, USERNAME))
+        .thenReturn(new PageImpl<>(List.of(measureInReview)));
+
+    Page<MeasureListDTO> measures =
+        measureReviewService.getMeasuresInReview(searchCriteria, pageRequest, USERNAME);
+
+    assertEquals(1, measures.getContent().size());
+    assertEquals("m1", measures.getContent().get(0).getId());
+    assertEquals("Ready", measures.getContent().get(0).getReviewStatus());
+    verify(measureService, times(1)).getMeasuresInReview(searchCriteria, pageRequest, USERNAME);
   }
 }

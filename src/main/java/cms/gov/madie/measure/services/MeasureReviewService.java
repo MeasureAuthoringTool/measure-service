@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
@@ -9,6 +11,8 @@ import gov.cms.madie.models.measure.MeasureReview;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -18,6 +22,7 @@ public class MeasureReviewService {
 
   private final MeasureReviewRepository measureReviewRepository;
   private final ActionLogService actionLogService;
+  private final MeasureService measureService;
 
   /**
    * Creates a new review document for the given measure. Enforces the one-review-per-measure
@@ -105,6 +110,20 @@ public class MeasureReviewService {
    */
   public List<MeasureReview> getReviewsByMeasureSetId(String measureSetId) {
     return measureReviewRepository.findAllByMeasureSetId(measureSetId);
+  }
+
+  /**
+   * Retrieves the measures that are currently under review (review status of Ready, In Progress or
+   * Complete)
+   *
+   * @param searchCriteria the search criteria, may be null
+   * @param pageReq pagination and sort parameters
+   * @param username the HARP id of the requesting user
+   * @return a page of measures under review
+   */
+  public Page<MeasureListDTO> getMeasuresInReview(
+      MeasureSearchCriteria searchCriteria, Pageable pageReq, String username) {
+    return measureService.getMeasuresInReview(searchCriteria, pageReq, username);
   }
 
   /**

@@ -13,9 +13,11 @@ import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.measure.*;
+import jakarta.servlet.http.HttpServletRequest;
+import java.security.Principal;
+import java.util.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
@@ -27,10 +29,6 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
-import jakarta.servlet.http.HttpServletRequest;
-import java.security.Principal;
-import java.util.*;
 
 @Slf4j
 @RestController
@@ -92,7 +90,7 @@ public class MeasureController extends AbstractMeasureController {
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
     // TODO Remove parameter "measures" when either measureSearch or EditTestsOnVersionedMeasure is
     // removed.
-    measures = measureService.getMeasuresByCriteria(null, ownershipTypes, false, pageReq, username);
+    measures = measureService.getMeasuresByCriteria(null, ownershipTypes, pageReq, username);
     return ResponseEntity.ok(measures);
   }
 
@@ -387,7 +385,8 @@ public class MeasureController extends AbstractMeasureController {
     final String username = principal.getName().toLowerCase();
 
     log.info(
-        "User [{}] is attempting to delete a stratification with Id [{}] from group with Id [{}] from measure [{}]",
+        "User [{}] is attempting to delete a stratification with Id [{}] from group with Id [{}]"
+            + " from measure [{}]",
         principal.getName(),
         stratificationId,
         groupId,
@@ -403,7 +402,6 @@ public class MeasureController extends AbstractMeasureController {
   public ResponseEntity<Page<MeasureListDTO>> measureSearchByCriteria(
       Principal principal,
       @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
-      @RequestParam(name = "isReview", required = false) boolean isReview,
       @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
       @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
@@ -414,8 +412,7 @@ public class MeasureController extends AbstractMeasureController {
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
 
     Page<MeasureListDTO> measures =
-        measureService.getMeasuresByCriteria(
-            searchCriteria, ownershipTypes, isReview, pageReq, username);
+        measureService.getMeasuresByCriteria(searchCriteria, ownershipTypes, pageReq, username);
 
     return ResponseEntity.ok(measures);
   }
