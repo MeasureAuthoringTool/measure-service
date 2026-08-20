@@ -263,7 +263,20 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     postMatchPipeline.add(lookupOperation);
     postMatchPipeline.add(unwindOperation);
     postMatchPipeline.add(initialProjection);
-    postMatchPipeline.add(match(Criteria.where("measureSetId").in(matchedMeasureSetIds)));
+
+    // Honor measureMeataData.draft seachCriteria
+    Criteria criteria;
+    if (measureSearchCriteria != null && measureSearchCriteria.getDraft() != null) {
+      criteria =
+          new Criteria()
+              .andOperator(
+                  Criteria.where("measureSetId").in(matchedMeasureSetIds),
+                  Criteria.where("measureMetaData.draft").is(measureSearchCriteria.getDraft()));
+    } else {
+      criteria = Criteria.where("measureSetId").in(matchedMeasureSetIds);
+    }
+
+    postMatchPipeline.add(match(criteria));
     postMatchPipeline.addAll(getLockStages(userId));
     postMatchPipeline.addAll(SearchAggregationUtils.getReviewStages());
 

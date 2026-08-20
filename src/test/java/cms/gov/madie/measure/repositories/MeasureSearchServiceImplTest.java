@@ -1998,5 +1998,83 @@ public class MeasureSearchServiceImplTest {
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class));
     assertTrue(captor.getValue().toString().contains("draftSortOrder"));
+  public void testSearchMeasuresByCriteria_WithDraftCriteria() {
+    PageRequest pageRequest = PageRequest.of(0, 5);
+
+    List<MeasureListDTO> measures = List.of(measure1);
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(measures).count(Arrays.asList(measures.toArray())).build();
+
+    AggregationResults<FacetDTO> facetResults =
+        new AggregationResults<>(List.of(facetDTO), new Document());
+
+    MeasureSetMatchCountDTO matchDto =
+        MeasureSetMatchCountDTO.builder()
+            .measureSetId(measure1.getMeasureSetId())
+            .matchCount(1)
+            .matchedMeasureId(measure1.getId())
+            .build();
+
+    AggregationResults<MeasureSetMatchCountDTO> measureSetResults =
+        new AggregationResults<>(List.of(matchDto), new Document());
+
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class), eq(Measure.class), eq(MeasureSetMatchCountDTO.class)))
+        .thenReturn(measureSetResults);
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(Measure.class), eq(FacetDTO.class)))
+        .thenReturn(facetResults);
+
+    MeasureSearchCriteria criteria = MeasureSearchCriteria.builder().draft(true).build();
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", pageRequest, criteria, List.of(OwnershipType.OWNED), false);
+
+    assertEquals(1, page.getTotalElements());
+
+    verify(mongoTemplate).aggregate(any(Aggregation.class), eq(Measure.class), eq(FacetDTO.class));
+  }
+
+  @Test
+  public void testSearchMeasuresByCriteria_WithoutDraftCriteria() {
+    PageRequest pageRequest = PageRequest.of(0, 5);
+
+    List<MeasureListDTO> measures = List.of(measure1);
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(measures).count(Arrays.asList(measures.toArray())).build();
+
+    AggregationResults<FacetDTO> facetResults =
+        new AggregationResults<>(List.of(facetDTO), new Document());
+
+    MeasureSetMatchCountDTO matchDto =
+        MeasureSetMatchCountDTO.builder()
+            .measureSetId(measure1.getMeasureSetId())
+            .matchCount(1)
+            .matchedMeasureId(measure1.getId())
+            .build();
+
+    AggregationResults<MeasureSetMatchCountDTO> measureSetResults =
+        new AggregationResults<>(List.of(matchDto), new Document());
+
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class), eq(Measure.class), eq(MeasureSetMatchCountDTO.class)))
+        .thenReturn(measureSetResults);
+
+    when(mongoTemplate.aggregate(any(Aggregation.class), eq(Measure.class), eq(FacetDTO.class)))
+        .thenReturn(facetResults);
+
+    MeasureSearchCriteria criteria =
+        MeasureSearchCriteria.builder().build(); // null draft for else branch
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "john", pageRequest, criteria, List.of(OwnershipType.OWNED), false);
+
+    assertEquals(1, page.getTotalElements());
+
+    verify(mongoTemplate).aggregate(any(Aggregation.class), eq(Measure.class), eq(FacetDTO.class));
   }
 }
