@@ -899,6 +899,7 @@ public class MeasureService extends BaseMeasureService {
       throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
     }
     verifyOneQiCoreAndOneQdmMeasure(qiCoreMeasure, qdmMeasure);
+    verifyQiCoreIsNotComposite(qiCoreMeasure);
     verifyOwner(username, qiCoreMeasure, qdmMeasure);
     verifyQdmHasCmsId(qdmMeasure);
     verifyQiCoreDoesNotHaveCmsId(qiCoreMeasure);
@@ -914,6 +915,16 @@ public class MeasureService extends BaseMeasureService {
       log.info("CMS ID could not be associated. Must pass in one QDM and one QI-Core measure");
       throw new InvalidRequestException(
           "CMS ID could not be associated. Must select one QDM and one QI-Core measure.");
+    }
+  }
+
+  private void verifyQiCoreIsNotComposite(Measure qiCoreMeasure) {
+    if (qiCoreMeasure.getMeasureMetaData().isComposite()) {
+      log.info(
+          "CMS ID could not be associated. The QI-Core measure with Id [{}] is a composite measure.",
+          qiCoreMeasure.getId());
+      throw new InvalidResourceStateException(
+          "CMS ID could not be associated. Composite measures cannot be linked.");
     }
   }
 

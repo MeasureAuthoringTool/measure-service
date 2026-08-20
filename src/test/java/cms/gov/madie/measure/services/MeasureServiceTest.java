@@ -1710,6 +1710,22 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testValidateCmsIdAssociationThrowsExceptionWhenQICoreMeasureIsComposite() {
+    measure1.setMeasureMetaData(draftMeasureMetaData.toBuilder().composite(true).build());
+    MeasureSet qiCoreMeasureSet =
+        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
+    MeasureSet qdmMeasureSet =
+        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
+
+    measure1.setMeasureSet(qiCoreMeasureSet);
+    measure2.setMeasureSet(qdmMeasureSet);
+
+    assertThrows(
+        InvalidResourceStateException.class,
+        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
+  }
+
+  @Test
   public void testValidateCmsIdAssociationThrowsExceptionWhenQICoreMeasureIsVersioned() {
     measure1.setMeasureMetaData(finalMeasureMetaData);
     MeasureSet qiCoreMeasureSet =
