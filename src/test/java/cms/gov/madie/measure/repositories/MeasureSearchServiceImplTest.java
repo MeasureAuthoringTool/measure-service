@@ -1998,6 +1998,9 @@ public class MeasureSearchServiceImplTest {
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class));
     assertTrue(captor.getValue().toString().contains("draftSortOrder"));
+  }
+
+  @Test
   public void testSearchMeasuresByCriteria_WithDraftCriteria() {
     PageRequest pageRequest = PageRequest.of(0, 5);
 
@@ -2030,7 +2033,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, criteria, List.of(OwnershipType.OWNED), false);
+            "john", pageRequest, criteria, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getTotalElements());
 
@@ -2071,7 +2074,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "john", pageRequest, criteria, List.of(OwnershipType.OWNED), false);
+            "john", pageRequest, criteria, List.of(OwnershipType.OWNED));
 
     assertEquals(1, page.getTotalElements());
 
