@@ -1,15 +1,18 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
-import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 @Slf4j
@@ -19,6 +22,7 @@ public class MeasureReviewService {
 
   private final MeasureReviewRepository measureReviewRepository;
   private final ActionLogService actionLogService;
+  private final MeasureService measureService;
 
   /**
    * Creates a new review document for the given measure. Enforces the one-review-per-measure
@@ -45,12 +49,12 @@ public class MeasureReviewService {
 
   /**
    * Updates the existing review for the given measure. The review is looked up by measureId, so the
-   * caller does not need to know the review document id. A READY_FOR_REVIEW / NOT_READY_FOR_REVIEW
-   * event is logged against the measure instance history only when the status actually changes
-   * (e.g. a comment-only update is not logged).
+   * caller does not need to know the review document id. A review status event is logged against
+   * the measure instance history only when the status actually changes (e.g. a reviewer-only or
+   * comment-only update is not logged).
    *
    * @param measureId the measure whose review should be updated
-   * @param review the review payload containing the new status/comment
+   * @param review the review payload containing the new status/reviewers/comment
    * @param username the HARP id / name of the user performing the action
    * @return the updated review
    */
@@ -63,8 +67,11 @@ public class MeasureReviewService {
     final ReviewStatus previousStatus = existing.getStatus();
     final ReviewStatus newStatus = review.getStatus();
 
-    existing.setStatus(newStatus);
+    if (newStatus != null) {
+      existing.setStatus(newStatus);
+    }
     existing.setComment(review.getComment());
+    existing.setReviewers(review.getReviewers());
 
     MeasureReview saved = measureReviewRepository.save(existing);
     log.info("Updated review [{}] for Measure [{}]", saved.getId(), measureId);
@@ -106,8 +113,22 @@ public class MeasureReviewService {
   }
 
   /**
-   * Logs a review status change against the measure instance (not the measure set) history. When
-   * the "Mark as Ready" toggle is ON the status is READY_FOR_REVIEW; when OFF it is
+   * Retrieves the measures that are currently under review (review status of Ready, In Progress or
+   * Complete)
+   *
+   * @param searchCriteria the search criteria, may be null
+   * @param pageReq pagination and sort parameters
+   * @param username the HARP id of the requesting user
+   * @return a page of measures under review
+   */
+  public Page<MeasureListDTO> getMeasuresInReview(
+      MeasureSearchCriteria searchCriteria, Pageable pageReq, String username) {
+    return measureService.getMeasuresInReview(searchCriteria, pageReq, username);
+  }
+
+  /**
+   * Logs a review status change against the measure instance (not the measure set) history. Each
+   * status logs its own event: READY_FOR_REVIEW, REVIEW_IN_PROGRESS, REVIEW_COMPLETE, or
    * NOT_READY_FOR_REVIEW. No additional info is recorded.
    *
    * @param measureId the measure instance id the event is logged against
@@ -118,10 +139,6 @@ public class MeasureReviewService {
     if (status == null) {
       return;
     }
-    ActionType actionType =
-        ReviewStatus.READY_FOR_REVIEW.equals(status)
-            ? ActionType.READY_FOR_REVIEW
-            : ActionType.NOT_READY_FOR_REVIEW;
-    actionLogService.logAction(measureId, Measure.class, actionType, username);
+    actionLogService.logAction(measureId, Measure.class, status.toActionType(), username);
   }
 }

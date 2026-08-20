@@ -1,5 +1,28 @@
 package cms.gov.madie.measure.resources;
 
+import cms.gov.madie.measure.config.security.AdminOnly;
+import cms.gov.madie.measure.dto.ImpactedMeasureValidationReport;
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
+import cms.gov.madie.measure.dto.MeasureTestCaseValidationReportSummary;
+import cms.gov.madie.measure.dto.TestCaseValidationReport;
+import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.repositories.CqmMeasureRepository;
+import cms.gov.madie.measure.repositories.ExportRepository;
+import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.OrganizationRepository;
+import cms.gov.madie.measure.services.*;
+import cms.gov.madie.measure.utils.MeasureUtil;
+import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.Organization;
+import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.common.Version;
+import gov.cms.madie.models.cqm.CqmMeasure;
+import gov.cms.madie.models.measure.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.*;
 import java.util.concurrent.Callable;
@@ -7,46 +30,21 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-
-import cms.gov.madie.measure.config.security.AdminOnly;
-import cms.gov.madie.measure.exceptions.*;
-import cms.gov.madie.measure.repositories.CqmMeasureRepository;
-import cms.gov.madie.measure.repositories.ExportRepository;
-import cms.gov.madie.measure.services.*;
-import cms.gov.madie.measure.utils.MeasureUtil;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.Organization;
-import gov.cms.madie.models.common.Version;
-import gov.cms.madie.models.cqm.CqmMeasure;
-import gov.cms.madie.models.measure.*;
-import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.CacheManager;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StopWatch;
 import org.springframework.web.bind.annotation.*;
-
-import cms.gov.madie.measure.dto.ImpactedMeasureValidationReport;
-import cms.gov.madie.measure.dto.MeasureListDTO;
-import cms.gov.madie.measure.dto.MeasureSearchCriteria;
-import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
-import cms.gov.madie.measure.dto.MeasureTestCaseValidationReportSummary;
-import cms.gov.madie.measure.dto.TestCaseValidationReport;
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.repositories.OrganizationRepository;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.OwnershipType;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import jakarta.servlet.http.HttpServletRequest;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @RestController
@@ -177,7 +175,8 @@ public class AdminController extends AbstractMeasureController {
       @RequestHeader("Authorization") String accessToken) {
 
     log.info(
-        "User [{}] - Starting admin task to place QI Core v6 testcases back on the validation queue",
+        "User [{}] - Starting admin task to place QI Core v6 testcases back on the validation"
+            + " queue",
         principal.getName());
     StopWatch timer = new StopWatch();
     timer.start("Find All QI Core v6 Measures");
@@ -712,8 +711,7 @@ public class AdminController extends AbstractMeasureController {
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
 
     Page<MeasureListDTO> measures =
-        measureService.getMeasuresByCriteria(
-            searchCriteria, ownershipTypes, false, pageReq, username);
+        measureService.getMeasuresByCriteria(searchCriteria, ownershipTypes, pageReq, username);
     return ResponseEntity.ok(measures);
   }
 }

@@ -6,12 +6,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -23,6 +23,26 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.config.security.RoleConstants;
+import cms.gov.madie.measure.dto.*;
+import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.locks.MeasureLock;
+import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.repositories.TestCasePatchRepository;
+import cms.gov.madie.measure.resources.DuplicateKeyException;
+import cms.gov.madie.measure.utils.MeasureUtil;
+import cms.gov.madie.measure.utils.ResourceUtil;
+import gov.cms.madie.models.access.AclOperation;
+import gov.cms.madie.models.access.AclSpecification;
+import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.access.UserStatus;
+import gov.cms.madie.models.common.*;
+import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.dto.UserDetailsDto;
+import gov.cms.madie.models.measure.*;
+import gov.cms.mat.cql.CqlTextParser;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
@@ -30,21 +50,6 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-
-import cms.gov.madie.measure.clients.UserServiceClient;
-import cms.gov.madie.measure.config.security.RoleConstants;
-import cms.gov.madie.measure.dto.*;
-import cms.gov.madie.measure.exceptions.*;
-import cms.gov.madie.measure.locks.MeasureLock;
-import cms.gov.madie.measure.repositories.MeasureSetRepository;
-import cms.gov.madie.measure.repositories.TestCasePatchRepository;
-import gov.cms.madie.models.access.AclOperation;
-import gov.cms.madie.models.access.UserStatus;
-import gov.cms.madie.models.common.*;
-import gov.cms.madie.models.dto.LibraryUsage;
-import gov.cms.madie.models.dto.UserDetailsDto;
-import gov.cms.madie.models.measure.*;
-import gov.cms.mat.cql.CqlTextParser;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,13 +63,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.resources.DuplicateKeyException;
-import cms.gov.madie.measure.utils.MeasureUtil;
-import cms.gov.madie.measure.utils.ResourceUtil;
-import gov.cms.madie.models.access.AclSpecification;
-import gov.cms.madie.models.access.RoleEnum;
 
 @ExtendWith(MockitoExtension.class)
 public class MeasureServiceTest implements ResourceUtil {
@@ -403,11 +401,10 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.OWNED)),
-            eq(false));
+            eq(List.of(OwnershipType.OWNED)));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria, List.of(OwnershipType.OWNED), false, initialPage, "test.user");
+            measureSearchCriteria, List.of(OwnershipType.OWNED), initialPage, "test.user");
     assertNotNull(measures);
   }
 
@@ -425,11 +422,10 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.SHARED)),
-            eq(false));
+            eq(List.of(OwnershipType.SHARED)));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria, List.of(OwnershipType.SHARED), false, initialPage, "test.user");
+            measureSearchCriteria, List.of(OwnershipType.SHARED), initialPage, "test.user");
     assertNotNull(measures);
   }
 
@@ -447,12 +443,31 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.ALL)),
-            eq(false));
+            eq(List.of(OwnershipType.ALL)));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria, List.of(OwnershipType.ALL), false, initialPage, "test.user");
+            measureSearchCriteria, List.of(OwnershipType.ALL), initialPage, "test.user");
     assertNotNull(measures);
+  }
+
+  @Test
+  public void testGetMeasuresInReview() {
+    PageRequest initialPage = PageRequest.of(0, 10);
+    MeasureListDTO measureInReview =
+        MeasureListDTO.builder().id("m1").measureName("Measure 1").reviewStatus("Ready").build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    doReturn(new PageImpl<>(List.of(measureInReview)))
+        .when(measureRepository)
+        .searchMeasuresInReview("test.user", initialPage, searchCriteria);
+
+    Page<MeasureListDTO> measures =
+        measureService.getMeasuresInReview(searchCriteria, initialPage, "test.user");
+
+    assertEquals(1, measures.getContent().size());
+    assertEquals("Ready", measures.getContent().get(0).getReviewStatus());
+    verify(measureRepository, times(1))
+        .searchMeasuresInReview("test.user", initialPage, searchCriteria);
   }
 
   @Test
@@ -2707,7 +2722,8 @@ public class MeasureServiceTest implements ResourceUtil {
         exception.getMessage(),
         is(
             equalTo(
-                "Response could not be completed for measure with ID test-measure-id, since the measure is not in a draft status")));
+                "Response could not be completed for measure with ID test-measure-id, since the"
+                    + " measure is not in a draft status")));
   }
 
   @Test
@@ -2964,7 +2980,8 @@ public class MeasureServiceTest implements ResourceUtil {
                 measureService.validateCodeSuffixes(
                     new CqlTextParser(cqlWithInvalidCodeSuffix), "mId"));
     assertEquals(
-        "Code suffixes must be 4 characters or less. Please correct the code: Therapy Appropriate (12345) with suffix: 12345",
+        "Code suffixes must be 4 characters or less. Please correct the code: Therapy Appropriate"
+            + " (12345) with suffix: 12345",
         exception.getMessage());
   }
 
