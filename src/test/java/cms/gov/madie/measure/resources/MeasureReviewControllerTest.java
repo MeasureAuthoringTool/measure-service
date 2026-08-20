@@ -4,10 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.services.MeasureReviewService;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.MeasureReview;
@@ -21,6 +24,10 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
@@ -32,6 +39,8 @@ class MeasureReviewControllerTest {
   @Mock private MeasureReviewService measureReviewService;
 
   @Captor private ArgumentCaptor<MeasureReview> reviewCaptor;
+
+  @Captor private ArgumentCaptor<Pageable> pageableCaptor;
 
   private Principal principal;
   private MeasureReview review;
@@ -111,5 +120,32 @@ class MeasureReviewControllerTest {
     assertNotNull(response);
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals(1, response.getBody().size());
+  }
+
+  @Test
+  void searchMeasuresInReviewReturnsMeasures() {
+    when(principal.getName()).thenReturn("Test.User");
+    MeasureListDTO measureInReview =
+        MeasureListDTO.builder().id("m1").measureName("Measure 1").reviewStatus("Ready").build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    when(measureReviewService.getMeasuresInReview(
+            eq(searchCriteria), any(Pageable.class), eq("test.user")))
+        .thenReturn(new PageImpl<>(List.of(measureInReview)));
+
+    ResponseEntity<Page<MeasureListDTO>> response =
+        controller.searchMeasuresInReview(
+            principal, searchCriteria, 10, 0, "lastModifiedAt", "DESC");
+
+    assertNotNull(response);
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals(1, response.getBody().getContent().size());
+    assertEquals("m1", response.getBody().getContent().get(0).getId());
+    verify(measureReviewService)
+        .getMeasuresInReview(eq(searchCriteria), pageableCaptor.capture(), eq("test.user"));
+    Pageable pageable = pageableCaptor.getValue();
+    assertEquals(0, pageable.getPageNumber());
+    assertEquals(10, pageable.getPageSize());
+    assertEquals(Sort.by(Sort.Direction.DESC, "lastModifiedAt"), pageable.getSort());
   }
 }

@@ -1,9 +1,14 @@
 package cms.gov.madie.measure.repositories;
 
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.newAggregation;
+
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
+import java.util.ArrayList;
+import java.util.List;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,12 +17,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Repository;
-
-import java.util.ArrayList;
-import java.util.List;
-
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.newAggregation;
 
 @Repository
 public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepository {
@@ -50,7 +49,7 @@ public class MeasureSetSearchRepositoryImpl implements MeasureSetSearchRepositor
         aggregationOperations.add(SearchAggregationUtils.addCmsIdDisplayField());
       }
       if (SearchAggregationUtils.isReviewSearch(measureSearchCriteria)) {
-        aggregationOperations.addAll(SearchAggregationUtils.getReviewStages(false));
+        aggregationOperations.addAll(SearchAggregationUtils.getReviewStages());
       }
       SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
     }

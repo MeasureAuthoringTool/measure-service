@@ -1,53 +1,5 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.config.security.SecurityConfigTest;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.skyscreamer.jsonassert.JSONAssert;
-import org.skyscreamer.jsonassert.JSONCompareMode;
-import cms.gov.madie.measure.dto.MeasureListDTO;
-import cms.gov.madie.measure.dto.MeasureSearchCriteria;
-import cms.gov.madie.measure.dto.SharedUser;
-import cms.gov.madie.measure.exceptions.*;
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.repositories.MeasureSetRepository;
-import cms.gov.madie.measure.repositories.TestCasePatchRepository;
-import cms.gov.madie.measure.services.*;
-import tools.jackson.databind.ObjectMapper;
-import tools.jackson.databind.cfg.DateTimeFeature;
-import tools.jackson.databind.json.JsonMapper;
-import com.google.gson.Gson;
-
-import gov.cms.madie.models.access.AclSpecification;
-import gov.cms.madie.models.access.RoleEnum;
-import gov.cms.madie.models.common.ActionType;
-import gov.cms.madie.models.common.ModelType;
-import gov.cms.madie.models.common.Organization;
-import gov.cms.madie.models.common.OwnershipType;
-import gov.cms.madie.models.dto.LibraryUsage;
-import gov.cms.madie.models.measure.*;
-import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.MvcResult;
-
-import java.time.Clock;
-import java.time.Instant;
-import java.time.ZoneId;
-import java.util.*;
-
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
@@ -61,6 +13,52 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+import cms.gov.madie.measure.config.security.SecurityConfigTest;
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
+import cms.gov.madie.measure.dto.SharedUser;
+import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.repositories.TestCasePatchRepository;
+import cms.gov.madie.measure.services.*;
+import com.google.gson.Gson;
+import gov.cms.madie.models.access.AclSpecification;
+import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.common.Organization;
+import gov.cms.madie.models.common.OwnershipType;
+import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.measure.*;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.util.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Captor;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.skyscreamer.jsonassert.JSONAssert;
+import org.skyscreamer.jsonassert.JSONCompareMode;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.cfg.DateTimeFeature;
+import tools.jackson.databind.json.JsonMapper;
 
 @WebMvcTest({MeasureController.class})
 @ExtendWith(MockitoExtension.class)
@@ -102,7 +100,9 @@ public class MeasureControllerMvcTest {
   private static final String MODEL = ModelType.QI_CORE.toString();
   Gson gson = new Gson();
   private static final String LIBRARY_NAME_VALIDATION_ERROR =
-      "Library name must start with an upper case letter, followed by alpha-numeric character(s) and must not contain spaces or other special characters except of underscore for QDM.";
+      "Library name must start with an upper case letter, followed by alpha-numeric character(s)"
+          + " and must not contain spaces or other special characters except of underscore for"
+          + " QDM.";
 
   public String toJsonString(Object obj) {
     ObjectMapper mapper =
@@ -345,7 +345,9 @@ public class MeasureControllerMvcTest {
   @Test
   public void testNewMeasureFailsIfUnderscoreInMeasureName() throws Exception {
     final String measureAsJson =
-        "{ \"measureName\":\"A_Name\", \"cqlLibraryName\":\"ALib\" , \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core v4.1.1\"}";
+        "{ \"measureName\":\"A_Name\", \"cqlLibraryName\":\"ALib\" ,"
+            + " \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core"
+            + " v4.1.1\"}";
     mockMvc
         .perform(
             post("/measure")
@@ -363,7 +365,9 @@ public class MeasureControllerMvcTest {
   @Test
   public void testUpdateMeasureFailsIfUnderscoreInMeasureName() throws Exception {
     final String measureAsJson =
-        "{ \"id\": \"m1234\", \"measureName\":\"A_Name\", \"cqlLibraryName\":\"ALib\", \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core v4.1.1\" }";
+        "{ \"id\": \"m1234\", \"measureName\":\"A_Name\", \"cqlLibraryName\":\"ALib\","
+            + " \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core"
+            + " v4.1.1\" }";
     mockMvc
         .perform(
             put("/measures/m1234")
@@ -912,7 +916,9 @@ public class MeasureControllerMvcTest {
   @Test
   public void testNewMeasureNoUnderscore() throws Exception {
     final String measureAsJson =
-        "{ \"id\": \"m1234\", \"measureName\":\"A_Name\", \"cqlLibraryName\":\"ALib\", \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core v4.1.1\" }";
+        "{ \"id\": \"m1234\", \"measureName\":\"A_Name\", \"cqlLibraryName\":\"ALib\","
+            + " \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core"
+            + " v4.1.1\" }";
     mockMvc
         .perform(
             put("/measures/m1234")
@@ -930,7 +936,9 @@ public class MeasureControllerMvcTest {
   @Test
   public void testNewMeasureFailsIfCqlLibaryNameStartsWithLowerCase() throws Exception {
     final String measureAsJson =
-        "{ \"measureName\":\"AName\", \"cqlLibraryName\":\"aLib\", \"ecqmTitle\":\"ecqmTitle\", \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core v4.1.1\" }";
+        "{ \"measureName\":\"AName\", \"cqlLibraryName\":\"aLib\", \"ecqmTitle\":\"ecqmTitle\","
+            + " \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core"
+            + " v4.1.1\" }";
     mockMvc
         .perform(
             post("/measure")
@@ -946,7 +954,10 @@ public class MeasureControllerMvcTest {
   @Test
   public void testUpdateMeasureFailsIfCqlLibaryNameStartsWithLowerCase() throws Exception {
     final String measureAsJson =
-        "{ \"id\": \"m1234\", \"measureName\":\"AName\", \"cqlLibraryName\":\"aLib\", \"ecqmTitle\":\"ecqmTitle\", \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core v4.1.1\" }";
+        "{ \"id\": \"m1234\", \"measureName\":\"AName\", \"cqlLibraryName\":\"aLib\","
+            + " \"ecqmTitle\":\"ecqmTitle\","
+            + " \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core"
+            + " v4.1.1\" }";
     mockMvc
         .perform(
             put("/measures/m1234")
@@ -962,7 +973,9 @@ public class MeasureControllerMvcTest {
   @Test
   public void testNewMeasureFailsIfCqlLibraryNameHasQuotes() throws Exception {
     final String measureAsJson =
-        "{ \"measureName\":\"AName\", \"cqlLibraryName\":\"ALi''b\", \"ecqmTitle\":\"ecqmTitle\", \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core v4.1.1\" }";
+        "{ \"measureName\":\"AName\", \"cqlLibraryName\":\"ALi''b\", \"ecqmTitle\":\"ecqmTitle\","
+            + " \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core"
+            + " v4.1.1\" }";
     mockMvc
         .perform(
             post("/measure")
@@ -978,7 +991,9 @@ public class MeasureControllerMvcTest {
   @Test
   public void testNewMeasureFailsIfCqlLibraryNameHasUnderscore() throws Exception {
     final String measureAsJson =
-        "{ \"measureName\":\"AName\", \"cqlLibraryName\":\"ALi_'b\", \"ecqmTitle\":\"ecqmTitle\", \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core v4.1.1\" }";
+        "{ \"measureName\":\"AName\", \"cqlLibraryName\":\"ALi_'b\", \"ecqmTitle\":\"ecqmTitle\","
+            + " \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\", \"model\":\"QI-Core"
+            + " v4.1.1\" }";
     mockMvc
         .perform(
             post("/measure")
@@ -1100,7 +1115,8 @@ public class MeasureControllerMvcTest {
   @Test
   public void testNewMeasureFailsWithInvalidModelType() throws Exception {
     final String measureAsJson =
-        "{ \"measureName\":\"TestName\", \"cqlLibraryName\":\"TEST1\", \"model\":\"Test\", \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\" }";
+        "{ \"measureName\":\"TestName\", \"cqlLibraryName\":\"TEST1\", \"model\":\"Test\","
+            + " \"versionId\":\"versionId\",\"measureSetId\":\"measureSetId\" }";
     mockMvc
         .perform(
             post("/measure")
@@ -1143,7 +1159,8 @@ public class MeasureControllerMvcTest {
             .codeSystem("http://hl7.org/fhir/us/cqfmeasures/CodeSystem/intended-venue-codes")
             .display("EH")
             .definition(
-                "An eligible hospital is an acute care facility that is eligible to participate in a quality measurement initiative.")
+                "An eligible hospital is an acute care facility that is eligible to participate in"
+                    + " a quality measurement initiative.")
             .build();
 
     Measure measure =
@@ -1186,7 +1203,8 @@ public class MeasureControllerMvcTest {
             .codeSystem("http://hl7.org/fhir/us/cqfmeasures/CodeSystem/intended-venue-codes")
             .display("EH")
             .definition(
-                "An eligible hospital is an acute care facility that is eligible to participate in a quality measurement initiative.")
+                "An eligible hospital is an acute care facility that is eligible to participate in"
+                    + " a quality measurement initiative.")
             .build();
 
     Measure measure =
@@ -1232,7 +1250,8 @@ public class MeasureControllerMvcTest {
             .codeSystem("http://hl7.org/fhir/us/cqfmeasures/CodeSystem/intended-venue-codes")
             .display("EC")
             .definition(
-                "An eligible clinician is a clinician who is eligible to participate in a quality measurement initiative.")
+                "An eligible clinician is a clinician who is eligible to participate in a quality"
+                    + " measurement initiative.")
             .build();
 
     Measure measure =
@@ -1278,7 +1297,8 @@ public class MeasureControllerMvcTest {
             .codeSystem("http://hl7.org/fhir/us/cqfmeasures/CodeSystem/intended-venue-codes")
             .display("EH")
             .definition(
-                "An eligible hospital is an acute care facility that is eligible to participate in a quality measurement initiative.")
+                "An eligible hospital is an acute care facility that is eligible to participate in"
+                    + " a quality measurement initiative.")
             .build();
 
     Measure measure =
@@ -1321,7 +1341,8 @@ public class MeasureControllerMvcTest {
             .codeSystem("http://hl7.org/fhir/us/cqfmeasures/CodeSystem/intended-venue-codes")
             .display("EH")
             .definition(
-                "An eligible hospital is an acute care facility that is eligible to participate in a quality measurement initiative.")
+                "An eligible hospital is an acute care facility that is eligible to participate in"
+                    + " a quality measurement initiative.")
             .build();
 
     Measure measure =
@@ -1368,7 +1389,7 @@ public class MeasureControllerMvcTest {
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null), eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID)))
+            eq(null), eq(null), any(Pageable.class), eq(TEST_USER_ID)))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1383,8 +1404,7 @@ public class MeasureControllerMvcTest {
     assertTrue(resultStr.contains("Measure3"));
 
     verify(measureService, times(1))
-        .getMeasuresByCriteria(
-            eq(null), eq(null), eq(false), any(Pageable.class), eq(TEST_USER_ID));
+        .getMeasuresByCriteria(eq(null), eq(null), any(Pageable.class), eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1400,11 +1420,7 @@ public class MeasureControllerMvcTest {
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.ALL)),
-            eq(false),
-            any(Pageable.class),
-            eq(TEST_USER_ID)))
+            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq(TEST_USER_ID)))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1424,11 +1440,7 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.ALL)),
-            eq(false),
-            any(Pageable.class),
-            eq(TEST_USER_ID));
+            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq(TEST_USER_ID));
 
     verifyNoMoreInteractions(measureService);
   }
@@ -1444,11 +1456,7 @@ public class MeasureControllerMvcTest {
 
     Page<MeasureListDTO> allMeasures = new PageImpl<>(List.of(m1, m2, m3));
     when(measureService.getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.ALL)),
-            eq(false),
-            any(Pageable.class),
-            eq(TEST_USER_ID)))
+            eq(null), eq(List.of(OwnershipType.ALL)), any(Pageable.class), eq(TEST_USER_ID)))
         .thenReturn(allMeasures);
 
     MvcResult result =
@@ -1472,7 +1480,6 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             eq(null),
             eq(List.of(OwnershipType.ALL)),
-            eq(false),
             pageRequestCaptor.capture(),
             eq(TEST_USER_ID));
 
@@ -1498,11 +1505,7 @@ public class MeasureControllerMvcTest {
     final Page<MeasureListDTO> measures = new PageImpl<>(List.of(m1, m2));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.OWNED)),
-            eq(false),
-            any(Pageable.class),
-            eq(TEST_USER_ID)))
+            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq(TEST_USER_ID)))
         .thenReturn(measures);
 
     MvcResult result =
@@ -1521,11 +1524,7 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.OWNED)),
-            eq(false),
-            any(Pageable.class),
-            eq(TEST_USER_ID));
+            eq(null), eq(List.of(OwnershipType.OWNED)), any(Pageable.class), eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1544,11 +1543,7 @@ public class MeasureControllerMvcTest {
     final Page<MeasureListDTO> measures = new PageImpl<>(List.of(m1, m2));
 
     when(measureService.getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.SHARED)),
-            eq(false),
-            any(Pageable.class),
-            eq(TEST_USER_ID)))
+            eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq(TEST_USER_ID)))
         .thenReturn(measures);
 
     MvcResult result =
@@ -1567,11 +1562,7 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            eq(null),
-            eq(List.of(OwnershipType.SHARED)),
-            eq(false),
-            any(Pageable.class),
-            eq(TEST_USER_ID));
+            eq(null), eq(List.of(OwnershipType.SHARED)), any(Pageable.class), eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureService);
   }
 
@@ -1593,7 +1584,9 @@ public class MeasureControllerMvcTest {
             .measureGroupTypes(List.of(MeasureGroupTypes.PROCESS))
             .build();
     final String groupJson =
-        "{\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-1\",\"name\":\"initialPopulation\",\"definition\":\"Initial Population\"}],\"measureGroupTypes\":[\"Process\"],\"populationBasis\": \"boolean\"}";
+        "{\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-1\",\"name\":\"initialPopulation\",\"definition\":\"Initial"
+            + " Population\"}],\"measureGroupTypes\":[\"Process\"],\"populationBasis\":"
+            + " \"boolean\"}";
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
         .thenReturn(group);
 
@@ -1640,7 +1633,8 @@ public class MeasureControllerMvcTest {
             .build();
 
     final String groupJson =
-        "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-2\",\"name\":\"initialPopulation\",\"definition\":\"FactorialOfFive\"}],\"measureGroupTypes\":[\"Process\"], \"populationBasis\": \"boolean\"}";
+        "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-2\",\"name\":\"initialPopulation\",\"definition\":\"FactorialOfFive\"}],\"measureGroupTypes\":[\"Process\"],"
+            + " \"populationBasis\": \"boolean\"}";
     when(measureService.findMeasureById(anyString()))
         .thenReturn(Measure.builder().id("1234").build());
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
@@ -1672,7 +1666,8 @@ public class MeasureControllerMvcTest {
   @Test
   public void testUpdateGroupIfPopulationDefinitionReturnTypesAreInvalid() throws Exception {
     final String groupJson =
-        "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-2\",\"name\":\"initialPopulation\",\"definition\":\"FactorialOfFive\"}],\"measureGroupTypes\":[\"Process\"], \"populationBasis\": \"boolean\"}";
+        "{\"id\":\"test-id\",\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-2\",\"name\":\"initialPopulation\",\"definition\":\"FactorialOfFive\"}],\"measureGroupTypes\":[\"Process\"],"
+            + " \"populationBasis\": \"boolean\"}";
     when(measureService.findMeasureById(anyString()))
         .thenReturn(Measure.builder().id("1234").build());
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
@@ -1691,7 +1686,8 @@ public class MeasureControllerMvcTest {
         .andExpect(
             jsonPath("$.message")
                 .value(
-                    "Return type for the CQL definition selected for the Initial Population does not match with population basis."));
+                    "Return type for the CQL definition selected for the Initial Population does"
+                        + " not match with population basis."));
 
     verify(groupService, times(1))
         .createOrUpdateGroup(
@@ -1701,7 +1697,9 @@ public class MeasureControllerMvcTest {
   @Test
   public void testUpdateGroupIfPopulationFunctionReturnTypesAreInvalid() throws Exception {
     final String groupJson =
-        "{\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-1\",\"name\":\"initialPopulation\",\"definition\":\"Initial Population\"}],\"measureGroupTypes\":[\"Process\"],\"populationBasis\": \"boolean\"}";
+        "{\"scoring\":\"Cohort\",\"populations\":[{\"id\":\"id-1\",\"name\":\"initialPopulation\",\"definition\":\"Initial"
+            + " Population\"}],\"measureGroupTypes\":[\"Process\"],\"populationBasis\":"
+            + " \"boolean\"}";
     when(measureService.findMeasureById(anyString()))
         .thenReturn(Measure.builder().id("1234").build());
     when(groupService.createOrUpdateGroup(any(Group.class), any(String.class), any(String.class)))
@@ -1802,11 +1800,7 @@ public class MeasureControllerMvcTest {
     doReturn(allMeasures)
         .when(measureService)
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(null),
-            eq(false),
-            any(Pageable.class),
-            eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class), eq(null), any(Pageable.class), eq(TEST_USER_ID));
     MvcResult result =
         mockMvc
             .perform(
@@ -1828,11 +1822,7 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1))
         .getMeasuresByCriteria(
-            any(MeasureSearchCriteria.class),
-            eq(null),
-            eq(false),
-            any(Pageable.class),
-            eq(TEST_USER_ID));
+            any(MeasureSearchCriteria.class), eq(null), any(Pageable.class), eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureRepository);
   }
 
@@ -1852,7 +1842,6 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.ALL)),
-            eq(false),
             any(Pageable.class),
             eq(TEST_USER_ID));
     MvcResult result =
@@ -1881,7 +1870,6 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.ALL)),
-            eq(false),
             any(Pageable.class),
             eq(TEST_USER_ID));
     verifyNoMoreInteractions(measureRepository);
@@ -1903,7 +1891,6 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.OWNED)),
-            eq(false),
             any(Pageable.class),
             eq(TEST_USER_ID));
     MvcResult result =
@@ -1932,7 +1919,6 @@ public class MeasureControllerMvcTest {
         .getMeasuresByCriteria(
             any(MeasureSearchCriteria.class),
             eq(List.of(OwnershipType.OWNED)),
-            eq(false),
             any(Pageable.class),
             eq(TEST_USER_ID));
 
@@ -2096,7 +2082,10 @@ public class MeasureControllerMvcTest {
         .andExpect(
             content()
                 .string(
-                    "{\"measureId1\":[{\"userId\":\"userId1\",\"displayName\":\"John Doe (userId1)\",\"performedAt\":\"2025-03-17T10:00:00Z\"}],\"measureId2\":[{\"userId\":\"userId1\",\"displayName\":\"John Doe (userId1)\",\"performedAt\":\"2025-03-17T10:00:00Z\"},{\"userId\":\"userId2\",\"displayName\":\"Jane Doe (userId2)\",\"performedAt\":\"2025-03-17T10:00:00Z\"}]}"));
+                    "{\"measureId1\":[{\"userId\":\"userId1\",\"displayName\":\"John Doe"
+                        + " (userId1)\",\"performedAt\":\"2025-03-17T10:00:00Z\"}],\"measureId2\":[{\"userId\":\"userId1\",\"displayName\":\"John"
+                        + " Doe (userId1)\",\"performedAt\":\"2025-03-17T10:00:00Z\"},{\"userId\":\"userId2\",\"displayName\":\"Jane"
+                        + " Doe (userId2)\",\"performedAt\":\"2025-03-17T10:00:00Z\"}]}"));
 
     verify(measureService, times(1)).getSharedMeasures(eq(measureIds), anyString());
   }

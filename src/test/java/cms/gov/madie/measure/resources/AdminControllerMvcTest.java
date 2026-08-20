@@ -1,7 +1,27 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.config.security.SecurityConfigTest;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.notNullValue;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.empty;
+import static org.hamcrest.Matchers.equalTo;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
+import static org.springframework.security.core.authority.AuthorityUtils.createAuthorityList;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
 import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.config.security.SecurityConfigTest;
 import cms.gov.madie.measure.dto.JobStatus;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
@@ -21,14 +41,24 @@ import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.*;
 import gov.cms.madie.models.dto.UserRolesDto;
 import gov.cms.madie.models.measure.*;
-
+import java.security.Principal;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
@@ -36,43 +66,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-
 import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.cfg.DateTimeFeature;
 import tools.jackson.databind.json.JsonMapper;
-
-import java.security.Principal;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
-
-import org.springframework.cache.Cache;
-import org.springframework.cache.CacheManager;
-
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.hamcrest.Matchers.empty;
-import static org.hamcrest.Matchers.equalTo;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.*;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
-import static org.springframework.security.core.authority.AuthorityUtils.createAuthorityList;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
 
 @WebMvcTest({AdminController.class})
 @ActiveProfiles("test")
@@ -505,7 +501,9 @@ public class AdminControllerMvcTest {
         .andExpect(
             jsonPath("$.message")
                 .value(
-                    "Response could not be completed because the HARP id of owner2 passed in does not match the owner of the measure with the measure id of 12345. The owner of the measure is owner1"));
+                    "Response could not be completed because the HARP id of owner2 passed in does"
+                        + " not match the owner of the measure with the measure id of 12345. The"
+                        + " owner of the measure is owner1"));
 
     verify(measureService, times(1)).findMeasureById(anyString());
     verifyNoInteractions(measureRepository);
@@ -612,7 +610,9 @@ public class AdminControllerMvcTest {
         .andExpect(
             jsonPath("$.message")
                 .value(
-                    "Response could not be completed because the HARP id of owner2 passed in does not match the owner of the measure with the measure id of 12345. The owner of the measure is owner1"));
+                    "Response could not be completed because the HARP id of owner2 passed in does"
+                        + " not match the owner of the measure with the measure id of 12345. The"
+                        + " owner of the measure is owner1"));
   }
 
   @Test
@@ -782,7 +782,9 @@ public class AdminControllerMvcTest {
         .andExpect(
             jsonPath("$.message")
                 .value(
-                    "Response could not be completed because the HARP id of owner2 passed in does not match the owner of the measure with the measure id of 123456. The owner of the measure is owner1"));
+                    "Response could not be completed because the HARP id of owner2 passed in does"
+                        + " not match the owner of the measure with the measure id of 123456. The"
+                        + " owner of the measure is owner1"));
 
     verify(measureService, times(1)).findMeasureById(anyString());
     verifyNoInteractions(measureRepository);
@@ -1979,8 +1981,7 @@ public class AdminControllerMvcTest {
       throws Exception {
     MeasureListDTO dto = MeasureListDTO.builder().id("m1").measureName("Measure One").build();
     Page<MeasureListDTO> page = new PageImpl<>(List.of(dto));
-    when(measureService.getMeasuresByCriteria(
-            any(), any(), anyBoolean(), any(Pageable.class), anyString()))
+    when(measureService.getMeasuresByCriteria(any(), any(), any(Pageable.class), anyString()))
         .thenReturn(page);
 
     mockMvc
@@ -2005,7 +2006,6 @@ public class AdminControllerMvcTest {
         .getMeasuresByCriteria(
             criteriaCaptor.capture(),
             ownershipCaptor.capture(),
-            any(boolean.class),
             any(Pageable.class),
             usernameCaptor.capture());
     assertEquals("test_user", usernameCaptor.getValue());
