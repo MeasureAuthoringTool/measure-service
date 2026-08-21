@@ -70,6 +70,7 @@ madie:
     cql-template-qicore411-url: ${CQL_TEMPLATE_QICORE411_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore411_CQLTemplate.txt}
     cql-template-qdm56-url: ${CQL_TEMPLATE_QDM56_URL:https://madie-dev-static.s3.amazonaws.com/templates/QDM56_CQLTemplate.txt}
     cql-template-qicore600-url: ${CQL_TEMPLATE_QICORE600_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore600_CQLTemplate.txt}
+    cql-template-qicore050-url: ${CQL_TEMPLATE_QICORE050_URL:https://madie-dev-static.s3.amazonaws.com/templates/QICore050_CQLTemplate.txt}
   async:
     core-pool-size: ${MADIE_ASYNC_CORE_POOL_SIZE:20}
     queue-size: ${MADIE_ASYNC_QUEUE_SIZE:300}
