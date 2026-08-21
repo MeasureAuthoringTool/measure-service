@@ -16,4 +16,7 @@ public class CqlTemplateConfig {
 
   @Value("${madie.service-config.cql-template-qicore600-url}")
   private String qicore600CqlTemplateUrl;
+
+  @Value("${madie.service-config.cql-template-usqc050-url}")
+  private String usqc050CqlTemplateUrl;
 }

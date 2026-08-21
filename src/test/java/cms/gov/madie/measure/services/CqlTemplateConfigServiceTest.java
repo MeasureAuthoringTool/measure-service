@@ -61,7 +61,7 @@ public class CqlTemplateConfigServiceTest {
         IOUtils.toString(this.getClass().getResourceAsStream(QICORE_4_1_1_TEMPLATE), "UTF-8");
     ReflectionTestUtils.setField(cqlTemplateConfigService, "qicore411CqlTemplate", templateFile);
 
-    String qicoreTemplate = cqlTemplateConfigService.getQiCore411CqlTemplate();
+    String qicoreTemplate = cqlTemplateConfigService.getQicore411CqlTemplate();
 
     assertTrue(qicoreTemplate.contains(QICORE_USING));
   }
@@ -83,7 +83,7 @@ public class CqlTemplateConfigServiceTest {
         IOUtils.toString(this.getClass().getResourceAsStream(QICORE_6_0_0_TEMPLATE), "UTF-8");
     ReflectionTestUtils.setField(cqlTemplateConfigService, "qicore600CqlTemplate", templateFile);
 
-    String qicore600Template = cqlTemplateConfigService.getQiCore600CqlTemplate();
+    String qicore600Template = cqlTemplateConfigService.getQicore600CqlTemplate();
 
     assertTrue(qicore600Template.contains(QICORE_6_0_0_USING));
   }
