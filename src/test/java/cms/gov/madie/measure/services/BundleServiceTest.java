@@ -1,5 +1,9 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.CALCULATION;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
+
 import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
@@ -105,7 +109,7 @@ class BundleServiceTest implements ResourceUtil {
 
   @Test
   void testBundleMeasureReturnsNullForNullMeasure() {
-    String output = bundleService.bundleMeasure(null, "Bearer TOKEN", "calculation", "Info");
+    String output = bundleService.bundleMeasure(null, "Bearer TOKEN", CALCULATION, "Info");
     assertThat(output, is(nullValue()));
   }
 
@@ -117,7 +121,7 @@ class BundleServiceTest implements ResourceUtil {
         .thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
     assertThrows(
         BundleOperationException.class,
-        () -> bundleService.bundleMeasure(measure, "Bearer TOKEN", "calculation", "Info"));
+        () -> bundleService.bundleMeasure(measure, "Bearer TOKEN", CALCULATION, "Info"));
   }
 
   @Test
@@ -128,7 +132,7 @@ class BundleServiceTest implements ResourceUtil {
         .thenReturn(json);
 
     assertThat(measure.getMeasureMetaData().isDraft(), is(equalTo(true)));
-    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", "calculation", "Info");
+    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", CALCULATION, "Info");
     assertThat(output, is(equalTo(json)));
   }
 
@@ -173,7 +177,7 @@ class BundleServiceTest implements ResourceUtil {
 
     when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.of(componentMeasure));
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), eq("calculation"), anyString()))
+            any(Measure.class), anyString(), eq(CALCULATION), anyString()))
         .thenReturn(compositeBundle);
 
     Export componentExport =
@@ -185,7 +189,7 @@ class BundleServiceTest implements ResourceUtil {
         .thenReturn(Optional.of(componentExport));
     when(mongoGridFsService.findById("comp-grid-fs-id")).thenReturn(componentBundle);
 
-    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", "calculation", "Info");
+    String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", CALCULATION, "Info");
 
     assertNotNull(output);
     // verify component details were populated
@@ -197,7 +201,7 @@ class BundleServiceTest implements ResourceUtil {
     assertEquals("Group 1", component.getGroupDisplayId());
 
     verify(fhirServicesClient)
-        .getMeasureBundle(any(Measure.class), eq("Bearer TOKEN"), eq("calculation"), eq("Info"));
+        .getMeasureBundle(any(Measure.class), eq("Bearer TOKEN"), eq(CALCULATION), eq("Info"));
     verify(exportRepository).findByMeasureId("comp-measure-id");
     verify(mongoGridFsService).findById("comp-grid-fs-id");
   }
@@ -241,7 +245,10 @@ class BundleServiceTest implements ResourceUtil {
     when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.of(componentMeasure));
     when(measureRepository.findAllById(any())).thenReturn(List.of(componentMeasure));
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), eq("export"), anyString()))
+            any(Measure.class), anyString(), eq(EXPORT), eq("Info")))
+        .thenReturn(bundle);
+    when(fhirServicesClient.getMeasureBundle(
+            any(Measure.class), anyString(), eq(PUBLISH), eq("Error")))
         .thenReturn(bundle);
 
     Export componentExport =
@@ -270,6 +277,10 @@ class BundleServiceTest implements ResourceUtil {
                 .humanReadable("<html>component HR</html>")
                 .build()),
         artifacts.componentHumanReadables());
+    verify(fhirServicesClient)
+        .getMeasureBundle(any(Measure.class), anyString(), eq(EXPORT), eq("Info"));
+    verify(fhirServicesClient)
+        .getMeasureBundle(any(Measure.class), anyString(), eq(PUBLISH), eq("Error"));
   }
 
   @Test
@@ -294,6 +305,26 @@ class BundleServiceTest implements ResourceUtil {
 
     String output = bundleService.bundleMeasure(measure, "Bearer TOKEN", null, "Info");
     assertThat(output, is(equalTo(json)));
+  }
+
+  @Test
+  void testBundleMeasureReturnsPublishableBundleForVersionedMeasure() {
+    final String publishableBundle = "{\"message\": \"PUBLISHABLE JSON\"}";
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("export-grid-fs-id")
+            .measureBundleWithoutWarningsGridFsId("publish-grid-fs-id")
+            .build();
+    measure.getMeasureMetaData().setDraft(false);
+    when(exportRepository.findByMeasureId(measure.getId())).thenReturn(Optional.of(export));
+    when(mongoGridFsService.findById("publish-grid-fs-id")).thenReturn(publishableBundle);
+
+    String output = bundleService.bundleMeasure(measure, "******", PUBLISH, "Info");
+
+    assertThat(output, is(equalTo(publishableBundle)));
+    verify(mongoGridFsService).findById("publish-grid-fs-id");
+    verify(mongoGridFsService, never()).findById("export-grid-fs-id");
   }
 
   @Test
@@ -414,6 +445,27 @@ class BundleServiceTest implements ResourceUtil {
     String fileName = entry.getName();
     assertEquals("resources/measure-TestCreateNewLibrary-1.0.000.json", fileName);
     verify(mongoGridFsService, times(1)).findById("id2");
+  }
+
+  @Test
+  void testExplicitExportBundleTypeOverridesErrorSeverityForVersionedMeasure() {
+    final String json = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
+    measure.setMeasureMetaData(MeasureMetaData.builder().draft(false).build());
+    measure.setModel("QI-Core v4.1.1");
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("export-grid-fs-id")
+            .measureBundleWithoutWarningsGridFsId("publish-grid-fs-id")
+            .build();
+    when(exportRepository.findByMeasureId(measure.getId())).thenReturn(Optional.of(export));
+    when(mongoGridFsService.findById("export-grid-fs-id")).thenReturn(json);
+
+    PackageDto output = bundleService.getMeasureExport(measure, EXPORT, "Error", "******");
+
+    assertNotNull(output.getExportPackage());
+    verify(mongoGridFsService).findById("export-grid-fs-id");
+    verify(mongoGridFsService, never()).findById("publish-grid-fs-id");
   }
 
   @Test
@@ -564,7 +616,7 @@ class BundleServiceTest implements ResourceUtil {
 
     when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.of(componentMeasure));
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), eq("export"), anyString()))
+            any(Measure.class), anyString(), eq(EXPORT), anyString()))
         .thenReturn(compositeBundle);
 
     Export componentExport =
@@ -631,7 +683,7 @@ class BundleServiceTest implements ResourceUtil {
 
     when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.of(componentMeasure));
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), eq("export"), anyString()))
+            any(Measure.class), anyString(), eq(EXPORT), anyString()))
         .thenReturn(bundle);
 
     Export componentExport =
@@ -665,7 +717,7 @@ class BundleServiceTest implements ResourceUtil {
 
     when(measureRepository.findById("comp-measure-id")).thenReturn(Optional.empty());
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), eq("export"), anyString()))
+            any(Measure.class), anyString(), eq(EXPORT), anyString()))
         .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
 
     assertThrows(
@@ -681,7 +733,7 @@ class BundleServiceTest implements ResourceUtil {
 
     final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), eq("export"), anyString()))
+            any(Measure.class), anyString(), eq(EXPORT), anyString()))
         .thenReturn(bundle);
 
     PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
@@ -698,7 +750,7 @@ class BundleServiceTest implements ResourceUtil {
 
     final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), eq("export"), anyString()))
+            any(Measure.class), anyString(), eq(EXPORT), anyString()))
         .thenReturn(bundle);
 
     PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
@@ -718,7 +770,7 @@ class BundleServiceTest implements ResourceUtil {
 
     final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), eq("export"), anyString()))
+            any(Measure.class), anyString(), eq(EXPORT), anyString()))
         .thenReturn(bundle);
 
     PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
@@ -741,7 +793,7 @@ class BundleServiceTest implements ResourceUtil {
     final String bundle = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;
     when(measureRepository.findById("non-existent-id")).thenReturn(Optional.empty());
     when(fhirServicesClient.getMeasureBundle(
-            any(Measure.class), anyString(), eq("export"), anyString()))
+            any(Measure.class), anyString(), eq(EXPORT), anyString()))
         .thenReturn(bundle);
 
     // component export fetch will fail since export doesn't exist

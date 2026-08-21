@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+
 import cms.gov.madie.measure.config.FhirServicesConfig;
 import cms.gov.madie.measure.exceptions.UnsupportedTypeException;
 import gov.cms.madie.models.common.BundleType;
@@ -53,11 +55,17 @@ public class FhirServicesClient {
 
   public byte[] getMeasureBundleExport(
       Measure measure, String elmErrorSeverity, String accessToken) {
+    return getMeasureBundleExport(measure, EXPORT, elmErrorSeverity, accessToken);
+  }
+
+  public byte[] getMeasureBundleExport(
+      Measure measure, String bundleType, String elmErrorSeverity, String accessToken) {
     UriComponentsBuilder uriBuilder =
         UriComponentsBuilder.fromUri(
                 URI.create(
                     fhirServicesConfig.getMadieFhirServiceBaseUrl()
                         + fhirServicesConfig.getMadieFhirServiceMeasureseExportUri()))
+            .queryParam("bundleType", bundleType)
             .queryParam("elmErrorSeverity", elmErrorSeverity);
     URI uri = uriBuilder.build().toUri();
     HttpHeaders headers = new HttpHeaders();
