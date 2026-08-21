@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.services;
 
 import static cms.gov.madie.measure.constants.BundleTypeConstants.CALCULATION;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
 import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
@@ -129,6 +130,31 @@ class FhirServicesClientTest {
         is(
             equalTo(
                 "http://fhir-services/api/fhir/measures/export?bundleType=publish&elmErrorSeverity=Error")));
+  }
+
+  @Test
+  void getMeasureBundleExportDefaultsToExportBundleType() {
+    // given
+    Measure measure = Measure.builder().build();
+    when(fhirServicesConfig.getMadieFhirServiceMeasureseExportUri())
+        .thenReturn("/api/fhir/measures/export");
+    when(restTemplate.exchange(
+            any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), eq(byte[].class)))
+        .thenReturn(ResponseEntity.ok(new byte[0]));
+
+    // when
+    fhirServicesClient.getMeasureBundleExport(measure, "Info", accessToken);
+
+    // then
+    verify(restTemplate)
+        .exchange(uriCaptor.capture(), eq(HttpMethod.PUT), any(HttpEntity.class), eq(byte[].class));
+    assertThat(
+        uriCaptor.getValue().toString(),
+        is(
+            equalTo(
+                "http://fhir-services/api/fhir/measures/export?bundleType="
+                    + EXPORT
+                    + "&elmErrorSeverity=Info")));
   }
 
   @Test

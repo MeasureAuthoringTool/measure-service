@@ -328,6 +328,28 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   @Test
+  void testBundleMeasureThrowsWhenVersionedPublishableBundleIsUnavailable() {
+    // given
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("export-grid-fs-id")
+            .build();
+    measure.getMeasureMetaData().setDraft(false);
+    when(exportRepository.findByMeasureId(measure.getId())).thenReturn(Optional.of(export));
+
+    // when
+    Exception exception =
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> bundleService.bundleMeasure(measure, "******", PUBLISH, "Error"));
+
+    // then
+    assertThat(exception.getMessage(), is(equalTo(LEGACY_MEASURE_EXPORT_WARNING)));
+    verifyNoInteractions(mongoGridFsService);
+  }
+
+  @Test
   void testBundleMeasureReturnsBundleStringForVersionedMeasureIfExportUnavailable() {
     measure.getMeasureMetaData().setDraft(false);
     when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.empty());
@@ -538,6 +560,31 @@ class BundleServiceTest implements ResourceUtil {
     PackageDto output = bundleService.getMeasureExport(measure, "Info", "Bearer TOKEN");
     assertNotNull(output);
     assertArrayEquals("TEST".getBytes(), output.getExportPackage());
+  }
+
+  @Test
+  void testPublishBundleMeasureForDraftMeasure() {
+    // given
+    measure.setEcqmTitle("MEAS");
+    measure.setMeasureMetaData(
+        MeasureMetaData.builder()
+            .draft(true)
+            .steward(Organization.builder().name("SemanticBits").build())
+            .description("This is a description")
+            .developers(List.of(Organization.builder().name("ICF").build()))
+            .build());
+    measure.setModel("QI-Core v4.1.1");
+    byte[] exportBytes = "TEST".getBytes();
+    when(fhirServicesClient.getMeasureBundleExport(
+            any(Measure.class), eq(PUBLISH), eq("Error"), eq("******")))
+        .thenReturn(exportBytes);
+
+    // when
+    PackageDto output = bundleService.getMeasureExport(measure, PUBLISH, "Error", "******");
+
+    // then
+    assertArrayEquals(exportBytes, output.getExportPackage());
+    verify(fhirServicesClient).getMeasureBundleExport(measure, PUBLISH, "Error", "******");
   }
 
   @Test

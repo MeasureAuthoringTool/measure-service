@@ -177,6 +177,51 @@ class ExportServiceTest {
   }
 
   @Test
+  void testGetMeasureExportDefaultsMissingBundleTypeToExportForInfoSeverity() {
+    // given
+    when(modelValidatorFactory.getModelValidator(any())).thenReturn(qicoreModelValidator);
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+    when(packageServiceFactory.getPackageService(any())).thenReturn(qicorePackageService);
+    when(qicorePackageService.getMeasurePackage(any(Measure.class), eq(true), eq(token)))
+        .thenReturn(
+            PackageDto.builder()
+                .fromStorage(true)
+                .exportPackage(packageContent.getBytes())
+                .build());
+
+    // when
+    PackageDto output = exportService.getMeasureExport(measure, token, null, "Info");
+
+    // then
+    assertArrayEquals(packageContent.getBytes(), output.getExportPackage());
+    verify(qicorePackageService).getMeasurePackage(measure, true, token);
+  }
+
+  @Test
+  void testGetMeasureExportUsesExplicitPublishTypeWithInfoSeverity() {
+    // given
+    when(modelValidatorFactory.getModelValidator(any())).thenReturn(qicoreModelValidator);
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+    when(packageServiceFactory.getPackageService(any())).thenReturn(qicorePackageService);
+    when(qicorePackageService.getMeasurePackage(
+            any(Measure.class), eq(PUBLISH), eq(true), eq(token)))
+        .thenReturn(
+            PackageDto.builder()
+                .fromStorage(true)
+                .exportPackage(packageContent.getBytes())
+                .build());
+
+    // when
+    PackageDto output = exportService.getMeasureExport(measure, token, PUBLISH, "Info");
+
+    // then
+    assertArrayEquals(packageContent.getBytes(), output.getExportPackage());
+    verify(qicorePackageService).getMeasurePackage(measure, PUBLISH, true, token);
+  }
+
+  @Test
   void testGetMeasurePackageWhenMetaDataIsNull() {
     measure.setMeasureMetaData(null);
     when(modelValidatorFactory.getModelValidator(any())).thenReturn(qdmModelValidator);
