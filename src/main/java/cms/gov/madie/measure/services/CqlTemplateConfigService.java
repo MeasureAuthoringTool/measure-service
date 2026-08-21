@@ -6,6 +6,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 
+import lombok.Getter;
 import org.apache.commons.io.IOUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -20,9 +21,10 @@ import lombok.extern.slf4j.Slf4j;
 public class CqlTemplateConfigService {
 
   private final CqlTemplateConfig cqlTemplateConfig;
-  private String qicore411CqlTemplate;
-  private String qdm56CqlTemplate;
-  private String qicore600CqlTemplate;
+  @Getter private String qicore411CqlTemplate;
+  @Getter private String qdm56CqlTemplate;
+  @Getter private String qicore600CqlTemplate;
+  @Getter private String usqc050CqlTemplate;
 
   @Autowired
   public CqlTemplateConfigService(CqlTemplateConfig cqlTemplateConfig) {
@@ -35,6 +37,7 @@ public class CqlTemplateConfigService {
     qicore411CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQicore411CqlTemplateUrl());
     qdm56CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQdm56CqlTemplateUrl());
     qicore600CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQicore600CqlTemplateUrl());
+    usqc050CqlTemplate = readCqlFileContent(cqlTemplateConfig.getUsqc050CqlTemplateUrl());
   }
 
   String readCqlFileContent(String url) {
@@ -49,17 +52,5 @@ public class CqlTemplateConfigService {
       log.error("IOException occurred while initializing CQL Template Config! - ", ioEx);
     }
     return content;
-  }
-
-  public String getQiCore411CqlTemplate() {
-    return this.qicore411CqlTemplate;
-  }
-
-  public String getQdm56CqlTemplate() {
-    return this.qdm56CqlTemplate;
-  }
-
-  public String getQiCore600CqlTemplate() {
-    return this.qicore600CqlTemplate;
   }
 }
