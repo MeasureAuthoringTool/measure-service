@@ -37,7 +37,7 @@ public class CqlTemplateConfigService {
     qicore411CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQicore411CqlTemplateUrl());
     qdm56CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQdm56CqlTemplateUrl());
     qicore600CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQicore600CqlTemplateUrl());
-    usqc050CqlTemplate = readCqlFileContent(cqlTemplateConfig.getQicore050CqlTemplateUrl());
+    usqc050CqlTemplate = readCqlFileContent(cqlTemplateConfig.getUsqc050CqlTemplateUrl());
   }
 
   String readCqlFileContent(String url) {
