@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
@@ -33,9 +35,16 @@ public class QicorePackageService implements PackageService {
   }
 
   @Override
+  public PackageDto getMeasurePackage(
+      Measure measure, String bundleType, boolean includeElmWarnings, String accessToken) {
+    return bundleService.getMeasureExport(
+        measure, bundleType, includeElmWarnings ? "Info" : "Error", accessToken);
+  }
+
+  @Override
   public String getHumanReadable(Measure measure, String username, String accessToken) {
     String measureBundle =
-        fhirServicesClient.getMeasureBundle(measure, accessToken, "export", "Info");
+        fhirServicesClient.getMeasureBundle(measure, accessToken, EXPORT, "Info");
 
     String humanReadableWithCss = getHRWithCSS(measure, measureBundle);
 

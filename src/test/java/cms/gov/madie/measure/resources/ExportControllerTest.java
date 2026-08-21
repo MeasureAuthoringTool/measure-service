@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.resources;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
+
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.config.security.RoleConstants;
 import cms.gov.madie.measure.dto.PackageDto;
@@ -66,7 +69,7 @@ class ExportControllerTest {
     when(measureService.findMeasureById(anyString())).thenReturn(null);
     assertThrows(
         ResourceNotFoundException.class,
-        () -> exportController.getZip(principal, "test_id", "Info", "Bearer TOKEN"));
+        () -> exportController.getZip(principal, "test_id", "Info", EXPORT, "Bearer TOKEN"));
   }
 
   @Test
@@ -83,10 +86,10 @@ class ExportControllerTest {
 
     byte[] response = new byte[0];
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(exportService.getMeasureExport(eq(measure), anyString(), anyString()))
+    when(exportService.getMeasureExport(eq(measure), anyString(), anyString(), anyString()))
         .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(response).build());
     ResponseEntity<byte[]> output =
-        exportController.getZip(principal, "test_id", "Info", "Bearer TOKEN");
+        exportController.getZip(principal, "test_id", "Info", EXPORT, "Bearer TOKEN");
     assertEquals(HttpStatus.CREATED, output.getStatusCode());
     verify(actionLogService, times(1))
         .logAction("test_id", Measure.class, ActionType.EXPORTED_MEASURE, "test.user");
@@ -106,13 +109,43 @@ class ExportControllerTest {
 
     byte[] response = new byte[0];
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(exportService.getMeasureExport(eq(measure), anyString(), anyString()))
+    when(exportService.getMeasureExport(eq(measure), anyString(), anyString(), anyString()))
         .thenReturn(PackageDto.builder().fromStorage(true).exportPackage(response).build());
     ResponseEntity<byte[]> output =
-        exportController.getZip(principal, "test_id", "Info", "Bearer TOKEN");
+        exportController.getZip(principal, "test_id", "Info", EXPORT, "Bearer TOKEN");
     assertEquals(HttpStatus.OK, output.getStatusCode());
     verify(actionLogService, times(1))
         .logAction("test_id", Measure.class, ActionType.EXPORTED_MEASURE, "test.user");
+  }
+
+  @Test
+  void getZipPassesPublishBundleTypeToExportService() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    Measure measure =
+        Measure.builder().ecqmTitle("test_ecqm_title").model("QI-Core v4.1.1").build();
+    when(measureService.findMeasureById("test_id")).thenReturn(measure);
+    when(exportService.getMeasureExport(measure, "token", PUBLISH, "Error"))
+        .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(new byte[0]).build());
+
+    exportController.getZip(principal, "test_id", "Error", PUBLISH, "token");
+
+    verify(exportService).getMeasureExport(measure, "token", PUBLISH, "Error");
+  }
+
+  @Test
+  void getZipPassesMissingBundleTypeToExportServiceForBackwardCompatibility() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    Measure measure =
+        Measure.builder().ecqmTitle("test_ecqm_title").model("QI-Core v4.1.1").build();
+    when(measureService.findMeasureById("test_id")).thenReturn(measure);
+    when(exportService.getMeasureExport(measure, "token", null, "Error"))
+        .thenReturn(PackageDto.builder().fromStorage(true).exportPackage(new byte[0]).build());
+
+    exportController.getZip(principal, "test_id", "Error", null, "token");
+
+    verify(exportService).getMeasureExport(measure, "token", null, "Error");
   }
 
   @Test
@@ -129,12 +162,12 @@ class ExportControllerTest {
 
     byte[] response = new byte[0];
     when(measureService.findMeasureById(anyString())).thenReturn(measure);
-    when(exportService.getMeasureExport(eq(measure), anyString(), anyString()))
+    when(exportService.getMeasureExport(eq(measure), anyString(), anyString(), anyString()))
         .thenReturn(PackageDto.builder().fromStorage(false).exportPackage(response).build());
     when(userServiceClient.hasRole(eq("test.user"), eq(RoleConstants.MADiE_ADMIN), anyString()))
         .thenReturn(true);
     ResponseEntity<byte[]> output =
-        exportController.getZip(principal, "test_id", "Info", "Bearer TOKEN");
+        exportController.getZip(principal, "test_id", "Info", EXPORT, "Bearer TOKEN");
     assertEquals(HttpStatus.CREATED, output.getStatusCode());
     verify(actionLogService, times(1))
         .logAction(

@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
+
 import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
@@ -161,12 +164,12 @@ public class VersionService {
     // Generate Bundle for versioned Measure with ELM at error severity Info
     elmToJsonService.retrieveElmJson(measure, "Info", accessToken);
     var measureBundle =
-        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Info");
+        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, EXPORT, "Info");
 
     // Generate Bundle for versioned Measure with ELM at error severity Error
     elmToJsonService.retrieveElmJson(measure, "Error", accessToken);
     var measureBundleWithoutWarnings =
-        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, "export", "Error");
+        fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, PUBLISH, "Error");
 
     saveMeasureBundle(
         upversionedMeasure, measureBundle, measureBundleWithoutWarnings, null, username);
