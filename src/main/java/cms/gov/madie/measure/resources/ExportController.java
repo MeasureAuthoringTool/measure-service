@@ -63,17 +63,23 @@ public class ExportController {
       @PathVariable("id") String id,
       @RequestParam(value = "elmErrorSeverity", required = false, defaultValue = "Info")
           String elmErrorSeverity,
+      @RequestParam(value = "bundleType", required = false) String bundleType,
       @RequestHeader("Authorization") String accessToken) {
 
     final String username = principal.getName().toLowerCase();
-    log.info("User [{}] is attempting to export measure [{}]", username, id);
+    log.info(
+        "User [{}] is attempting to export measure [{}] with bundleType [{}]",
+        username,
+        id,
+        bundleType);
 
     Measure measure = measureService.findMeasureById(id);
 
     if (measure == null) {
       throw new ResourceNotFoundException("Measure", id);
     }
-    var packageDto = exportService.getMeasureExport(measure, accessToken, elmErrorSeverity);
+    var packageDto =
+        exportService.getMeasureExport(measure, accessToken, bundleType, elmErrorSeverity);
 
     actionLogService.logAction(
         id,

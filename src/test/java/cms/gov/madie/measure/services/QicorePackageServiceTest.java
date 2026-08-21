@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
+
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
@@ -84,6 +87,41 @@ public class QicorePackageServiceTest {
         qicorePackageService.getMeasurePackage(new Measure(), true, "token");
     byte[] rawPackage = measurePackage.getExportPackage();
     assertThat(new String(rawPackage), is(equalTo(measurePackageStr)));
+  }
+
+  @Test
+  void getMeasurePackageWithPublishBundleType() {
+    // given
+    PackageDto packageDto =
+        PackageDto.builder().fromStorage(true).exportPackage("publish package".getBytes()).build();
+    when(bundleService.getMeasureExport(any(Measure.class), eq(PUBLISH), eq("Error"), anyString()))
+        .thenReturn(packageDto);
+
+    // when
+    PackageDto measurePackage =
+        qicorePackageService.getMeasurePackage(new Measure(), PUBLISH, false, "token");
+
+    // then
+    assertThat(new String(measurePackage.getExportPackage()), is(equalTo("publish package")));
+    verify(bundleService)
+        .getMeasureExport(any(Measure.class), eq(PUBLISH), eq("Error"), eq("token"));
+  }
+
+  @Test
+  void getMeasurePackageWithExportBundleTypeAndElmWarnings() {
+    // given
+    PackageDto packageDto =
+        PackageDto.builder().fromStorage(false).exportPackage("export package".getBytes()).build();
+    when(bundleService.getMeasureExport(any(Measure.class), eq(EXPORT), eq("Info"), anyString()))
+        .thenReturn(packageDto);
+
+    // when
+    PackageDto measurePackage =
+        qicorePackageService.getMeasurePackage(new Measure(), EXPORT, true, "token");
+
+    // then
+    assertThat(new String(measurePackage.getExportPackage()), is(equalTo("export package")));
+    verify(bundleService).getMeasureExport(any(Measure.class), eq(EXPORT), eq("Info"), eq("token"));
   }
 
   @Test
