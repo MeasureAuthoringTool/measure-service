@@ -22,9 +22,9 @@ public interface MeasureSearchService {
       List<OwnershipType> ownershipTypes);
 
   /**
-   * Get the active measures that are currently under review, filtered by the
-   * given search criteria. The ownership types decide which reviews are in play: every review
-   * (ALL), or only the unfinished ones assigned to the requesting reviewer (OWNED).
+   * Get the active measures that are currently under review, filtered by the given search criteria.
+   * The ownership types decide which reviews are in play: every review (ALL), or only the
+   * unfinished ones assigned to the requesting reviewer (OWNED).
    *
    * @param userId - current user, used to filter out locks held by the user themselves
    * @param pageable - instance of Pageable
