@@ -728,13 +728,18 @@ public class MeasureService extends BaseMeasureService {
    * Retrieves the measures currently under review, searched, sorted and paged by the database.
    *
    * @param searchCriteria the search criteria, may be null
+   * @param ownershipTypes OWNED for the reviews assigned to the user, ALL for every review
    * @param pageReq pagination and sort parameters
    * @param username the HARP id of the requesting user
    * @return a page of measures under review
    */
   public Page<MeasureListDTO> getMeasuresInReview(
-      MeasureSearchCriteria searchCriteria, Pageable pageReq, String username) {
-    return measureRepository.searchMeasuresInReview(username, pageReq, searchCriteria);
+      MeasureSearchCriteria searchCriteria,
+      List<OwnershipType> ownershipTypes,
+      Pageable pageReq,
+      String username) {
+    return measureRepository.searchMeasuresInReview(
+        username, pageReq, searchCriteria, ownershipTypes);
   }
 
   protected void updateReferences(MeasureMetaData metaData) {

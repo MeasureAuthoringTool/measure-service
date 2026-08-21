@@ -22,16 +22,21 @@ public interface MeasureSearchService {
       List<OwnershipType> ownershipTypes);
 
   /**
-   * Get the active measures that are currently under review (review status of Ready, In Progress or
-   * Complete), filtered by the given search criteria.
+   * Get the active measures that are currently under review, filtered by the
+   * given search criteria. The ownership types decide which reviews are in play: every review
+   * (ALL), or only the unfinished ones assigned to the requesting reviewer (OWNED).
    *
    * @param userId - current user, used to filter out locks held by the user themselves
    * @param pageable - instance of Pageable
    * @param searchCriteria - search criteria, may be null
+   * @param ownershipTypes - OWNED for the reviews assigned to the user, ALL for every review
    * @return Pageable list of measures under review
    */
   Page<MeasureListDTO> searchMeasuresInReview(
-      String userId, Pageable pageable, MeasureSearchCriteria searchCriteria);
+      String userId,
+      Pageable pageable,
+      MeasureSearchCriteria searchCriteria,
+      List<OwnershipType> ownershipTypes);
 
   /**
    * Get all the measures(name, version and owner) if they include any version of given library name

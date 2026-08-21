@@ -5,6 +5,7 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
@@ -113,17 +114,22 @@ public class MeasureReviewService {
   }
 
   /**
-   * Retrieves the measures that are currently under review (review status of Ready, In Progress or
-   * Complete)
+   * Retrieves the measures that are currently under review, one entry per measure. The ownership
+   * types decide which reviews are listed: every review (the "All Reviews" tab), or only the
+   * unfinished ones assigned to the requesting reviewer (the "My Reviews" tab).
    *
    * @param searchCriteria the search criteria, may be null
+   * @param ownershipTypes OWNED for the reviews assigned to the reviewer, ALL for every review
    * @param pageReq pagination and sort parameters
    * @param username the HARP id of the requesting user
    * @return a page of measures under review
    */
   public Page<MeasureListDTO> getMeasuresInReview(
-      MeasureSearchCriteria searchCriteria, Pageable pageReq, String username) {
-    return measureService.getMeasuresInReview(searchCriteria, pageReq, username);
+      MeasureSearchCriteria searchCriteria,
+      List<OwnershipType> ownershipTypes,
+      Pageable pageReq,
+      String username) {
+    return measureService.getMeasuresInReview(searchCriteria, ownershipTypes, pageReq, username);
   }
 
   /**

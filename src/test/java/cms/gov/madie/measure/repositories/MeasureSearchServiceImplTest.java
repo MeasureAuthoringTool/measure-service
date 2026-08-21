@@ -113,6 +113,14 @@ public class MeasureSearchServiceImplTest {
     assertEquals(page1Measures.get(2).getId(), measure3.getId());
   }
 
+  private String reviewStatusMatchStage(Aggregation aggregation) {
+    return aggregation.toPipeline(Aggregation.DEFAULT_CONTEXT).stream()
+        .map(Object::toString)
+        .filter(stage -> stage.contains("$match") && stage.contains("reviewStatus"))
+        .findFirst()
+        .orElse("");
+  }
+
   private ArgumentCaptor<Aggregation> stubAggregatesReturning(List<MeasureListDTO> queryResults) {
     FacetDTO facetDTO =
         FacetDTO.builder()
@@ -1872,14 +1880,16 @@ public class MeasureSearchServiceImplTest {
     AggregationResults result = new AggregationResults<>(List.of(resultMap), new Document());
     when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
         .thenReturn(result);
-    int count =
-        measureAclRepository.countMeasuresByReview(true, owner, List.of(OwnershipType.OWNED));
+    int count = measureAclRepository.countMeasuresByReview(true, owner, List.of(OwnershipType.ALL));
     assertEquals(4, count);
 
     verify(mongoTemplate).aggregate(captor.capture(), (Class<?>) any(), any());
     assertFalse(
         captor.getValue().toString().contains("$measureSetId"),
         "reviews are counted per measure, matching the rows the reviews tab lists");
+    assertFalse(
+        captor.getValue().toString().contains("review.reviewers"),
+        "the All Reviews count is not narrowed to the requesting reviewer");
   }
 
   @Test
@@ -1914,7 +1924,8 @@ public class MeasureSearchServiceImplTest {
     when(userServiceClient.getBulkUserDetails(any())).thenReturn(userDetailsMap);
 
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresInReview("john", PageRequest.of(0, 10), null);
+        measureAclRepository.searchMeasuresInReview(
+            "john", PageRequest.of(0, 10), null, List.of(OwnershipType.ALL));
 
     assertEquals(1, page.getTotalElements());
     assertEquals("Ready", page.getContent().get(0).getReviewStatus());
@@ -1932,7 +1943,8 @@ public class MeasureSearchServiceImplTest {
         .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     Page<MeasureListDTO> page =
-        measureAclRepository.searchMeasuresInReview("john", PageRequest.of(0, 10), null);
+        measureAclRepository.searchMeasuresInReview(
+            "john", PageRequest.of(0, 10), null, List.of(OwnershipType.ALL));
 
     assertTrue(page.getContent().isEmpty());
     assertEquals(0, page.getTotalElements());
@@ -1967,7 +1979,8 @@ public class MeasureSearchServiceImplTest {
             .optionalSearchProperties(List.of("cmsId"))
             .build();
 
-    measureAclRepository.searchMeasuresInReview("john", PageRequest.of(0, 10), criteria);
+    measureAclRepository.searchMeasuresInReview(
+        "john", PageRequest.of(0, 10), criteria, List.of(OwnershipType.ALL));
 
     verify(mongoTemplate)
         .aggregate(
@@ -1977,6 +1990,85 @@ public class MeasureSearchServiceImplTest {
     String pipeline = captor.getValue().toString();
     assertTrue(pipeline.contains("cmsIdDisplay"), "search by cms id should add cmsIdDisplay");
     assertTrue(pipeline.contains("1234"));
+  }
+
+  @Test
+  public void testSearchMeasuresInReviewForTheAssignedScopeFiltersToOpenStatusesForTheReviewer() {
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of()).count(List.of()).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    measureAclRepository.searchMeasuresInReview(
+        "john", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+    // only the statuses that still need attention, and only what is assigned to the reviewer
+    String statusMatch = reviewStatusMatchStage(captor.getValue());
+    assertTrue(statusMatch.contains("Ready"));
+    assertTrue(statusMatch.contains("In Progress"));
+    assertFalse(
+        statusMatch.contains("Complete"), "completed reviews do not belong on the My Reviews tab");
+    String pipeline = captor.getValue().toString();
+    assertTrue(pipeline.contains("review.reviewers"));
+    assertTrue(pipeline.contains("john"));
+  }
+
+  @Test
+  public void testSearchMeasuresInReviewForTheAllScopeIsNotNarrowedToTheReviewer() {
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of()).count(List.of()).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    measureAclRepository.searchMeasuresInReview(
+        "john", PageRequest.of(0, 10), null, List.of(OwnershipType.ALL));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+    assertFalse(captor.getValue().toString().contains("review.reviewers"));
+  }
+
+  @Test
+  public void testCountMeasuresByReviewForTheAssignedScope() {
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    Map<String, String> resultMap = new HashMap<>();
+    resultMap.put("count", "2");
+    AggregationResults result = new AggregationResults<>(List.of(resultMap), new Document());
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(result);
+
+    assertEquals(
+        2, measureAclRepository.countMeasuresByReview(true, "john", List.of(OwnershipType.OWNED)));
+
+    verify(mongoTemplate).aggregate(captor.capture(), (Class<?>) any(), any());
+    assertTrue(captor.getValue().toString().contains("review.reviewers"));
+    String statusMatch = reviewStatusMatchStage(captor.getValue());
+    assertTrue(statusMatch.contains("Ready"));
+    assertTrue(statusMatch.contains("In Progress"));
+    assertFalse(statusMatch.contains("Complete"));
+  }
+
+  @Test
+  public void testCountMeasuresByReviewForTheAssignedScopeReturnsZeroWhenNoResults() {
+    when(mongoTemplate.aggregate(any(Aggregation.class), (Class<?>) any(), any()))
+        .thenReturn(new AggregationResults<>(List.of(), new Document()));
+
+    assertEquals(
+        0, measureAclRepository.countMeasuresByReview(true, "john", List.of(OwnershipType.OWNED)));
   }
 
   @Test
@@ -1990,7 +2082,10 @@ public class MeasureSearchServiceImplTest {
         .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
 
     measureAclRepository.searchMeasuresInReview(
-        "john", PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "measureMetaData.draft")), null);
+        "john",
+        PageRequest.of(0, 10, Sort.by(Sort.Direction.DESC, "measureMetaData.draft")),
+        null,
+        List.of(OwnershipType.ALL));
 
     verify(mongoTemplate)
         .aggregate(

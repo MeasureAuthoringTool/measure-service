@@ -10,7 +10,6 @@ import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.OwnershipType;
-import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
@@ -372,14 +371,48 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
   @Override
   public Page<MeasureListDTO> searchMeasuresInReview(
-      String userId, Pageable pageable, MeasureSearchCriteria measureSearchCriteria) {
+      String userId,
+      Pageable pageable,
+      MeasureSearchCriteria measureSearchCriteria,
+      List<OwnershipType> ownershipTypes) {
+    boolean assignedOnly = isAssignedToUser(ownershipTypes);
+    return searchReviews(
+        userId,
+        pageable,
+        measureSearchCriteria,
+        assignedOnly
+            ? SearchAggregationUtils.OPEN_REVIEW_STATUSES
+            : SearchAggregationUtils.IN_REVIEW_STATUSES,
+        assignedOnly ? userId : null);
+  }
+
+  private boolean isAssignedToUser(List<OwnershipType> ownershipTypes) {
+    return ownershipTypes != null && ownershipTypes.contains(OwnershipType.OWNED);
+  }
+
+  /**
+   * @param userId ID of the requesting user (used for lock filtering).
+   * @param pageable Pagination and sort parameters.
+   * @param measureSearchCriteria Search criteria, may be null.
+   * @param reviewStatuses The review statuses to include.
+   * @param assignedTo When set, only the measures this reviewer is assigned to are returned.
+   */
+  private Page<MeasureListDTO> searchReviews(
+      String userId,
+      Pageable pageable,
+      MeasureSearchCriteria measureSearchCriteria,
+      List<String> reviewStatuses,
+      String assignedTo) {
     List<AggregationOperation> pipeline = new ArrayList<>();
     pipeline.add(getLookupOperation());
     pipeline.add(unwind("measureSet"));
     pipeline.add(project().andExclude("testCases", "elmJson"));
 
     pipeline.addAll(SearchAggregationUtils.getReviewStages());
-    pipeline.add(SearchAggregationUtils.matchInReview());
+    pipeline.add(SearchAggregationUtils.matchReviewStatusIn(reviewStatuses));
+    if (StringUtils.isNotBlank(assignedTo)) {
+      pipeline.add(SearchAggregationUtils.matchAssignedReviewer(assignedTo));
+    }
 
     Criteria measureCriteria = Criteria.where("active").is(true);
     if (measureSearchCriteria != null
@@ -579,49 +612,28 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   @Override
   public int countMeasuresByReview(
       boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
-    LookupOperation lookupOperation = getLookupOperation();
-    Criteria measureCriteria = Criteria.where("active").is(isActive);
+    boolean assignedOnly = isAssignedToUser(ownershipTypes);
 
-    Criteria measureSetCriteria = buildMeasureSetCriteria(userId, ownershipTypes);
+    List<AggregationOperation> pipeline = new ArrayList<>();
+    pipeline.add(getLookupOperation());
+    pipeline.add(unwind("measureSet"));
+    pipeline.addAll(SearchAggregationUtils.getReviewStages());
+    pipeline.add(
+        SearchAggregationUtils.matchReviewStatusIn(
+            assignedOnly
+                ? SearchAggregationUtils.OPEN_REVIEW_STATUSES
+                : SearchAggregationUtils.IN_REVIEW_STATUSES));
+    if (assignedOnly) {
+      pipeline.add(SearchAggregationUtils.matchAssignedReviewer(userId));
+    }
 
-    AddFieldsOperation addFields =
-        addFields()
-            .addField("measureIdString")
-            .withValue(ConvertOperators.ToString.toString("$_id"))
-            .build();
-
-    LookupOperation reviewLookup =
-        LookupOperation.newLookup()
-            .from("measureReview")
-            .localField("measureIdString")
-            .foreignField("measureId")
-            .as("review");
-
-    Criteria reviewCriteria =
-        new Criteria()
-            .orOperator(
-                Criteria.where("review.status").is(ReviewStatus.READY_FOR_REVIEW),
-                Criteria.where("review.status").is(ReviewStatus.IN_PROGRESS),
-                Criteria.where("review.status").is(ReviewStatus.COMPLETE));
-
-    MatchOperation matchOperation =
-        (measureSetCriteria != null)
-            ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria, reviewCriteria))
-            : match(new Criteria().andOperator(measureCriteria, reviewCriteria));
-
-    // Counted per measure, not per measure set, because the reviews tab lists every measure
-    // under review as its own row.
-    Aggregation aggregation =
-        newAggregation(
-            addFields,
-            lookupOperation,
-            reviewLookup,
-            unwind("review"),
-            matchOperation,
-            group().count().as("count"));
+    pipeline.add(match(Criteria.where("active").is(isActive)));
+    pipeline.add(group().count().as("count"));
 
     List<Map> results =
-        mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
+        mongoTemplate
+            .aggregate(newAggregation(pipeline), Measure.class, Map.class)
+            .getMappedResults();
 
     return results.isEmpty() ? 0 : Integer.parseInt(results.get(0).get("count").toString());
   }
