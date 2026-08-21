@@ -11,6 +11,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
@@ -28,6 +30,9 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class MeasureReviewServiceTest {
@@ -37,6 +42,8 @@ class MeasureReviewServiceTest {
   @Mock private MeasureReviewRepository measureReviewRepository;
 
   @Mock private ActionLogService actionLogService;
+
+  @Mock private MeasureService measureService;
 
   @InjectMocks private MeasureReviewService measureReviewService;
 
@@ -151,6 +158,124 @@ class MeasureReviewServiceTest {
   }
 
   @Test
+  void updateReviewLogsReviewInProgressWhenStatusIsInProgress() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .measureSetId("set-1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .build();
+
+    MeasureReview update = MeasureReview.builder().status(ReviewStatus.IN_PROGRESS).build();
+
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    measureReviewService.updateReview("m1", update, USERNAME);
+
+    verify(actionLogService, times(1))
+        .logAction("m1", Measure.class, ActionType.REVIEW_IN_PROGRESS, USERNAME);
+  }
+
+  @Test
+  void updateReviewLogsReviewCompleteWhenStatusIsComplete() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .measureSetId("set-1")
+            .status(ReviewStatus.IN_PROGRESS)
+            .build();
+
+    MeasureReview update = MeasureReview.builder().status(ReviewStatus.COMPLETE).build();
+
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    measureReviewService.updateReview("m1", update, USERNAME);
+
+    verify(actionLogService, times(1))
+        .logAction("m1", Measure.class, ActionType.REVIEW_COMPLETE, USERNAME);
+  }
+
+  @Test
+  void updateReviewPersistsReviewers() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .measureSetId("set-1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .reviewers(List.of("olduser"))
+            .build();
+
+    MeasureReview update =
+        MeasureReview.builder()
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .reviewers(List.of("jtraeger", "zuser"))
+            .build();
+
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals(List.of("jtraeger", "zuser"), result.getReviewers());
+    // A reviewer-only change must not add a history record.
+    verify(actionLogService, never())
+        .logAction(anyString(), any(), any(ActionType.class), anyString());
+  }
+
+  @Test
+  void updateReviewKeepsExistingStatusWhenPayloadHasNoStatus() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .measureSetId("set-1")
+            .status(ReviewStatus.COMPLETE)
+            .build();
+
+    // Reviewer-only edit: no status supplied.
+    MeasureReview update = MeasureReview.builder().reviewers(List.of("jtraeger")).build();
+
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals(ReviewStatus.COMPLETE, result.getStatus());
+    verify(actionLogService, never())
+        .logAction(anyString(), any(), any(ActionType.class), anyString());
+  }
+
+  @Test
+  void createReviewPersistsReviewersAndLogsInProgress() {
+    MeasureReview newReview =
+        MeasureReview.builder()
+            .measureId("m1")
+            .measureSetId("set-1")
+            .status(ReviewStatus.IN_PROGRESS)
+            .reviewers(List.of("jtraeger"))
+            .build();
+
+    when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.createReview(newReview, USERNAME);
+
+    assertEquals(List.of("jtraeger"), result.getReviewers());
+    verify(actionLogService, times(1))
+        .logAction("m1", Measure.class, ActionType.REVIEW_IN_PROGRESS, USERNAME);
+  }
+
+  @Test
   void updateReviewIgnoresMeasureSetIdFromPayload() {
     MeasureReview existing =
         MeasureReview.builder()
@@ -249,5 +374,24 @@ class MeasureReviewServiceTest {
     verify(measureReviewRepository, times(1)).findAllByMeasureSetId("set-1");
     verify(actionLogService, never())
         .logAction(anyString(), any(), any(ActionType.class), eq(USERNAME));
+  }
+
+  @Test
+  void getMeasuresInReviewReturnsMeasuresFromMeasureService() {
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    MeasureListDTO measureInReview =
+        MeasureListDTO.builder().id("m1").measureName("Measure 1").reviewStatus("Ready").build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    when(measureService.getMeasuresInReview(searchCriteria, pageRequest, USERNAME))
+        .thenReturn(new PageImpl<>(List.of(measureInReview)));
+
+    Page<MeasureListDTO> measures =
+        measureReviewService.getMeasuresInReview(searchCriteria, pageRequest, USERNAME);
+
+    assertEquals(1, measures.getContent().size());
+    assertEquals("m1", measures.getContent().get(0).getId());
+    assertEquals("Ready", measures.getContent().get(0).getReviewStatus());
+    verify(measureService, times(1)).getMeasuresInReview(searchCriteria, pageRequest, USERNAME);
   }
 }
