@@ -2010,7 +2010,6 @@ public class MeasureSearchServiceImplTest {
             captor.capture(),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class));
-    // only the statuses that still need attention, and only what is assigned to the reviewer
     String statusMatch = reviewStatusMatchStage(captor.getValue());
     assertTrue(statusMatch.contains("Ready"));
     assertTrue(statusMatch.contains("In Progress"));

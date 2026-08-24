@@ -773,7 +773,6 @@ public class MeasureSetServiceTest {
     assertEquals("Ready", actual.get(0).getReviewStatus());
     assertEquals("", actual.get(1).getReviewStatus());
     assertEquals("", actual.get(2).getReviewStatus());
-    // in progress and complete reviews keep their own status, they are not blanked out
     assertEquals("In Progress", actual.get(3).getReviewStatus());
     assertEquals("Complete", actual.get(4).getReviewStatus());
   }
