@@ -70,7 +70,7 @@ public class MeasureController extends AbstractMeasureController {
   }
 
   @GetMapping("/measures/recentsByMeasureSetId")
-  public ResponseEntity<List<Measure>> getRecentMeasuresByMeasureSetIFd(
+  public ResponseEntity<List<Measure>> getRecentMeasuresByMeasureSetId(
       @RequestParam(name = "measureSetIds") List<String> measureSetIds) {
     List<Measure> results = measureSetService.getRecentMeasuresByMeasureSetId(measureSetIds);
     return ResponseEntity.status(HttpStatus.OK).body(results);
