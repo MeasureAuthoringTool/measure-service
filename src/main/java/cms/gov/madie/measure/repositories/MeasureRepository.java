@@ -61,13 +61,8 @@ public interface MeasureRepository
 
   List<Measure> findAllByMeasureSetIdAndActive(String measureSetId, boolean isActive);
 
-  int countAllByActiveAndMeasureSetContaining(boolean isActive, String userId);
-
   List<Measure> findByMeasureSetIdAndModelInAndMeasureMetaDataDraft(
       String setId, Collection<String> model, boolean draft);
 
   List<Measure> findByMeasureSetIdIn(Collection<String> measureSetIds);
-
-  @Query(value = "{_id: ?0}", fields = "{'elmJson': 1}")
-  Optional<Measure> fetchElmJsonByMeasureId(String measureId);
 }
