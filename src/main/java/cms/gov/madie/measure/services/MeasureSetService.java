@@ -50,6 +50,7 @@ public class MeasureSetService {
   private final UserServiceClient userServiceClient;
   private final MeasureSetActionLogRepository measureSetActionLogRepository;
   private final MeasureReviewRepository measureReviewRepository;
+  private final TranslatorVersionService translatorVersionService;
 
   public void createMeasureSet(
       final String harpId, final String measureId, final String savedMeasureSetId, String cmsId) {
@@ -326,13 +327,14 @@ public class MeasureSetService {
       String measureSetId,
       boolean sortByLatestVersion,
       MeasureSearchCriteria measureSearchCriteria) {
-    List<MeasureListDTO> measuresByMeasureSetId =
+    List<MeasureListDTO> measureList =
         measureSetRepository.findMeasuresByMeasureSetId(
             measureSetId, sortByLatestVersion, measureSearchCriteria);
 
-    enrichWithReviewStatus(measureSetId, measuresByMeasureSetId);
+    enrichWithReviewStatus(measureSetId, measureList);
+    translatorVersionService.enrichWithTranslatorVersion(measureList);
 
-    return measuresByMeasureSetId;
+    return measureList;
   }
 
   private void enrichWithReviewStatus(String measureSetId, List<MeasureListDTO> measures) {

@@ -17,7 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 public class ElmToJsonService {
   private final ElmTranslatorClient elmTranslatorClient;
 
-  protected void retrieveElmJson(Measure measure, String elmErrorSeverity, String accessToken) {
+  protected void retrieveElmJson(Measure measure, String elmErrorSeverity) {
     if (StringUtils.isBlank(measure.getCql())) {
       throw new InvalidResourceStateException(
           "Measure", measure.getId(), "since there is no associated CQL.");
@@ -34,8 +34,7 @@ public class ElmToJsonService {
     }
 
     final ElmJson elm =
-        elmTranslatorClient.getElmJson(
-            measure.getCql(), measure.getModel(), elmErrorSeverity, accessToken);
+        elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), elmErrorSeverity);
     if (elmTranslatorClient.hasErrors(elm)) {
       throw new CqlElmTranslationErrorException(measure.getMeasureName());
     }

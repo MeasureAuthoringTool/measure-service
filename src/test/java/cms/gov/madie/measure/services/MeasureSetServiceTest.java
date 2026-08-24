@@ -46,6 +46,7 @@ public class MeasureSetServiceTest {
   @Mock private UserServiceClient userServiceClient;
   @Mock private MeasureSetActionLogRepository measureSetActionLogRepository;
   @Mock private MeasureReviewRepository measureReviewRepository;
+  @Mock private TranslatorVersionService translatorVersionService;
 
   private final String MEASURE_SET_ID = "measureSet1";
   private final String ACCESS_TOKEN = "test-token";
@@ -728,6 +729,7 @@ public class MeasureSetServiceTest {
     assertEquals("Test Measure", actualList.get(0).getMeasureName());
 
     verify(measureSetRepository).findMeasuresByMeasureSetId(MEASURE_SET_ID, true, criteria);
+    verify(translatorVersionService).enrichWithTranslatorVersion(expectedList);
   }
 
   @Test
@@ -756,6 +758,7 @@ public class MeasureSetServiceTest {
     assertEquals("Ready", actual.get(0).getReviewStatus());
     assertEquals("", actual.get(1).getReviewStatus());
     assertEquals("", actual.get(2).getReviewStatus());
+    verify(translatorVersionService).enrichWithTranslatorVersion(actual);
   }
 
   @Test
@@ -768,6 +771,7 @@ public class MeasureSetServiceTest {
 
     assertTrue(actual.isEmpty());
     verify(measureReviewRepository, never()).findAllByMeasureSetId(anyString());
+    verify(translatorVersionService).enrichWithTranslatorVersion(actual);
   }
 
   @Test

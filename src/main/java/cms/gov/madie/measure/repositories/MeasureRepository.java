@@ -67,4 +67,7 @@ public interface MeasureRepository
       String setId, Collection<String> model, boolean draft);
 
   List<Measure> findByMeasureSetIdIn(Collection<String> measureSetIds);
+
+  @Query(value = "{_id: ?0}", fields = "{'elmJson': 1}")
+  Optional<Measure> fetchElmJsonByMeasureId(String measureId);
 }

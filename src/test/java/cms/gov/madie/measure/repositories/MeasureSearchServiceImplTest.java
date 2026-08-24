@@ -7,7 +7,6 @@ import static org.mockito.Mockito.*;
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.locks.MeasureLock;
-import cms.gov.madie.measure.services.AppConfigService;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.Version;
@@ -39,7 +38,6 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
 public class MeasureSearchServiceImplTest {
 
   @Mock MongoTemplate mongoTemplate;
-  @Mock AppConfigService appConfigService;
   @Mock UserServiceClient userServiceClient;
   @InjectMocks MeasureSearchServiceImpl measureAclRepository;
 

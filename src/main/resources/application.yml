@@ -39,7 +39,7 @@ madie:
       qdm-base-url: ${QDM_ELM_TRANSLATOR_SERVICE_URL:http://localhost:8084/api/qdm}
       fhir-base-url: ${FHIR_ELM_TRANSLATOR_SERVICE_URL:http://localhost:8083/api/fhir}
       elm-json-uri: /cql/translator/cql
-      elm-json-uri-for-mat-transferred-measure: /mat/translator/cqlToElm
+      translator-version-uri: ${CQL_ELM_TRANSLATOR_VERSION_URI:/translator-version}
   virus-scan:
     disable-scan: ${DISABLE_VIRUS_SCAN:true}
     service:
