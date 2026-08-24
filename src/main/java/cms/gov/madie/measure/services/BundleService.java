@@ -30,6 +30,9 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import static cms.gov.madie.measure.utils.ServiceConstants.LEGACY_MEASURE_EXPORT_WARNING;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.CALCULATION;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
 
 @Slf4j
 @Service
@@ -51,39 +54,51 @@ public class BundleService {
     if (measure == null) {
       return null;
     }
+    String resolvedBundleType = StringUtils.isNotBlank(bundleType) ? bundleType : CALCULATION;
     // for draft measures
     if (measure.getMeasureMetaData().isDraft()) {
       if (measure.getMeasureMetaData().isComposite()) {
-        return bundleCompositeMeasure(measure, accessToken, bundleType, elmErrorSeverity);
+        return bundleCompositeMeasure(measure, accessToken, resolvedBundleType, elmErrorSeverity);
       }
-      return bundleStandardMeasure(measure, accessToken, bundleType, elmErrorSeverity);
+      return bundleStandardMeasure(measure, accessToken, resolvedBundleType, elmErrorSeverity);
     }
     // for versioned measures
-    return getVersionedMeasureBundle(measure);
+    return getVersionedMeasureBundle(measure, resolvedBundleType);
   }
 
   public PackageDto getMeasureExport(Measure measure, String elmErrorSeverity, String accessToken) {
+    return getMeasureExport(measure, null, elmErrorSeverity, accessToken);
+  }
+
+  public PackageDto getMeasureExport(
+      Measure measure, String bundleType, String elmErrorSeverity, String accessToken) {
     if (measure == null) {
       return null;
     }
+    String resolvedBundleType =
+        StringUtils.isNotBlank(bundleType)
+            ? bundleType
+            : "Error".equalsIgnoreCase(elmErrorSeverity) ? PUBLISH : EXPORT;
     if (measure.getMeasureMetaData().isDraft()) {
       if (measure.getMeasureMetaData().isComposite()) {
-        return getMeasureExportForCompositeDraft(measure, elmErrorSeverity, accessToken);
+        return getMeasureExportForCompositeDraft(
+            measure, resolvedBundleType, elmErrorSeverity, accessToken);
       }
-      return getMeasureExportForDraft(measure, elmErrorSeverity, accessToken);
+      return getMeasureExportForDraft(measure, resolvedBundleType, elmErrorSeverity, accessToken);
     }
-    return getMeasureExportForVersion(measure, elmErrorSeverity);
+    return getMeasureExportForVersion(measure, resolvedBundleType);
   }
 
   PackageDto getMeasureExportForDraft(
-      Measure measure, String elmErrorSeverity, String accessToken) {
+      Measure measure, String bundleType, String elmErrorSeverity, String accessToken) {
     try {
       elmToJsonService.retrieveElmJson(measure, elmErrorSeverity, accessToken);
-      return PackageDto.builder()
-          .fromStorage(false)
-          .exportPackage(
-              fhirServicesClient.getMeasureBundleExport(measure, elmErrorSeverity, accessToken))
-          .build();
+      byte[] exportPackage =
+          EXPORT.equals(bundleType)
+              ? fhirServicesClient.getMeasureBundleExport(measure, elmErrorSeverity, accessToken)
+              : fhirServicesClient.getMeasureBundleExport(
+                  measure, bundleType, elmErrorSeverity, accessToken);
+      return PackageDto.builder().fromStorage(false).exportPackage(exportPackage).build();
     } catch (RestClientException | IllegalArgumentException ex) {
       log.error("An error occurred while bundling measure {}", measure.getId(), ex);
       throw new BundleOperationException("Measure", measure.getId(), ex);
@@ -91,12 +106,12 @@ public class BundleService {
   }
 
   PackageDto getMeasureExportForCompositeDraft(
-      Measure measure, String elmErrorSeverity, String accessToken) {
+      Measure measure, String bundleType, String elmErrorSeverity, String accessToken) {
     try {
       populateComponentDetails(measure);
       String compositeBundle =
-          fhirServicesClient.getMeasureBundle(measure, accessToken, "export", elmErrorSeverity);
-      List<Export> componentExports = getComponentExports(measure, elmErrorSeverity);
+          fhirServicesClient.getMeasureBundle(measure, accessToken, bundleType, elmErrorSeverity);
+      List<Export> componentExports = getComponentExports(measure, bundleType);
       List<Export.ComponentHumanReadable> componentHumanReadables =
           buildComponentHumanReadables(componentExports);
 
@@ -119,11 +134,11 @@ public class BundleService {
     }
   }
 
-  PackageDto getMeasureExportForVersion(Measure measure, String elmErrorSeverity) {
+  PackageDto getMeasureExportForVersion(Measure measure, String bundleType) {
     try {
       PackagingUtility utility = getPackagingUtility(measure.getModel());
       String exportFileName = ExportFileNamesUtil.getExportFileName(measure);
-      Export export = fetchExportForMeasure(measure.getId(), elmErrorSeverity);
+      Export export = fetchExportForMeasure(measure.getId(), bundleType);
       return PackageDto.builder()
           .fromStorage(true)
           .exportPackage(utility.getZipBundle(export, exportFileName))
@@ -158,11 +173,23 @@ public class BundleService {
     }
   }
 
-  private String getVersionedMeasureBundle(Measure measure) {
+  private String getVersionedMeasureBundle(Measure measure, String bundleType) {
     Export export = exportRepository.findByMeasureId(measure.getId()).orElse(null);
     if (export == null) {
       log.error("Export not available for versioned measure with id: {}", measure.getId());
       throw new BundleOperationException("Measure", measure.getId(), null);
+    }
+    if (PUBLISH.equalsIgnoreCase(bundleType)) {
+      String publishableBundle =
+          StringUtils.isNotBlank(export.getMeasureBundleWithoutWarningsGridFsId())
+              ? mongoGridFsService.findById(export.getMeasureBundleWithoutWarningsGridFsId())
+              : null;
+      if (StringUtils.isNotBlank(publishableBundle)) {
+        return publishableBundle;
+      }
+      log.error(
+          "Publishable export not available for versioned measure with id: {}", measure.getId());
+      throw new ResourceNotFoundException(LEGACY_MEASURE_EXPORT_WARNING);
     }
     if (StringUtils.isNotBlank(export.getMeasureBundleJson())) {
       return export.getMeasureBundleJson();
@@ -182,9 +209,9 @@ public class BundleService {
    */
   CompositeVersionArtifacts buildCompositeVersionArtifacts(Measure measure, String accessToken) {
     CompositeBundleResult withWarnings =
-        generateCompositeBundle(measure, accessToken, "export", "Info");
+        generateCompositeBundle(measure, accessToken, EXPORT, "Info");
     CompositeBundleResult withoutWarnings =
-        generateCompositeBundle(measure, accessToken, "export", "Error");
+        generateCompositeBundle(measure, accessToken, PUBLISH, "Error");
     List<Export.ComponentHumanReadable> componentHumanReadables =
         buildComponentHumanReadables(withWarnings.componentExports());
     return new CompositeVersionArtifacts(
@@ -197,7 +224,7 @@ public class BundleService {
       populateComponentDetails(measure);
       String compositeBundle =
           fhirServicesClient.getMeasureBundle(measure, accessToken, bundleType, elmErrorSeverity);
-      List<Export> componentExports = getComponentExports(measure, elmErrorSeverity);
+      List<Export> componentExports = getComponentExports(measure, bundleType);
       PackagingUtility utility = getPackagingUtility(measure.getModel());
       String bundleJson = utility.buildCompositeMeasureBundle(compositeBundle, componentExports);
       return new CompositeBundleResult(bundleJson, componentExports);
@@ -237,7 +264,7 @@ public class BundleService {
     return componentHumanReadables;
   }
 
-  private Export fetchExportForMeasure(String measureId, String elmErrorSeverity) {
+  private Export fetchExportForMeasure(String measureId, String bundleType) {
     Export export =
         exportRepository
             .findByMeasureId(measureId)
@@ -248,7 +275,7 @@ public class BundleService {
                 });
 
     String measureBundle;
-    if ("Error".equalsIgnoreCase(elmErrorSeverity)) {
+    if (PUBLISH.equalsIgnoreCase(bundleType)) {
       measureBundle = mongoGridFsService.findById(export.getMeasureBundleWithoutWarningsGridFsId());
       if (StringUtils.isEmpty(measureBundle)) {
         log.error("Publishable export not available for versioned measure with id: {}", measureId);
@@ -269,7 +296,7 @@ public class BundleService {
   }
 
   /** Fetches the measure bundle for each component across all groups from the export repository. */
-  private List<Export> getComponentExports(Measure measure, String elmErrorSeverity) {
+  private List<Export> getComponentExports(Measure measure, String bundleType) {
     if (CollectionUtils.isEmpty(measure.getGroups())) {
       return new ArrayList<>();
     }
@@ -277,7 +304,7 @@ public class BundleService {
         .filter(group -> !CollectionUtils.isEmpty(group.getComponents()))
         .flatMap(group -> group.getComponents().stream())
         .filter(component -> StringUtils.isNotBlank(component.getMeasureId()))
-        .map(component -> fetchExportForMeasure(component.getMeasureId(), elmErrorSeverity))
+        .map(component -> fetchExportForMeasure(component.getMeasureId(), bundleType))
         .toList();
   }
 

@@ -7,6 +7,11 @@ import gov.cms.madie.models.measure.Measure;
 public interface PackageService {
   PackageDto getMeasurePackage(Measure measure, boolean includeElmWarnings, String accessToken);
 
+  default PackageDto getMeasurePackage(
+      Measure measure, String bundleType, boolean includeElmWarnings, String accessToken) {
+    return getMeasurePackage(measure, includeElmWarnings, accessToken);
+  }
+
   String getHumanReadable(Measure measure, String username, String accessToken);
 
   String getHumanReadableForVersionedMeasure(Measure measure, String username, String accessToken);
