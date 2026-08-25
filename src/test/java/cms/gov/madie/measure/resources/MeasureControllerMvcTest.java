@@ -78,6 +78,7 @@ public class MeasureControllerMvcTest {
   @MockitoBean private TestCaseLockService testCaseLockService;
   @MockitoBean private AppConfigService appConfigService;
   @MockitoBean private CqlDifferentiatorService cqlDifferentiatorService;
+  @MockitoBean private AssociateCmsIdService associateCmsIdService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor2;
 

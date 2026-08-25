@@ -45,6 +45,7 @@ public class MeasureController extends AbstractMeasureController {
   private final TestCaseLockService testCaseLockService;
   private final AppConfigService appConfigService;
   private final CqlDifferentiatorService cqlDifferentiatorService;
+  private final AssociateCmsIdService associateCmsIdService;
 
   @Override
   protected AppConfigService getAppConfigService() {
@@ -449,7 +450,8 @@ public class MeasureController extends AbstractMeasureController {
     checkMeasureLock(qiCoreMeasure, username);
     checkMeasureLock(qdmMeasure, username);
     return ResponseEntity.ok(
-        measureService.associateCmsId(username, qiCoreMeasureId, qdmMeasureId, copyMetaData));
+        associateCmsIdService.associateCmsId(
+            username, qiCoreMeasureId, qdmMeasureId, copyMetaData));
   }
 
   @GetMapping(

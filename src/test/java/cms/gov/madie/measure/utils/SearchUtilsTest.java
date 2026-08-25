@@ -26,6 +26,25 @@ class SearchUtilsTest {
   }
 
   @Test
+  void testAppendSearchAndTestCaseSetIdCriteriaTogether() {
+    Criteria base = Criteria.where("active").is(true);
+    MeasureSearchCriteria input =
+        MeasureSearchCriteria.builder()
+            .searchField("diabetes")
+            .optionalSearchProperties(List.of("measureName", "version", "cmsId"))
+            .build();
+
+    SearchUtils.appendAdditionalSearchCriteria(base, input);
+    SearchUtils.appendTestCaseSetIdCriteria(base);
+
+    String json = base.getCriteriaObject().toJson();
+    assertThat(json).contains("$and");
+    assertThat(json).contains("diabetes");
+    assertThat(json).contains("$nor");
+    assertThat(json).contains("testCaseSetId");
+  }
+
+  @Test
   void testAppendVersionSearchCriteriaThreePartVersion() {
     Criteria base = new Criteria();
     MeasureSearchCriteria input =

@@ -1233,6 +1233,60 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
+  public void testSearchMeasuresFromCompositeComponentWithSearchField() {
+    PageRequest pageRequest = PageRequest.of(0, 10);
+
+    MeasureListDTO matchingMeasure =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureName("diabetes measure")
+            .measureSetId("set1")
+            .build();
+
+    MeasureSetMatchCountDTO dto1 = MeasureSetMatchCountDTO.builder().measureSetId("set1").build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(dto1), new Document()));
+
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(matchingMeasure)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria measureSearchCriteria =
+        MeasureSearchCriteria.builder()
+            .searchField("diabetes")
+            .optionalSearchProperties(List.of("measureName", "version", "cmsId"))
+            .fromCompositeMeasureComponent(true)
+            .allowedScoringTypes(Arrays.asList("Proportion", "Ratio"))
+            .draft(false)
+            .model("QI-Core v4.1.1")
+            .build();
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.ALL));
+
+    assertEquals(1, page.getContent().size());
+    assertEquals("diabetes measure", page.getContent().get(0).getMeasureName());
+
+    ArgumentCaptor<Aggregation> aggregationCaptor = ArgumentCaptor.forClass(Aggregation.class);
+    verify(mongoTemplate)
+        .aggregate(
+            aggregationCaptor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(MeasureSetMatchCountDTO.class));
+    String pipeline = aggregationCaptor.getValue().toString();
+    assertTrue(pipeline.contains("diabetes"), "search field should be in the pipeline");
+    assertTrue(pipeline.contains("$nor"), "test case set id filter should be in the pipeline");
+  }
+
+  @Test
   public void testSearchMeasuresWithSingleAllowedScoringType() {
 
     PageRequest pageRequest = PageRequest.of(0, 10);
