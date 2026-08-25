@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
+
 import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
@@ -677,6 +680,10 @@ public class VersionServiceTest {
     assertEquals(savedValue.getVersion().getMinor(), 0);
     assertEquals(savedValue.getVersion().getRevisionNumber(), 0);
     assertFalse(savedValue.getMeasureMetaData().isDraft());
+    verify(fhirServicesClient)
+        .getMeasureBundle(any(Measure.class), anyString(), eq(EXPORT), eq("Info"));
+    verify(fhirServicesClient)
+        .getMeasureBundle(any(Measure.class), anyString(), eq(PUBLISH), eq("Error"));
 
     verify(exportRepository, times(1)).save(exportArgumentCaptor.capture());
     Export capturedExport = exportArgumentCaptor.getValue();

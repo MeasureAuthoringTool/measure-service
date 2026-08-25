@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.resources;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.CALCULATION;
+
 import cms.gov.madie.measure.exceptions.BundleOperationException;
 import cms.gov.madie.measure.exceptions.CqlElmTranslationErrorException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
@@ -48,7 +50,7 @@ class BundleControllerTest {
         ResourceNotFoundException.class,
         () ->
             bundleController.getMeasureBundle(
-                "MeasureID", principal, "Bearer TOKEN", "calculation", "Info"));
+                "MeasureID", principal, "Bearer TOKEN", CALCULATION, "Info"));
   }
 
   @Test
@@ -65,7 +67,7 @@ class BundleControllerTest {
         .thenReturn(json);
     ResponseEntity<String> output =
         bundleController.getMeasureBundle(
-            "MeasureID", principal, "Bearer TOKEN", "calculation", "Info");
+            "MeasureID", principal, "Bearer TOKEN", CALCULATION, "Info");
     assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
     assertThat(output.getBody(), is(equalTo(json)));
   }
@@ -94,7 +96,7 @@ class BundleControllerTest {
         BundleOperationException.class,
         () ->
             bundleController.getMeasureBundle(
-                "MeasureID", principal, "Bearer TOKEN", "calculation", "Info"));
+                "MeasureID", principal, "Bearer TOKEN", CALCULATION, "Info"));
   }
 
   @Test
@@ -120,7 +122,7 @@ class BundleControllerTest {
         CqlElmTranslationErrorException.class,
         () ->
             bundleController.getMeasureBundle(
-                "MeasureID", principal, "Bearer TOKEN", "calculation", "Info"));
+                "MeasureID", principal, "Bearer TOKEN", CALCULATION, "Info"));
   }
 
   @Test
@@ -145,7 +147,7 @@ class BundleControllerTest {
         .thenReturn(json);
     ResponseEntity<String> output =
         bundleController.getMeasureBundle(
-            "MeasureID", principal, "Bearer TOKEN", "calculation", "Info");
+            "MeasureID", principal, "Bearer TOKEN", CALCULATION, "Info");
     assertThat(output, is(notNullValue()));
     assertThat(output.getStatusCode(), is(equalTo(HttpStatus.OK)));
     assertThat(output.getBody(), is(equalTo(json)));

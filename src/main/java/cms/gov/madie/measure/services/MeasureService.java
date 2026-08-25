@@ -2,9 +2,9 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.config.security.RoleConstants;
-import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.locks.MeasureLock;
 import cms.gov.madie.measure.repositories.*;
 import cms.gov.madie.measure.resources.DuplicateKeyException;
 import cms.gov.madie.measure.utils.*;
@@ -16,6 +16,11 @@ import gov.cms.madie.models.measure.*;
 import gov.cms.mat.cql.CqlTextParser;
 import gov.cms.mat.cql.elements.CodeProperties;
 import jakarta.annotation.Nullable;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
@@ -24,12 +29,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-
-import java.time.Instant;
-import java.time.LocalTime;
-import java.time.ZoneOffset;
-import java.util.*;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -162,9 +161,9 @@ public class MeasureService extends BaseMeasureService {
     if (addDefaultCQL) {
       if (ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())) {
         measureCopy.setCql(
-            cqlTemplateConfigService.getQiCore411CqlTemplate() != null
+            cqlTemplateConfigService.getQicore411CqlTemplate() != null
                 ? cqlTemplateConfigService
-                    .getQiCore411CqlTemplate()
+                    .getQicore411CqlTemplate()
                     .replace("CYBTest3", measureCopy.getCqlLibraryName())
                 : "");
       } else if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
@@ -176,9 +175,16 @@ public class MeasureService extends BaseMeasureService {
                 : "");
       } else if (ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
         measureCopy.setCql(
-            cqlTemplateConfigService.getQiCore600CqlTemplate() != null
+            cqlTemplateConfigService.getQicore600CqlTemplate() != null
                 ? cqlTemplateConfigService
-                    .getQiCore600CqlTemplate()
+                    .getQicore600CqlTemplate()
+                    .replace("libraryName", measureCopy.getCqlLibraryName())
+                : "");
+      } else if (ModelType.US_QUALITY_CORE_0_5_0.getValue().equalsIgnoreCase(measure.getModel())) {
+        measureCopy.setCql(
+            cqlTemplateConfigService.getUsqc050CqlTemplate() != null
+                ? cqlTemplateConfigService
+                    .getUsqc050CqlTemplate()
                     .replace("libraryName", measureCopy.getCqlLibraryName())
                 : "");
       }
@@ -210,7 +216,8 @@ public class MeasureService extends BaseMeasureService {
     }
     if (testCaseConfig == null) {
       log.error(
-          "updateMeasureTestCaseConfiguration:: Test Case Configuration is null for Measure ID [{}]",
+          "updateMeasureTestCaseConfiguration:: Test Case Configuration is null for Measure ID"
+              + " [{}]",
           measureId);
       throw new InvalidRequestException("TestCaseConfiguration cannot be null");
     }
@@ -681,7 +688,8 @@ public class MeasureService extends BaseMeasureService {
             .orElseThrow(
                 () -> {
                   log.error(
-                      "Measure with measure id [{}] cannot change ownership to user [{}]. Measure may not exist.",
+                      "Measure with measure id [{}] cannot change ownership to user [{}]. Measure"
+                          + " may not exist.",
                       measureId,
                       userid);
                   return new ResourceNotFoundException("Measure", measureId);
@@ -717,11 +725,28 @@ public class MeasureService extends BaseMeasureService {
   public Page<MeasureListDTO> getMeasuresByCriteria(
       MeasureSearchCriteria searchCriteria,
       List<OwnershipType> ownershipTypes,
-      boolean isReview,
       Pageable pageReq,
       String username) {
     return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, ownershipTypes, isReview);
+        username, pageReq, searchCriteria, ownershipTypes);
+  }
+
+  /**
+   * Retrieves the measures currently under review, searched, sorted and paged by the database.
+   *
+   * @param searchCriteria the search criteria, may be null
+   * @param ownershipTypes OWNED for the reviews assigned to the user, ALL for every review
+   * @param pageReq pagination and sort parameters
+   * @param username the HARP id of the requesting user
+   * @return a page of measures under review
+   */
+  public Page<MeasureListDTO> getMeasuresInReview(
+      MeasureSearchCriteria searchCriteria,
+      List<OwnershipType> ownershipTypes,
+      Pageable pageReq,
+      String username) {
+    return measureRepository.searchMeasuresInReview(
+        username, pageReq, searchCriteria, ownershipTypes);
   }
 
   protected void updateReferences(MeasureMetaData metaData) {
