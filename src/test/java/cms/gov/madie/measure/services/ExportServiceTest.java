@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
+
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.excel.MeasureAccessReportDTO;
@@ -30,9 +33,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Collections;
 import java.util.List;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @Slf4j
@@ -127,6 +133,92 @@ class ExportServiceTest {
     PackageDto output = exportService.getMeasureExport(measure, token, "Info");
     byte[] measurePackage = output.getExportPackage();
     assertEquals(new String(measurePackage), packageContent);
+  }
+
+  @Test
+  void testGetMeasureExportDefaultsMissingBundleTypeToPublishForErrorSeverity() {
+    when(modelValidatorFactory.getModelValidator(any())).thenReturn(qicoreModelValidator);
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+    when(packageServiceFactory.getPackageService(any())).thenReturn(qicorePackageService);
+    when(qicorePackageService.getMeasurePackage(
+            any(Measure.class), eq(PUBLISH), eq(false), eq(token)))
+        .thenReturn(
+            PackageDto.builder()
+                .fromStorage(true)
+                .exportPackage(packageContent.getBytes())
+                .build());
+
+    PackageDto output = exportService.getMeasureExport(measure, token, null, "Error");
+
+    assertArrayEquals(packageContent.getBytes(), output.getExportPackage());
+    verify(qicorePackageService).getMeasurePackage(measure, PUBLISH, false, token);
+  }
+
+  @Test
+  void testGetMeasureExportUsesExplicitExportTypeWithErrorSeverity() {
+    when(modelValidatorFactory.getModelValidator(any())).thenReturn(qicoreModelValidator);
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+    when(packageServiceFactory.getPackageService(any())).thenReturn(qicorePackageService);
+    when(qicorePackageService.getMeasurePackage(any(Measure.class), eq(false), eq(token)))
+        .thenReturn(
+            PackageDto.builder()
+                .fromStorage(true)
+                .exportPackage(packageContent.getBytes())
+                .build());
+
+    PackageDto output = exportService.getMeasureExport(measure, token, EXPORT, "Error");
+
+    assertArrayEquals(packageContent.getBytes(), output.getExportPackage());
+    verify(qicorePackageService).getMeasurePackage(measure, false, token);
+    verify(qicorePackageService, never())
+        .getMeasurePackage(any(Measure.class), eq(PUBLISH), anyBoolean(), anyString());
+  }
+
+  @Test
+  void testGetMeasureExportDefaultsMissingBundleTypeToExportForInfoSeverity() {
+    // given
+    when(modelValidatorFactory.getModelValidator(any())).thenReturn(qicoreModelValidator);
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+    when(packageServiceFactory.getPackageService(any())).thenReturn(qicorePackageService);
+    when(qicorePackageService.getMeasurePackage(any(Measure.class), eq(true), eq(token)))
+        .thenReturn(
+            PackageDto.builder()
+                .fromStorage(true)
+                .exportPackage(packageContent.getBytes())
+                .build());
+
+    // when
+    PackageDto output = exportService.getMeasureExport(measure, token, null, "Info");
+
+    // then
+    assertArrayEquals(packageContent.getBytes(), output.getExportPackage());
+    verify(qicorePackageService).getMeasurePackage(measure, true, token);
+  }
+
+  @Test
+  void testGetMeasureExportUsesExplicitPublishTypeWithInfoSeverity() {
+    // given
+    when(modelValidatorFactory.getModelValidator(any())).thenReturn(qicoreModelValidator);
+    when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
+        .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
+    when(packageServiceFactory.getPackageService(any())).thenReturn(qicorePackageService);
+    when(qicorePackageService.getMeasurePackage(
+            any(Measure.class), eq(PUBLISH), eq(true), eq(token)))
+        .thenReturn(
+            PackageDto.builder()
+                .fromStorage(true)
+                .exportPackage(packageContent.getBytes())
+                .build());
+
+    // when
+    PackageDto output = exportService.getMeasureExport(measure, token, PUBLISH, "Info");
+
+    // then
+    assertArrayEquals(packageContent.getBytes(), output.getExportPackage());
+    verify(qicorePackageService).getMeasurePackage(measure, PUBLISH, true, token);
   }
 
   @Test

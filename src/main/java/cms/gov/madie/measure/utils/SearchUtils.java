@@ -96,27 +96,20 @@ public class SearchUtils {
    *
    * <p>Include measures where all test cases have a non-blank {@code testCaseSetId}.
    *
+   * <p>Must not use {@code andOperator}: {@link #appendAdditionalSearchCriteria} already adds an
+   * {@code $and} key to the same {@link Criteria}, and a second would throw
+   * InvalidMongoDbApiUsageException.
+   *
    * @param measureCriteria the criteria to append the filter to
    */
   public static void appendTestCaseSetIdCriteria(Criteria measureCriteria) {
-    Criteria noTestCasesCriteria =
-        new Criteria()
-            .orOperator(
-                Criteria.where("testCases").exists(false), Criteria.where("testCases").size(0));
-
-    // Reject a measure if any test case has a missing/null/blank testCaseSetId.
-    Criteria anyInvalidTestCaseSetIdCriteria =
+    measureCriteria.norOperator(
         Criteria.where("testCases")
             .elemMatch(
                 new Criteria()
                     .orOperator(
                         Criteria.where("testCaseSetId").exists(false),
                         Criteria.where("testCaseSetId").is(null),
-                        Criteria.where("testCaseSetId").is("")));
-    Criteria allTestCasesHaveValidSetIdCriteria =
-        new Criteria().norOperator(anyInvalidTestCaseSetIdCriteria);
-
-    measureCriteria.andOperator(
-        new Criteria().orOperator(noTestCasesCriteria, allTestCasesHaveValidSetIdCriteria));
+                        Criteria.where("testCaseSetId").is(""))));
   }
 }

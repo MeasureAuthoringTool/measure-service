@@ -6,12 +6,12 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.CoreMatchers.nullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -23,6 +23,28 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
+import cms.gov.madie.measure.clients.UserServiceClient;
+import cms.gov.madie.measure.config.security.RoleConstants;
+import cms.gov.madie.measure.dto.*;
+import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.locks.MeasureLock;
+import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.repositories.TestCasePatchRepository;
+import cms.gov.madie.measure.resources.DuplicateKeyException;
+import cms.gov.madie.measure.utils.MeasureUtil;
+import cms.gov.madie.measure.utils.ResourceUtil;
+import gov.cms.madie.models.access.AclOperation;
+import gov.cms.madie.models.access.AclSpecification;
+import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.access.UserStatus;
+import gov.cms.madie.models.common.*;
+import gov.cms.madie.models.dto.LibraryUsage;
+import gov.cms.madie.models.dto.UserDetailsDto;
+import gov.cms.madie.models.measure.*;
+import gov.cms.mat.cql.CqlTextParser;
+
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.time.Clock;
 import java.time.Instant;
@@ -30,21 +52,6 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
-
-import cms.gov.madie.measure.clients.UserServiceClient;
-import cms.gov.madie.measure.config.security.RoleConstants;
-import cms.gov.madie.measure.dto.*;
-import cms.gov.madie.measure.exceptions.*;
-import cms.gov.madie.measure.locks.MeasureLock;
-import cms.gov.madie.measure.repositories.MeasureSetRepository;
-import cms.gov.madie.measure.repositories.TestCasePatchRepository;
-import gov.cms.madie.models.access.AclOperation;
-import gov.cms.madie.models.access.UserStatus;
-import gov.cms.madie.models.common.*;
-import gov.cms.madie.models.dto.LibraryUsage;
-import gov.cms.madie.models.dto.UserDetailsDto;
-import gov.cms.madie.models.measure.*;
-import gov.cms.mat.cql.CqlTextParser;
 import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,13 +65,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-
-import cms.gov.madie.measure.repositories.MeasureRepository;
-import cms.gov.madie.measure.resources.DuplicateKeyException;
-import cms.gov.madie.measure.utils.MeasureUtil;
-import cms.gov.madie.measure.utils.ResourceUtil;
-import gov.cms.madie.models.access.AclSpecification;
-import gov.cms.madie.models.access.RoleEnum;
 
 @ExtendWith(MockitoExtension.class)
 public class MeasureServiceTest implements ResourceUtil {
@@ -403,11 +403,10 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.OWNED)),
-            eq(false));
+            eq(List.of(OwnershipType.OWNED)));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria, List.of(OwnershipType.OWNED), false, initialPage, "test.user");
+            measureSearchCriteria, List.of(OwnershipType.OWNED), initialPage, "test.user");
     assertNotNull(measures);
   }
 
@@ -425,11 +424,10 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.SHARED)),
-            eq(false));
+            eq(List.of(OwnershipType.SHARED)));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria, List.of(OwnershipType.SHARED), false, initialPage, "test.user");
+            measureSearchCriteria, List.of(OwnershipType.SHARED), initialPage, "test.user");
     assertNotNull(measures);
   }
 
@@ -447,12 +445,71 @@ public class MeasureServiceTest implements ResourceUtil {
             eq("test.user"),
             any(PageRequest.class),
             any(MeasureSearchCriteria.class),
-            eq(List.of(OwnershipType.ALL)),
-            eq(false));
+            eq(List.of(OwnershipType.ALL)));
     Object measures =
         measureService.getMeasuresByCriteria(
-            measureSearchCriteria, List.of(OwnershipType.ALL), false, initialPage, "test.user");
+            measureSearchCriteria, List.of(OwnershipType.ALL), initialPage, "test.user");
     assertNotNull(measures);
+  }
+
+  @Test
+  public void testGetMeasuresInReview() {
+    PageRequest initialPage = PageRequest.of(0, 10);
+    MeasureListDTO measureInReview =
+        MeasureListDTO.builder().id("m1").measureName("Measure 1").reviewStatus("Ready").build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    doReturn(new PageImpl<>(List.of(measureInReview)))
+        .when(measureRepository)
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.ALL));
+
+    Page<MeasureListDTO> measures =
+        measureService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.ALL), initialPage, "test.user");
+
+    assertEquals(1, measures.getContent().size());
+    assertEquals("Ready", measures.getContent().get(0).getReviewStatus());
+    verify(measureRepository, times(1))
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.ALL));
+  }
+
+  @Test
+  public void testGetMeasuresInReviewForTheAssignedScope() {
+    PageRequest initialPage = PageRequest.of(0, 10);
+    MeasureListDTO assigned =
+        MeasureListDTO.builder()
+            .id("m1")
+            .measureName("Measure 1")
+            .reviewStatus("In Progress")
+            .build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    doReturn(new PageImpl<>(List.of(assigned)))
+        .when(measureRepository)
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.OWNED));
+
+    Page<MeasureListDTO> measures =
+        measureService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.OWNED), initialPage, "test.user");
+
+    assertEquals(1, measures.getContent().size());
+    assertEquals("In Progress", measures.getContent().get(0).getReviewStatus());
+    verify(measureRepository, times(1))
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.OWNED));
+  }
+
+  @Test
+  public void testCountMeasuresByReviewForTheAssignedScope() {
+    doReturn(3)
+        .when(measureRepository)
+        .countMeasuresByReview(true, "test.user", List.of(OwnershipType.OWNED));
+
+    assertEquals(
+        3, measureService.countMeasuresByReview(true, "test.user", List.of(OwnershipType.OWNED)));
   }
 
   @Test
@@ -572,7 +629,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
-    when(cqlTemplateConfigService.getQiCore411CqlTemplate()).thenReturn(cqlTemplate);
+    when(cqlTemplateConfigService.getQicore411CqlTemplate()).thenReturn(cqlTemplate);
 
     Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
     assertThat(savedMeasure.getMeasureName(), is(equalTo(measureToSave.getMeasureName())));
@@ -605,7 +662,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
-    when(cqlTemplateConfigService.getQiCore411CqlTemplate()).thenReturn(null);
+    when(cqlTemplateConfigService.getQicore411CqlTemplate()).thenReturn(null);
 
     Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
     assertThat(savedMeasure.getMeasureName(), is(equalTo(measureToSave.getMeasureName())));
@@ -645,7 +702,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
-    when(cqlTemplateConfigService.getQiCore600CqlTemplate()).thenReturn(cqlTemplate);
+    when(cqlTemplateConfigService.getQicore600CqlTemplate()).thenReturn(cqlTemplate);
 
     Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
     assertThat(savedMeasure.getMeasureName(), is(equalTo(measureToSave.getMeasureName())));
@@ -678,7 +735,81 @@ public class MeasureServiceTest implements ResourceUtil {
 
     when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
-    when(cqlTemplateConfigService.getQiCore600CqlTemplate()).thenReturn(null);
+    when(cqlTemplateConfigService.getQicore600CqlTemplate()).thenReturn(null);
+
+    Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
+    assertThat(savedMeasure.getMeasureName(), is(equalTo(measureToSave.getMeasureName())));
+    assertThat(savedMeasure.getCqlLibraryName(), is(equalTo(measureToSave.getCqlLibraryName())));
+    assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
+    assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
+    assertThat(savedMeasure.getErrors(), is(emptySet()));
+    assertThat(savedMeasure.getCql(), is(equalTo("")));
+  }
+
+  @Test
+  public void testCreateMeasureSuccessfullyWithDefaultCqlUSQC050() throws Exception {
+    String cqlTemplate =
+        IOUtils.toString(
+            Objects.requireNonNull(this.getClass().getResourceAsStream("/USQC050_CQLTemplate.txt")),
+            StandardCharsets.UTF_8);
+    String usr = "john rao";
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .cql(cqlTemplate)
+            .createdBy(usr)
+            .model(ModelType.US_QUALITY_CORE_0_5_0.getValue())
+            .build();
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
+
+    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+    when(cqlTemplateConfigService.getUsqc050CqlTemplate()).thenReturn(cqlTemplate);
+
+    Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
+    assertThat(savedMeasure.getMeasureName(), is(equalTo(measureToSave.getMeasureName())));
+    assertThat(savedMeasure.getCqlLibraryName(), is(equalTo(measureToSave.getCqlLibraryName())));
+    assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
+    assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
+    assertThat(savedMeasure.getErrors(), is(emptySet()));
+    assertThat(savedMeasure.getCql(), is(equalTo(cqlTemplate)));
+  }
+
+  @Test
+  public void testCreateMeasureSuccessfullyWithNoCqlUSQC050() throws Exception {
+    String usr = "john rao";
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .createdBy(usr)
+            .model(ModelType.US_QUALITY_CORE_0_5_0.getValue())
+            .build();
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), anyString(), anyString(), any());
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+
+    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+    when(cqlTemplateConfigService.getUsqc050CqlTemplate()).thenReturn(null);
 
     Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
     assertThat(savedMeasure.getMeasureName(), is(equalTo(measureToSave.getMeasureName())));
@@ -1476,324 +1607,6 @@ public class MeasureServiceTest implements ResourceUtil {
     ArgumentCaptor<List<Measure>> repositoryArgCaptor = ArgumentCaptor.forClass(List.class);
     measureService.deleteVersionedMeasures(List.of(measure1, measure2));
     verify(measureRepository, times(0)).deleteAll(repositoryArgCaptor.capture());
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenMeasuresWithGivenIdNotFound() {
-    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
-    assertThrows(
-        ResourceNotFoundException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenUserIsNotOwnerOfTheMeasures() {
-    MeasureSet measureSet = MeasureSet.builder().owner("owner").build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        UnauthorizedException.class,
-        () -> measureService.associateCmsId("newowner", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenBothTheMeasureAreQICore() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qiCoreMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenBothTheMeasureAreQDM() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.associateCmsId("OWNER", "qdmMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenQDMMeasureHasNoCmsId() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenQICoreMeasureHasCmsId() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenQICoreMeasureIsVersioned() {
-    measure1.setMeasureMetaData(finalMeasureMetaData);
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
-    when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenAnyQICoreMeasureHasSameCmsId() {
-    Measure qiCoreMeasure =
-        Measure.builder()
-            .model(ModelType.QI_CORE.getValue())
-            .measureSetId("NewIDIDID")
-            .measureMetaData(draftMeasureMetaData)
-            .build();
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
-    when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(List.of(qiCoreMeasure));
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdSuccessfullyWithoutCpyingMetaData() {
-
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet updatedQiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
-    when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(List.of());
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedQiCoreMeasureSet);
-
-    MeasureSet updatedMeasureSet =
-        measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false);
-    assertThat(updatedMeasureSet.getOwner(), is(equalTo(updatedQiCoreMeasureSet.getOwner())));
-    assertThat(
-        updatedMeasureSet.getMeasureSetId(),
-        is(equalTo(updatedQiCoreMeasureSet.getMeasureSetId())));
-    assertThat(updatedMeasureSet.getCmsId(), is(equalTo(updatedQiCoreMeasureSet.getCmsId())));
-  }
-
-  @Test
-  public void testAssociateCmsIdSuccessfullyWithCpyingMetaData() {
-
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet updatedQiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
-    when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(List.of());
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedQiCoreMeasureSet);
-
-    MeasureSet updatedMeasureSet =
-        measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", true);
-    assertThat(updatedMeasureSet.getOwner(), is(equalTo(updatedQiCoreMeasureSet.getOwner())));
-    assertThat(
-        updatedMeasureSet.getMeasureSetId(),
-        is(equalTo(updatedQiCoreMeasureSet.getMeasureSetId())));
-    assertThat(updatedMeasureSet.getCmsId(), is(equalTo(updatedQiCoreMeasureSet.getCmsId())));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionForNullQiCoreMeasure() {
-    assertThrows(
-        ResourceNotFoundException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", null, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionForNullQdmMeasure() {
-    assertThrows(
-        ResourceNotFoundException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, null));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenBothTheMeasureAreQiCore411() {
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenBothTheMeasureAreQiCore600() {
-    measureList.setModel(ModelType.QI_CORE_6_0_0.getValue());
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenBothTheMeasureAreQDM() {
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenUsernameIsNotOwner() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
-    measure1.setMeasureSet(measureSet);
-    measure2.setMeasureSet(measureSet);
-
-    assertThrows(
-        UnauthorizedException.class,
-        () -> measureService.validateCmsIdAssociation("NOT_OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenQDMMeasureHasNoCmsId() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
-    measure1.setMeasureSet(measureSet);
-    measure2.setMeasureSet(measureSet);
-
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenQICoreMeasureHasCmsId() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").cmsId(12).build();
-    measure1.setMeasureSet(measureSet);
-    measure2.setMeasureSet(measureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenQICoreMeasureIsVersioned() {
-    measure1.setMeasureMetaData(finalMeasureMetaData);
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenAnyQICoreMeasureHasSameCmsId() {
-    Measure qiCoreMeasure =
-        Measure.builder()
-            .model(ModelType.QI_CORE.getValue())
-            .measureSetId("NewIDIDID")
-            .measureMetaData(draftMeasureMetaData)
-            .build();
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(List.of(qiCoreMeasure));
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociation() {
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(Collections.emptyList());
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
-        .thenReturn(false);
-
-    assertDoesNotThrow(() -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationWhenMeasureIsLocked() {
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(Collections.emptyList());
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
-        .thenThrow(
-            new LockNotObtainedException(
-                "Unable to associate measure. Locked while being edited by another.user"));
-
-    Exception exception =
-        assertThrows(
-            LockNotObtainedException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-
-    assertThat(
-        exception.getMessage(),
-        is(equalTo("Unable to associate measure. Locked while being edited by another.user")));
   }
 
   @Test
@@ -2691,7 +2504,8 @@ public class MeasureServiceTest implements ResourceUtil {
         exception.getMessage(),
         is(
             equalTo(
-                "Response could not be completed for measure with ID test-measure-id, since the measure is not in a draft status")));
+                "Response could not be completed for measure with ID test-measure-id, since the"
+                    + " measure is not in a draft status")));
   }
 
   @Test
@@ -2948,7 +2762,8 @@ public class MeasureServiceTest implements ResourceUtil {
                 measureService.validateCodeSuffixes(
                     new CqlTextParser(cqlWithInvalidCodeSuffix), "mId"));
     assertEquals(
-        "Code suffixes must be 4 characters or less. Please correct the code: Therapy Appropriate (12345) with suffix: 12345",
+        "Code suffixes must be 4 characters or less. Please correct the code: Therapy Appropriate"
+            + " (12345) with suffix: 12345",
         exception.getMessage());
   }
 

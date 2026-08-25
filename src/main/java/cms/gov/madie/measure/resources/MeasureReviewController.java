@@ -1,11 +1,18 @@
 package cms.gov.madie.measure.resources;
 
+import cms.gov.madie.measure.dto.MeasureListDTO;
+import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.services.MeasureReviewService;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.measure.MeasureReview;
 import java.security.Principal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +20,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Slf4j
@@ -43,6 +51,24 @@ public class MeasureReviewController {
   @GetMapping("/measures/{measureId}/review")
   public ResponseEntity<MeasureReview> getReviewByMeasureId(@PathVariable String measureId) {
     return ResponseEntity.ok(measureReviewService.getReviewByMeasureId(measureId));
+  }
+
+  @PutMapping("/measures/reviews/searches")
+  public ResponseEntity<Page<MeasureListDTO>> searchMeasuresInReview(
+      Principal principal,
+      @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
+      @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
+      @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
+      @RequestParam(required = false, defaultValue = "0", name = "page") int page,
+      @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
+      @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
+    final String username = principal.getName().toLowerCase();
+    log.info("User [{}] is fetching [{}] measures under review", username, ownershipTypes);
+    final Pageable pageReq =
+        PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
+    return ResponseEntity.ok(
+        measureReviewService.getMeasuresInReview(
+            searchCriteria, ownershipTypes, pageReq, username));
   }
 
   @GetMapping("/measures/measure-set/{measureSetId}/reviews")

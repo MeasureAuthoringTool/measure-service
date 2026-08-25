@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
+
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.excel.MeasureAccessReportDTO;
@@ -16,6 +19,7 @@ import gov.cms.madie.models.measure.MeasureSet;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -32,6 +36,11 @@ public class ExportService {
   private final MeasureUtil measureUtil;
 
   public PackageDto getMeasureExport(Measure measure, String accessToken, String elmErrorSeverity) {
+    return getMeasureExport(measure, accessToken, EXPORT, elmErrorSeverity);
+  }
+
+  public PackageDto getMeasureExport(
+      Measure measure, String accessToken, String bundleType, String elmErrorSeverity) {
     ModelValidator modelValidator =
         modelValidatorFactory.getModelValidator(ModelType.valueOfName(measure.getModel()));
     measure = measureUtil.validateAllMeasureDependencies(measure);
@@ -41,7 +50,12 @@ public class ExportService {
     PackageService packageService =
         packageServiceFactory.getPackageService(ModelType.valueOfName(measure.getModel()));
     boolean errorsOnly = elmErrorSeverity.equals("Error");
-    return packageService.getMeasurePackage(measure, !errorsOnly, accessToken);
+    String resolvedBundleType =
+        StringUtils.isNotBlank(bundleType) ? bundleType : errorsOnly ? PUBLISH : EXPORT;
+    if (EXPORT.equalsIgnoreCase(resolvedBundleType)) {
+      return packageService.getMeasurePackage(measure, !errorsOnly, accessToken);
+    }
+    return packageService.getMeasurePackage(measure, resolvedBundleType, !errorsOnly, accessToken);
   }
 
   public byte[] getQRDA(QrdaRequestDTO qrdaRequestDTO, String accessToken) {

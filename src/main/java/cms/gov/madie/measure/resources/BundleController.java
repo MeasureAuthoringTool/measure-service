@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.resources;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.CALCULATION;
+
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.BundleService;
@@ -31,15 +33,16 @@ public class BundleController {
       @PathVariable String measureId,
       Principal principal,
       @RequestHeader("Authorization") String accessToken,
-      @RequestParam(required = false, defaultValue = "calculation", name = "bundleType")
+      @RequestParam(required = false, defaultValue = CALCULATION, name = "bundleType")
           String bundleType,
       @RequestParam(value = "elmErrorSeverity", required = false, defaultValue = "Info")
           String elmErrorSeverity) {
     Optional<Measure> measureOptional = measureRepository.findById(measureId);
     log.info(
-        "User [{}] is attempting to create a new measure bundle for [{}]",
+        "User [{}] is attempting to create a new measure bundle for [{}] with bundleType [{}]",
         principal.getName(),
-        measureId);
+        measureId,
+        bundleType);
     if (measureOptional.isEmpty()) {
       throw new ResourceNotFoundException("Measure", measureId);
     }

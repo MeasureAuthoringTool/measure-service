@@ -1,5 +1,7 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
+
 import cms.gov.madie.measure.config.QdmServiceConfig;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
@@ -96,6 +98,27 @@ class QdmPackageServiceTest {
     byte[] packageContents = measurePackage.getExportPackage();
     assertThat(packageContents, is(notNullValue()));
     assertThat(new String(packageContents), is(equalTo(packageContent)));
+  }
+
+  @Test
+  void getMeasurePackageWithBundleTypeUsesDefaultPackageServiceImplementation() {
+    // given
+    measure.getMeasureMetaData().setDraft(false);
+    String packageContent = "Measure Package Contents";
+    when(exportRepository.findByMeasureId(measure.getId()))
+        .thenReturn(
+            Optional.of(
+                Export.builder()
+                    .measureId(measure.getId())
+                    .packageData(packageContent.getBytes())
+                    .build()));
+
+    // when
+    PackageDto measurePackage = qdmPackageService.getMeasurePackage(measure, PUBLISH, true, token);
+
+    // then
+    assertThat(measurePackage.isFromStorage(), is(true));
+    assertThat(new String(measurePackage.getExportPackage()), is(equalTo(packageContent)));
   }
 
   @Test

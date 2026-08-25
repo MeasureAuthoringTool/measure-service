@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.repositories;
 
+import static cms.gov.madie.measure.utils.SearchAggregationUtils.createScoringTypeFilter;
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.services.AppConfigService;
@@ -7,15 +10,15 @@ import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.OwnershipType;
-import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.dto.LibraryUsage;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
-
+import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
-
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -24,13 +27,6 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Repository;
-
-import java.util.*;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import static cms.gov.madie.measure.utils.SearchAggregationUtils.createScoringTypeFilter;
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 @Slf4j
 @Repository
@@ -119,12 +115,11 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       String userId,
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
-      List<OwnershipType> ownershipTypes,
-      boolean isReview) {
+      List<OwnershipType> ownershipTypes) {
 
     // Query 1: find all matching measureSetIds and their match counts
     Map<String, MeasureSetMatchCountDTO> matchInfoMap =
-        findMatchedMeasureSets(userId, measureSearchCriteria, ownershipTypes, isReview);
+        findMatchedMeasureSets(userId, measureSearchCriteria, ownershipTypes);
 
     List<String> matchedMeasureSetIds = new ArrayList<>(matchInfoMap.keySet());
     if (matchedMeasureSetIds.isEmpty()) {
@@ -133,7 +128,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     // Query 2: fetch paginated + sorted results for the matched measure sets
     List<FacetDTO> results =
-        fetchFacetResults(userId, pageable, measureSearchCriteria, matchedMeasureSetIds, isReview);
+        fetchFacetResults(userId, pageable, measureSearchCriteria, matchedMeasureSetIds);
 
     List<MeasureListDTO> queryResults = results.get(0).getQueryResults();
 
@@ -171,8 +166,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   private Map<String, MeasureSetMatchCountDTO> findMatchedMeasureSets(
       String userId,
       MeasureSearchCriteria measureSearchCriteria,
-      List<OwnershipType> ownershipTypes,
-      boolean isReview) {
+      List<OwnershipType> ownershipTypes) {
     List<AggregationOperation> aggregationOperations = new ArrayList<>();
 
     LookupOperation lookupOperation = getLookupOperation();
@@ -192,8 +186,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
       }
 
-      if (SearchAggregationUtils.isReviewSearch(measureSearchCriteria) || isReview) {
-        aggregationOperations.addAll(SearchAggregationUtils.getReviewStages(isReview));
+      if (SearchAggregationUtils.isReviewSearch(measureSearchCriteria)) {
+        aggregationOperations.addAll(SearchAggregationUtils.getReviewStages());
       }
 
       if (StringUtils.isNotBlank(measureSearchCriteria.getModel())) {
@@ -259,8 +253,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       String userId,
       Pageable pageable,
       MeasureSearchCriteria measureSearchCriteria,
-      List<String> matchedMeasureSetIds,
-      boolean isReview) {
+      List<String> matchedMeasureSetIds) {
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
     ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
@@ -269,9 +262,22 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     postMatchPipeline.add(lookupOperation);
     postMatchPipeline.add(unwindOperation);
     postMatchPipeline.add(initialProjection);
-    postMatchPipeline.add(match(Criteria.where("measureSetId").in(matchedMeasureSetIds)));
+
+    // Honor measureMeataData.draft seachCriteria
+    Criteria criteria;
+    if (measureSearchCriteria != null && measureSearchCriteria.getDraft() != null) {
+      criteria =
+          new Criteria()
+              .andOperator(
+                  Criteria.where("measureSetId").in(matchedMeasureSetIds),
+                  Criteria.where("measureMetaData.draft").is(measureSearchCriteria.getDraft()));
+    } else {
+      criteria = Criteria.where("measureSetId").in(matchedMeasureSetIds);
+    }
+
+    postMatchPipeline.add(match(criteria));
     postMatchPipeline.addAll(getLockStages(userId));
-    postMatchPipeline.addAll(SearchAggregationUtils.getReviewStages(isReview));
+    postMatchPipeline.addAll(SearchAggregationUtils.getReviewStages());
 
     // Sort those measures based on active status, version and draft status
     // Active measures should come first, then draft measures, then by version
@@ -361,6 +367,107 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     return mongoTemplate
         .aggregate(newAggregation(postMatchPipeline), Measure.class, FacetDTO.class)
         .getMappedResults();
+  }
+
+  @Override
+  public Page<MeasureListDTO> searchMeasuresInReview(
+      String userId,
+      Pageable pageable,
+      MeasureSearchCriteria measureSearchCriteria,
+      List<OwnershipType> ownershipTypes) {
+    boolean assignedOnly = isAssignedToUser(ownershipTypes);
+    return searchReviews(
+        userId,
+        pageable,
+        measureSearchCriteria,
+        assignedOnly
+            ? SearchAggregationUtils.OPEN_REVIEW_STATUSES
+            : SearchAggregationUtils.IN_REVIEW_STATUSES,
+        assignedOnly ? userId : null);
+  }
+
+  private boolean isAssignedToUser(List<OwnershipType> ownershipTypes) {
+    return ownershipTypes != null && ownershipTypes.contains(OwnershipType.OWNED);
+  }
+
+  /**
+   * @param userId ID of the requesting user (used for lock filtering).
+   * @param pageable Pagination and sort parameters.
+   * @param measureSearchCriteria Search criteria, may be null.
+   * @param reviewStatuses The review statuses to include.
+   * @param assignedTo When set, only the measures this reviewer is assigned to are returned.
+   */
+  private Page<MeasureListDTO> searchReviews(
+      String userId,
+      Pageable pageable,
+      MeasureSearchCriteria measureSearchCriteria,
+      List<String> reviewStatuses,
+      String assignedTo) {
+    List<AggregationOperation> pipeline = new ArrayList<>();
+    pipeline.add(getLookupOperation());
+    pipeline.add(unwind("measureSet"));
+    pipeline.add(project().andExclude("testCases", "elmJson"));
+
+    pipeline.addAll(SearchAggregationUtils.getReviewStages());
+    pipeline.add(SearchAggregationUtils.matchReviewStatusIn(reviewStatuses));
+    if (StringUtils.isNotBlank(assignedTo)) {
+      pipeline.add(SearchAggregationUtils.matchAssignedReviewer(assignedTo));
+    }
+
+    Criteria measureCriteria = Criteria.where("active").is(true);
+    if (measureSearchCriteria != null
+        && StringUtils.isNotBlank(measureSearchCriteria.getSearchField())) {
+      if (CollectionUtils.isEmpty(measureSearchCriteria.getOptionalSearchProperties())
+          || measureSearchCriteria.getOptionalSearchProperties().contains("cmsId")) {
+        pipeline.add(SearchAggregationUtils.addCmsIdDisplayField());
+      }
+      SearchUtils.appendAdditionalSearchCriteria(measureCriteria, measureSearchCriteria);
+    }
+    pipeline.add(match(measureCriteria));
+
+    pipeline.addAll(getLockStages(userId));
+    pipeline.add(SearchAggregationUtils.addIsComponentField());
+
+    Sort effectiveSort = pageable.getSort();
+    if (effectiveSort.stream()
+        .anyMatch(order -> "measureMetaData.draft".equals(order.getProperty()))) {
+      pipeline.add(SearchAggregationUtils.addDraftSortOrderField());
+      effectiveSort =
+          Sort.by(
+              effectiveSort.stream()
+                  .map(
+                      order ->
+                          "measureMetaData.draft".equals(order.getProperty())
+                              ? new Sort.Order(order.getDirection(), "draftSortOrder")
+                              : order)
+                  .collect(Collectors.toList()));
+    }
+
+    pipeline.add(
+        facet(sortByCount("id"))
+            .as("count")
+            .and(
+                sort(effectiveSort),
+                skip(pageable.getOffset()),
+                limit(pageable.getPageSize()),
+                project(MeasureListDTO.class))
+            .as("queryResults"));
+
+    List<FacetDTO> results =
+        mongoTemplate
+            .aggregate(newAggregation(pipeline), Measure.class, FacetDTO.class)
+            .getMappedResults();
+    if (CollectionUtils.isEmpty(results)) {
+      return new PageImpl<>(Collections.emptyList(), pageable, 0);
+    }
+
+    FacetDTO facetResults = results.get(0);
+    List<MeasureListDTO> measuresInReview = facetResults.getQueryResults();
+    populateOwnerDisplayNames(measuresInReview);
+    return new PageImpl<>(
+        measuresInReview,
+        pageable,
+        facetResults.getCount() == null ? 0 : facetResults.getCount().size());
   }
 
   /**
@@ -505,50 +612,28 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   @Override
   public int countMeasuresByReview(
       boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
-    LookupOperation lookupOperation = getLookupOperation();
-    Criteria measureCriteria = Criteria.where("active").is(isActive);
+    boolean assignedOnly = isAssignedToUser(ownershipTypes);
 
-    Criteria measureSetCriteria = buildMeasureSetCriteria(userId, ownershipTypes);
+    List<AggregationOperation> pipeline = new ArrayList<>();
+    pipeline.add(getLookupOperation());
+    pipeline.add(unwind("measureSet"));
+    pipeline.addAll(SearchAggregationUtils.getReviewStages());
+    pipeline.add(
+        SearchAggregationUtils.matchReviewStatusIn(
+            assignedOnly
+                ? SearchAggregationUtils.OPEN_REVIEW_STATUSES
+                : SearchAggregationUtils.IN_REVIEW_STATUSES));
+    if (assignedOnly) {
+      pipeline.add(SearchAggregationUtils.matchAssignedReviewer(userId));
+    }
 
-    AddFieldsOperation addFields =
-        addFields()
-            .addField("measureIdString")
-            .withValue(ConvertOperators.ToString.toString("$_id"))
-            .build();
-
-    LookupOperation reviewLookup =
-        LookupOperation.newLookup()
-            .from("measureReview")
-            .localField("measureIdString")
-            .foreignField("measureId")
-            .as("review");
-
-    Criteria reviewCriteria =
-        new Criteria()
-            .orOperator(
-                Criteria.where("review.status").is(ReviewStatus.READY_FOR_REVIEW),
-                Criteria.where("review.status").is(ReviewStatus.IN_PROGRESS),
-                Criteria.where("review.status").is(ReviewStatus.COMPLETE));
-
-    MatchOperation matchOperation =
-        (measureSetCriteria != null)
-            ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria, reviewCriteria))
-            : match(new Criteria().andOperator(measureCriteria, reviewCriteria));
-
-    GroupOperation groupOperation = group("measureSetId");
-
-    Aggregation aggregation =
-        newAggregation(
-            addFields,
-            lookupOperation,
-            reviewLookup,
-            unwind("review"),
-            matchOperation,
-            groupOperation,
-            group().count().as("count"));
+    pipeline.add(match(Criteria.where("active").is(isActive)));
+    pipeline.add(group().count().as("count"));
 
     List<Map> results =
-        mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
+        mongoTemplate
+            .aggregate(newAggregation(pipeline), Measure.class, Map.class)
+            .getMappedResults();
 
     return results.isEmpty() ? 0 : Integer.parseInt(results.get(0).get("count").toString());
   }

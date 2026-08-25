@@ -1,5 +1,8 @@
 package cms.gov.madie.measure.services;
 
+import static cms.gov.madie.measure.constants.BundleTypeConstants.CALCULATION;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
+import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
 import static java.util.Arrays.asList;
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
@@ -77,7 +80,7 @@ class FhirServicesClientTest {
         .thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
     assertThrows(
         HttpClientErrorException.class,
-        () -> fhirServicesClient.getMeasureBundle(measure, accessToken, "calculation", "Info"));
+        () -> fhirServicesClient.getMeasureBundle(measure, accessToken, CALCULATION, "Info"));
     verify(fhirServicesConfig.fhirServicesRestTemplate(), times(1))
         .exchange(any(URI.class), eq(HttpMethod.PUT), httpEntityCaptor.capture(), any(Class.class));
     HttpEntity httpEntity = httpEntityCaptor.getValue();
@@ -97,8 +100,7 @@ class FhirServicesClientTest {
             .fhirServicesRestTemplate()
             .exchange(any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
         .thenReturn(ResponseEntity.ok(json));
-    String output =
-        fhirServicesClient.getMeasureBundle(measure, accessToken, "calculation", "Info");
+    String output = fhirServicesClient.getMeasureBundle(measure, accessToken, CALCULATION, "Info");
     assertThat(output, is(equalTo(json)));
     verify(fhirServicesConfig.fhirServicesRestTemplate(), times(1))
         .exchange(any(URI.class), eq(HttpMethod.PUT), httpEntityCaptor.capture(), any(Class.class));
@@ -108,6 +110,51 @@ class FhirServicesClientTest {
     assertThat(authorization, is(notNullValue()));
     assertThat(authorization.size(), is(equalTo(1)));
     assertThat(authorization.get(0), is(equalTo(accessToken)));
+  }
+
+  @Test
+  void getMeasureBundleExportPassesBundleType() {
+    Measure measure = Measure.builder().build();
+    when(fhirServicesConfig.getMadieFhirServiceMeasureseExportUri())
+        .thenReturn("/api/fhir/measures/export");
+    when(restTemplate.exchange(
+            any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), eq(byte[].class)))
+        .thenReturn(ResponseEntity.ok(new byte[0]));
+
+    fhirServicesClient.getMeasureBundleExport(measure, PUBLISH, "Error", accessToken);
+
+    verify(restTemplate)
+        .exchange(uriCaptor.capture(), eq(HttpMethod.PUT), any(HttpEntity.class), eq(byte[].class));
+    assertThat(
+        uriCaptor.getValue().toString(),
+        is(
+            equalTo(
+                "http://fhir-services/api/fhir/measures/export?bundleType=publish&elmErrorSeverity=Error")));
+  }
+
+  @Test
+  void getMeasureBundleExportDefaultsToExportBundleType() {
+    // given
+    Measure measure = Measure.builder().build();
+    when(fhirServicesConfig.getMadieFhirServiceMeasureseExportUri())
+        .thenReturn("/api/fhir/measures/export");
+    when(restTemplate.exchange(
+            any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), eq(byte[].class)))
+        .thenReturn(ResponseEntity.ok(new byte[0]));
+
+    // when
+    fhirServicesClient.getMeasureBundleExport(measure, "Info", accessToken);
+
+    // then
+    verify(restTemplate)
+        .exchange(uriCaptor.capture(), eq(HttpMethod.PUT), any(HttpEntity.class), eq(byte[].class));
+    assertThat(
+        uriCaptor.getValue().toString(),
+        is(
+            equalTo(
+                "http://fhir-services/api/fhir/measures/export?bundleType="
+                    + EXPORT
+                    + "&elmErrorSeverity=Info")));
   }
 
   @Test

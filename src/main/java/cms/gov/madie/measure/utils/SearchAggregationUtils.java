@@ -1,67 +1,72 @@
 package cms.gov.madie.measure.utils;
 
+import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
+import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.*;
+
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import gov.cms.madie.models.common.ReviewStatus;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import org.apache.commons.collections4.CollectionUtils;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-
-import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
-import static org.springframework.data.mongodb.core.aggregation.ConditionalOperators.*;
-
 public class SearchAggregationUtils {
 
-  public static List<AggregationOperation> getReviewStages(boolean isReview) {
+  public static final String READY = "Ready";
+  public static final String IN_PROGRESS = "In Progress";
+  public static final String COMPLETE = "Complete";
 
-    List<AggregationOperation> reviewStages =
-        new ArrayList<>(
-            Arrays.asList(
-                addFields()
-                    .addField("measureIdString")
-                    .withValue(ConvertOperators.ToString.toString("$_id"))
-                    .build(),
-                lookup("measureReview", "measureIdString", "measureId", "review"),
-                addFields()
-                    .addField("reviewStatus")
-                    .withValue(
-                        switchCases(
-                                Switch.CaseOperator.when(
-                                        ComparisonOperators.Eq.valueOf(
-                                                ArrayOperators.ArrayElemAt.arrayOf("$review.status")
-                                                    .elementAt(0))
-                                            .equalToValue(ReviewStatus.READY_FOR_REVIEW.name()))
-                                    .then("Ready"),
-                                Switch.CaseOperator.when(
-                                        ComparisonOperators.Eq.valueOf(
-                                                ArrayOperators.ArrayElemAt.arrayOf("$review.status")
-                                                    .elementAt(0))
-                                            .equalToValue(ReviewStatus.IN_PROGRESS.name()))
-                                    .then("In Progress"),
-                                Switch.CaseOperator.when(
-                                        ComparisonOperators.Eq.valueOf(
-                                                ArrayOperators.ArrayElemAt.arrayOf("$review.status")
-                                                    .elementAt(0))
-                                            .equalToValue(ReviewStatus.COMPLETE.name()))
-                                    .then("Complete"))
-                            .defaultTo(""))
-                    .build()));
-    if (isReview) {
+  public static final List<String> IN_REVIEW_STATUSES = List.of(READY, IN_PROGRESS, COMPLETE);
+  public static final List<String> OPEN_REVIEW_STATUSES = List.of(READY, IN_PROGRESS);
 
-      reviewStages.add(
-          match(
-              new Criteria()
-                  .orOperator(
-                      Criteria.where("reviewStatus").is("Ready"),
-                      Criteria.where("reviewStatus").is("In Progress"),
-                      Criteria.where("reviewStatus").is("Complete"))));
-    }
-    return reviewStages;
+  /**
+   * Aggregation stages that decorate each measure with a display-friendly {@code reviewStatus}
+   * derived from its measureReview document. Measures without a review get an empty status.
+   */
+  public static List<AggregationOperation> getReviewStages() {
+    return new ArrayList<>(
+        Arrays.asList(
+            addFields()
+                .addField("measureIdString")
+                .withValue(ConvertOperators.ToString.toString("$_id"))
+                .build(),
+            lookup("measureReview", "measureIdString", "measureId", "review"),
+            addFields()
+                .addField("reviewStatus")
+                .withValue(
+                    switchCases(
+                            Switch.CaseOperator.when(
+                                    ComparisonOperators.Eq.valueOf(
+                                            ArrayOperators.ArrayElemAt.arrayOf("$review.status")
+                                                .elementAt(0))
+                                        .equalToValue(ReviewStatus.READY_FOR_REVIEW.name()))
+                                .then("Ready"),
+                            Switch.CaseOperator.when(
+                                    ComparisonOperators.Eq.valueOf(
+                                            ArrayOperators.ArrayElemAt.arrayOf("$review.status")
+                                                .elementAt(0))
+                                        .equalToValue(ReviewStatus.IN_PROGRESS.name()))
+                                .then("In Progress"),
+                            Switch.CaseOperator.when(
+                                    ComparisonOperators.Eq.valueOf(
+                                            ArrayOperators.ArrayElemAt.arrayOf("$review.status")
+                                                .elementAt(0))
+                                        .equalToValue(ReviewStatus.COMPLETE.name()))
+                                .then("Complete"))
+                        .defaultTo(""))
+                .build()));
+  }
+
+  public static MatchOperation matchReviewStatusIn(List<String> reviewStatuses) {
+    return match(Criteria.where("reviewStatus").in(reviewStatuses));
+  }
+
+  public static MatchOperation matchAssignedReviewer(String userId) {
+    return match(Criteria.where("review.reviewers").regex("^\\Q" + userId + "\\E$", "i"));
   }
 
   public static boolean isReviewSearch(MeasureSearchCriteria measureSearchCriteria) {
