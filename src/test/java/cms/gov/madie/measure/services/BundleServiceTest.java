@@ -516,7 +516,7 @@ class BundleServiceTest implements ResourceUtil {
             new BundleOperationException(
                 "Measure", "xyz-p13r-13ert", new RuntimeException("Failed to retrieve ELM JSON")))
         .when(elmToJsonService)
-        .retrieveElmJson(any(), anyString(), anyString());
+        .retrieveElmJson(any(), anyString());
 
     measure.setEcqmTitle("MEAS");
     measure.setMeasureMetaData(

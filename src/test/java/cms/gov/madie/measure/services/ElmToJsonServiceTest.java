@@ -83,13 +83,13 @@ class ElmToJsonServiceTest implements ResourceUtil {
   @Test
   void testBundleMeasureThrowsCqlElmTranslationServiceException() {
 
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
         .thenThrow(
             new CqlElmTranslationServiceException(
                 "There was an error calling CQL-ELM translation service", new Exception()));
     assertThrows(
         CqlElmTranslationServiceException.class,
-        () -> elmToJsonService.retrieveElmJson(measure, "Info", "accessToken"));
+        () -> elmToJsonService.retrieveElmJson(measure, "Info"));
   }
 
   @Test
@@ -97,7 +97,7 @@ class ElmToJsonServiceTest implements ResourceUtil {
     measure.setCqlErrors(true);
     assertThrows(
         InvalidResourceStateException.class,
-        () -> elmToJsonService.retrieveElmJson(measure, "Info", "accessToken"));
+        () -> elmToJsonService.retrieveElmJson(measure, "Info"));
   }
 
   @Test
@@ -105,6 +105,6 @@ class ElmToJsonServiceTest implements ResourceUtil {
     measure.setCql(null);
     assertThrows(
         InvalidResourceStateException.class,
-        () -> elmToJsonService.retrieveElmJson(measure, "Info", "accessToken"));
+        () -> elmToJsonService.retrieveElmJson(measure, "Info"));
   }
 }

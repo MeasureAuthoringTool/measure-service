@@ -12,7 +12,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -26,8 +25,7 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
@@ -35,11 +33,9 @@ import static org.mockito.Mockito.when;
 class ElmTranslatorClientTest {
 
   @Mock private ElmTranslatorClientConfig elmTranslatorClientConfig;
-  @Mock private RestTemplate restTemplate;
+  @Mock private RestTemplate elmTranslatorRestTemplate;
 
   @InjectMocks private ElmTranslatorClient elmTranslatorClient;
-
-  private final String HEADER_1 = "api-key";
 
   @BeforeEach
   void beforeEach() {
@@ -52,25 +48,44 @@ class ElmTranslatorClientTest {
     lenient()
         .when(elmTranslatorClientConfig.getCqlElmServiceElmJsonUri())
         .thenReturn("/cql/translator/cql");
+    lenient()
+        .when(elmTranslatorClientConfig.getCqlToElmTranslatorVersionUri())
+        .thenReturn("/cql/translator/version");
+  }
+
+  @Test
+  void testGetCqlToElmTranslatorVersion() {
+    when(elmTranslatorRestTemplate.getForObject(any(URI.class), eq(String.class)))
+        .thenReturn("1.5.0");
+    String output = elmTranslatorClient.getCqlToElmTranslatorVersion(ModelType.QDM_5_6.getValue());
+    assertThat(output, is(equalTo("1.5.0")));
+  }
+
+  @Test
+  void testGetCqlToElmTranslatorVersionReturnsNullOnError() {
+    when(elmTranslatorRestTemplate.getForObject(any(URI.class), eq(String.class)))
+        .thenThrow(new HttpClientErrorException(HttpStatus.INTERNAL_SERVER_ERROR));
+    String output = elmTranslatorClient.getCqlToElmTranslatorVersion(ModelType.QDM_5_6.getValue());
+    assertThat(output, is(equalTo(null)));
   }
 
   @Test
   void testRestTemplateHandlesClientErrorException() {
-    when(restTemplate.exchange(
+    when(elmTranslatorRestTemplate.exchange(
             any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
         .thenThrow(new HttpClientErrorException(HttpStatus.FORBIDDEN));
     assertThrows(
         CqlElmTranslationServiceException.class,
-        () -> elmTranslatorClient.getElmJson("TEST_CQL", "QDM v5.6", "TEST_TOKEN"));
+        () -> elmTranslatorClient.getElmJson("TEST_CQL", "QDM v5.6"));
   }
 
   @Test
   void testRestTemplateReturnsElmJson() {
     ElmJson elmJson = ElmJson.builder().json("{}").xml("<></>").build();
-    when(restTemplate.exchange(
+    when(elmTranslatorRestTemplate.exchange(
             any(URI.class), eq(HttpMethod.PUT), any(HttpEntity.class), any(Class.class)))
         .thenReturn(ResponseEntity.ok(elmJson));
-    ElmJson output = elmTranslatorClient.getElmJson("TEST_CQL", "QDM v5.6", "TEST_TOKEN");
+    ElmJson output = elmTranslatorClient.getElmJson("TEST_CQL", "QDM v5.6");
     assertThat(output, is(equalTo(elmJson)));
   }
 
@@ -139,18 +154,48 @@ class ElmTranslatorClientTest {
   }
 
   @Test
+  void testGetTranslatorVersionFromElmJsonReturnsNullForBlankInput() {
+    assertThat(elmTranslatorClient.getTranslatorVersionFromElmJson(null), is(equalTo(null)));
+    assertThat(elmTranslatorClient.getTranslatorVersionFromElmJson(""), is(equalTo(null)));
+    assertThat(elmTranslatorClient.getTranslatorVersionFromElmJson("   "), is(equalTo(null)));
+  }
+
+  @Test
+  void testGetTranslatorVersionFromElmJsonReturnsVersion() {
+    String elmJson =
+        "{"
+            + "\"library\": {"
+            + "  \"annotation\": ["
+            + "    {\"type\": \"Annotation\", \"s\": {}},"
+            + "    {\"type\": \"CqlToElmInfo\", \"translatorVersion\": \"3.5.1\"}"
+            + "  ]"
+            + "}}";
+    String version = elmTranslatorClient.getTranslatorVersionFromElmJson(elmJson);
+    assertThat(version, is(equalTo("3.5.1")));
+  }
+
+  @Test
+  void testGetTranslatorVersionFromElmJsonReturnsNullWhenNoMatchingAnnotation() {
+    String elmJson =
+        "{"
+            + "\"library\": {"
+            + "  \"annotation\": ["
+            + "    {\"type\": \"Annotation\", \"s\": {}}"
+            + "  ]"
+            + "}}";
+    assertThat(elmTranslatorClient.getTranslatorVersionFromElmJson(elmJson), is(equalTo(null)));
+  }
+
+  @Test
+  void testGetTranslatorVersionFromElmJsonReturnsNullOnInvalidJson() {
+    assertThat(
+        elmTranslatorClient.getTranslatorVersionFromElmJson("not valid json"), is(equalTo(null)));
+  }
+
+  @Test
   void testQiCoreGetElmJsonURI() {
     URI uri = elmTranslatorClient.getElmJsonURI(ModelType.QI_CORE.getValue());
     assertEquals(
         "http://test/cql/translator/cql?checkContext=true&errorSeverity=Info", uri.toString());
-  }
-
-  @Test
-  void testGetCqlHttpEntity() {
-    HttpEntity<String> httpEntity =
-        elmTranslatorClient.getCqlHttpEntity("test cql", null, HEADER_1 + "1", "HARP_ID1");
-    HttpHeaders headers = httpEntity.getHeaders();
-    assertEquals(headers.get(HEADER_1).get(0), HEADER_1 + "1");
-    assertEquals(headers.get("harp-id").get(0), "HARP_ID1");
   }
 }

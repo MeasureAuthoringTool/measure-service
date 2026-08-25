@@ -234,8 +234,7 @@ public class MeasureController extends AbstractMeasureController {
     }
 
     response =
-        ResponseEntity.ok()
-            .body(measureService.updateMeasure(existingMeasure, username, measure, accessToken));
+        ResponseEntity.ok().body(measureService.updateMeasure(existingMeasure, username, measure));
     if (!measure.isActive()) {
       actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
     } else {
