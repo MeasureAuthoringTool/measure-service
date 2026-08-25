@@ -44,6 +44,7 @@ class MeasureControllerTest {
 
   @Mock private MeasureRepository repository;
   @Mock private MeasureService measureService;
+  @Mock private AssociateCmsIdService associateCmsIdService;
   @Mock private MeasureSetService measureSetService;
   @Mock private GroupService groupService;
   @Mock private ActionLogService actionLogService;
@@ -957,7 +958,7 @@ class MeasureControllerTest {
     when(measureService.findMeasureById(anyString()))
         .thenReturn(Measure.builder().id("measure-id").build());
 
-    when(measureService.associateCmsId(
+    when(associateCmsIdService.associateCmsId(
             any(String.class), any(String.class), any(String.class), any(Boolean.class)))
         .thenReturn(qiCoreMeasureSet);
 
