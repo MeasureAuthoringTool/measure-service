@@ -1272,7 +1272,7 @@ public class MeasureSearchServiceImplTest {
 
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
-            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.ALL), false);
+            "userId", pageRequest, measureSearchCriteria, List.of(OwnershipType.ALL));
 
     assertEquals(1, page.getContent().size());
     assertEquals("diabetes measure", page.getContent().get(0).getMeasureName());
