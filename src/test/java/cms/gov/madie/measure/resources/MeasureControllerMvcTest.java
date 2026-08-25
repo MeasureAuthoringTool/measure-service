@@ -2237,9 +2237,9 @@ public class MeasureControllerMvcTest {
     verify(measureService, times(1))
         .countMeasuresByOwnership(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.ALL)));
     verify(measureService, times(1))
-        .countMeasuresByReview(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.OWNED)));
-    verify(measureService, times(1))
         .countMeasuresByReview(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.ALL)));
+    verify(measureService, times(1))
+        .countMeasuresByReview(eq(true), eq(TEST_USER_ID), eq(List.of(OwnershipType.OWNED)));
 
     verifyNoMoreInteractions(measureService);
   }

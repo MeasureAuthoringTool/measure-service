@@ -111,13 +111,13 @@ public class MeasureController extends AbstractMeasureController {
             true, principal.getName().toLowerCase(), List.of(OwnershipType.ALL)));
 
     results.put(
-        "ownedReviews",
-        measureService.countMeasuresByReview(
-            true, principal.getName().toLowerCase(), List.of(OwnershipType.OWNED)));
-    results.put(
         "allReviews",
         measureService.countMeasuresByReview(
             true, principal.getName().toLowerCase(), List.of(OwnershipType.ALL)));
+    results.put(
+        "myReviews",
+        measureService.countMeasuresByReview(
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.OWNED)));
 
     return ResponseEntity.ok(results);
   }

@@ -986,13 +986,11 @@ class MeasureControllerTest {
     when(measureService.countMeasuresByOwnership(true, "test.user", List.of(OwnershipType.ALL)))
         .thenReturn(10);
 
-    when(measureService.countMeasuresByReview(true, "test.user", List.of(OwnershipType.OWNED)))
-        .thenReturn(2);
-
     when(measureService.countMeasuresByReview(true, "test.user", List.of(OwnershipType.ALL)))
         .thenReturn(5);
+    when(measureService.countMeasuresByReview(true, "test.user", List.of(OwnershipType.OWNED)))
+        .thenReturn(4);
 
-    // when(measureService.countMyMeasures(anyString())).thenReturn(5);
     ResponseEntity<Map<String, Integer>> response = controller.getCounts(principal);
 
     Map<String, Integer> result = response.getBody();
@@ -1000,8 +998,8 @@ class MeasureControllerTest {
     assertThat(result.get("ownedMeasures"), is(equalTo(5)));
     assertThat(result.get("sharedMeasures"), is(equalTo(3)));
     assertThat(result.get("allMeasures"), is(equalTo(10)));
-    assertThat(result.get("ownedReviews"), is(equalTo(2)));
     assertThat(result.get("allReviews"), is(equalTo(5)));
+    assertThat(result.get("myReviews"), is(equalTo(4)));
   }
 
   @Test
