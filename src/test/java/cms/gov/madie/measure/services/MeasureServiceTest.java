@@ -461,15 +461,55 @@ public class MeasureServiceTest implements ResourceUtil {
         MeasureSearchCriteria.builder().searchField("Measure").build();
     doReturn(new PageImpl<>(List.of(measureInReview)))
         .when(measureRepository)
-        .searchMeasuresInReview("test.user", initialPage, searchCriteria);
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.ALL));
 
     Page<MeasureListDTO> measures =
-        measureService.getMeasuresInReview(searchCriteria, initialPage, "test.user");
+        measureService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.ALL), initialPage, "test.user");
 
     assertEquals(1, measures.getContent().size());
     assertEquals("Ready", measures.getContent().get(0).getReviewStatus());
     verify(measureRepository, times(1))
-        .searchMeasuresInReview("test.user", initialPage, searchCriteria);
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.ALL));
+  }
+
+  @Test
+  public void testGetMeasuresInReviewForTheAssignedScope() {
+    PageRequest initialPage = PageRequest.of(0, 10);
+    MeasureListDTO assigned =
+        MeasureListDTO.builder()
+            .id("m1")
+            .measureName("Measure 1")
+            .reviewStatus("In Progress")
+            .build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    doReturn(new PageImpl<>(List.of(assigned)))
+        .when(measureRepository)
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.OWNED));
+
+    Page<MeasureListDTO> measures =
+        measureService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.OWNED), initialPage, "test.user");
+
+    assertEquals(1, measures.getContent().size());
+    assertEquals("In Progress", measures.getContent().get(0).getReviewStatus());
+    verify(measureRepository, times(1))
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.OWNED));
+  }
+
+  @Test
+  public void testCountMeasuresByReviewForTheAssignedScope() {
+    doReturn(3)
+        .when(measureRepository)
+        .countMeasuresByReview(true, "test.user", List.of(OwnershipType.OWNED));
+
+    assertEquals(
+        3, measureService.countMeasuresByReview(true, "test.user", List.of(OwnershipType.OWNED)));
   }
 
   @Test

@@ -17,6 +17,7 @@ import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
 import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
@@ -383,15 +384,38 @@ class MeasureReviewServiceTest {
         MeasureListDTO.builder().id("m1").measureName("Measure 1").reviewStatus("Ready").build();
     MeasureSearchCriteria searchCriteria =
         MeasureSearchCriteria.builder().searchField("Measure").build();
-    when(measureService.getMeasuresInReview(searchCriteria, pageRequest, USERNAME))
+    when(measureService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.ALL), pageRequest, USERNAME))
         .thenReturn(new PageImpl<>(List.of(measureInReview)));
 
     Page<MeasureListDTO> measures =
-        measureReviewService.getMeasuresInReview(searchCriteria, pageRequest, USERNAME);
+        measureReviewService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.ALL), pageRequest, USERNAME);
 
     assertEquals(1, measures.getContent().size());
     assertEquals("m1", measures.getContent().get(0).getId());
     assertEquals("Ready", measures.getContent().get(0).getReviewStatus());
-    verify(measureService, times(1)).getMeasuresInReview(searchCriteria, pageRequest, USERNAME);
+    verify(measureService, times(1))
+        .getMeasuresInReview(searchCriteria, List.of(OwnershipType.ALL), pageRequest, USERNAME);
+  }
+
+  @Test
+  void getMeasuresInReviewForTheAssignedScopeReturnsMeasuresFromMeasureService() {
+    PageRequest pageRequest = PageRequest.of(0, 10);
+    MeasureListDTO assigned = MeasureListDTO.builder().id("m1").reviewStatus("In Progress").build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    when(measureService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.OWNED), pageRequest, USERNAME))
+        .thenReturn(new PageImpl<>(List.of(assigned)));
+
+    Page<MeasureListDTO> measures =
+        measureReviewService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.OWNED), pageRequest, USERNAME);
+
+    assertEquals(1, measures.getContent().size());
+    assertEquals("m1", measures.getContent().get(0).getId());
+    verify(measureService, times(1))
+        .getMeasuresInReview(searchCriteria, List.of(OwnershipType.OWNED), pageRequest, USERNAME);
   }
 }

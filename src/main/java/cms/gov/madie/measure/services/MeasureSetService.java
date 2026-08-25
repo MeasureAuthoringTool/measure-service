@@ -11,6 +11,7 @@ import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
 import cms.gov.madie.measure.repositories.MeasureSetActionLogRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
@@ -23,18 +24,17 @@ import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
 import gov.cms.madie.models.measure.MeasureSet;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.collections4.CollectionUtils;
-import org.apache.commons.lang3.StringUtils;
-import org.springframework.stereotype.Service;
-
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
@@ -339,16 +339,34 @@ public class MeasureSetService {
     if (CollectionUtils.isEmpty(measures)) {
       return;
     }
-    Set<String> readyForReviewMeasureIds =
+    Map<String, ReviewStatus> statusByMeasureId =
         measureReviewRepository.findAllByMeasureSetId(measureSetId).stream()
-            .filter(review -> ReviewStatus.READY_FOR_REVIEW.equals(review.getStatus()))
-            .map(MeasureReview::getMeasureId)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
+            .filter(review -> review.getMeasureId() != null && review.getStatus() != null)
+            .collect(
+                Collectors.toMap(
+                    MeasureReview::getMeasureId,
+                    MeasureReview::getStatus,
+                    (existing, duplicate) -> existing));
     measures.forEach(
         measure ->
             measure.setReviewStatus(
-                readyForReviewMeasureIds.contains(measure.getId()) ? "Ready" : ""));
+                toReviewStatusDisplayName(statusByMeasureId.get(measure.getId()))));
+  }
+
+  private String toReviewStatusDisplayName(ReviewStatus reviewStatus) {
+    if (reviewStatus == null) {
+      return "";
+    }
+    switch (reviewStatus) {
+      case READY_FOR_REVIEW:
+        return SearchAggregationUtils.READY;
+      case IN_PROGRESS:
+        return SearchAggregationUtils.IN_PROGRESS;
+      case COMPLETE:
+        return SearchAggregationUtils.COMPLETE;
+      default:
+        return "";
+    }
   }
 
   public List<Measure> getRecentMeasuresByMeasureSetId(List<String> measureSetIds) {
@@ -383,7 +401,8 @@ public class MeasureSetService {
 
     if (optionalMeasureSet.isEmpty()) {
       log.error(
-          "Measure with set id [{}] cannot change ownership to user [{}]. Measure set may not exist.",
+          "Measure with set id [{}] cannot change ownership to user [{}]. Measure set may not"
+              + " exist.",
           measureSetId,
           userId);
       throw new ResourceNotFoundException("MeasureSet", measureSetId);
@@ -397,13 +416,15 @@ public class MeasureSetService {
     // changeOwnership action
     if (!originalOwner.equalsIgnoreCase(conductedBy) && !isAdmin) {
       log.error(
-          "User [{}] attempted to transfer ownership of measure set [{}] but is not the original owner [{}].",
+          "User [{}] attempted to transfer ownership of measure set [{}] but is not the original"
+              + " owner [{}].",
           conductedBy,
           measureSetId,
           originalOwner);
       throw new UnauthorizedException(
           String.format(
-              "User %s does not have permissions to transfer ownership of the measure Set with ID: %s.",
+              "User %s does not have permissions to transfer ownership of the measure Set with ID:"
+                  + " %s.",
               conductedBy, measureSetId));
     }
 
@@ -450,7 +471,8 @@ public class MeasureSetService {
     MeasureSet updatedMeasureSet = measureSetRepository.save(measureSet);
 
     log.info(
-        "Measure set [{}] ownership transferred from original owner [{}] to new owner [{}] by user [{}].",
+        "Measure set [{}] ownership transferred from original owner [{}] to new owner [{}] by user"
+            + " [{}].",
         updatedMeasureSet.getId(),
         originalOwner,
         userId,
