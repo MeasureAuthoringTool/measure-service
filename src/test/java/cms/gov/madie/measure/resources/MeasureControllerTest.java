@@ -249,8 +249,7 @@ class MeasureControllerTest {
             .lastModifiedAt(original)
             .build();
 
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenReturn(m1);
     when(measureService.findMeasureById(anyString()))
         .thenReturn(
@@ -264,8 +263,7 @@ class MeasureControllerTest {
     assertThat(response.getBody(), is(equalTo(m1)));
     assertEquals(m1, response.getBody());
     verify(measureService, times(1))
-        .updateMeasure(
-            any(Measure.class), anyString(), saveMeasureArgCaptor.capture(), anyString());
+        .updateMeasure(any(Measure.class), anyString(), saveMeasureArgCaptor.capture());
     assertThat(saveMeasureArgCaptor.getValue(), is(equalTo(m1)));
 
     verify(actionLogService, times(1))
@@ -344,8 +342,7 @@ class MeasureControllerTest {
                 .build());
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
 
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenReturn(m1);
 
     ResponseEntity<Measure> response =
@@ -353,8 +350,7 @@ class MeasureControllerTest {
 
     assertEquals(m1, response.getBody());
     verify(measureService, times(1))
-        .updateMeasure(
-            any(Measure.class), anyString(), saveMeasureArgCaptor.capture(), anyString());
+        .updateMeasure(any(Measure.class), anyString(), saveMeasureArgCaptor.capture());
     assertThat(saveMeasureArgCaptor.getValue(), is(equalTo(m1)));
 
     verify(actionLogService, times(1))
@@ -1042,8 +1038,7 @@ class MeasureControllerTest {
     ArgumentCaptor<TestCase> saveTestCaseCaptor = ArgumentCaptor.forClass(TestCase.class);
     when(principal.getName()).thenReturn("test.user");
 
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenReturn(expected);
     when(measureService.findMeasureById(anyString()))
         .thenReturn(
@@ -1392,8 +1387,7 @@ class MeasureControllerTest {
 
     when(measureService.findMeasureById("measureId")).thenReturn(existingMeasure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenReturn(updatedMeasure);
 
     Measure result =

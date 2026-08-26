@@ -162,12 +162,12 @@ public class VersionService {
     }
 
     // Generate Bundle for versioned Measure with ELM at error severity Info
-    elmToJsonService.retrieveElmJson(measure, "Info", accessToken);
+    elmToJsonService.retrieveElmJson(measure, "Info");
     var measureBundle =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, EXPORT, "Info");
 
     // Generate Bundle for versioned Measure with ELM at error severity Error
-    elmToJsonService.retrieveElmJson(measure, "Error", accessToken);
+    elmToJsonService.retrieveElmJson(measure, "Error");
     var measureBundleWithoutWarnings =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, PUBLISH, "Error");
 
@@ -542,8 +542,7 @@ public class VersionService {
             "Measure", measure.getId(), username, "Measure has no CQL.");
       }
 
-      final ElmJson elmJson =
-          elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), accessToken);
+      final ElmJson elmJson = elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel());
       if (elmTranslatorClient.hasErrors(elmJson)) {
         throw new CqlElmTranslationErrorException(measure.getMeasureName());
       }

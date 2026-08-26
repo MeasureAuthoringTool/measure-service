@@ -5,7 +5,6 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
-import cms.gov.madie.measure.services.AppConfigService;
 import cms.gov.madie.measure.utils.SearchAggregationUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
@@ -32,15 +31,11 @@ import org.springframework.stereotype.Repository;
 @Repository
 public class MeasureSearchServiceImpl implements MeasureSearchService {
   private final MongoTemplate mongoTemplate;
-  private final AppConfigService appConfigService;
   private final UserServiceClient userServiceClient;
 
   public MeasureSearchServiceImpl(
-      MongoTemplate mongoTemplate,
-      AppConfigService appConfigService,
-      UserServiceClient userServiceClient) {
+      MongoTemplate mongoTemplate, UserServiceClient userServiceClient) {
     this.mongoTemplate = mongoTemplate;
-    this.appConfigService = appConfigService;
     this.userServiceClient = userServiceClient;
   }
 
