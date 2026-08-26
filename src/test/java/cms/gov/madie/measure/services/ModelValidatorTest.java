@@ -46,7 +46,7 @@ class ModelValidatorTest {
   @Test
   void useQdmModelValidatorTest() {
     assertNotNull(modelValidatorFactory);
-    Group group = Group.builder().stratifications(new ArrayList<Stratification>()).build();
+    Group group = Group.builder().stratifications(new ArrayList<>()).build();
     ModelValidator validator = modelValidatorFactory.getModelValidator(ModelType.QDM_5_6);
     assertTrue(validator instanceof QdmModelValidator);
     try {

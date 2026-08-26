@@ -438,7 +438,7 @@ public class VersionServiceTest {
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(true);
 
     assertThrows(
@@ -465,7 +465,7 @@ public class VersionServiceTest {
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(true);
 
     assertThrows(
@@ -494,7 +494,7 @@ public class VersionServiceTest {
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_NO_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(false);
     var validationResult =
         versionService.checkValidVersioning("testMeasureId", "MAJOR", "testUser", "accesstoken");
@@ -518,7 +518,7 @@ public class VersionServiceTest {
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_NO_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(false);
     var validationResult =
         versionService.checkValidVersioning("testMeasureId", "MAJOR", "testUser", "accesstoken");
@@ -561,7 +561,7 @@ public class VersionServiceTest {
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_NO_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(false);
 
     Version newVersion = Version.builder().major(2).minor(2).revisionNumber(2).build();
@@ -615,7 +615,7 @@ public class VersionServiceTest {
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_NO_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(false);
 
     Version newVersion = Version.builder().major(2).minor(2).revisionNumber(2).build();
@@ -760,8 +760,8 @@ public class VersionServiceTest {
 
     verify(bundleService, times(1)).buildCompositeVersionArtifacts(any(Measure.class), anyString());
     // composites skip CQL/ELM validation
-    verify(elmTranslatorClient, never()).getElmJson(anyString(), anyString(), anyString());
-    verify(elmToJsonService, never()).retrieveElmJson(any(Measure.class), anyString(), anyString());
+    verify(elmTranslatorClient, never()).getElmJson(anyString(), anyString());
+    verify(elmToJsonService, never()).retrieveElmJson(any(Measure.class), anyString());
 
     verify(measureRepository, times(1)).save(measureCaptor.capture());
     Measure savedValue = measureCaptor.getValue();
@@ -827,7 +827,7 @@ public class VersionServiceTest {
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_NO_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(false);
 
     Version newVersion = Version.builder().major(2).minor(3).revisionNumber(2).build();
@@ -896,7 +896,7 @@ public class VersionServiceTest {
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_NO_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(false);
 
     Version newVersion = Version.builder().major(2).minor(3).revisionNumber(1).build();
@@ -1985,7 +1985,7 @@ public class VersionServiceTest {
         .thenReturn(false);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_NO_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(false);
 
     Version newVersion = Version.builder().major(2).minor(2).revisionNumber(2).build();
@@ -2340,7 +2340,7 @@ public class VersionServiceTest {
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
 
     ElmJson elmJson = ElmJson.builder().json(ELMJON_NO_ERROR).build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString())).thenReturn(elmJson);
+    when(elmTranslatorClient.getElmJson(anyString(), anyString())).thenReturn(elmJson);
     when(elmTranslatorClient.hasErrors(any())).thenReturn(false);
 
     when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);

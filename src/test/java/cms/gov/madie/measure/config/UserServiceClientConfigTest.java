@@ -3,7 +3,9 @@ package cms.gov.madie.measure.config;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.http.client.ClientHttpRequestInterceptor;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.client.RestTemplate;
 
@@ -12,6 +14,8 @@ import static org.hamcrest.MatcherAssert.assertThat;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceClientConfigTest {
+
+  @Mock private ClientHttpRequestInterceptor bearerTokenInterceptor;
 
   private UserServiceClientConfig config;
 
@@ -23,7 +27,7 @@ class UserServiceClientConfigTest {
 
   @Test
   void testUserServiceRestTemplateCreated() {
-    RestTemplate restTemplate = config.userServiceRestTemplate();
+    RestTemplate restTemplate = config.userServiceRestTemplate(bearerTokenInterceptor);
 
     assertThat(restTemplate, is(notNullValue()));
     assertThat(restTemplate.getInterceptors(), is(notNullValue()));

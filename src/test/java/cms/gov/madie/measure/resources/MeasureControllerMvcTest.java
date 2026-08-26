@@ -153,8 +153,7 @@ public class MeasureControllerMvcTest {
 
     when(measureService.findMeasureById(anyString())).thenReturn(priorMeasure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenReturn(updatingMeasure);
 
     final String measureAsJson = toJsonString(updatingMeasure);
@@ -181,10 +180,7 @@ public class MeasureControllerMvcTest {
     verify(measureService, times(1)).findMeasureById(eq(measureId));
     verify(measureService, times(1))
         .updateMeasure(
-            measureArgumentCaptor.capture(),
-            anyString(),
-            measureArgumentCaptor2.capture(),
-            anyString());
+            measureArgumentCaptor.capture(), anyString(), measureArgumentCaptor2.capture());
     assertThat(measureArgumentCaptor.getValue(), is(equalTo(priorMeasure)));
 
     verify(actionLogService, times(1))
@@ -245,8 +241,7 @@ public class MeasureControllerMvcTest {
 
     when(measureService.findMeasureById(anyString())).thenReturn(priorMeasure);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenReturn(updatingMeasure);
 
     mockMvc
@@ -694,8 +689,7 @@ public class MeasureControllerMvcTest {
     existingMeasure.setEcqmTitle("ecqmTitle");
     existingMeasure.setVersionId(existingMeasure.getId());
 
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenThrow(
             new DuplicateKeyException(
                 "cqlLibraryName", "CQL library with given name already exists."));
@@ -725,7 +719,7 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1)).findMeasureById(eq(priorMeasure.getId()));
     verify(measureService, times(1))
-        .updateMeasure(eq(priorMeasure), anyString(), any(Measure.class), anyString());
+        .updateMeasure(eq(priorMeasure), anyString(), any(Measure.class));
     verifyNoMoreInteractions(measureRepository);
   }
 
@@ -751,8 +745,7 @@ public class MeasureControllerMvcTest {
     existingMeasure.setMeasureSetId("measureSetId");
     existingMeasure.setVersionId("newVersionID");
 
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenThrow(new InvalidVersionIdException("newVersionId"));
 
     final String updatedMeasureAsJson =
@@ -777,7 +770,7 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1)).findMeasureById(eq(priorMeasure.getId()));
     verify(measureService, times(1))
-        .updateMeasure(any(Measure.class), anyString(), any(Measure.class), anyString());
+        .updateMeasure(any(Measure.class), anyString(), any(Measure.class));
     verifyNoMoreInteractions(measureRepository);
   }
 
@@ -856,8 +849,7 @@ public class MeasureControllerMvcTest {
     saved.setImprovementNotationDescription("TestingOther");
     saved.setMeasureMetaData(MeasureMetaData.builder().draft(true).build());
     when(measureService.findMeasureById(anyString())).thenReturn(saved);
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenReturn(saved);
 
     final String measureAsJson =
@@ -1028,8 +1020,7 @@ public class MeasureControllerMvcTest {
 
     when(measureService.findMeasureById(anyString())).thenReturn(saved);
     doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
-    when(measureService.updateMeasure(
-            any(Measure.class), anyString(), any(Measure.class), anyString()))
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
         .thenReturn(saved);
 
     final String measureAsJson =
@@ -1049,7 +1040,7 @@ public class MeasureControllerMvcTest {
 
     verify(measureService, times(1)).findMeasureById(eq(measureId));
     verify(measureService, times(1))
-        .updateMeasure(any(Measure.class), anyString(), any(Measure.class), anyString());
+        .updateMeasure(any(Measure.class), anyString(), any(Measure.class));
     verifyNoMoreInteractions(measureRepository);
   }
 

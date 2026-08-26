@@ -18,6 +18,8 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
+import java.time.Duration;
+
 @SpringBootApplication
 @EnableMongock
 @EnableCaching
@@ -96,6 +98,12 @@ public class MeasureServiceApplication {
     CaffeineCacheManager cacheManager =
         new CaffeineCacheManager("organizations", "populationBasisValues", "endorsements");
     cacheManager.setCaffeine(Caffeine.newBuilder().maximumSize(500));
+
+    // translatorVersion: small, rarely-changing value — expire after 1 hour
+    cacheManager.registerCustomCache(
+        "translatorVersion",
+        Caffeine.newBuilder().maximumSize(1).expireAfterWrite(Duration.ofHours(1)).build());
+
     return cacheManager;
   }
 

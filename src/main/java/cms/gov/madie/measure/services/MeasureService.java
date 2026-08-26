@@ -47,6 +47,7 @@ public class MeasureService extends BaseMeasureService {
   private final UserServiceClient userServiceClient;
   private final CompositeRelationshipService compositeRelationshipService;
   private final TestCaseValidationService testCaseValidationService;
+  private final TranslatorVersionService translatorVersionService;
 
   @Autowired
   public MeasureService(
@@ -63,7 +64,8 @@ public class MeasureService extends BaseMeasureService {
       MeasureLockService measureLockService,
       UserServiceClient userServiceClient,
       CompositeRelationshipService compositeRelationshipService,
-      TestCaseValidationService testCaseValidationService) {
+      TestCaseValidationService testCaseValidationService,
+      TranslatorVersionService translatorVersionService) {
     // Pass parent dependencies to BaseMeasureService constructor
     super(measureRepository, measureSetService, appConfigService, measureLockService);
     // Assign child-specific fields
@@ -81,6 +83,7 @@ public class MeasureService extends BaseMeasureService {
     this.userServiceClient = userServiceClient;
     this.compositeRelationshipService = compositeRelationshipService;
     this.testCaseValidationService = testCaseValidationService;
+    this.translatorVersionService = translatorVersionService;
   }
 
   public void verifyAuthorizationByMeasureSetId(
@@ -128,7 +131,7 @@ public class MeasureService extends BaseMeasureService {
     Measure measureCopy = measure.toBuilder().build();
     Set<MeasureErrorType> errorTypes = new HashSet<>();
     try {
-      measureCopy = updateElm(measureCopy, accessToken);
+      measureCopy = updateElm(measureCopy);
     } catch (CqlElmTranslationErrorException ex) {
       errorTypes.add(MeasureErrorType.ERRORS_ELM_JSON);
     }
@@ -247,10 +250,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public Measure updateMeasure(
-      final Measure existingMeasure,
-      final String username,
-      final Measure updatingMeasure,
-      final String accessToken) {
+      final Measure existingMeasure, final String username, final Measure updatingMeasure) {
     if (measureUtil.isCqlLibraryNameChanged(updatingMeasure, existingMeasure)) {
       checkDuplicateCqlLibraryName(
           updatingMeasure.getCqlLibraryName(), existingMeasure.getMeasureSetId());
@@ -308,8 +308,7 @@ public class MeasureService extends BaseMeasureService {
         || measureUtil.isSupplementalDataChanged(existingMeasure, updatingMeasure)
         || measureUtil.isRiskAdjustmentChanged(existingMeasure, updatingMeasure)) {
       try {
-        outputMeasure =
-            measureUtil.validateAllMeasureDependencies(updateElm(updatingMeasure, accessToken));
+        outputMeasure = measureUtil.validateAllMeasureDependencies(updateElm(updatingMeasure));
         // remove this condition when we validate for terminology service errors in backend
         if (!outputMeasure.isCqlErrors()) {
           outputMeasure.setCqlErrors(updatingMeasure.isCqlErrors());
@@ -440,10 +439,9 @@ public class MeasureService extends BaseMeasureService {
     }
   }
 
-  public Measure updateElm(Measure measure, String accessToken) {
+  public Measure updateElm(Measure measure) {
     if (measure != null && StringUtils.isNotBlank(measure.getCql())) {
-      final ElmJson elmJson =
-          elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), accessToken);
+      final ElmJson elmJson = elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel());
       if (elmTranslatorClient.hasErrors(elmJson)) {
         throw new CqlElmTranslationErrorException(measure.getMeasureName());
       }
@@ -727,8 +725,11 @@ public class MeasureService extends BaseMeasureService {
       List<OwnershipType> ownershipTypes,
       Pageable pageReq,
       String username) {
-    return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, ownershipTypes);
+    Page<MeasureListDTO> results =
+        measureRepository.searchMeasuresByCriteria(
+            username, pageReq, searchCriteria, ownershipTypes);
+    translatorVersionService.enrichWithTranslatorVersion(results.getContent());
+    return results;
   }
 
   /**
