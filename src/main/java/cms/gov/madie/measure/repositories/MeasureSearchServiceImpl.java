@@ -146,7 +146,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     }
 
     populateOwnerDisplayNames(queryResults);
-    return new PageImpl<>(queryResults, pageable, matchInfoMap.size());
+    FacetDTO facetResults = results.get(0);
+    long total = facetResults.getCount() == null ? 0 : facetResults.getCount().size();
+
+    return new PageImpl<>(queryResults, pageable, total);
   }
 
   /**
