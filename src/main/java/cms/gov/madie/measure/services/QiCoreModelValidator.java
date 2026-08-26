@@ -66,8 +66,9 @@ public class QiCoreModelValidator extends ModelValidator {
           measure.getId(),
           "since composite measures cannot have populations or stratifications in groups at this time.");
     }
-    if (measure.getGroups().stream()
-        .anyMatch(g -> CollectionUtils.isEmpty(g.getMeasureGroupTypes()))) {
+    if (!(measure.getMeasureMetaData() != null && measure.getMeasureMetaData().isComposite())
+        && measure.getGroups().stream()
+            .anyMatch(g -> CollectionUtils.isEmpty(g.getMeasureGroupTypes()))) {
       throw new InvalidResourceStateException(
           "Measure",
           measure.getId(),
