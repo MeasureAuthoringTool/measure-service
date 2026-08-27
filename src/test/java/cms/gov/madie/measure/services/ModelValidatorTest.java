@@ -307,6 +307,22 @@ class ModelValidatorTest {
   }
 
   @Test
+  void useQicoreModelValidatorTestCompositeMeasureMayHaveGroupWithNoTypes() {
+    assertNotNull(modelValidatorFactory);
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setComposite(true);
+    Measure measure =
+        Measure.builder()
+            .id("1")
+            .groups(List.of(Group.builder().build()))
+            .measureMetaData(metaData)
+            .build();
+    ModelValidator validator = modelValidatorFactory.getModelValidator(ModelType.QI_CORE);
+    assertTrue(validator instanceof QiCoreModelValidator);
+    assertDoesNotThrow(() -> validator.validateGroups(measure));
+  }
+
+  @Test
   void useQicoreModelValidatorTestCompositeMeasureWithPopulationsThrowsException() {
     assertNotNull(modelValidatorFactory);
     Population population = Population.builder().name(PopulationType.INITIAL_POPULATION).build();
