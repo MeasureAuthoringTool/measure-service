@@ -45,6 +45,7 @@ public class MeasureController extends AbstractMeasureController {
   private final TestCaseLockService testCaseLockService;
   private final AppConfigService appConfigService;
   private final CqlDifferentiatorService cqlDifferentiatorService;
+  private final AssociateCmsIdService associateCmsIdService;
 
   @Override
   protected AppConfigService getAppConfigService() {
@@ -111,13 +112,13 @@ public class MeasureController extends AbstractMeasureController {
             true, principal.getName().toLowerCase(), List.of(OwnershipType.ALL)));
 
     results.put(
-        "ownedReviews",
-        measureService.countMeasuresByReview(
-            true, principal.getName().toLowerCase(), List.of(OwnershipType.OWNED)));
-    results.put(
         "allReviews",
         measureService.countMeasuresByReview(
             true, principal.getName().toLowerCase(), List.of(OwnershipType.ALL)));
+    results.put(
+        "myReviews",
+        measureService.countMeasuresByReview(
+            true, principal.getName().toLowerCase(), List.of(OwnershipType.OWNED)));
 
     return ResponseEntity.ok(results);
   }
@@ -233,8 +234,7 @@ public class MeasureController extends AbstractMeasureController {
     }
 
     response =
-        ResponseEntity.ok()
-            .body(measureService.updateMeasure(existingMeasure, username, measure, accessToken));
+        ResponseEntity.ok().body(measureService.updateMeasure(existingMeasure, username, measure));
     if (!measure.isActive()) {
       actionLogService.logAction(id, Measure.class, ActionType.DELETED, username);
     } else {
@@ -450,7 +450,8 @@ public class MeasureController extends AbstractMeasureController {
     checkMeasureLock(qiCoreMeasure, username);
     checkMeasureLock(qdmMeasure, username);
     return ResponseEntity.ok(
-        measureService.associateCmsId(username, qiCoreMeasureId, qdmMeasureId, copyMetaData));
+        associateCmsIdService.associateCmsId(
+            username, qiCoreMeasureId, qdmMeasureId, copyMetaData));
   }
 
   @GetMapping(

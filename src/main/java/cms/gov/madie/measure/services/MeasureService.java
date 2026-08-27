@@ -47,6 +47,7 @@ public class MeasureService extends BaseMeasureService {
   private final UserServiceClient userServiceClient;
   private final CompositeRelationshipService compositeRelationshipService;
   private final TestCaseValidationService testCaseValidationService;
+  private final TranslatorVersionService translatorVersionService;
 
   @Autowired
   public MeasureService(
@@ -63,7 +64,8 @@ public class MeasureService extends BaseMeasureService {
       MeasureLockService measureLockService,
       UserServiceClient userServiceClient,
       CompositeRelationshipService compositeRelationshipService,
-      TestCaseValidationService testCaseValidationService) {
+      TestCaseValidationService testCaseValidationService,
+      TranslatorVersionService translatorVersionService) {
     // Pass parent dependencies to BaseMeasureService constructor
     super(measureRepository, measureSetService, appConfigService, measureLockService);
     // Assign child-specific fields
@@ -81,6 +83,7 @@ public class MeasureService extends BaseMeasureService {
     this.userServiceClient = userServiceClient;
     this.compositeRelationshipService = compositeRelationshipService;
     this.testCaseValidationService = testCaseValidationService;
+    this.translatorVersionService = translatorVersionService;
   }
 
   public void verifyAuthorizationByMeasureSetId(
@@ -128,7 +131,7 @@ public class MeasureService extends BaseMeasureService {
     Measure measureCopy = measure.toBuilder().build();
     Set<MeasureErrorType> errorTypes = new HashSet<>();
     try {
-      measureCopy = updateElm(measureCopy, accessToken);
+      measureCopy = updateElm(measureCopy);
     } catch (CqlElmTranslationErrorException ex) {
       errorTypes.add(MeasureErrorType.ERRORS_ELM_JSON);
     }
@@ -247,10 +250,7 @@ public class MeasureService extends BaseMeasureService {
   }
 
   public Measure updateMeasure(
-      final Measure existingMeasure,
-      final String username,
-      final Measure updatingMeasure,
-      final String accessToken) {
+      final Measure existingMeasure, final String username, final Measure updatingMeasure) {
     if (measureUtil.isCqlLibraryNameChanged(updatingMeasure, existingMeasure)) {
       checkDuplicateCqlLibraryName(
           updatingMeasure.getCqlLibraryName(), existingMeasure.getMeasureSetId());
@@ -308,8 +308,7 @@ public class MeasureService extends BaseMeasureService {
         || measureUtil.isSupplementalDataChanged(existingMeasure, updatingMeasure)
         || measureUtil.isRiskAdjustmentChanged(existingMeasure, updatingMeasure)) {
       try {
-        outputMeasure =
-            measureUtil.validateAllMeasureDependencies(updateElm(updatingMeasure, accessToken));
+        outputMeasure = measureUtil.validateAllMeasureDependencies(updateElm(updatingMeasure));
         // remove this condition when we validate for terminology service errors in backend
         if (!outputMeasure.isCqlErrors()) {
           outputMeasure.setCqlErrors(updatingMeasure.isCqlErrors());
@@ -440,10 +439,9 @@ public class MeasureService extends BaseMeasureService {
     }
   }
 
-  public Measure updateElm(Measure measure, String accessToken) {
+  public Measure updateElm(Measure measure) {
     if (measure != null && StringUtils.isNotBlank(measure.getCql())) {
-      final ElmJson elmJson =
-          elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel(), accessToken);
+      final ElmJson elmJson = elmTranslatorClient.getElmJson(measure.getCql(), measure.getModel());
       if (elmTranslatorClient.hasErrors(elmJson)) {
         throw new CqlElmTranslationErrorException(measure.getMeasureName());
       }
@@ -727,21 +725,29 @@ public class MeasureService extends BaseMeasureService {
       List<OwnershipType> ownershipTypes,
       Pageable pageReq,
       String username) {
-    return measureRepository.searchMeasuresByCriteria(
-        username, pageReq, searchCriteria, ownershipTypes);
+    Page<MeasureListDTO> results =
+        measureRepository.searchMeasuresByCriteria(
+            username, pageReq, searchCriteria, ownershipTypes);
+    translatorVersionService.enrichWithTranslatorVersion(results.getContent());
+    return results;
   }
 
   /**
    * Retrieves the measures currently under review, searched, sorted and paged by the database.
    *
    * @param searchCriteria the search criteria, may be null
+   * @param ownershipTypes OWNED for the reviews assigned to the user, ALL for every review
    * @param pageReq pagination and sort parameters
    * @param username the HARP id of the requesting user
    * @return a page of measures under review
    */
   public Page<MeasureListDTO> getMeasuresInReview(
-      MeasureSearchCriteria searchCriteria, Pageable pageReq, String username) {
-    return measureRepository.searchMeasuresInReview(username, pageReq, searchCriteria);
+      MeasureSearchCriteria searchCriteria,
+      List<OwnershipType> ownershipTypes,
+      Pageable pageReq,
+      String username) {
+    return measureRepository.searchMeasuresInReview(
+        username, pageReq, searchCriteria, ownershipTypes);
   }
 
   protected void updateReferences(MeasureMetaData metaData) {
@@ -799,199 +805,6 @@ public class MeasureService extends BaseMeasureService {
       measureRepository.deleteAll(versionedMeasures);
       log.info("Versioned Measure IDs [{}] are deleted.", deletedMeasureIds);
     }
-  }
-
-  public void copyQdmMetaData(Measure qiCoreMeasure, Measure qdmMeasure) {
-    MeasureMetaData qiCoreMeasureMetaData = qiCoreMeasure.getMeasureMetaData();
-    MeasureMetaData qdmMeasureMetaData = qdmMeasure.getMeasureMetaData();
-
-    log.info(
-        "Copying the meta data from QDM measure [{}] to QI Core measure[{}]",
-        qiCoreMeasure.getId(),
-        qdmMeasure.getId());
-
-    if (!CollectionUtils.isEmpty(qdmMeasureMetaData.getEndorsements())) {
-      qiCoreMeasureMetaData.setEndorsements(qdmMeasureMetaData.getEndorsements());
-    }
-    if (qdmMeasureMetaData.getSteward() != null) {
-      qiCoreMeasureMetaData.setSteward(qdmMeasureMetaData.getSteward());
-    }
-    if (!CollectionUtils.isEmpty(qdmMeasureMetaData.getDevelopers())) {
-      qiCoreMeasureMetaData.setDevelopers(qdmMeasureMetaData.getDevelopers());
-    }
-    if (StringUtils.isNotBlank(qdmMeasureMetaData.getDescription())) {
-      qiCoreMeasureMetaData.setDescription(qdmMeasureMetaData.getDescription());
-    }
-    if (StringUtils.isNotBlank(qdmMeasureMetaData.getRationale())) {
-      qiCoreMeasureMetaData.setRationale(qdmMeasureMetaData.getRationale());
-    }
-    if (StringUtils.isNotBlank(qdmMeasureMetaData.getGuidance())) {
-      qiCoreMeasureMetaData.setGuidance(qdmMeasureMetaData.getGuidance());
-    }
-    if (StringUtils.isNotBlank(qdmMeasureMetaData.getDefinition())) {
-      qiCoreMeasureMetaData.setDefinition(qdmMeasureMetaData.getDefinition());
-    }
-    if (StringUtils.isNotBlank(qdmMeasureMetaData.getClinicalRecommendation())) {
-      qiCoreMeasureMetaData.setClinicalRecommendation(
-          qdmMeasureMetaData.getClinicalRecommendation());
-    }
-    if (!CollectionUtils.isEmpty(qdmMeasureMetaData.getReferences())) {
-      qiCoreMeasureMetaData.setReferences(qdmMeasureMetaData.getReferences());
-    }
-    if (StringUtils.isNotBlank(qdmMeasureMetaData.getCopyright())) {
-      qiCoreMeasureMetaData.setCopyright(qdmMeasureMetaData.getCopyright());
-    }
-    if (StringUtils.isNotBlank(qdmMeasureMetaData.getDisclaimer())) {
-      qiCoreMeasureMetaData.setDisclaimer(qdmMeasureMetaData.getDisclaimer());
-    }
-
-    qiCoreMeasure.setMeasurementPeriodStart(qdmMeasure.getMeasurementPeriodStart());
-    qiCoreMeasure.setMeasurementPeriodEnd(qdmMeasure.getMeasurementPeriodEnd());
-
-    measureRepository.save(qiCoreMeasure);
-  }
-
-  public MeasureSet associateCmsId(
-      String username, String qiCoreMeasureId, String qdmMeasureId, boolean copyMetaData) {
-
-    Measure qiCoreMeasure = findMeasureById(qiCoreMeasureId);
-    Measure qdmMeasure = findMeasureById(qdmMeasureId);
-
-    if (qiCoreMeasure == null || qdmMeasure == null) {
-      log.info(
-          "CMS ID could not be associated. Measures with given Ids [{}],[{}] are not found",
-          qiCoreMeasureId,
-          qdmMeasureId);
-      throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
-    }
-
-    validateCmsIdAssociation(username, qiCoreMeasure, qdmMeasure);
-
-    if (copyMetaData) {
-      copyQdmMetaData(qiCoreMeasure, qdmMeasure);
-      log.info(
-          "User [{}] successfully copied the meta data from QDM Measure with Id [{}] to "
-              + "QI Core Measure with Id [{}]",
-          username,
-          qdmMeasureId,
-          qiCoreMeasureId);
-    }
-
-    MeasureSet measureSet = qiCoreMeasure.getMeasureSet();
-    measureSet.setCmsId(qdmMeasure.getMeasureSet().getCmsId());
-    measureSetRepository.save(measureSet);
-    log.info(
-        "User [{}] successfully associated the measures [{}], [{}] with CMS ID [{}]",
-        username,
-        qiCoreMeasureId,
-        qdmMeasureId,
-        measureSet.getCmsId());
-
-    measureLockService.unlockMeasure(qiCoreMeasureId, username);
-
-    String associationSuccessMessage =
-        "QI Core measure with ID %s and QDM measure with ID %s are Associated with "
-            + "CMS ID %s on %s.";
-    String copyMetaDataStatusMessage =
-        copyMetaData ? " Metadata was copied over" : " Metadata was NOT copied over";
-
-    actionLogService.logMeasureSetAction(
-        measureSet.getMeasureSetId(),
-        MeasureSet.class,
-        ActionType.ASSOCIATED,
-        username,
-        String.format(
-            associationSuccessMessage + copyMetaDataStatusMessage,
-            qiCoreMeasureId,
-            qdmMeasureId,
-            measureSet.getCmsId(),
-            Instant.now()));
-
-    return measureSet;
-  }
-
-  public List<Measure> getQiCoreMeasuresByCmsId(Integer qdmCmsId) {
-    return measureRepository.findAllByModelAndCmsId(ModelType.QI_CORE.getValue(), qdmCmsId);
-  }
-
-  void validateCmsIdAssociation(String username, Measure qiCoreMeasure, Measure qdmMeasure) {
-    if (qiCoreMeasure == null || qdmMeasure == null) {
-      throw new ResourceNotFoundException("CMS ID could not be associated. Please try again.");
-    }
-    verifyOneQiCoreAndOneQdmMeasure(qiCoreMeasure, qdmMeasure);
-    verifyOwner(username, qiCoreMeasure, qdmMeasure);
-    verifyQdmHasCmsId(qdmMeasure);
-    verifyQiCoreDoesNotHaveCmsId(qiCoreMeasure);
-    verifyQiCoreIsDraft(qiCoreMeasure);
-    verifyNoOtherQiCoreHasCmsId(qdmMeasure);
-    verifyQiCoreMeasureNotLocked(qiCoreMeasure, username);
-  }
-
-  private void verifyOneQiCoreAndOneQdmMeasure(Measure qiCoreMeasure, Measure qdmMeasure) {
-    if ((!qiCoreMeasure.getModel().equals(ModelType.QI_CORE.getValue())
-            && !qiCoreMeasure.getModel().equals(ModelType.QI_CORE_6_0_0.getValue()))
-        || !qdmMeasure.getModel().equals(ModelType.QDM_5_6.getValue())) {
-      log.info("CMS ID could not be associated. Must pass in one QDM and one QI-Core measure");
-      throw new InvalidRequestException(
-          "CMS ID could not be associated. Must select one QDM and one QI-Core measure.");
-    }
-  }
-
-  private void verifyOwner(String username, Measure qiCoreMeasure, Measure qdmMeasure) {
-    // only owners(not shared users) can perform cms id association
-    if (!(StringUtils.equals(qiCoreMeasure.getMeasureSet().getOwner(), username)
-        && StringUtils.equals(qdmMeasure.getMeasureSet().getOwner(), username))) {
-      log.info(
-          "CMS ID could not be associated for measures with IDs [{}], [{}]. User is not authorized "
-              + "to perform CMS id association",
-          qiCoreMeasure.getId(),
-          qdmMeasure.getId());
-      throw new UnauthorizedException("CMS ID could not be associated. Please try again.");
-    }
-  }
-
-  private void verifyQdmHasCmsId(Measure qdmMeasure) {
-    if (qdmMeasure.getMeasureSet().getCmsId() == null) {
-      log.info(
-          "CMS ID could not be associated. QDM measure with Id [{}] doesn't have CMS ID "
-              + "associated with it",
-          qdmMeasure.getId());
-      throw new InvalidRequestException("CMS ID could not be associated. Please try again.");
-    }
-  }
-
-  private void verifyQiCoreDoesNotHaveCmsId(Measure qiCoreMeasure) {
-    if (qiCoreMeasure.getMeasureSet().getCmsId() != null) {
-      log.info(
-          "CMS ID could not be associated. The QI-Core measure with Id [{}] already has a CMS ID.",
-          qiCoreMeasure.getId());
-      throw new InvalidResourceStateException(
-          "CMS ID could not be associated. The QI-Core measure already has a CMS ID.");
-    }
-  }
-
-  private void verifyQiCoreIsDraft(Measure qiCoreMeasure) {
-    if (!qiCoreMeasure.getMeasureMetaData().isDraft()) {
-      log.info(
-          "CMS ID could not be associated. The QI-Core measure with Id [{}] is versioned.",
-          qiCoreMeasure.getId());
-      throw new InvalidResourceStateException(
-          "CMS ID could not be associated. The QI-Core measure is versioned.");
-    }
-  }
-
-  private void verifyNoOtherQiCoreHasCmsId(Measure qdmMeasure) {
-    if (!CollectionUtils.isEmpty(getQiCoreMeasuresByCmsId(qdmMeasure.getMeasureSet().getCmsId()))) {
-      log.info(
-          "CMS ID could not be associated. A QI-Core measure already utilizes the CMS ID [{}].",
-          qdmMeasure.getMeasureSet().getCmsId());
-      throw new InvalidResourceStateException(
-          "CMS ID could not be associated. A QI-Core measure already utilizes that CMS ID.");
-    }
-  }
-
-  private void verifyQiCoreMeasureNotLocked(Measure qiCoreMeasure, String username) {
-    measureLockService.checkMeasureLock(username, qiCoreMeasure, "associate");
   }
 
   /**

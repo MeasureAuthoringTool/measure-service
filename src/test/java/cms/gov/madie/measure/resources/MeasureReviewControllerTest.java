@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.services.MeasureReviewService;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.MeasureReview;
 import java.security.Principal;
@@ -130,22 +131,66 @@ class MeasureReviewControllerTest {
     MeasureSearchCriteria searchCriteria =
         MeasureSearchCriteria.builder().searchField("Measure").build();
     when(measureReviewService.getMeasuresInReview(
-            eq(searchCriteria), any(Pageable.class), eq("test.user")))
+            eq(searchCriteria),
+            eq(List.of(OwnershipType.ALL)),
+            any(Pageable.class),
+            eq("test.user")))
         .thenReturn(new PageImpl<>(List.of(measureInReview)));
 
     ResponseEntity<Page<MeasureListDTO>> response =
         controller.searchMeasuresInReview(
-            principal, searchCriteria, 10, 0, "lastModifiedAt", "DESC");
+            principal, searchCriteria, List.of(OwnershipType.ALL), 10, 0, "lastModifiedAt", "DESC");
 
     assertNotNull(response);
     assertEquals(HttpStatus.OK, response.getStatusCode());
     assertEquals(1, response.getBody().getContent().size());
     assertEquals("m1", response.getBody().getContent().get(0).getId());
     verify(measureReviewService)
-        .getMeasuresInReview(eq(searchCriteria), pageableCaptor.capture(), eq("test.user"));
+        .getMeasuresInReview(
+            eq(searchCriteria),
+            eq(List.of(OwnershipType.ALL)),
+            pageableCaptor.capture(),
+            eq("test.user"));
     Pageable pageable = pageableCaptor.getValue();
     assertEquals(0, pageable.getPageNumber());
     assertEquals(10, pageable.getPageSize());
     assertEquals(Sort.by(Sort.Direction.DESC, "lastModifiedAt"), pageable.getSort());
+  }
+
+  @Test
+  void searchMeasuresInReviewForTheAssignedScopeReturnsTheReviewersMeasures() {
+    when(principal.getName()).thenReturn("Test.User");
+    MeasureListDTO assigned = MeasureListDTO.builder().id("m1").reviewStatus("In Progress").build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    when(measureReviewService.getMeasuresInReview(
+            eq(searchCriteria),
+            eq(List.of(OwnershipType.OWNED)),
+            any(Pageable.class),
+            eq("test.user")))
+        .thenReturn(new PageImpl<>(List.of(assigned)));
+
+    ResponseEntity<Page<MeasureListDTO>> response =
+        controller.searchMeasuresInReview(
+            principal,
+            searchCriteria,
+            List.of(OwnershipType.OWNED),
+            10,
+            0,
+            "lastModifiedAt",
+            "DESC");
+
+    assertNotNull(response);
+    assertEquals(HttpStatus.OK, response.getStatusCode());
+    assertEquals(1, response.getBody().getContent().size());
+    assertEquals("m1", response.getBody().getContent().get(0).getId());
+    verify(measureReviewService)
+        .getMeasuresInReview(
+            eq(searchCriteria),
+            eq(List.of(OwnershipType.OWNED)),
+            pageableCaptor.capture(),
+            eq("test.user"));
+    assertEquals(
+        Sort.by(Sort.Direction.DESC, "lastModifiedAt"), pageableCaptor.getValue().getSort());
   }
 }

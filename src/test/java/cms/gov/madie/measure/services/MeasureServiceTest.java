@@ -81,6 +81,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Mock private UserServiceClient userServiceClient;
   @Mock private CompositeRelationshipService compositeRelationshipService;
   @Mock private TestCaseValidationService testCaseValidationService;
+  @Mock private TranslatorVersionService translatorVersionService;
 
   @Spy @InjectMocks private MeasureService measureService;
   @Captor private ArgumentCaptor<Measure> measureArgumentCaptor;
@@ -408,6 +409,7 @@ public class MeasureServiceTest implements ResourceUtil {
         measureService.getMeasuresByCriteria(
             measureSearchCriteria, List.of(OwnershipType.OWNED), initialPage, "test.user");
     assertNotNull(measures);
+    verify(translatorVersionService, times(1)).enrichWithTranslatorVersion(anyList());
   }
 
   @Test
@@ -429,6 +431,7 @@ public class MeasureServiceTest implements ResourceUtil {
         measureService.getMeasuresByCriteria(
             measureSearchCriteria, List.of(OwnershipType.SHARED), initialPage, "test.user");
     assertNotNull(measures);
+    verify(translatorVersionService, times(1)).enrichWithTranslatorVersion(anyList());
   }
 
   @Test
@@ -450,6 +453,7 @@ public class MeasureServiceTest implements ResourceUtil {
         measureService.getMeasuresByCriteria(
             measureSearchCriteria, List.of(OwnershipType.ALL), initialPage, "test.user");
     assertNotNull(measures);
+    verify(translatorVersionService, times(1)).enrichWithTranslatorVersion(anyList());
   }
 
   @Test
@@ -461,15 +465,55 @@ public class MeasureServiceTest implements ResourceUtil {
         MeasureSearchCriteria.builder().searchField("Measure").build();
     doReturn(new PageImpl<>(List.of(measureInReview)))
         .when(measureRepository)
-        .searchMeasuresInReview("test.user", initialPage, searchCriteria);
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.ALL));
 
     Page<MeasureListDTO> measures =
-        measureService.getMeasuresInReview(searchCriteria, initialPage, "test.user");
+        measureService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.ALL), initialPage, "test.user");
 
     assertEquals(1, measures.getContent().size());
     assertEquals("Ready", measures.getContent().get(0).getReviewStatus());
     verify(measureRepository, times(1))
-        .searchMeasuresInReview("test.user", initialPage, searchCriteria);
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.ALL));
+  }
+
+  @Test
+  public void testGetMeasuresInReviewForTheAssignedScope() {
+    PageRequest initialPage = PageRequest.of(0, 10);
+    MeasureListDTO assigned =
+        MeasureListDTO.builder()
+            .id("m1")
+            .measureName("Measure 1")
+            .reviewStatus("In Progress")
+            .build();
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder().searchField("Measure").build();
+    doReturn(new PageImpl<>(List.of(assigned)))
+        .when(measureRepository)
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.OWNED));
+
+    Page<MeasureListDTO> measures =
+        measureService.getMeasuresInReview(
+            searchCriteria, List.of(OwnershipType.OWNED), initialPage, "test.user");
+
+    assertEquals(1, measures.getContent().size());
+    assertEquals("In Progress", measures.getContent().get(0).getReviewStatus());
+    verify(measureRepository, times(1))
+        .searchMeasuresInReview(
+            "test.user", initialPage, searchCriteria, List.of(OwnershipType.OWNED));
+  }
+
+  @Test
+  public void testCountMeasuresByReviewForTheAssignedScope() {
+    doReturn(3)
+        .when(measureRepository)
+        .countMeasuresByReview(true, "test.user", List.of(OwnershipType.OWNED));
+
+    assertEquals(
+        3, measureService.countMeasuresByReview(true, "test.user", List.of(OwnershipType.OWNED)));
   }
 
   @Test
@@ -510,7 +554,7 @@ public class MeasureServiceTest implements ResourceUtil {
         .when(measureSetService)
         .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
@@ -583,7 +627,7 @@ public class MeasureServiceTest implements ResourceUtil {
         .when(measureSetService)
         .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
@@ -656,7 +700,7 @@ public class MeasureServiceTest implements ResourceUtil {
         .when(measureSetService)
         .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
@@ -730,7 +774,7 @@ public class MeasureServiceTest implements ResourceUtil {
         .when(measureSetService)
         .createMeasureSet(anyString(), anyString(), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
@@ -791,7 +835,7 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json(elmJson).build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
     doNothing().when(terminologyValidationService).validateTerminology(anyString(), anyString());
@@ -825,7 +869,7 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json(elmJson).build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(true);
     doThrow(InvalidTerminologyException.class)
@@ -879,7 +923,7 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json(elmJson).build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
     doNothing().when(terminologyValidationService).validateTerminology(anyString(), anyString());
@@ -912,7 +956,7 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
 
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
     doNothing().when(terminologyValidationService).validateTerminology(anyString(), anyString());
@@ -948,7 +992,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         DuplicateKeyException.class,
-        () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+        () -> measureService.updateMeasure(original, "User1", updated));
   }
 
   @Test
@@ -971,7 +1015,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         InvalidMeasurementPeriodException.class,
-        () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+        () -> measureService.updateMeasure(original, "User1", updated));
   }
 
   @Test
@@ -1022,7 +1066,7 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(false);
     when(measureRepository.findAndModify(any(Measure.class))).thenReturn(updated);
 
-    Measure output = measureService.updateMeasure(original, "User1", updated, "Access Token");
+    Measure output = measureService.updateMeasure(original, "User1", updated);
     assertThat(output, is(notNullValue()));
     assertThat(output, is(equalTo(updated)));
 
@@ -1061,7 +1105,7 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
         .thenReturn(false);
     when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(true);
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
@@ -1070,7 +1114,7 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class))).thenReturn(expected);
     when(measureRepository.findAndModify(any(Measure.class))).thenReturn(expected);
 
-    Measure output = measureService.updateMeasure(original, "User1", updated, "Access Token");
+    Measure output = measureService.updateMeasure(original, "User1", updated);
     assertThat(output, is(notNullValue()));
     assertThat(output, is(equalTo(expected)));
 
@@ -1100,7 +1144,7 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
         .thenReturn(false);
     when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(true);
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
@@ -1112,7 +1156,7 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class))).thenReturn(expected);
     when(measureRepository.findAndModify(any(Measure.class))).thenReturn(expected);
 
-    Measure output = measureService.updateMeasure(original, "User1", updated, "Access Token");
+    Measure output = measureService.updateMeasure(original, "User1", updated);
     assertThat(output, is(notNullValue()));
     assertThat(output, is(equalTo(expected)));
 
@@ -1141,14 +1185,14 @@ public class MeasureServiceTest implements ResourceUtil {
     when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
         .thenReturn(false);
     when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(true);
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(true);
 
     when(measureRepository.findAndModify(any(Measure.class)))
         .thenAnswer(invocationOnMock -> invocationOnMock.getArgument(0));
 
-    Measure output = measureService.updateMeasure(original, "User1", updated, "Access Token");
+    Measure output = measureService.updateMeasure(original, "User1", updated);
     assertThat(output, is(notNullValue()));
     assertThat(output.getErrors(), is(notNullValue()));
     assertThat(output.isCqlErrors(), is(true));
@@ -1164,7 +1208,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testUpdateElmReturnsMeasureUnchangedForNullCql() {
     final Measure measure = Measure.builder().cql(null).build();
-    Measure output = measureService.updateElm(measure, "Access Token");
+    Measure output = measureService.updateElm(measure);
     assertThat(output, is(notNullValue()));
     assertThat(output, is(equalTo(measure)));
   }
@@ -1172,7 +1216,7 @@ public class MeasureServiceTest implements ResourceUtil {
   @Test
   public void testUpdateElmReturnsMeasureUnchangedForEmptyCql() {
     final Measure measure = Measure.builder().cql("").build();
-    Measure output = measureService.updateElm(measure, "Access Token");
+    Measure output = measureService.updateElm(measure);
     assertThat(output, is(notNullValue()));
     assertThat(output, is(equalTo(measure)));
   }
@@ -1184,12 +1228,10 @@ public class MeasureServiceTest implements ResourceUtil {
             .cql("some really good cql here")
             .model(ModelType.QDM_5_6.getValue())
             .build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
     when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(true);
-    assertThrows(
-        CqlElmTranslationErrorException.class,
-        () -> measureService.updateElm(measure, "Access Token"));
+    assertThrows(CqlElmTranslationErrorException.class, () -> measureService.updateElm(measure));
   }
 
   @Test
@@ -1199,9 +1241,9 @@ public class MeasureServiceTest implements ResourceUtil {
             .cql("some really good cql here")
             .model(ModelType.QDM_5_6.getValue())
             .build();
-    when(elmTranslatorClient.getElmJson(anyString(), anyString(), anyString()))
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
         .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
-    Measure output = measureService.updateElm(measure, "Access Token");
+    Measure output = measureService.updateElm(measure);
     assertThat(output, is(notNullValue()));
     assertThat(output.getElmJson(), is(equalTo("{\"library\": {}}")));
     assertThat(output.getElmXml(), is(equalTo("<library></library>")));
@@ -1567,324 +1609,6 @@ public class MeasureServiceTest implements ResourceUtil {
     ArgumentCaptor<List<Measure>> repositoryArgCaptor = ArgumentCaptor.forClass(List.class);
     measureService.deleteVersionedMeasures(List.of(measure1, measure2));
     verify(measureRepository, times(0)).deleteAll(repositoryArgCaptor.capture());
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenMeasuresWithGivenIdNotFound() {
-    when(measureRepository.findById(anyString())).thenReturn(Optional.empty());
-    assertThrows(
-        ResourceNotFoundException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenUserIsNotOwnerOfTheMeasures() {
-    MeasureSet measureSet = MeasureSet.builder().owner("owner").build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        UnauthorizedException.class,
-        () -> measureService.associateCmsId("newowner", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenBothTheMeasureAreQICore() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qiCoreMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenBothTheMeasureAreQDM() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.associateCmsId("OWNER", "qdmMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenQDMMeasureHasNoCmsId() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenQICoreMeasureHasCmsId() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId(anyString())).thenReturn(measureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenQICoreMeasureIsVersioned() {
-    measure1.setMeasureMetaData(finalMeasureMetaData);
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
-    when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdThrowsExceptionWhenAnyQICoreMeasureHasSameCmsId() {
-    Measure qiCoreMeasure =
-        Measure.builder()
-            .model(ModelType.QI_CORE.getValue())
-            .measureSetId("NewIDIDID")
-            .measureMetaData(draftMeasureMetaData)
-            .build();
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
-    when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(List.of(qiCoreMeasure));
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false));
-  }
-
-  @Test
-  public void testAssociateCmsIdSuccessfullyWithoutCpyingMetaData() {
-
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet updatedQiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
-    when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(List.of());
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedQiCoreMeasureSet);
-
-    MeasureSet updatedMeasureSet =
-        measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", false);
-    assertThat(updatedMeasureSet.getOwner(), is(equalTo(updatedQiCoreMeasureSet.getOwner())));
-    assertThat(
-        updatedMeasureSet.getMeasureSetId(),
-        is(equalTo(updatedQiCoreMeasureSet.getMeasureSetId())));
-    assertThat(updatedMeasureSet.getCmsId(), is(equalTo(updatedQiCoreMeasureSet.getCmsId())));
-  }
-
-  @Test
-  public void testAssociateCmsIdSuccessfullyWithCpyingMetaData() {
-
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet updatedQiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").cmsId(12).owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-    when(measureRepository.findById("qiCoreMeasureId")).thenReturn(Optional.of(measure1));
-    when(measureRepository.findById("qdmMeasureId")).thenReturn(Optional.of(measure2));
-    when(measureSetService.findByMeasureSetId("IDIDID")).thenReturn(qiCoreMeasureSet);
-    when(measureSetService.findByMeasureSetId("2D2D2D")).thenReturn(qdmMeasureSet);
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(List.of());
-    when(measureSetRepository.save(any(MeasureSet.class))).thenReturn(updatedQiCoreMeasureSet);
-
-    MeasureSet updatedMeasureSet =
-        measureService.associateCmsId("OWNER", "qiCoreMeasureId", "qdmMeasureId", true);
-    assertThat(updatedMeasureSet.getOwner(), is(equalTo(updatedQiCoreMeasureSet.getOwner())));
-    assertThat(
-        updatedMeasureSet.getMeasureSetId(),
-        is(equalTo(updatedQiCoreMeasureSet.getMeasureSetId())));
-    assertThat(updatedMeasureSet.getCmsId(), is(equalTo(updatedQiCoreMeasureSet.getCmsId())));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionForNullQiCoreMeasure() {
-    assertThrows(
-        ResourceNotFoundException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", null, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionForNullQdmMeasure() {
-    assertThrows(
-        ResourceNotFoundException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, null));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenBothTheMeasureAreQiCore411() {
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenBothTheMeasureAreQiCore600() {
-    measureList.setModel(ModelType.QI_CORE_6_0_0.getValue());
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenBothTheMeasureAreQDM() {
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure1));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenUsernameIsNotOwner() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
-    measure1.setMeasureSet(measureSet);
-    measure2.setMeasureSet(measureSet);
-
-    assertThrows(
-        UnauthorizedException.class,
-        () -> measureService.validateCmsIdAssociation("NOT_OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenQDMMeasureHasNoCmsId() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").build();
-    measure1.setMeasureSet(measureSet);
-    measure2.setMeasureSet(measureSet);
-
-    assertThrows(
-        InvalidRequestException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenQICoreMeasureHasCmsId() {
-    MeasureSet measureSet = MeasureSet.builder().owner("OWNER").cmsId(12).build();
-    measure1.setMeasureSet(measureSet);
-    measure2.setMeasureSet(measureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenQICoreMeasureIsVersioned() {
-    measure1.setMeasureMetaData(finalMeasureMetaData);
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationThrowsExceptionWhenAnyQICoreMeasureHasSameCmsId() {
-    Measure qiCoreMeasure =
-        Measure.builder()
-            .model(ModelType.QI_CORE.getValue())
-            .measureSetId("NewIDIDID")
-            .measureMetaData(draftMeasureMetaData)
-            .build();
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(List.of(qiCoreMeasure));
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    assertThrows(
-        InvalidResourceStateException.class,
-        () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociation() {
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(Collections.emptyList());
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
-        .thenReturn(false);
-
-    assertDoesNotThrow(() -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-  }
-
-  @Test
-  public void testValidateCmsIdAssociationWhenMeasureIsLocked() {
-    MeasureSet qiCoreMeasureSet =
-        MeasureSet.builder().measureSetId("IDIDID").owner("OWNER").build();
-    MeasureSet qdmMeasureSet =
-        MeasureSet.builder().measureSetId("2D2D2D").owner("OWNER").cmsId(12).build();
-
-    when(measureRepository.findAllByModelAndCmsId(any(String.class), any(Integer.class)))
-        .thenReturn(Collections.emptyList());
-
-    measure1.setMeasureSet(qiCoreMeasureSet);
-    measure2.setMeasureSet(qdmMeasureSet);
-
-    when(measureLockService.checkMeasureLock(anyString(), any(Measure.class), anyString()))
-        .thenThrow(
-            new LockNotObtainedException(
-                "Unable to associate measure. Locked while being edited by another.user"));
-
-    Exception exception =
-        assertThrows(
-            LockNotObtainedException.class,
-            () -> measureService.validateCmsIdAssociation("OWNER", measure1, measure2));
-
-    assertThat(
-        exception.getMessage(),
-        is(equalTo("Unable to associate measure. Locked while being edited by another.user")));
   }
 
   @Test
@@ -2373,7 +2097,7 @@ public class MeasureServiceTest implements ResourceUtil {
     updatingMeasure.setGroups(groups);
     updatingMeasure.setCql("cql");
 
-    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure);
 
     assertEquals(1, groups.get(0).getStratifications().size());
     assertTrue(groups.get(0).getStratifications().contains(strat1));
@@ -2392,7 +2116,7 @@ public class MeasureServiceTest implements ResourceUtil {
     updatingMeasure.setGroups(groups);
     updatingMeasure.setCql("cql");
 
-    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure);
 
     assertEquals(1, groups.get(0).getStratifications().size());
     assertTrue(groups.get(0).getStratifications().contains(strat1));
@@ -2405,7 +2129,7 @@ public class MeasureServiceTest implements ResourceUtil {
     updatingMeasure.setGroups(Collections.emptyList());
     updatingMeasure.setCql("cql");
 
-    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure);
 
     assertTrue(updatingMeasure.getGroups().isEmpty());
   }
@@ -2420,7 +2144,7 @@ public class MeasureServiceTest implements ResourceUtil {
     updatingMeasure.setGroups(List.of(group));
     updatingMeasure.setCql("cql");
 
-    measureService.updateMeasure(new Measure(), "user", updatingMeasure, "token");
+    measureService.updateMeasure(new Measure(), "user", updatingMeasure);
 
     assertTrue(group.getStratifications().isEmpty());
   }
@@ -3062,7 +2786,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         InvalidRequestException.class,
-        () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+        () -> measureService.updateMeasure(original, "User1", updated));
   }
 
   @Test
@@ -3082,7 +2806,7 @@ public class MeasureServiceTest implements ResourceUtil {
 
     assertThrows(
         InvalidRequestException.class,
-        () -> measureService.updateMeasure(original, "User1", updated, "Access Token"));
+        () -> measureService.updateMeasure(original, "User1", updated));
   }
 
   @Test

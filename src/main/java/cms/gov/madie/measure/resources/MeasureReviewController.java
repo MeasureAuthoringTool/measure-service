@@ -3,6 +3,7 @@ package cms.gov.madie.measure.resources;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.services.MeasureReviewService;
+import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.measure.MeasureReview;
 import java.security.Principal;
 import java.util.List;
@@ -56,16 +57,18 @@ public class MeasureReviewController {
   public ResponseEntity<Page<MeasureListDTO>> searchMeasuresInReview(
       Principal principal,
       @RequestBody(required = false) MeasureSearchCriteria searchCriteria,
+      @RequestParam(name = "ownershipTypes", required = false) List<OwnershipType> ownershipTypes,
       @RequestParam(required = false, defaultValue = "10", name = "limit") int limit,
       @RequestParam(required = false, defaultValue = "0", name = "page") int page,
       @RequestParam(required = false, defaultValue = "lastModifiedAt", name = "sort") String sort,
       @RequestParam(required = false, defaultValue = "DESC", name = "direction") String direction) {
     final String username = principal.getName().toLowerCase();
-    log.info("User [{}] is fetching the measures under review", username);
+    log.info("User [{}] is fetching [{}] measures under review", username, ownershipTypes);
     final Pageable pageReq =
         PageRequest.of(page, limit, Sort.by(Sort.Direction.valueOf(direction), sort));
     return ResponseEntity.ok(
-        measureReviewService.getMeasuresInReview(searchCriteria, pageReq, username));
+        measureReviewService.getMeasuresInReview(
+            searchCriteria, ownershipTypes, pageReq, username));
   }
 
   @GetMapping("/measures/measure-set/{measureSetId}/reviews")

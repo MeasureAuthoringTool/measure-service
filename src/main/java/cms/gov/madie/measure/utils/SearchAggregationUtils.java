@@ -16,6 +16,13 @@ import org.springframework.data.mongodb.core.query.Criteria;
 
 public class SearchAggregationUtils {
 
+  public static final String READY = "Ready";
+  public static final String IN_PROGRESS = "In Progress";
+  public static final String COMPLETE = "Complete";
+
+  public static final List<String> IN_REVIEW_STATUSES = List.of(READY, IN_PROGRESS, COMPLETE);
+  public static final List<String> OPEN_REVIEW_STATUSES = List.of(READY, IN_PROGRESS);
+
   /**
    * Aggregation stages that decorate each measure with a display-friendly {@code reviewStatus}
    * derived from its measureReview document. Measures without a review get an empty status.
@@ -54,13 +61,12 @@ public class SearchAggregationUtils {
                 .build()));
   }
 
-  public static MatchOperation matchInReview() {
-    return match(
-        new Criteria()
-            .orOperator(
-                Criteria.where("reviewStatus").is("Ready"),
-                Criteria.where("reviewStatus").is("In Progress"),
-                Criteria.where("reviewStatus").is("Complete")));
+  public static MatchOperation matchReviewStatusIn(List<String> reviewStatuses) {
+    return match(Criteria.where("reviewStatus").in(reviewStatuses));
+  }
+
+  public static MatchOperation matchAssignedReviewer(String userId) {
+    return match(Criteria.where("review.reviewers").regex("^\\Q" + userId + "\\E$", "i"));
   }
 
   public static boolean isReviewSearch(MeasureSearchCriteria measureSearchCriteria) {

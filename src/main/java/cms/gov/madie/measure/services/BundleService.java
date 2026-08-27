@@ -92,7 +92,7 @@ public class BundleService {
   PackageDto getMeasureExportForDraft(
       Measure measure, String bundleType, String elmErrorSeverity, String accessToken) {
     try {
-      elmToJsonService.retrieveElmJson(measure, elmErrorSeverity, accessToken);
+      elmToJsonService.retrieveElmJson(measure, elmErrorSeverity);
       byte[] exportPackage =
           EXPORT.equals(bundleType)
               ? fhirServicesClient.getMeasureBundleExport(measure, elmErrorSeverity, accessToken)
@@ -164,7 +164,7 @@ public class BundleService {
   private String bundleStandardMeasure(
       Measure measure, String accessToken, String bundleType, String elmErrorSeverity) {
     try {
-      elmToJsonService.retrieveElmJson(measure, elmErrorSeverity, accessToken);
+      elmToJsonService.retrieveElmJson(measure, elmErrorSeverity);
       return fhirServicesClient.getMeasureBundle(
           measure, accessToken, bundleType, elmErrorSeverity);
     } catch (RestClientException | IllegalArgumentException ex) {

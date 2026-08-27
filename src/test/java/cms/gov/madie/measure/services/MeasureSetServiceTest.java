@@ -1,5 +1,11 @@
 package cms.gov.madie.measure.services;
 
+import static org.hamcrest.CoreMatchers.equalTo;
+import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
@@ -18,22 +24,15 @@ import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
 import gov.cms.madie.models.measure.MeasureSet;
+import java.security.Principal;
+import java.time.Instant;
+import java.util.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.security.Principal;
-import java.time.Instant;
-import java.util.*;
-
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 public class MeasureSetServiceTest {
@@ -46,6 +45,7 @@ public class MeasureSetServiceTest {
   @Mock private UserServiceClient userServiceClient;
   @Mock private MeasureSetActionLogRepository measureSetActionLogRepository;
   @Mock private MeasureReviewRepository measureReviewRepository;
+  @Mock private TranslatorVersionService translatorVersionService;
 
   private final String MEASURE_SET_ID = "measureSet1";
   private final String ACCESS_TOKEN = "test-token";
@@ -374,7 +374,9 @@ public class MeasureSetServiceTest {
             ResourceNotFoundException.class,
             () -> measureSetService.updateMeasureSetAcls("1", aclOperation, "userName", false));
     assertEquals(
-        "User userName called updateMeasureSetAcls with AclOperation AclOperation(acls=[AclSpecification(userId=john_1, roles=[SHARED_WITH])], action=GRANT) but failed because no measure set exists with measure set ID 1",
+        "User userName called updateMeasureSetAcls with AclOperation"
+            + " AclOperation(acls=[AclSpecification(userId=john_1, roles=[SHARED_WITH])],"
+            + " action=GRANT) but failed because no measure set exists with measure set ID 1",
         ex.getMessage());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
@@ -430,7 +432,8 @@ public class MeasureSetServiceTest {
     assertTrue(
         ex.getMessage()
             .contains(
-                "CMS ID already exists. Once a CMS Identifier has been generated it may not be modified or removed for any draft or version of a measure."));
+                "CMS ID already exists. Once a CMS Identifier has been generated it may not be"
+                    + " modified or removed for any draft or version of a measure."));
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
     verify(measureSetRepository, times(0)).save(any(MeasureSet.class));
   }
@@ -523,7 +526,9 @@ public class MeasureSetServiceTest {
         ex.getMessage()
             .contains(
                 String.format(
-                    "Response could not be completed because the HARP id of %s passed in does not match the owner of the measure with the measure id of %s. The owner of the measure is %s",
+                    "Response could not be completed because the HARP id of %s passed in does not"
+                        + " match the owner of the measure with the measure id of %s. The owner of"
+                        + " the measure is %s",
                     harpId, measure.getId(), measureSet.getOwner())));
     verify(measureRepository, times(1)).findById(anyString());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
@@ -603,7 +608,8 @@ public class MeasureSetServiceTest {
         ex.getMessage()
             .contains(
                 String.format(
-                    "No CMS id of %s exists to be deleted within measure set with measure set id of %s",
+                    "No CMS id of %s exists to be deleted within measure set with measure set id of"
+                        + " %s",
                     cmsId, measure.getMeasureSetId())));
     verify(measureRepository, times(1)).findById(anyString());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
@@ -642,7 +648,8 @@ public class MeasureSetServiceTest {
         ex.getMessage()
             .contains(
                 String.format(
-                    "CMS id of %s passed in does not match CMS id of %s within measure set with measure set id of %s",
+                    "CMS id of %s passed in does not match CMS id of %s within measure set with"
+                        + " measure set id of %s",
                     cmsId, measureSet.getCmsId(), measure.getMeasureSetId())));
     verify(measureRepository, times(1)).findById(anyString());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
@@ -688,7 +695,8 @@ public class MeasureSetServiceTest {
             .contains(
                 String.format(
                     String.format(
-                        "Measure set with measure set id of %s contains more than 1 measure. Cannot delete CMS id when measure set has more than 1 version of measure.",
+                        "Measure set with measure set id of %s contains more than 1 measure. Cannot"
+                            + " delete CMS id when measure set has more than 1 version of measure.",
                         measure1.getMeasureSetId()))));
     verify(measureRepository, times(1)).findById(anyString());
     verify(measureSetRepository, times(1)).findByMeasureSetId(anyString());
@@ -728,16 +736,25 @@ public class MeasureSetServiceTest {
     assertEquals("Test Measure", actualList.get(0).getMeasureName());
 
     verify(measureSetRepository).findMeasuresByMeasureSetId(MEASURE_SET_ID, true, criteria);
+    verify(translatorVersionService).enrichWithTranslatorVersion(expectedList);
   }
 
   @Test
-  void testGetMeasuresByMeasureSetIdMarksOnlyReadyForReviewMeasures() {
+  void testGetMeasuresByMeasureSetIdShowsEveryReviewStatus() {
     MeasureListDTO readyMeasure = MeasureListDTO.builder().id("m1").build();
     MeasureListDTO notReadyMeasure = MeasureListDTO.builder().id("m2").build();
     MeasureListDTO noReviewMeasure = MeasureListDTO.builder().id("m3").build();
+    MeasureListDTO inProgressMeasure = MeasureListDTO.builder().id("m4").build();
+    MeasureListDTO completeMeasure = MeasureListDTO.builder().id("m5").build();
 
     when(measureSetRepository.findMeasuresByMeasureSetId(MEASURE_SET_ID, true, null))
-        .thenReturn(List.of(readyMeasure, notReadyMeasure, noReviewMeasure));
+        .thenReturn(
+            List.of(
+                readyMeasure,
+                notReadyMeasure,
+                noReviewMeasure,
+                inProgressMeasure,
+                completeMeasure));
     when(measureReviewRepository.findAllByMeasureSetId(MEASURE_SET_ID))
         .thenReturn(
             List.of(
@@ -748,7 +765,9 @@ public class MeasureSetServiceTest {
                 MeasureReview.builder()
                     .measureId("m2")
                     .status(ReviewStatus.NOT_READY_FOR_REVIEW)
-                    .build()));
+                    .build(),
+                MeasureReview.builder().measureId("m4").status(ReviewStatus.IN_PROGRESS).build(),
+                MeasureReview.builder().measureId("m5").status(ReviewStatus.COMPLETE).build()));
 
     List<MeasureListDTO> actual =
         measureSetService.getMeasuresByMeasureSetId(MEASURE_SET_ID, true, null);
@@ -756,6 +775,28 @@ public class MeasureSetServiceTest {
     assertEquals("Ready", actual.get(0).getReviewStatus());
     assertEquals("", actual.get(1).getReviewStatus());
     assertEquals("", actual.get(2).getReviewStatus());
+    assertEquals("In Progress", actual.get(3).getReviewStatus());
+    assertEquals("Complete", actual.get(4).getReviewStatus());
+  }
+
+  @Test
+  void testGetMeasuresByMeasureSetIdIgnoresReviewsWithoutAMeasureId() {
+    MeasureListDTO measure = MeasureListDTO.builder().id("m1").build();
+
+    when(measureSetRepository.findMeasuresByMeasureSetId(MEASURE_SET_ID, true, null))
+        .thenReturn(List.of(measure));
+    when(measureReviewRepository.findAllByMeasureSetId(MEASURE_SET_ID))
+        .thenReturn(
+            Arrays.asList(
+                MeasureReview.builder().status(ReviewStatus.IN_PROGRESS).build(),
+                MeasureReview.builder().measureId("m1").build(),
+                MeasureReview.builder().measureId("m1").status(ReviewStatus.COMPLETE).build()));
+
+    List<MeasureListDTO> actual =
+        measureSetService.getMeasuresByMeasureSetId(MEASURE_SET_ID, true, null);
+
+    assertEquals("Complete", actual.get(0).getReviewStatus());
+    verify(translatorVersionService).enrichWithTranslatorVersion(actual);
   }
 
   @Test
@@ -768,6 +809,7 @@ public class MeasureSetServiceTest {
 
     assertTrue(actual.isEmpty());
     verify(measureReviewRepository, never()).findAllByMeasureSetId(anyString());
+    verify(translatorVersionService).enrichWithTranslatorVersion(actual);
   }
 
   @Test

@@ -46,7 +46,7 @@ class ModelValidatorTest {
   @Test
   void useQdmModelValidatorTest() {
     assertNotNull(modelValidatorFactory);
-    Group group = Group.builder().stratifications(new ArrayList<Stratification>()).build();
+    Group group = Group.builder().stratifications(new ArrayList<>()).build();
     ModelValidator validator = modelValidatorFactory.getModelValidator(ModelType.QDM_5_6);
     assertTrue(validator instanceof QdmModelValidator);
     try {
@@ -304,6 +304,22 @@ class ModelValidatorTest {
           "Response could not be completed for Measure with ID 1, since there is at least one Population Criteria with no type.",
           e.getMessage());
     }
+  }
+
+  @Test
+  void useQicoreModelValidatorTestCompositeMeasureMayHaveGroupWithNoTypes() {
+    assertNotNull(modelValidatorFactory);
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setComposite(true);
+    Measure measure =
+        Measure.builder()
+            .id("1")
+            .groups(List.of(Group.builder().build()))
+            .measureMetaData(metaData)
+            .build();
+    ModelValidator validator = modelValidatorFactory.getModelValidator(ModelType.QI_CORE);
+    assertTrue(validator instanceof QiCoreModelValidator);
+    assertDoesNotThrow(() -> validator.validateGroups(measure));
   }
 
   @Test

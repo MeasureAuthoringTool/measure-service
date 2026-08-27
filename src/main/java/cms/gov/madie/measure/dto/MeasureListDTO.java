@@ -62,4 +62,5 @@ public class MeasureListDTO {
   private String ownerDisplayName;
   private boolean component;
   private String reviewStatus;
+  private String translatorVersion;
 }
