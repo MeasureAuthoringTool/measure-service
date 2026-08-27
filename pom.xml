@@ -5,7 +5,7 @@
     <groupId>org.springframework.boot</groupId>
     <artifactId>spring-boot-starter-parent</artifactId>
     <version>4.1.0</version>
-    <relativePath></relativePath>
+    <relativePath/>
     <!-- lookup parent from repository -->
   </parent>
   <groupId>com.semanticbits.measureservice</groupId>
@@ -21,7 +21,7 @@
     <mvnreports.version>3.1.1</mvnreports.version>
     <mvnsite.version>3.9.1</mvnsite.version>
     <org.fhir.ucum.version>1.0.9</org.fhir.ucum.version>
-    <springdoc.version>3.0.3</springdoc.version>
+    <springdoc.version>3.1.0</springdoc.version>
   </properties>
 
   <!--  https://docs.mongock.io/index.html  -->
@@ -150,7 +150,7 @@
     <dependency>
       <groupId>org.jsoup</groupId>
       <artifactId>jsoup</artifactId>
-      <version>1.15.3</version>
+      <version>1.23.1</version>
     </dependency>
     <dependency>
       <groupId>gov.cms.madie</groupId>
@@ -312,7 +312,7 @@
                     </goals>
                   </pluginExecutionFilter>
                   <action>
-                    <ignore></ignore>
+                    <ignore/>
                   </action>
                 </pluginExecution>
               </pluginExecutions>
