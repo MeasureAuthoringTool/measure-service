@@ -1,0 +1,56 @@
+{
+    "name": "measure-service",
+    "version": "1.0.0",
+    "description": "A Spring Boot micro-service responsible for operations associated with the MADiE Measure Micro Frontend.",
+    "longDescription": "MADiE Measure Service is a Spring Boot micro-service that provides backend operations for the MADiE (Measure Authoring Development Integrated Environment) Measure Micro Frontend. The service integrates with MongoDB for data persistence and can be deployed either as a standalone Spring Boot application or within a Docker container. It exposes RESTful API endpoints and includes Spring Actuator for health monitoring and operational insights. The service supports multiple deployment configurations through Spring profiles, enabling flexible integration testing and production deployment scenarios.",
+    "status": "Production",
+    "permissions": {
+      "licenses": [
+        {
+            "name": "CC0-1.0",
+            "URL": "https://github.com/MeasureAuthoringTool/madie-java-models/blob/main/LICENSE"
+        }
+      ],
+      "usageType": ["openSource"],
+      "exemptionText": ""
+    },
+    "organization": "Centers for Medicare & Medicaid Services",
+    "repositoryURL": "https://github.com/MeasureAuthoringTool/madie-measure-service",
+    "repositoryHost": "github.com/MeasureAuthoringTool",
+    "repositoryVisibility": "public",
+    "vcs": "git",
+    "laborHours": 0,
+    "reuseFrequency": {
+      "forks": 0,
+      "clones": 0
+    },
+    "platforms": ["web"],
+    "categories": ["healthcare", "data-collection"],
+    "softwareType": "standalone/backend",
+    "languages": ["Java"],
+    "maintenance": "internal",
+    "contractNumber": [""],
+    "SBOM": "https://github.com/MeasureAuthoringTool/madie-measure-service/network/dependencies",
+    "date": {
+      "created": "2021-01-01T00:00:00Z",
+      "lastModified": "2025-01-01T00:00:00Z",
+      "metadataLastUpdated": "2025-02-05T00:00:00Z"
+    },
+    "tags": ["spring-boot", "microservice", "mongodb", "healthcare", "measure-authoring", "madie", "fhir", "quality-measures"],
+    "contact": {
+        "email": "semanticbits-madie-help@icf.com",
+        "name": "MADiE Support Team"
+    },
+    "feedbackMechanism": "https://github.com/MeasureAuthoringTool/madie-measure-service/issues",
+    "AIUseCaseID": "0",
+    "localisation": false,
+    "repositoryType": "APIs",
+    "userInput": true,
+    "fismaLevel": "low",
+    "group": "OIT",
+    "projects": ["MADiE"],
+    "systems": [],
+    "subsetInHealthcare": ["operational"],
+    "userType": ["government"],
+    "maturityModelTier": 0
+  }
