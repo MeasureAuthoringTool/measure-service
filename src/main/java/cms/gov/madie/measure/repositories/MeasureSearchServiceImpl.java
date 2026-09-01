@@ -146,7 +146,12 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     }
 
     populateOwnerDisplayNames(queryResults);
-    return new PageImpl<>(queryResults, pageable, matchInfoMap.size());
+
+    Map<?, ?> countMap = (Map<?, ?>) results.get(0).getCount().get(0);
+    return new PageImpl<>(
+            queryResults,
+            pageable,
+            Long.parseLong(countMap.get("count").toString()));
   }
 
   /**
@@ -234,6 +239,24 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         .collect(Collectors.toMap(MeasureSetMatchCountDTO::getMeasureSetId, Function.identity()));
   }
 
+  // helper method to count
+  private long countFilteredMeasureSets(Criteria criteria) {
+    Aggregation aggregation =
+            newAggregation(
+                    match(criteria),
+                    group("measureSetId"),
+                    count().as("count"));
+
+    List<Map> results =
+            mongoTemplate.aggregate(aggregation, Measure.class, Map.class)
+                    .getMappedResults();
+
+    if (results.isEmpty()) {
+      return 0;
+    }
+
+    return Long.parseLong(results.get(0).get("count").toString());
+  }
   /**
    * Query 2: Builds and executes the paginated facet aggregation for the given set of
    * measureSetIds, applying lock stages, grouping, sorting, and projection.
@@ -269,6 +292,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     } else {
       criteria = Criteria.where("measureSetId").in(matchedMeasureSetIds);
     }
+
 
     postMatchPipeline.add(match(criteria));
     postMatchPipeline.addAll(getLockStages(userId));
@@ -359,6 +383,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     }
 
     postMatchPipeline.add(facets);
+
     return mongoTemplate
         .aggregate(newAggregation(postMatchPipeline), Measure.class, FacetDTO.class)
         .getMappedResults();
