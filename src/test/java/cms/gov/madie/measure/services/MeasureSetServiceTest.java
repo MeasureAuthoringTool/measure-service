@@ -821,7 +821,6 @@ public class MeasureSetServiceTest {
     List<MeasureListDTO> actual =
         measureSetService.getMeasuresByMeasureSetId(MEASURE_SET_ID, true, null);
 
-    // reviewers we cannot resolve fall back to their harp id
     assertEquals(List.of("Ada Lovelace", "unknown"), actual.get(0).getReviewers());
     assertNull(actual.get(1).getReviewers());
   }

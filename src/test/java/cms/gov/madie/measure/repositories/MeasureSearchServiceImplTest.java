@@ -2015,10 +2015,8 @@ public class MeasureSearchServiceImplTest {
         measureAclRepository.searchMeasuresInReview(
             "john", PageRequest.of(0, 10), null, List.of(OwnershipType.ALL));
 
-    // owners and reviewers are resolved with a single call to the user service
     verify(userServiceClient).getBulkUserDetails(harpIdCaptor.capture());
     assertEquals(List.of("john", "ada", "grace", "unknown"), harpIdCaptor.getValue());
-    // reviewers we cannot resolve fall back to their harp id
     assertEquals(
         List.of("Ada Lovelace", "Grace Hopper", "unknown"),
         page.getContent().get(0).getReviewers());
@@ -2068,7 +2066,6 @@ public class MeasureSearchServiceImplTest {
             captor.capture(),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class));
-    // the reviewers on the joined review document are hoisted so the list can show them
     assertTrue(captor.getValue().toString().contains("$review.reviewers"));
   }
 
