@@ -6,6 +6,7 @@ import static org.springframework.data.mongodb.core.aggregation.Aggregation.*;
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.dto.*;
 import cms.gov.madie.measure.utils.SearchAggregationUtils;
+import cms.gov.madie.measure.utils.UserDisplayNameUtils;
 import cms.gov.madie.measure.utils.SearchUtils;
 import gov.cms.madie.models.access.RoleEnum;
 import gov.cms.madie.models.common.OwnershipType;
@@ -15,6 +16,7 @@ import gov.cms.madie.models.measure.Measure;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -466,8 +468,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   }
 
   /**
-   * Populates the ownerDisplayName field for each MeasureListDTO by fetching user details from
-   * user-service.
+   * Populates the ownerDisplayName and reviewers fields for each MeasureListDTO by fetching user
+   * details from user-service.
    *
    * @param measureListDTOs List of MeasureListDTO objects to populate
    */
@@ -484,12 +486,26 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             .distinct()
             .collect(Collectors.toList());
 
-    if (ownerHarpIds.isEmpty()) {
+    List<String> reviewerHarpIds =
+        measureListDTOs.stream()
+            .map(MeasureListDTO::getReviewers)
+            .filter(Objects::nonNull)
+            .flatMap(List::stream)
+            .filter(StringUtils::isNotBlank)
+            .distinct()
+            .collect(Collectors.toList());
+
+    List<String> harpIds =
+        Stream.concat(ownerHarpIds.stream(), reviewerHarpIds.stream())
+            .distinct()
+            .collect(Collectors.toList());
+
+    if (harpIds.isEmpty()) {
       return;
     }
 
     // Fetch user details from user-service
-    Map<String, UserDetailsDto> userDetailsMap = userServiceClient.getBulkUserDetails(ownerHarpIds);
+    Map<String, UserDetailsDto> userDetailsMap = userServiceClient.getBulkUserDetails(harpIds);
 
     // Populate ownerDisplayName for each DTO
     measureListDTOs.forEach(
@@ -499,17 +515,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             UserDetailsDto userDetails = userDetailsMap.get(ownerHarpId);
 
             if (userDetails != null) {
-              String firstName = userDetails.getFirstName();
-              String lastName = userDetails.getLastName();
-
-              String displayName = "";
-              if (StringUtils.isNotBlank(firstName) && StringUtils.isNotBlank(lastName)) {
-                displayName = firstName + " " + lastName;
-              } else if (StringUtils.isNotBlank(firstName)) {
-                displayName = firstName;
-              } else if (StringUtils.isNotBlank(lastName)) {
-                displayName = lastName;
-              }
+              String displayName = UserDisplayNameUtils.getFullName(userDetails);
 
               dto.setOwnerDisplayName(
                   StringUtils.isNotBlank(displayName)
@@ -519,6 +525,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               dto.setOwnerDisplayName("-");
             }
           }
+          dto.setReviewers(
+              UserDisplayNameUtils.toReviewerDisplayNames(dto.getReviewers(), userDetailsMap));
         });
   }
 

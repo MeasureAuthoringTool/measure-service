@@ -1940,7 +1940,7 @@ public class MeasureSearchServiceImplTest {
         captor.getValue().toString().contains("$measureSetId"),
         "reviews are counted per measure, matching the rows the reviews tab lists");
     assertFalse(
-        captor.getValue().toString().contains("review.reviewers"),
+        captor.getValue().toString().contains("\"review.reviewers\""),
         "the All Reviews count is not narrowed to the requesting reviewer");
   }
 
@@ -1982,6 +1982,94 @@ public class MeasureSearchServiceImplTest {
     assertEquals(1, page.getTotalElements());
     assertEquals("Ready", page.getContent().get(0).getReviewStatus());
     assertEquals("John Doe", page.getContent().get(0).getOwnerDisplayName());
+  }
+
+  @Test
+  public void testSearchMeasuresInReviewResolvesReviewersToFullNames() {
+    MeasureSet measureSet = MeasureSet.builder().measureSetId("1-1").owner("john").build();
+    MeasureListDTO reviewed =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureSetId("1-1")
+            .measureSet(measureSet)
+            .reviewStatus("Ready")
+            .reviewers(List.of("ada", "grace", "unknown"))
+            .build();
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(reviewed)).count(List.of(new Object())).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+    Map<String, UserDetailsDto> userDetailsMap = new HashMap<>();
+    userDetailsMap.put("john", UserDetailsDto.builder().firstName("John").lastName("Doe").build());
+    userDetailsMap.put(
+        "ada", UserDetailsDto.builder().firstName("Ada").lastName("Lovelace").build());
+    userDetailsMap.put(
+        "grace", UserDetailsDto.builder().firstName("Grace").lastName("Hopper").build());
+    ArgumentCaptor<List<String>> harpIdCaptor = ArgumentCaptor.forClass(List.class);
+    when(userServiceClient.getBulkUserDetails(any())).thenReturn(userDetailsMap);
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresInReview(
+            "john", PageRequest.of(0, 10), null, List.of(OwnershipType.ALL));
+
+    // owners and reviewers are resolved with a single call to the user service
+    verify(userServiceClient).getBulkUserDetails(harpIdCaptor.capture());
+    assertEquals(List.of("john", "ada", "grace", "unknown"), harpIdCaptor.getValue());
+    // reviewers we cannot resolve fall back to their harp id
+    assertEquals(
+        List.of("Ada Lovelace", "Grace Hopper", "unknown"),
+        page.getContent().get(0).getReviewers());
+  }
+
+  @Test
+  public void testSearchMeasuresInReviewLeavesReviewersAloneWhenThereAreNone() {
+    MeasureSet measureSet = MeasureSet.builder().measureSetId("1-1").owner("john").build();
+    MeasureListDTO reviewed =
+        MeasureListDTO.builder()
+            .id("1")
+            .measureSetId("1-1")
+            .measureSet(measureSet)
+            .reviewStatus("")
+            .build();
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(List.of(reviewed)).count(List.of(new Object())).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+    when(userServiceClient.getBulkUserDetails(any())).thenReturn(new HashMap<>());
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresInReview(
+            "john", PageRequest.of(0, 10), null, List.of(OwnershipType.ALL));
+
+    assertNull(page.getContent().get(0).getReviewers());
+  }
+
+  @Test
+  public void testReviewStagesProjectReviewersOntoEachMeasure() {
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of()).count(List.of()).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    measureAclRepository.searchMeasuresInReview(
+        "john", PageRequest.of(0, 10), null, List.of(OwnershipType.ALL));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+    // the reviewers on the joined review document are hoisted so the list can show them
+    assertTrue(captor.getValue().toString().contains("$review.reviewers"));
   }
 
   @Test
@@ -2068,7 +2156,7 @@ public class MeasureSearchServiceImplTest {
     assertFalse(
         statusMatch.contains("Complete"), "completed reviews do not belong on the My Reviews tab");
     String pipeline = captor.getValue().toString();
-    assertTrue(pipeline.contains("review.reviewers"));
+    assertTrue(pipeline.contains("\"review.reviewers\""));
     assertTrue(pipeline.contains("john"));
   }
 
@@ -2090,7 +2178,7 @@ public class MeasureSearchServiceImplTest {
             captor.capture(),
             ArgumentMatchers.eq(Measure.class),
             ArgumentMatchers.eq(FacetDTO.class));
-    assertFalse(captor.getValue().toString().contains("review.reviewers"));
+    assertFalse(captor.getValue().toString().contains("\"review.reviewers\""));
   }
 
   @Test
@@ -2106,7 +2194,7 @@ public class MeasureSearchServiceImplTest {
         2, measureAclRepository.countMeasuresByReview(true, "john", List.of(OwnershipType.OWNED)));
 
     verify(mongoTemplate).aggregate(captor.capture(), (Class<?>) any(), any());
-    assertTrue(captor.getValue().toString().contains("review.reviewers"));
+    assertTrue(captor.getValue().toString().contains("\"review.reviewers\""));
     String statusMatch = reviewStatusMatchStage(captor.getValue());
     assertTrue(statusMatch.contains("Ready"));
     assertTrue(statusMatch.contains("In Progress"));

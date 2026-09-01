@@ -800,6 +800,50 @@ public class MeasureSetServiceTest {
   }
 
   @Test
+  void testGetMeasuresByMeasureSetIdResolvesReviewersToFullNames() {
+    MeasureListDTO reviewedMeasure = MeasureListDTO.builder().id("m1").build();
+    MeasureListDTO unreviewedMeasure = MeasureListDTO.builder().id("m2").build();
+
+    when(measureSetRepository.findMeasuresByMeasureSetId(MEASURE_SET_ID, true, null))
+        .thenReturn(List.of(reviewedMeasure, unreviewedMeasure));
+    when(measureReviewRepository.findAllByMeasureSetId(MEASURE_SET_ID))
+        .thenReturn(
+            List.of(
+                MeasureReview.builder()
+                    .measureId("m1")
+                    .status(ReviewStatus.READY_FOR_REVIEW)
+                    .reviewers(List.of("ada", "unknown"))
+                    .build()));
+    when(userServiceClient.getBulkUserDetails(List.of("ada", "unknown")))
+        .thenReturn(
+            Map.of("ada", UserDetailsDto.builder().firstName("Ada").lastName("Lovelace").build()));
+
+    List<MeasureListDTO> actual =
+        measureSetService.getMeasuresByMeasureSetId(MEASURE_SET_ID, true, null);
+
+    // reviewers we cannot resolve fall back to their harp id
+    assertEquals(List.of("Ada Lovelace", "unknown"), actual.get(0).getReviewers());
+    assertNull(actual.get(1).getReviewers());
+  }
+
+  @Test
+  void testGetMeasuresByMeasureSetIdSkipsUserLookupWhenNoReviewersAreAssigned() {
+    MeasureListDTO measure = MeasureListDTO.builder().id("m1").build();
+
+    when(measureSetRepository.findMeasuresByMeasureSetId(MEASURE_SET_ID, true, null))
+        .thenReturn(List.of(measure));
+    when(measureReviewRepository.findAllByMeasureSetId(MEASURE_SET_ID))
+        .thenReturn(
+            List.of(MeasureReview.builder().measureId("m1").status(ReviewStatus.COMPLETE).build()));
+
+    List<MeasureListDTO> actual =
+        measureSetService.getMeasuresByMeasureSetId(MEASURE_SET_ID, true, null);
+
+    assertNull(actual.get(0).getReviewers());
+    verify(userServiceClient, never()).getBulkUserDetails(anyList());
+  }
+
+  @Test
   void testGetMeasuresByMeasureSetIdSkipsReviewLookupWhenNoMeasures() {
     when(measureSetRepository.findMeasuresByMeasureSetId(MEASURE_SET_ID, true, null))
         .thenReturn(List.of());

@@ -12,6 +12,7 @@ import cms.gov.madie.measure.repositories.MeasureReviewRepository;
 import cms.gov.madie.measure.repositories.MeasureSetActionLogRepository;
 import cms.gov.madie.measure.repositories.MeasureSetRepository;
 import cms.gov.madie.measure.utils.SearchAggregationUtils;
+import cms.gov.madie.measure.utils.UserDisplayNameUtils;
 import gov.cms.madie.models.access.AclOperation;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
@@ -341,18 +342,48 @@ public class MeasureSetService {
     if (CollectionUtils.isEmpty(measures)) {
       return;
     }
-    Map<String, ReviewStatus> statusByMeasureId =
+    List<MeasureReview> reviews =
         measureReviewRepository.findAllByMeasureSetId(measureSetId).stream()
             .filter(review -> review.getMeasureId() != null && review.getStatus() != null)
+            .toList();
+    Map<String, ReviewStatus> statusByMeasureId =
+        reviews.stream()
             .collect(
                 Collectors.toMap(
                     MeasureReview::getMeasureId,
                     MeasureReview::getStatus,
                     (existing, duplicate) -> existing));
+    Map<String, List<String>> reviewersByMeasureId =
+        reviews.stream()
+            .filter(review -> CollectionUtils.isNotEmpty(review.getReviewers()))
+            .collect(
+                Collectors.toMap(
+                    MeasureReview::getMeasureId,
+                    MeasureReview::getReviewers,
+                    (existing, duplicate) -> existing));
+
+    Map<String, UserDetailsDto> reviewerDetails =
+        fetchReviewerDetails(reviewersByMeasureId.values());
+
     measures.forEach(
-        measure ->
-            measure.setReviewStatus(
-                toReviewStatusDisplayName(statusByMeasureId.get(measure.getId()))));
+        measure -> {
+          measure.setReviewStatus(
+              toReviewStatusDisplayName(statusByMeasureId.get(measure.getId())));
+          measure.setReviewers(
+              UserDisplayNameUtils.toReviewerDisplayNames(
+                  reviewersByMeasureId.get(measure.getId()), reviewerDetails));
+        });
+  }
+
+  private Map<String, UserDetailsDto> fetchReviewerDetails(
+      Collection<List<String>> reviewersPerMeasure) {
+    List<String> harpIds =
+        reviewersPerMeasure.stream()
+            .flatMap(List::stream)
+            .filter(StringUtils::isNotBlank)
+            .distinct()
+            .toList();
+    return harpIds.isEmpty() ? Map.of() : userServiceClient.getBulkUserDetails(harpIds);
   }
 
   private String toReviewStatusDisplayName(ReviewStatus reviewStatus) {

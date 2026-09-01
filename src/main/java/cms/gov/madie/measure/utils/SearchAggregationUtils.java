@@ -58,6 +58,13 @@ public class SearchAggregationUtils {
                                         .equalToValue(ReviewStatus.COMPLETE.name()))
                                 .then("Complete"))
                         .defaultTo(""))
+                .build(),
+            addFields()
+                .addField("reviewers")
+                .withValue(
+                    ConditionalOperators.ifNull(
+                            ArrayOperators.ArrayElemAt.arrayOf("$review.reviewers").elementAt(0))
+                        .then(Collections.emptyList()))
                 .build()));
   }
 
