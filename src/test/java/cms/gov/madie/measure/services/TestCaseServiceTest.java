@@ -3,7 +3,6 @@ package cms.gov.madie.measure.services;
 import cms.gov.madie.measure.dto.CopyTestCaseResult;
 import cms.gov.madie.measure.dto.JobStatus;
 import cms.gov.madie.measure.dto.LockInfo;
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
 import cms.gov.madie.measure.exceptions.InvalidIdException;
@@ -191,7 +190,6 @@ public class TestCaseServiceTest implements ResourceUtil {
 
   @Test
   public void testEnrichNewTestCase() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(false);
     TestCase testCase = new TestCase();
     final String username = "user01";
     TestCase output =
@@ -207,13 +205,12 @@ public class TestCaseServiceTest implements ResourceUtil {
     assertThat(output.getResourceUri(), is(nullValue()));
     assertThat(output.getHapiOperationOutcome(), is(nullValue()));
     assertThat(output.isValidResource(), is(false));
-    assertNull(output.getTestCaseSetId());
+    assertNotNull(output.getTestCaseSetId());
     assertNotNull(output.getCaseNumber());
   }
 
   @Test
-  public void testEnrichNewTestCaseWithTestCaseSequenceAndFeatureFlagIsON() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+  public void testEnrichNewTestCaseWithTestCaseSequence() {
     when(testCaseSequenceService.generateSequence(anyString())).thenReturn(1);
     TestCase testCase = new TestCase();
     final String username = "user01";
@@ -235,8 +232,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testEnrichNewTestCaseWithFeatureFlagIsONButModelIsQdm() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+  public void testEnrichNewTestCaseWhenModelIsQdm() {
     when(testCaseSequenceService.generateSequence(anyString())).thenReturn(1);
     TestCase testCase = new TestCase();
     final String username = "user01";
@@ -1698,8 +1694,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void importTestCaseAddsNewSetIdForNewTestCasesWhenFeatureFlagIsON() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+  void importTestCaseAddsNewSetIdForNewTestCases() {
     group =
         Group.builder()
             .id("testGroupId")
@@ -3684,8 +3679,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testCopyToAnotherMeasureQiCoreSetsNewTestCaseSetIdWhenFeatureFlagIsON() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+  void testCopyToAnotherMeasureQiCoreSetsNewTestCaseSetId() {
 
     TestCase source = testCase.deepCopy();
     UUID sourceSetId = source.getTestCaseSetId();
@@ -3713,8 +3707,7 @@ public class TestCaseServiceTest implements ResourceUtil {
   }
 
   @Test
-  void testCopyMultipleToAnotherMeasureQiCoreEachGetsNewUniqueTestCaseSetIdWhenFeatureFlagIsON() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(true);
+  void testCopyMultipleToAnotherMeasureQiCoreEachGetsNewUniqueTestCaseSetId() {
 
     TestCase source1 = testCase.deepCopy().toBuilder().title("TC1").build();
     TestCase source2 =
@@ -3753,33 +3746,6 @@ public class TestCaseServiceTest implements ResourceUtil {
     // Sources are unchanged
     assertEquals(sourceSetId1, source1.getTestCaseSetId());
     assertEquals(sourceSetId2, source2.getTestCaseSetId());
-  }
-
-  @Test
-  void testCopyToAnotherMeasureQiCoreDoesNotSetTestCaseSetIdWhenFeatureFlagIsOFF() {
-    when(appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)).thenReturn(false);
-
-    TestCase source = testCase.deepCopy();
-    assertNotNull(source.getTestCaseSetId());
-
-    Measure targetMeasure = measure.toBuilder().build();
-    when(measureService.findActiveMeasureById(anyString())).thenReturn(targetMeasure);
-    when(measureService.findMeasureById(anyString())).thenReturn(targetMeasure);
-    when(testCaseValidationService.validateTestCaseAsResource(
-            any(TestCase.class), any(ModelType.class), anyString(), anyBoolean()))
-        .thenAnswer(invocation -> invocation.getArgument(0, TestCase.class));
-    when(measureRepository.addOrUpdateTestCase(anyString(), any(TestCase.class)))
-        .thenReturn(targetMeasure);
-
-    CopyTestCaseResult result =
-        testCaseService.copyTestCasesToMeasure(
-            targetMeasure.getId(), List.of(source), "user.name", "accessToken");
-
-    assertThat(result.getCopiedTestCases().size(), equalTo(1));
-    // Copied test case must NOT inherit source's testCaseSetId when feature flag is off
-    assertNull(result.getCopiedTestCases().get(0).getTestCaseSetId());
-    // Original is unchanged
-    assertNotNull(source.getTestCaseSetId());
   }
 
   @Test

@@ -4,7 +4,6 @@ import static cms.gov.madie.measure.constants.BundleTypeConstants.EXPORT;
 import static cms.gov.madie.measure.constants.BundleTypeConstants.PUBLISH;
 
 import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
-import cms.gov.madie.measure.dto.MadieFeatureFlag;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.*;
@@ -350,8 +349,7 @@ public class VersionService {
   }
 
   private void backfillTestCaseSetIds(Measure measure) {
-    if (appConfigService.isFlagEnabled(MadieFeatureFlag.TEST_CASE_SET_ID)
-        && !ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
+    if (!ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
       boolean testCaseSetIdsExistInMeasureSet =
           measureRepository.testCaseSetIdExistsInSet(measure.getMeasureSetId());
       if (!testCaseSetIdsExistInMeasureSet && CollectionUtils.isNotEmpty(measure.getTestCases())) {
