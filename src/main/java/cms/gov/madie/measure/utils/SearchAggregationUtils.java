@@ -16,7 +16,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 
 public class SearchAggregationUtils {
   private static final String TRANSLATOR_VERSION_PATTERN =
-      "\"translatorVersion\"\\s*:\\s*\"([0-9]+\\.[0-9]+\\.[0-9]+)\"";
+      "\"translatorVersion\"\\s*:\\s*\"([0-9]+)\\.([0-9]+)\\.([0-9]+)\"";
 
   public static final String READY = "Ready";
   public static final String IN_PROGRESS = "In Progress";
@@ -121,53 +121,25 @@ public class SearchAggregationUtils {
     return context -> new Document("$addFields", new Document("cmsIdDisplay", cmsIdDisplayExpr));
   }
 
-  public static AggregationOperation addTranslatorVersionField() {
+  public static AggregationOperation addTranslatorVersionSortField() {
     Document translatorVersionMatch =
         new Document(
             "$regexFind",
             new Document("input", new Document("$ifNull", Arrays.asList("$elmJson", "")))
                 .append("regex", TRANSLATOR_VERSION_PATTERN));
-    Document translatorVersionExpression =
+    Document translatorVersionSortExpression =
         new Document(
             "$let",
             new Document("vars", new Document("match", translatorVersionMatch))
                 .append(
                     "in",
                     new Document(
-                        "$arrayElemAt",
-                        Arrays.asList(
-                            new Document(
-                                "$ifNull",
-                                Arrays.asList("$$match.captures", Collections.emptyList())),
-                            0))));
-
-    return context ->
-        new Document("$addFields", new Document("translatorVersion", translatorVersionExpression));
-  }
-
-  public static AggregationOperation addTranslatorVersionSortField() {
-    Document versionParts =
-        new Document(
-            "$split",
-            Arrays.asList(new Document("$ifNull", Arrays.asList("$translatorVersion", "")), "."));
-    Document translatorVersionSortExpression =
-        new Document(
-            "$let",
-            new Document("vars", new Document("parts", versionParts))
-                .append(
-                    "in",
-                    new Document(
                         "$cond",
                         Arrays.asList(
-                            new Document("$ne", Arrays.asList("$translatorVersion", null)),
-                            new Document(
-                                "$concat",
-                                Arrays.asList(
-                                    zeroPadVersionPart("$$parts", 0),
-                                    ".",
-                                    zeroPadVersionPart("$$parts", 1),
-                                    ".",
-                                    zeroPadVersionPart("$$parts", 2))),
+                            new Document("$ne", Arrays.asList("$$match", null)),
+                            new Document("major", numericVersionPart("$$match.captures", 0))
+                                .append("minor", numericVersionPart("$$match.captures", 1))
+                                .append("patch", numericVersionPart("$$match.captures", 2)),
                             null))));
 
     return context ->
@@ -175,32 +147,13 @@ public class SearchAggregationUtils {
             "$addFields", new Document("translatorVersionSort", translatorVersionSortExpression));
   }
 
-  private static Document zeroPadVersionPart(String partsVariable, int index) {
-    Document part =
-        new Document(
-            "$ifNull",
-            Arrays.asList(new Document("$arrayElemAt", Arrays.asList(partsVariable, index)), "0"));
-    Document numericPart =
-        new Document(
-            "$convert",
-            new Document("input", part)
-                .append("to", "int")
-                .append("onError", 0)
-                .append("onNull", 0));
-    Document numericPartString = new Document("$toString", numericPart);
-    Document padCount =
-        new Document(
-            "$max",
-            Arrays.asList(
-                0,
-                new Document(
-                    "$subtract", Arrays.asList(10, new Document("$strLenCP", numericPartString)))));
-
+  private static Document numericVersionPart(String captures, int index) {
     return new Document(
-        "$concat",
-        Arrays.asList(
-            new Document("$substrCP", Arrays.asList("0000000000", 0, padCount)),
-            numericPartString));
+        "$convert",
+        new Document("input", new Document("$arrayElemAt", Arrays.asList(captures, index)))
+            .append("to", "int")
+            .append("onError", 0)
+            .append("onNull", 0));
   }
 
   // Add boolean field component: true if compositeMeasureIds is not null and not empty

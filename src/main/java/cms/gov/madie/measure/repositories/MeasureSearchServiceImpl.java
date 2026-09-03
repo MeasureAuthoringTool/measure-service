@@ -256,12 +256,15 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
     boolean isCompositeComponentSearch =
         measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent();
+    Sort effectiveSort = pageable.getSort();
+    Sort.Order translatorSort = effectiveSort.getOrderFor("translatorVersion");
 
     List<AggregationOperation> postMatchPipeline = new ArrayList<>();
     postMatchPipeline.add(lookupOperation);
     postMatchPipeline.add(unwindOperation);
-    if (isCompositeComponentSearch) {
-      postMatchPipeline.add(SearchAggregationUtils.addTranslatorVersionField());
+    if (isCompositeComponentSearch && translatorSort != null) {
+      postMatchPipeline.add(SearchAggregationUtils.addTranslatorVersionSortField());
+      effectiveSort = Sort.by(translatorSort.withProperty("translatorVersionSort"));
     }
     postMatchPipeline.add(initialProjection);
 
@@ -289,15 +292,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             : sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version"));
     postMatchPipeline.add(sortByVersionAndDraft);
 
-    Sort effectiveSort = pageable.getSort();
-    boolean hasTranslatorSort =
-        effectiveSort.stream().anyMatch(order -> "translatorVersion".equals(order.getProperty()));
-    if (hasTranslatorSort) {
-      postMatchPipeline.add(SearchAggregationUtils.addTranslatorVersionSortField());
-      effectiveSort =
-          replaceSortProperty(effectiveSort, "translatorVersion", "translatorVersionSort");
-    }
-
     ReplaceRootOperation replaceRoot = replaceRoot("selectedDoc");
 
     FacetOperation facets;
@@ -310,13 +304,12 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     if (usePrioritySort) {
       // Group: preserve sortField so the subsequent priority sort can reference it
       String sortField = effectiveSort.stream().iterator().next().getProperty();
-      String groupedSortField = "requestedSortValue";
       GroupOperation groupByMeasureSet =
           group("measureSetId")
               .first("$$ROOT")
               .as("selectedDoc")
               .first(sortField)
-              .as(groupedSortField)
+              .as(sortField)
               .max(
                   ConditionalOperators.Cond.when(
                           ArrayOperators.In.arrayOf(measureSearchCriteria.getPriorityMeasureSets())
@@ -326,10 +319,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               .as("isPrioritySet");
       postMatchPipeline.add(groupByMeasureSet);
       // Sort by priority first, then by the provided sort (which is preserved in the group stage)
-      postMatchPipeline.add(
-          sort(
-              Sort.by(Sort.Direction.DESC, "isPrioritySet")
-                  .and(replaceSortProperty(effectiveSort, sortField, groupedSortField))));
+      postMatchPipeline.add(sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(effectiveSort)));
       postMatchPipeline.add(replaceRoot);
       postMatchPipeline.add(SearchAggregationUtils.addIsComponentField());
       // Facet: sort already applied above, so omit it here
@@ -380,17 +370,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     return mongoTemplate
         .aggregate(newAggregation(postMatchPipeline), Measure.class, FacetDTO.class)
         .getMappedResults();
-  }
-
-  private Sort replaceSortProperty(Sort sort, String property, String replacement) {
-    return Sort.by(
-        sort.stream()
-            .map(
-                order ->
-                    new Sort.Order(
-                        order.getDirection(),
-                        property.equals(order.getProperty()) ? replacement : order.getProperty()))
-            .collect(Collectors.toList()));
   }
 
   @Override

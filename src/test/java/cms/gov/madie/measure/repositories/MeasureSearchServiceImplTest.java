@@ -1793,7 +1793,6 @@ public class MeasureSearchServiceImplTest {
     String pipeline = captor.getValue().toString();
     assertTrue(pipeline.contains("translatorVersion"));
     assertTrue(pipeline.contains("translatorVersionSort"));
-    assertTrue(pipeline.contains("requestedSortValue"));
   }
 
   // -------------------------------------------------------------------------

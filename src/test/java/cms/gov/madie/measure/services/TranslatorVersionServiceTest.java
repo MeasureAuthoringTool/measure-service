@@ -81,17 +81,6 @@ class TranslatorVersionServiceTest {
   }
 
   @Test
-  void testDoesNotReplaceTranslatorVersionAlreadyPresent() {
-    MeasureListDTO dto = new MeasureListDTO();
-    dto.setTranslatorVersion("3.10.0");
-
-    translatorVersionService.enrichWithTranslatorVersion(List.of(dto));
-
-    assertEquals("3.10.0", dto.getTranslatorVersion());
-    verifyNoInteractions(elmTranslatorClient, measureRepository);
-  }
-
-  @Test
   void testEnrichWithTranslatorVersionVersionedMeasureNotFound() {
     MeasureMetaData metaData = new MeasureMetaData();
     metaData.setDraft(false);

@@ -29,10 +29,6 @@ public class TranslatorVersionService {
     }
     measureList.forEach(
         measure -> {
-          if (measure.getTranslatorVersion() != null) {
-            return;
-          }
-
           // for draft measures, always show the latest translator version
           if (measure.getMeasureMetaData().isDraft()) {
             String latestTranslatorVersion =
