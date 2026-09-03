@@ -1771,6 +1771,30 @@ public class MeasureSearchServiceImplTest {
     assertEquals("measure-id-1", page.getContent().get(3).getId());
   }
 
+  @Test
+  public void testCompositeSearchAddsTranslatorVersionSortField() {
+    ArgumentCaptor<Aggregation> captor = stubAggregatesReturning(List.of(measure1));
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder()
+            .fromCompositeMeasureComponent(true)
+            .priorityMeasureSets(List.of("1-1"))
+            .build();
+    PageRequest pageRequest =
+        PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "translatorVersion"));
+
+    measureAclRepository.searchMeasuresByCriteria(
+        "userId", pageRequest, searchCriteria, List.of(OwnershipType.ALL));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+    String pipeline = captor.getValue().toString();
+    assertTrue(pipeline.contains("translatorVersion"));
+    assertTrue(pipeline.contains("translatorVersionSort"));
+  }
+
   // -------------------------------------------------------------------------
   // 5-tier draft sort tests
   // -------------------------------------------------------------------------
