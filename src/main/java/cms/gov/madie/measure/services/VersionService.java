@@ -161,12 +161,12 @@ public class VersionService {
     }
 
     // Generate Bundle for versioned Measure with ELM at error severity Info
-    elmToJsonService.retrieveElmJson(measure, "Info");
+    elmToJsonService.retrieveElmJson(upversionedMeasure, "Info");
     var measureBundle =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, EXPORT, "Info");
 
     // Generate Bundle for versioned Measure with ELM at error severity Error
-    elmToJsonService.retrieveElmJson(measure, "Error");
+    elmToJsonService.retrieveElmJson(upversionedMeasure, "Error");
     var measureBundleWithoutWarnings =
         fhirServicesClient.getMeasureBundle(upversionedMeasure, accessToken, PUBLISH, "Error");
 
