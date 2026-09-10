@@ -1795,6 +1795,29 @@ public class MeasureSearchServiceImplTest {
     assertTrue(pipeline.contains("translatorVersionSort"));
   }
 
+  @Test
+  public void testCompositeSearchUsesSafeAliasForCmsIdPrioritySort() {
+    ArgumentCaptor<Aggregation> captor = stubAggregatesReturning(List.of(measure1));
+    MeasureSearchCriteria searchCriteria =
+        MeasureSearchCriteria.builder()
+            .fromCompositeMeasureComponent(true)
+            .priorityMeasureSets(List.of("1-1"))
+            .build();
+    PageRequest pageRequest =
+        PageRequest.of(0, 10, Sort.by(Sort.Direction.ASC, "measureSet.cmsId"));
+
+    measureAclRepository.searchMeasuresByCriteria(
+        "userId", pageRequest, searchCriteria, List.of(OwnershipType.ALL));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+    String pipeline = captor.getValue().toString();
+    assertTrue(pipeline.contains("cmsIdSort"));
+  }
+
   // -------------------------------------------------------------------------
   // 5-tier draft sort tests
   // -------------------------------------------------------------------------
