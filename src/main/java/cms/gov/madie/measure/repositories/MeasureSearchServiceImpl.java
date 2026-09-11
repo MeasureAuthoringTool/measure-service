@@ -254,10 +254,18 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
     ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
+    boolean isCompositeComponentSearch =
+        measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent();
+    Sort effectiveSort = pageable.getSort();
+    Sort.Order translatorSort = effectiveSort.getOrderFor("translatorVersion");
 
     List<AggregationOperation> postMatchPipeline = new ArrayList<>();
     postMatchPipeline.add(lookupOperation);
     postMatchPipeline.add(unwindOperation);
+    if (isCompositeComponentSearch && translatorSort != null) {
+      postMatchPipeline.add(SearchAggregationUtils.addTranslatorVersionSortField());
+      effectiveSort = Sort.by(translatorSort.withProperty("translatorVersionSort"));
+    }
     postMatchPipeline.add(initialProjection);
 
     // Honor measureMeataData.draft seachCriteria
@@ -295,13 +303,15 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             && CollectionUtils.isNotEmpty(measureSearchCriteria.getPriorityMeasureSets());
     if (usePrioritySort) {
       // Group: preserve sortField so the subsequent priority sort can reference it
-      String sortField = pageable.getSort().stream().iterator().next().getProperty();
+      Sort.Order sortOrder = effectiveSort.stream().iterator().next();
+      String sortField = sortOrder.getProperty();
+      String groupedSortField = "measureSet.cmsId".equals(sortField) ? "cmsIdSort" : sortField;
       GroupOperation groupByMeasureSet =
           group("measureSetId")
               .first("$$ROOT")
               .as("selectedDoc")
               .first(sortField)
-              .as(sortField)
+              .as(groupedSortField)
               .max(
                   ConditionalOperators.Cond.when(
                           ArrayOperators.In.arrayOf(measureSearchCriteria.getPriorityMeasureSets())
@@ -311,8 +321,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               .as("isPrioritySet");
       postMatchPipeline.add(groupByMeasureSet);
       // Sort by priority first, then by the provided sort (which is preserved in the group stage)
-      postMatchPipeline.add(
-          sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(pageable.getSort())));
+      Sort groupedSort = Sort.by(sortOrder.withProperty(groupedSortField));
+      postMatchPipeline.add(sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(groupedSort)));
       postMatchPipeline.add(replaceRoot);
       postMatchPipeline.add(SearchAggregationUtils.addIsComponentField());
       // Facet: sort already applied above, so omit it here
@@ -333,7 +343,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       //   DESC: 5→1 (composite draft first → non-composite versioned last)
       //   ASC:  1→5 (non-composite versioned first → composite draft last)
       // The original sort direction is preserved as-is.
-      Sort effectiveSort = pageable.getSort();
       boolean hasDraftSort =
           effectiveSort.stream()
               .anyMatch(order -> "measureMetaData.draft".equals(order.getProperty()));
