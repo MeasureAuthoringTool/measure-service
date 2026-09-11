@@ -15,6 +15,8 @@ import org.springframework.data.mongodb.core.aggregation.*;
 import org.springframework.data.mongodb.core.query.Criteria;
 
 public class SearchAggregationUtils {
+  private static final String TRANSLATOR_VERSION_PATTERN =
+      "\"translatorVersion\"\\s*:\\s*\"([0-9]+)\\.([0-9]+)\\.([0-9]+)\"";
 
   public static final String READY = "Ready";
   public static final String IN_PROGRESS = "In Progress";
@@ -117,6 +119,41 @@ public class SearchAggregationUtils {
                 null));
 
     return context -> new Document("$addFields", new Document("cmsIdDisplay", cmsIdDisplayExpr));
+  }
+
+  public static AggregationOperation addTranslatorVersionSortField() {
+    Document translatorVersionMatch =
+        new Document(
+            "$regexFind",
+            new Document("input", new Document("$ifNull", Arrays.asList("$elmJson", "")))
+                .append("regex", TRANSLATOR_VERSION_PATTERN));
+    Document translatorVersionSortExpression =
+        new Document(
+            "$let",
+            new Document("vars", new Document("match", translatorVersionMatch))
+                .append(
+                    "in",
+                    new Document(
+                        "$cond",
+                        Arrays.asList(
+                            new Document("$ne", Arrays.asList("$$match", null)),
+                            new Document("major", numericVersionPart("$$match.captures", 0))
+                                .append("minor", numericVersionPart("$$match.captures", 1))
+                                .append("patch", numericVersionPart("$$match.captures", 2)),
+                            null))));
+
+    return context ->
+        new Document(
+            "$addFields", new Document("translatorVersionSort", translatorVersionSortExpression));
+  }
+
+  private static Document numericVersionPart(String captures, int index) {
+    return new Document(
+        "$convert",
+        new Document("input", new Document("$arrayElemAt", Arrays.asList(captures, index)))
+            .append("to", "int")
+            .append("onError", 0)
+            .append("onNull", 0));
   }
 
   // Add boolean field component: true if compositeMeasureIds is not null and not empty
