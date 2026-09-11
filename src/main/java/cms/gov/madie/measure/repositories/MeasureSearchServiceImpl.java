@@ -303,13 +303,15 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             && CollectionUtils.isNotEmpty(measureSearchCriteria.getPriorityMeasureSets());
     if (usePrioritySort) {
       // Group: preserve sortField so the subsequent priority sort can reference it
-      String sortField = effectiveSort.stream().iterator().next().getProperty();
+      Sort.Order sortOrder = effectiveSort.stream().iterator().next();
+      String sortField = sortOrder.getProperty();
+      String groupedSortField = "measureSet.cmsId".equals(sortField) ? "cmsIdSort" : sortField;
       GroupOperation groupByMeasureSet =
           group("measureSetId")
               .first("$$ROOT")
               .as("selectedDoc")
               .first(sortField)
-              .as(sortField)
+              .as(groupedSortField)
               .max(
                   ConditionalOperators.Cond.when(
                           ArrayOperators.In.arrayOf(measureSearchCriteria.getPriorityMeasureSets())
@@ -319,7 +321,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
               .as("isPrioritySet");
       postMatchPipeline.add(groupByMeasureSet);
       // Sort by priority first, then by the provided sort (which is preserved in the group stage)
-      postMatchPipeline.add(sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(effectiveSort)));
+      Sort groupedSort = Sort.by(sortOrder.withProperty(groupedSortField));
+      postMatchPipeline.add(sort(Sort.by(Sort.Direction.DESC, "isPrioritySet").and(groupedSort)));
       postMatchPipeline.add(replaceRoot);
       postMatchPipeline.add(SearchAggregationUtils.addIsComponentField());
       // Facet: sort already applied above, so omit it here
