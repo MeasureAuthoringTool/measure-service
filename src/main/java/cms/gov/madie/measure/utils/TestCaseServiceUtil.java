@@ -702,7 +702,11 @@ public class TestCaseServiceUtil {
             ArrayNode nameArray = (ArrayNode) resourceNode.get("name");
             for (JsonNode nameNode : nameArray) {
               if (nameNode.has("family")) {
-                ((ObjectNode) nameNode).put("family", group);
+                if (StringUtils.isBlank(group)) {
+                  ((ObjectNode) nameNode).remove("family");
+                } else {
+                  ((ObjectNode) nameNode).put("family", group);
+                }
                 isUpdated = true;
               }
               if (nameNode.has("given") && nameNode.get("given").isArray()) {
