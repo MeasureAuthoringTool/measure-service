@@ -102,9 +102,9 @@ public class MeasureSearchServiceImplTest {
     Page<MeasureListDTO> page =
         measureAclRepository.searchMeasuresByCriteria(
             "john", pageRequest, null, List.of(OwnershipType.OWNED));
-    assertEquals(page.getTotalElements(), 3);
-    assertEquals(page.getTotalPages(), 1);
-    assertEquals(page.getContent().size(), 3);
+    assertEquals(5, page.getTotalElements());
+    assertEquals(2, page.getTotalPages());
+    assertEquals(3, page.getContent().size());
     List<MeasureListDTO> page1Measures = page.getContent();
     assertEquals(page1Measures.get(0).getId(), measure1.getId());
     assertEquals(page1Measures.get(1).getId(), measure2.getId());
