@@ -192,6 +192,70 @@ public class MeasureControllerMvcTest {
     assertThat(performedByArgumentCaptor.getValue(), is(equalTo(TEST_USER_ID)));
   }
 
+  private Measure measureWithUntypedGroup(boolean composite) {
+    Group group =
+        Group.builder()
+            .id("g1")
+            .scoring(
+                composite
+                    ? MeasureScoring.COMPOSITE.toString()
+                    : MeasureScoring.PROPORTION.toString())
+            .populationBasis("boolean")
+            .populations(List.of())
+            .measureGroupTypes(List.of())
+            .build();
+    return Measure.builder()
+        .id("m1234")
+        .active(true)
+        .measureName("TestMeasure")
+        .cqlLibraryName("TestLib")
+        .ecqmTitle("ecqmTitle")
+        .model(MODEL)
+        .versionId("m1234")
+        .measureSetId("measureSetId")
+        .measureMetaData(MeasureMetaData.builder().draft(true).composite(composite).build())
+        .groups(List.of(group))
+        .build();
+  }
+
+  @Test
+  public void testUpdatePassesForCompositeWithoutMeasureGroupTypes() throws Exception {
+    Measure measure = measureWithUntypedGroup(true);
+    when(measureService.findMeasureById(anyString())).thenReturn(measure);
+    doNothing().when(measureService).verifyAuthorization(anyString(), any(Measure.class));
+    when(measureService.updateMeasure(any(Measure.class), anyString(), any(Measure.class)))
+        .thenReturn(measure);
+
+    mockMvc
+        .perform(
+            put("/measures/m1234")
+                .with(user(TEST_USER_ID))
+                .with(csrf())
+                .header("Authorization", "test-okta")
+                .content(toJsonString(measure))
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+        .andExpect(status().isOk());
+  }
+
+  @Test
+  public void testUpdateFailsForNonCompositeWithoutMeasureGroupTypes() throws Exception {
+    mockMvc
+        .perform(
+            put("/measures/m1234")
+                .with(user(TEST_USER_ID))
+                .with(csrf())
+                .header("Authorization", "test-okta")
+                .content(toJsonString(measureWithUntypedGroup(false)))
+                .contentType(MediaType.APPLICATION_JSON_VALUE))
+        .andExpect(status().isBadRequest())
+        .andExpect(
+            jsonPath("$.validationErrors.measure")
+                .value(
+                    "Measure Group Types and Population Basis are required for FHIR Measure Group"));
+    verify(measureService, times(0))
+        .updateMeasure(any(Measure.class), anyString(), any(Measure.class));
+  }
+
   @Test
   public void testUpdatePassedLogDeleted() throws Exception {
     String measureId = "f225481c-921e-4015-9e14-e5046bfac9ff";
