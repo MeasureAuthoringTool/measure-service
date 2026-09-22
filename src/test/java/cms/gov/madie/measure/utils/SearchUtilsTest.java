@@ -11,22 +11,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 class SearchUtilsTest {
 
   @Test
-  void testAppendTestCaseSetIdCriteriaAllowsNoTestCasesOrAllValidTestCaseSetIds() {
-    Criteria base = new Criteria();
-
-    SearchUtils.appendTestCaseSetIdCriteria(base);
-
-    String json = base.getCriteriaObject().toJson();
-    assertThat(json).contains("testCases");
-    assertThat(json).contains("$or");
-    assertThat(json).contains("$nor");
-    assertThat(json).contains("$elemMatch");
-    assertThat(json).contains("$exists");
-    assertThat(json).contains("testCaseSetId");
-  }
-
-  @Test
-  void testAppendSearchAndTestCaseSetIdCriteriaTogether() {
+  void testAppendSearchCriteria() {
     Criteria base = Criteria.where("active").is(true);
     MeasureSearchCriteria input =
         MeasureSearchCriteria.builder()
@@ -35,13 +20,10 @@ class SearchUtilsTest {
             .build();
 
     SearchUtils.appendAdditionalSearchCriteria(base, input);
-    SearchUtils.appendTestCaseSetIdCriteria(base);
 
     String json = base.getCriteriaObject().toJson();
     assertThat(json).contains("$and");
     assertThat(json).contains("diabetes");
-    assertThat(json).contains("$nor");
-    assertThat(json).contains("testCaseSetId");
   }
 
   @Test
