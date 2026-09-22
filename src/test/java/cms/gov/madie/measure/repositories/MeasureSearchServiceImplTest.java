@@ -1283,7 +1283,6 @@ public class MeasureSearchServiceImplTest {
             ArgumentMatchers.eq(MeasureSetMatchCountDTO.class));
     String pipeline = aggregationCaptor.getValue().toString();
     assertTrue(pipeline.contains("diabetes"), "search field should be in the pipeline");
-    assertTrue(pipeline.contains("$nor"), "test case set id filter should be in the pipeline");
   }
 
   @Test
