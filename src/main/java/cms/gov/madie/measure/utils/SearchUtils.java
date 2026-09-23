@@ -88,28 +88,4 @@ public class SearchUtils {
       measureCriteria.andOperator(new Criteria().orOperator(orConditions));
     }
   }
-
-  /**
-   * Appends a filter to {@code measureCriteria} for composite component eligibility.
-   *
-   * <p>Include measures that have no test cases.
-   *
-   * <p>Include measures where all test cases have a non-blank {@code testCaseSetId}.
-   *
-   * <p>Must not use {@code andOperator}: {@link #appendAdditionalSearchCriteria} already adds an
-   * {@code $and} key to the same {@link Criteria}, and a second would throw
-   * InvalidMongoDbApiUsageException.
-   *
-   * @param measureCriteria the criteria to append the filter to
-   */
-  public static void appendTestCaseSetIdCriteria(Criteria measureCriteria) {
-    measureCriteria.norOperator(
-        Criteria.where("testCases")
-            .elemMatch(
-                new Criteria()
-                    .orOperator(
-                        Criteria.where("testCaseSetId").exists(false),
-                        Criteria.where("testCaseSetId").is(null),
-                        Criteria.where("testCaseSetId").is(""))));
-  }
 }
