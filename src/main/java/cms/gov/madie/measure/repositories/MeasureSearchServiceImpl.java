@@ -168,27 +168,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
 
     LookupOperation lookupOperation = getLookupOperation();
     UnwindOperation unwindOperation = unwind("measureSet");
-
-    // testCases is only referenced after the $lookup by the composite-component testCaseSetId
-    // filter (appendTestCaseSetIdCriteria). Every other search can drop it up front alongside
-    // cql/elmJson so it is not dragged through the join.
-    boolean needsTestCasesForFilter =
-        measureSearchCriteria != null && measureSearchCriteria.isFromCompositeMeasureComponent();
-
-    // Performance: filter on the measure-only predicates and drop the heaviest fields (cql,
-    // elmJson,
-    // and - unless the testCaseSetId filter still needs it - testCases) BEFORE the $lookup, so the
-    // join against the measureSet collection processes far fewer, much lighter documents. The match
-    // is a strict subset of the full $match applied after the lookup, so the result set is
-    // identical
-    // - only faster. Keeping it as the first stage also lets MongoDB use the {active, measureSetId}
-    // index.
-    aggregationOperations.add(match(buildPreLookupMeasureCriteria(measureSearchCriteria)));
-    aggregationOperations.add(
-        needsTestCasesForFilter
-            ? project().andExclude("cql", "elmJson")
-            : project().andExclude("cql", "elmJson", "testCases"));
-
+    ProjectionOperation initialProjection = project().andExclude("testCases", "elmJson");
     aggregationOperations.add(lookupOperation);
     aggregationOperations.add(unwindOperation);
 
@@ -207,13 +187,21 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
         aggregationOperations.addAll(SearchAggregationUtils.getReviewStages());
       }
 
-      // The measure-only predicates (model, measureMetaData.draft, excludeByMeasureIds,
-      // excludeCompositeMeasures) are already enforced up front by buildPreLookupMeasureCriteria in
-      // the first $match, before the $lookup. Re-applying them here would be redundant: none of the
-      // intervening stages ($project, $lookup, $unwind, cmsIdDisplay/review add-fields) add
-      // documents or mutate those fields, so the result set is identical. Only predicates that need
-      // the joined measureSet / derived fields (search field, cmsIdDisplay) or the measure's
-      // testCases array (testCaseSetId) are applied post-lookup below.
+      if (StringUtils.isNotBlank(measureSearchCriteria.getModel())) {
+        measureCriteria.and("model").is(measureSearchCriteria.getModel());
+      }
+
+      if (measureSearchCriteria.getDraft() != null) {
+        measureCriteria.and("measureMetaData.draft").is(measureSearchCriteria.getDraft());
+      }
+
+      if (CollectionUtils.isNotEmpty(measureSearchCriteria.getExcludeByMeasureIds())) {
+        measureCriteria.and("_id").nin(measureSearchCriteria.getExcludeByMeasureIds());
+      }
+
+      if (measureSearchCriteria.isExcludeCompositeMeasures()) {
+        measureCriteria.and("measureMetaData.composite").ne(true);
+      }
 
       if (measureSearchCriteria.isFromCompositeMeasureComponent()) {
         if (CollectionUtils.isNotEmpty(measureSearchCriteria.getAllowedScoringTypes())) {
@@ -233,12 +221,8 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
             : match(measureCriteria);
 
     aggregationOperations.add(matchOperation);
-    // When the composite-component testCaseSetId filter needed testCases, drop it now that the
-    // filter has run. Otherwise it was already excluded before the $lookup (cql/elmJson always
-    // are).
-    if (needsTestCasesForFilter) {
-      aggregationOperations.add(project().andExclude("testCases"));
-    }
+    // Exclude testCases and elmJson after filtering (testCases needed for testCaseSetId filter)
+    aggregationOperations.add(initialProjection);
     aggregationOperations.add(
         group("measureSetId").count().as("matchCount").first("_id").as("matchedMeasureId"));
 
@@ -276,6 +260,13 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     Sort.Order translatorSort = effectiveSort.getOrderFor("translatorVersion");
 
     List<AggregationOperation> postMatchPipeline = new ArrayList<>();
+    postMatchPipeline.add(lookupOperation);
+    postMatchPipeline.add(unwindOperation);
+    if (isCompositeComponentSearch && translatorSort != null) {
+      postMatchPipeline.add(SearchAggregationUtils.addTranslatorVersionSortField());
+      effectiveSort = Sort.by(translatorSort.withProperty("translatorVersionSort"));
+    }
+    postMatchPipeline.add(initialProjection);
 
     // Honor measureMeataData.draft seachCriteria
     Criteria criteria;
@@ -289,19 +280,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       criteria = Criteria.where("measureSetId").in(matchedMeasureSetIds);
     }
 
-    // Performance: restrict to the already-matched measure sets FIRST (index-eligible on
-    // {measureSetId}) and drop the heavy cql field, so the measureSet $lookup only joins the
-    // handful of relevant measures instead of the entire collection. elmJson is intentionally
-    // retained here because the translator-version sort below still needs it.
     postMatchPipeline.add(match(criteria));
-    postMatchPipeline.add(project().andExclude("cql"));
-    postMatchPipeline.add(lookupOperation);
-    postMatchPipeline.add(unwindOperation);
-    if (isCompositeComponentSearch && translatorSort != null) {
-      postMatchPipeline.add(SearchAggregationUtils.addTranslatorVersionSortField());
-      effectiveSort = Sort.by(translatorSort.withProperty("translatorVersionSort"));
-    }
-    postMatchPipeline.add(initialProjection);
 
     postMatchPipeline.addAll(getLockStages(userId));
     postMatchPipeline.addAll(SearchAggregationUtils.getReviewStages());
@@ -559,37 +538,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
           dto.setReviewers(
               UserDisplayNameUtils.toReviewerDisplayNames(dto.getReviewers(), userDetailsMap));
         });
-  }
-
-  /**
-   * Builds the measure-only predicates that can be evaluated before the measureSet {@code $lookup}.
-   *
-   * <p>These are exactly the fields that live on the measure document itself (never on the joined
-   * measureSet, the cmsIdDisplay derived field, or the review lookup), so applying them up front as
-   * the first pipeline stage is index-eligible and strictly reduces the number of documents that
-   * flow into the expensive join. Every predicate here is also re-applied in the post-lookup {@code
-   * $match}, so this stage is a pure performance optimization and never changes the result set.
-   *
-   * @param measureSearchCriteria the caller's search criteria (may be null)
-   * @return a Criteria matching active measures that satisfy the measure-only predicates
-   */
-  private Criteria buildPreLookupMeasureCriteria(MeasureSearchCriteria measureSearchCriteria) {
-    Criteria criteria = Criteria.where("active").is(true);
-    if (measureSearchCriteria != null) {
-      if (StringUtils.isNotBlank(measureSearchCriteria.getModel())) {
-        criteria.and("model").is(measureSearchCriteria.getModel());
-      }
-      if (measureSearchCriteria.getDraft() != null) {
-        criteria.and("measureMetaData.draft").is(measureSearchCriteria.getDraft());
-      }
-      if (CollectionUtils.isNotEmpty(measureSearchCriteria.getExcludeByMeasureIds())) {
-        criteria.and("_id").nin(measureSearchCriteria.getExcludeByMeasureIds());
-      }
-      if (measureSearchCriteria.isExcludeCompositeMeasures()) {
-        criteria.and("measureMetaData.composite").ne(true);
-      }
-    }
-    return criteria;
   }
 
   private Criteria buildMeasureSetCriteria(String userId, List<OwnershipType> ownershipTypes) {
