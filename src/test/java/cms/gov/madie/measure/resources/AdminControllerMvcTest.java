@@ -97,6 +97,7 @@ public class AdminControllerMvcTest {
   @MockitoBean private UserServiceClient userServiceClient;
   @MockitoBean private CacheManager cacheManager;
   @MockitoBean private CompositeRelationshipService compositeRelationshipService;
+  @MockitoBean private UserMeasureExportService userMeasureExportService;
 
   @Autowired private MockMvc mockMvc;
 

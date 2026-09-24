@@ -281,7 +281,6 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     }
 
     postMatchPipeline.add(match(criteria));
-
     postMatchPipeline.addAll(getLockStages(userId));
     postMatchPipeline.addAll(SearchAggregationUtils.getReviewStages());
 
