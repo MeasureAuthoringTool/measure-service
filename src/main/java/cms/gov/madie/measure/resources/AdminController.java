@@ -385,7 +385,7 @@ public class AdminController extends AbstractMeasureController {
           measureToCorrectVersion.getId(), "Only one draft is permitted per measure.");
     }
 
-    // check if the draftVersion is less than correctVersion
+    // check if the draftVersion is less than current version
     if (!isLessThan(inCorrectVersion, draftVersion)) {
       throw new InvalidRequestException(
           "New version # must be lower than the intended final version number");
