@@ -1024,7 +1024,10 @@ public class AdminControllerMvcTest {
             eq(Measure.class),
             eq(ActionType.VERSION_REVERT),
             eq(TEST_USER_ID),
-            eq(String.format("Reverted from version %s to %s", inCorrectVersion, draftVersion)));
+            eq(
+                String.format(
+                    "Reverted from version %s to %s by MADiE Admin",
+                    inCorrectVersion, draftVersion)));
   }
 
   @Test

@@ -422,7 +422,8 @@ public class AdminController extends AbstractMeasureController {
         Measure.class,
         ActionType.VERSION_REVERT,
         principal.getName().toLowerCase(),
-        String.format("Reverted from version %s to %s", inCorrectVersion, draftVersion));
+        String.format(
+            "Reverted from version %s to %s by MADiE Admin", inCorrectVersion, draftVersion));
 
     return ResponseEntity.ok(correctedVersionMeasure);
   }
