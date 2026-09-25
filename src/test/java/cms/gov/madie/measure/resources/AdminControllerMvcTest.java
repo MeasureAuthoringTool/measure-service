@@ -1819,7 +1819,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            put("/admin/measures/bulk-export")
+            put("/admin/measures/bulk-fetch-for-users")
                 .with(csrf())
                 .with(
                     jwt()
@@ -1845,7 +1845,7 @@ public class AdminControllerMvcTest {
     MvcResult result =
         mockMvc
             .perform(
-                put("/admin/measures/bulk-export")
+                put("/admin/measures/bulk-fetch-for-users")
                     .with(csrf())
                     .with(
                         jwt()

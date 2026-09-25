@@ -725,7 +725,7 @@ public class AdminController extends AbstractMeasureController {
    * @param harpIds the users to include; when null/empty, every user with measures is returned
    * @return map of lower-cased HARP id -&gt; owned/shared measure lists
    */
-  @PutMapping("/measures/bulk-export")
+  @PutMapping("/measures/bulk-fetch-for-users")
   public ResponseEntity<Map<String, UserMeasuresDTO>> bulkExportMeasuresForUsers(
       @RequestBody(required = false) List<String> harpIds, Principal principal) {
     log.info(
