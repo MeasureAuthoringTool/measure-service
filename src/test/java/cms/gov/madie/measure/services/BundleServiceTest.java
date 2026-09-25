@@ -397,11 +397,11 @@ class BundleServiceTest implements ResourceUtil {
   }
 
   /**
-   * Simulates an included (not the primary) CQL library whose version contains "-ballot",
-   *     e.g. "2.0.0-ballot". Previously, packaging-utility attempted to convert every FHIR
-   *     Library resource into a MADiE CqlLibrary object, whose version enforced MADiE's
-   *     major.minor.patch format and blew up on ballot versions. After the fix, packaging-utility
-   *     uses a plain-string-version DTO, so export generation should succeed.
+   * Simulates an included (not the primary) CQL library whose version contains "-ballot", e.g.
+   * "2.0.0-ballot". Previously, packaging-utility attempted to convert every FHIR Library resource
+   * into a MADiE CqlLibrary object, whose version enforced MADiE's major.minor.patch format and
+   * blew up on ballot versions. After the fix, packaging-utility uses a plain-string-version DTO,
+   * so export generation should succeed.
    */
   @Test
   void testExportWithElmWarningsBundleMeasureForVersionedMeasureWithBallotIncludedLibrary()
