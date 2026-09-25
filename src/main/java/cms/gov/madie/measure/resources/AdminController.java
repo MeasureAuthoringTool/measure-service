@@ -7,6 +7,7 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReportSummary;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
+import cms.gov.madie.measure.dto.UserMeasuresDTO;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
@@ -68,6 +69,7 @@ public class AdminController extends AbstractMeasureController {
   private final MeasureLockService measureLockService;
   private final TestCaseLockService testCaseLockService;
   private final AdminService adminService;
+  private final UserMeasureExportService userMeasureExportService;
   private final AppConfigService appConfigService;
   private final CacheManager cacheManager;
   private final CompositeRelationshipService compositeRelationshipService;
@@ -709,5 +711,23 @@ public class AdminController extends AbstractMeasureController {
     Page<MeasureListDTO> measures =
         measureService.getMeasuresByCriteria(searchCriteria, ownershipTypes, pageReq, username);
     return ResponseEntity.ok(measures);
+  }
+
+  /**
+   * Bulk variant of {@link #searchMeasuresForUser} for the Full User Export: returns the owned and
+   * shared measures (latest per family) for many users in a single request, so the export does not
+   * have to make two search calls per user.
+   *
+   * @param harpIds the users to include; when null/empty, every user with measures is returned
+   * @return map of lower-cased HARP id -&gt; owned/shared measure lists
+   */
+  @PutMapping("/measures/bulk-fetch-for-users")
+  public ResponseEntity<Map<String, UserMeasuresDTO>> bulkExportMeasuresForUsers(
+      @RequestBody(required = false) List<String> harpIds, Principal principal) {
+    log.info(
+        "Admin [{}] requested bulk measure export for {} user(s)",
+        principal != null ? principal.getName() : "unknown",
+        CollectionUtils.isEmpty(harpIds) ? "all" : harpIds.size());
+    return ResponseEntity.ok(userMeasureExportService.getMeasuresForUsers(harpIds));
   }
 }
