@@ -1542,6 +1542,46 @@ public class TestCaseServiceUtilTest {
   }
 
   @Test
+  public void parseAndUpdateJsonWithGroupAndTitleRemovesFamilyWhenGroupIsBlank() {
+    String json =
+        """
+      {
+        "entry": [
+          {
+            "resource": {
+              "resourceType": "Patient",
+              "name": [
+                {
+                  "use": "usual",
+                  "family": "OldFamily",
+                  "given": ["OldGiven"]
+                }
+              ]
+            }
+          }
+        ]
+      }
+      """;
+
+    for (String group : new String[] {null, "", "  "}) {
+      String updatedJson =
+          TestCaseServiceUtil.parseAndUpdateJsonWithGroupAndTitle(json, group, "NewTitle");
+
+      JsonNode nameNode =
+          OBJECT_MAPPER
+              .readTree(updatedJson)
+              .get("entry")
+              .get(0)
+              .get("resource")
+              .get("name")
+              .get(0);
+      assertFalse(nameNode.has("family"));
+      assertThat(nameNode.get("use").asText(), is("usual"));
+      assertThat(nameNode.get("given").get(0).asText(), is("NewTitle"));
+    }
+  }
+
+  @Test
   public void parseAndUpdateJsonWithGroupAndTitleHandlesEmptyEntryArray() {
     String json = """
       {
