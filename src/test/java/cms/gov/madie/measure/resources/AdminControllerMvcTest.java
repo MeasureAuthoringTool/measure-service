@@ -824,6 +824,37 @@ public class AdminControllerMvcTest {
   }
 
   @Test
+  public void testAdminMeasureChangeVersionThrowsWhenDraftVersionIsGreaterThanCurrentVersion()
+      throws Exception {
+    when(measureService.findMeasureById(anyString()))
+        .thenReturn(
+            Measure.builder()
+                .id("123456")
+                .measureSetId("ms-123")
+                .measureSet(MeasureSet.builder().owner("owner1").build())
+                .version(Version.builder().major(3).minor(0).revisionNumber(0).build())
+                .build());
+
+    mockMvc
+        .perform(
+            put("/admin/measures/{id}/correct-version", "12345")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .queryParam("draftVersion", "4.0.000")
+                .queryParam("inCorrectVersion", "3.0.000")
+                .header("Authorization", "test-okta")
+                .header("harpId", "owner1"))
+        .andExpect(status().isBadRequest());
+
+    verify(measureService, times(1)).findMeasureById(anyString());
+    verify(measureRepository, times(1))
+        .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(List.of("ms-123"), true, true);
+  }
+
+  @Test
   public void testAdminMeasureChangeVersionThrowsWhenGivenVersionIsAlreadyAssociated()
       throws Exception {
     Version version = Version.builder().major(2).minor(0).revisionNumber(0).build();
