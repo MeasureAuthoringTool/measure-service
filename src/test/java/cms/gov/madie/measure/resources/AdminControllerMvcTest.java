@@ -829,7 +829,7 @@ public class AdminControllerMvcTest {
   }
 
   @Test
-  public void testAdminMeasureChangeVersionThrowsWhenDraftVersionIsGreaterThanCorrectVersion()
+  public void testAdminMeasureChangeVersionThrowsWhenDraftVersionIsGreaterThanCurrentVersion()
       throws Exception {
     when(measureService.findMeasureById(anyString()))
         .thenReturn(
@@ -839,9 +839,6 @@ public class AdminControllerMvcTest {
                 .measureSet(MeasureSet.builder().owner("owner1").build())
                 .version(Version.builder().major(3).minor(0).revisionNumber(0).build())
                 .build());
-    doReturn(null)
-        .when(measureRepository)
-        .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(List.of("ms-123"), true, true);
 
     mockMvc
         .perform(
@@ -851,14 +848,15 @@ public class AdminControllerMvcTest {
                     jwt()
                         .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
                         .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
-                .queryParam("correctVersion", "2.0.000")
-                .queryParam("draftVersion", "3.0.000")
+                .queryParam("draftVersion", "4.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isBadRequest());
 
     verify(measureService, times(1)).findMeasureById(anyString());
+    verify(measureRepository, times(1))
+        .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(List.of("ms-123"), true, true);
   }
 
   @Test
@@ -889,8 +887,7 @@ public class AdminControllerMvcTest {
                     jwt()
                         .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
                         .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
-                .queryParam("correctVersion", "2.0.000")
-                .queryParam("draftVersion", "1.0.000")
+                .queryParam("draftVersion", "2.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
@@ -961,7 +958,6 @@ public class AdminControllerMvcTest {
   public void testCorrectMeasureVersionSavesMeasureAndLogsExpectedMessage() throws Exception {
     String measureId = "123";
     String inCorrectVersion = "1.0.000";
-    String correctVersion = "0.1.000";
     String draftVersion = "0.0.000";
     String harpId = "harpId";
     String principalName = "testUser";
@@ -1008,7 +1004,6 @@ public class AdminControllerMvcTest {
                 .header("Authorization", "test-okta")
                 .header("harpId", harpId)
                 .param("inCorrectVersion", inCorrectVersion)
-                .param("correctVersion", correctVersion)
                 .param("draftVersion", draftVersion)
                 .principal(() -> principalName))
         .andExpect(status().isOk());
@@ -1034,7 +1029,10 @@ public class AdminControllerMvcTest {
             eq(Measure.class),
             eq(ActionType.VERSION_REVERT),
             eq(TEST_USER_ID),
-            eq(String.format("Reverted from version %s to %s", inCorrectVersion, correctVersion)));
+            eq(
+                String.format(
+                    "Reverted from version %s to %s by MADiE Admin",
+                    inCorrectVersion, draftVersion)));
   }
 
   @Test
