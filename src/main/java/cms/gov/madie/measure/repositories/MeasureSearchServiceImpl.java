@@ -428,9 +428,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     Sort.Order translatorSort = effectiveSort.getOrderFor("translatorVersion");
     boolean needsElmJson = isCompositeComponentSearch && translatorSort != null;
 
-    // P0: drop the heavy fields as the VERY FIRST stage, before the $lookup/$unwind. cql/testCases
-    // are never referenced in this pipeline; elmJson is retained only when sorting by
-    // translatorVersion, which is parsed out of elmJson via addTranslatorVersionSortField.
+    // Drop the heavy fields before the $lookup/$unwind that are never referenced in this pipeline.
     List<String> earlyExclude = new ArrayList<>(Arrays.asList("cql", "testCases"));
     if (!needsElmJson) {
       earlyExclude.add("elmJson");
@@ -445,7 +443,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       effectiveSort = Sort.by(translatorSort.withProperty("translatorVersionSort"));
     }
 
-    // Honor measureMeataData.draft seachCriteria
+    // Honor measureMeataData.draft searchCriteria
     Criteria criteria;
     if (measureSearchCriteria != null && measureSearchCriteria.getDraft() != null) {
       criteria =
@@ -587,9 +585,11 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
       List<String> reviewStatuses,
       String assignedTo) {
     List<AggregationOperation> pipeline = new ArrayList<>();
+    // Drop the heavy fields (cql/testCases/elmJson) as the VERY FIRST stage, before the
+    // $lookup/$unwind,
+    pipeline.add(project().andExclude("cql", "testCases", "elmJson"));
     pipeline.add(getLookupOperation());
     pipeline.add(unwind("measureSet"));
-    pipeline.add(project().andExclude("testCases", "elmJson"));
 
     pipeline.addAll(SearchAggregationUtils.getReviewStages());
     pipeline.add(SearchAggregationUtils.matchReviewStatusIn(reviewStatuses));
@@ -776,21 +776,21 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
   @Override
   public int countMeasuresByOwnership(
       boolean isActive, String userId, List<OwnershipType> ownershipTypes) {
-    LookupOperation lookupOperation = getLookupOperation();
     Criteria measureCriteria = Criteria.where("active").is(isActive);
 
-    Criteria measureSetCriteria = buildMeasureSetCriteria(userId, ownershipTypes);
-
-    MatchOperation matchOperation =
-        (measureSetCriteria != null)
-            ? match(new Criteria().andOperator(measureCriteria, measureSetCriteria))
-            : match(measureCriteria);
-
-    GroupOperation groupOperation = group("measureSetId");
+    // Ownership-first: resolve the (few) owned/shared measureSetIds from the small measureSet
+    // collection and filter on them directly, so this count never joins measureSet from the
+    // measure side. For ALL (no ownership filter) this is a plain distinct-family count.
+    List<String> ownershipMeasureSetIds = resolveOwnershipMeasureSetIds(userId, ownershipTypes);
+    if (ownershipMeasureSetIds != null) {
+      if (ownershipMeasureSetIds.isEmpty()) {
+        return 0;
+      }
+      measureCriteria.and("measureSetId").in(ownershipMeasureSetIds);
+    }
 
     Aggregation aggregation =
-        newAggregation(
-            lookupOperation, matchOperation, groupOperation, group().count().as("count"));
+        newAggregation(match(measureCriteria), group("measureSetId"), group().count().as("count"));
 
     List<Map> results =
         mongoTemplate.aggregate(aggregation, Measure.class, Map.class).getMappedResults();
@@ -804,8 +804,7 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     boolean assignedOnly = isAssignedToUser(ownershipTypes);
 
     List<AggregationOperation> pipeline = new ArrayList<>();
-    pipeline.add(getLookupOperation());
-    pipeline.add(unwind("measureSet"));
+    // measureSet is never read by this count, so skip the previously-unused $lookup/$unwind.
     pipeline.addAll(SearchAggregationUtils.getReviewStages());
     pipeline.add(
         SearchAggregationUtils.matchReviewStatusIn(
