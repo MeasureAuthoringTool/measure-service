@@ -25,15 +25,22 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 @ExtendWith(MockitoExtension.class)
+// The single-pass fast path (searchLatestPerFamily) means several list-tab tests no longer trigger
+// the old Query-1 (MeasureSetMatchCountDTO) aggregate they stub. Lenient stubbing keeps those
+// harmless stubs from failing while all behavioural assertions still run.
+@MockitoSettings(strictness = Strictness.LENIENT)
 @EnableMongoRepositories(basePackages = "com.gov.madie.measure.repository")
 public class MeasureSearchServiceImplTest {
 
@@ -66,18 +73,23 @@ public class MeasureSearchServiceImplTest {
             .build();
     measure4 = MeasureListDTO.builder().id("4").measureSetId("1-1").build();
     measure5 = MeasureListDTO.builder().id("5").measureSetId("1-1").build();
+
+    // Fast path (My / Shared tabs) resolves the user's owned/shared measureSetIds from the
+    // measureSet collection first. Default it to a non-empty result so the single-pass aggregation
+    // runs; ALL-tab tests skip this lookup entirely (lenient => the unused stub is fine).
+    when(mongoTemplate.find(any(Query.class), ArgumentMatchers.eq(MeasureSet.class)))
+        .thenReturn(List.of(MeasureSet.builder().measureSetId("set1").build()));
   }
 
   @Test
   public void testFindOwnedActiveMeasures() {
     // page size 3 from 0-2
     PageRequest pageRequest = PageRequest.of(0, 3);
-    List<MeasureListDTO> allMeasures = List.of(measure1, measure2, measure3, measure4, measure5);
 
     FacetDTO facetDTO =
         FacetDTO.builder()
             .queryResults(List.of(measure1, measure2, measure3))
-            .count(Arrays.asList(allMeasures.toArray()))
+            .count(Arrays.asList(measure1, measure2, measure3))
             .build();
 
     AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
@@ -1875,8 +1887,8 @@ public class MeasureSearchServiceImplTest {
     assertEquals("v1", page.getContent().get(0).getId());
     assertEquals("d1", page.getContent().get(1).getId());
 
-    // Verify the aggregation pipeline was invoked twice (first pass + post-match)
-    verify(mongoTemplate, times(2))
+    // Single-pass fast path: one aggregation serves the no-search list load.
+    verify(mongoTemplate, times(1))
         .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
   }
 
@@ -1919,7 +1931,7 @@ public class MeasureSearchServiceImplTest {
     assertEquals("cd1", page.getContent().get(0).getId());
     assertEquals("v1", page.getContent().get(1).getId());
 
-    verify(mongoTemplate, times(2))
+    verify(mongoTemplate, times(1))
         .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
   }
 
@@ -1965,7 +1977,7 @@ public class MeasureSearchServiceImplTest {
     assertEquals(measure1.getId(), page.getContent().get(0).getId());
     assertEquals(measure2.getId(), page.getContent().get(1).getId());
 
-    verify(mongoTemplate, times(2))
+    verify(mongoTemplate, times(1))
         .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
   }
 
