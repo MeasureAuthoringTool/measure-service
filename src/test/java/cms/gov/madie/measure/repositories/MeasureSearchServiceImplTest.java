@@ -231,6 +231,90 @@ public class MeasureSearchServiceImplTest {
   }
 
   @Test
+  public void testFastPathAppliesModelAndExcludeMeasureIdFilters() {
+    MeasureListDTO measure =
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria criteria =
+        MeasureSearchCriteria.builder()
+            .model(ModelType.QDM_5_6.getValue())
+            .excludeByMeasureIds(List.of("excluded-id"))
+            .build();
+
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), criteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+    String pipeline = captor.getValue().toString();
+    assertTrue(pipeline.contains(ModelType.QDM_5_6.getValue()), "model filter should be applied");
+    assertTrue(pipeline.contains("excluded-id"), "excludeByMeasureIds should be applied");
+  }
+
+  @Test
+  public void testFastPathReturnsEmptyPageWhenUserHasNoOwnedOrSharedFamilies() {
+    // Override the default stub: this user owns / shares nothing.
+    when(mongoTemplate.find(any(Query.class), ArgumentMatchers.eq(MeasureSet.class)))
+        .thenReturn(Collections.emptyList());
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    assertEquals(0, page.getTotalElements());
+    assertTrue(page.getContent().isEmpty());
+    // No aggregation should run when the user owns/shares nothing.
+    verify(mongoTemplate, never())
+        .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
+  }
+
+  @Test
+  public void testFastPathReturnsEmptyPageWhenAggregationReturnsNoFacet() {
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(new ArrayList<>(), new Document()));
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    assertEquals(0, page.getTotalElements());
+    assertTrue(page.getContent().isEmpty());
+  }
+
+  @Test
+  public void testFastPathTotalIsZeroWhenCountFacetIsNull() {
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(Collections.emptyList()).count(null).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    assertEquals(0, page.getTotalElements());
+    assertTrue(page.getContent().isEmpty());
+  }
+
+  @Test
   public void testFindOwnedActiveMeasuresWithSearchTerm() {
     PageRequest pageRequest = PageRequest.of(0, 3);
     List<MeasureListDTO> allMeasures = List.of(measure1, measure2);
