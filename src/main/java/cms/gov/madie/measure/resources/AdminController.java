@@ -358,7 +358,6 @@ public class AdminController extends AbstractMeasureController {
       Principal principal,
       @PathVariable String id,
       @RequestParam String inCorrectVersion,
-      @RequestParam String correctVersion,
       @RequestParam String draftVersion) {
     Measure measureToCorrectVersion = measureService.findMeasureById(id);
     if (measureToCorrectVersion == null
@@ -388,17 +387,17 @@ public class AdminController extends AbstractMeasureController {
           measureToCorrectVersion.getId(), "Only one draft is permitted per measure.");
     }
 
-    // check if the draftVersion is less than correctVersion
-    if (!isLessThan(correctVersion, draftVersion)) {
-      throw new InvalidRequestException("Draft version should be always less than correct version");
+    // check if the draftVersion is less than current version
+    if (!isLessThan(inCorrectVersion, draftVersion)) {
+      throw new InvalidRequestException(
+          "New version # must be lower than the intended final version number");
     }
 
     // check if the given version is already associated
     if (!checkIfVersionIsAlreadyAssociated(
-        measureToCorrectVersion.getMeasureSetId(), correctVersion, draftVersion)) {
+        measureToCorrectVersion.getMeasureSetId(), draftVersion)) {
       throw new InvalidResourceStateException(
-          "Version number cannot be corrected. "
-              + "The given draft or correct version number is already associated");
+          "New version # must not be one that has been used previously for this measure");
     }
 
     Version newDraftVersion = Version.parse(draftVersion);
@@ -425,7 +424,8 @@ public class AdminController extends AbstractMeasureController {
         Measure.class,
         ActionType.VERSION_REVERT,
         principal.getName().toLowerCase(),
-        String.format("Reverted from version %s to %s", inCorrectVersion, correctVersion));
+        String.format(
+            "Reverted from version %s to %s by MADiE Admin", inCorrectVersion, draftVersion));
 
     return ResponseEntity.ok(correctedVersionMeasure);
   }
@@ -540,16 +540,12 @@ public class AdminController extends AbstractMeasureController {
     }
   }
 
-  private boolean checkIfVersionIsAlreadyAssociated(
-      String measureSetId, String correctVersion, String draftVersion) {
+  private boolean checkIfVersionIsAlreadyAssociated(String measureSetId, String draftVersion) {
     List<Measure> allByMeasureSetIdAndActive =
         measureRepository.findAllByMeasureSetIdAndActive(measureSetId, true);
     List<Measure> measureStream =
         allByMeasureSetIdAndActive.stream()
-            .filter(
-                measure ->
-                    measure.getVersion().toString().equals(correctVersion)
-                        || measure.getVersion().toString().equals(draftVersion))
+            .filter(measure -> measure.getVersion().toString().equals(draftVersion))
             .toList();
     return CollectionUtils.isEmpty(measureStream);
   }
