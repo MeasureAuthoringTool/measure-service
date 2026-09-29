@@ -239,14 +239,14 @@ class UserMeasureExportServiceTest {
   }
 
   @Test
-  void buildsLatestPerFamilyAggregationPipeline() {
+  void buildsAllVersionsAggregationPipeline() {
     stubAggregate(List.of());
 
     service.getMeasuresForUsers(null);
 
     verify(mongoTemplate)
         .aggregate(aggregationCaptor.capture(), eq(Measure.class), eq(MeasureListDTO.class));
-    // match -> project -> lookup -> unwind -> sort -> group -> replaceRoot
-    assertEquals(7, aggregationCaptor.getValue().getPipeline().getOperations().size());
+    // match -> project -> lookup -> unwind -> sort (no group/replaceRoot for all versions)
+    assertEquals(5, aggregationCaptor.getValue().getPipeline().getOperations().size());
   }
 }
