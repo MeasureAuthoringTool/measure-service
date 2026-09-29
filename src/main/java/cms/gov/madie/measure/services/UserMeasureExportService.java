@@ -128,8 +128,8 @@ public class UserMeasureExportService {
 
   /**
    * Aggregation: keep active measures, drop the heavy fields before the join, look up the
-   * measureSet, then return all measure versions sorted by version and draft status (active > draft
-   * > version, DESC).
+   * measureSet, then return all measure versions sorted by measureSetId (to group same measures
+   * together), then by draft status and version (DESC).
    */
   private List<MeasureListDTO> findAllMeasureVersions() {
     LookupOperation lookup =
@@ -144,7 +144,12 @@ public class UserMeasureExportService {
             project().andExclude("cql", "elmJson", "testCases"),
             lookup,
             unwind("measureSet"),
-            sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version")));
+            sort(
+                Sort.by(
+                    Sort.Order.asc("measureSetId"),
+                    Sort.Order.desc("active"),
+                    Sort.Order.desc("measureMetaData.draft"),
+                    Sort.Order.desc("version"))));
     return mongoTemplate
         .aggregate(aggregation, Measure.class, MeasureListDTO.class)
         .getMappedResults();
