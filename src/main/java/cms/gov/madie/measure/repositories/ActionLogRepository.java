@@ -28,4 +28,6 @@ public interface ActionLogRepository {
   void removeActionsByUsers(List<String> users, Class<?> clazz);
 
   Collection<ActionLog> updateAllActionLogs(List<ActionLog> actionLogs, Class<?> targetClass);
+
+  long deleteActionLogsByTargetIds(Collection<String> targetIds, Class<?> targetClass);
 }

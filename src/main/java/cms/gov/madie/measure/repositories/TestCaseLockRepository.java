@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -16,4 +17,6 @@ public interface TestCaseLockRepository extends MongoRepository<TestCaseLock, St
   List<TestCaseLock> findAllByLockedBy(String lockedBy);
 
   boolean existsByMeasureIdAndLockedByNot(String measureId, String lockedBy);
+
+  long deleteByMeasureIdIn(Collection<String> measureIds);
 }

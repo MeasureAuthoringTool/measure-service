@@ -24,6 +24,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.config.security.SecurityConfigTest;
+import cms.gov.madie.measure.dto.DeleteMeasuresByOwnersResult;
 import cms.gov.madie.measure.dto.JobStatus;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
@@ -2107,5 +2108,64 @@ public class AdminControllerMvcTest {
                 .content("{}"))
         .andExpect(status().isForbidden());
     verifyNoInteractions(measureService);
+  }
+
+  @Test
+  public void testDeleteMeasuresByOwners() throws Exception {
+    DeleteMeasuresByOwnersResult expected =
+        DeleteMeasuresByOwnersResult.builder()
+            .harpIds(List.of("testuser1", "testuser2"))
+            .measureSetCount(2)
+            .measureCount(3)
+            .exportCount(1)
+            .exportGridFsFileCount(2)
+            .measureActionLogCount(3L)
+            .measureSetActionLogCount(2L)
+            .testCaseActionLogCount(7L)
+            .measureIds(List.of("measure-1", "measure-2", "measure-3"))
+            .measureSetIds(List.of("set-1", "set-2"))
+            .build();
+    when(adminService.deleteMeasuresByOwners(anyList(), anyString())).thenReturn(expected);
+
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.delete("/admin/measures/owners")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .header("Authorization", "test-okta")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("[\"testuser1\", \"testuser2\"]"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.measureSetCount").value(2))
+        .andExpect(jsonPath("$.measureCount").value(3))
+        .andExpect(jsonPath("$.exportCount").value(1))
+        .andExpect(jsonPath("$.exportGridFsFileCount").value(2))
+        .andExpect(jsonPath("$.measureActionLogCount").value(3))
+        .andExpect(jsonPath("$.measureIds.length()").value(3));
+
+    ArgumentCaptor<List<String>> harpIdsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(adminService).deleteMeasuresByOwners(harpIdsCaptor.capture(), eq(TEST_USER_ID));
+    assertThat(harpIdsCaptor.getValue(), is(List.of("testuser1", "testuser2")));
+  }
+
+  @Test
+  public void testDeleteMeasuresByOwnersForbiddenForNonAdmin() throws Exception {
+    mockMvc
+        .perform(
+            MockMvcRequestBuilders.delete("/admin/measures/owners")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-USER")))
+                .header("Authorization", "test-okta")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("[\"testuser1\"]"))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(adminService);
   }
 }
