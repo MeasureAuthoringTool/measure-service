@@ -261,9 +261,13 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
                   .collect(Collectors.toList()));
     }
 
+    // Each document reaching this stage is exactly one family (we grouped by measureSetId), so
+    // count them directly with $count. This mirrors the two-query flow's total (matchInfoMap.size()
+    // = number of distinct measureSetIds) and, unlike sortByCount("id"), does not rely on Spring
+    // Data still mapping "id" -> "_id" after the group/replaceRoot stages reshape the document.
     pipeline.add(
-        facet(sortByCount("id"))
-            .as("count")
+        facet(count().as("total"))
+            .as("countFacet")
             .and(
                 sort(effectiveSort),
                 skip(pageable.getOffset()),
@@ -281,7 +285,10 @@ public class MeasureSearchServiceImpl implements MeasureSearchService {
     FacetDTO facetResults = results.get(0);
     List<MeasureListDTO> queryResults = facetResults.getQueryResults();
     populateOwnerDisplayNames(queryResults);
-    long total = facetResults.getCount() == null ? 0 : facetResults.getCount().size();
+    long total =
+        CollectionUtils.isEmpty(facetResults.getCountFacet())
+            ? 0
+            : facetResults.getCountFacet().get(0).getTotal();
     return new PageImpl<>(queryResults, pageable, total);
   }
 
