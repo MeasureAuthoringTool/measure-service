@@ -178,7 +178,7 @@
     <dependency>
       <groupId>gov.cms.madie.packaging</groupId>
       <artifactId>packaging-utility</artifactId>
-      <version>0.3.0</version>
+      <version>0.3.1</version>
     </dependency>
     <dependency>
       <groupId>org.springdoc</groupId>

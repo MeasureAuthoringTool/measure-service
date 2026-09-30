@@ -6,8 +6,10 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.equalTo;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -27,6 +29,7 @@ import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
+import cms.gov.madie.measure.dto.UserMeasuresDTO;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.TestCaseSetIdsAlreadyAssignedException;
@@ -45,6 +48,7 @@ import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.assertj.core.api.Assertions;
@@ -97,6 +101,7 @@ public class AdminControllerMvcTest {
   @MockitoBean private UserServiceClient userServiceClient;
   @MockitoBean private CacheManager cacheManager;
   @MockitoBean private CompositeRelationshipService compositeRelationshipService;
+  @MockitoBean private UserMeasureExportService userMeasureExportService;
 
   @Autowired private MockMvc mockMvc;
 
@@ -824,7 +829,7 @@ public class AdminControllerMvcTest {
   }
 
   @Test
-  public void testAdminMeasureChangeVersionThrowsWhenDraftVersionIsGreaterThanCorrectVersion()
+  public void testAdminMeasureChangeVersionThrowsWhenDraftVersionIsGreaterThanCurrentVersion()
       throws Exception {
     when(measureService.findMeasureById(anyString()))
         .thenReturn(
@@ -834,9 +839,6 @@ public class AdminControllerMvcTest {
                 .measureSet(MeasureSet.builder().owner("owner1").build())
                 .version(Version.builder().major(3).minor(0).revisionNumber(0).build())
                 .build());
-    doReturn(null)
-        .when(measureRepository)
-        .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(List.of("ms-123"), true, true);
 
     mockMvc
         .perform(
@@ -846,14 +848,15 @@ public class AdminControllerMvcTest {
                     jwt()
                         .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
                         .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
-                .queryParam("correctVersion", "2.0.000")
-                .queryParam("draftVersion", "3.0.000")
+                .queryParam("draftVersion", "4.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
         .andExpect(status().isBadRequest());
 
     verify(measureService, times(1)).findMeasureById(anyString());
+    verify(measureRepository, times(1))
+        .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(List.of("ms-123"), true, true);
   }
 
   @Test
@@ -884,8 +887,7 @@ public class AdminControllerMvcTest {
                     jwt()
                         .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
                         .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
-                .queryParam("correctVersion", "2.0.000")
-                .queryParam("draftVersion", "1.0.000")
+                .queryParam("draftVersion", "2.0.000")
                 .queryParam("inCorrectVersion", "3.0.000")
                 .header("Authorization", "test-okta")
                 .header("harpId", "owner1"))
@@ -956,7 +958,6 @@ public class AdminControllerMvcTest {
   public void testCorrectMeasureVersionSavesMeasureAndLogsExpectedMessage() throws Exception {
     String measureId = "123";
     String inCorrectVersion = "1.0.000";
-    String correctVersion = "0.1.000";
     String draftVersion = "0.0.000";
     String harpId = "harpId";
     String principalName = "testUser";
@@ -1003,7 +1004,6 @@ public class AdminControllerMvcTest {
                 .header("Authorization", "test-okta")
                 .header("harpId", harpId)
                 .param("inCorrectVersion", inCorrectVersion)
-                .param("correctVersion", correctVersion)
                 .param("draftVersion", draftVersion)
                 .principal(() -> principalName))
         .andExpect(status().isOk());
@@ -1029,7 +1029,10 @@ public class AdminControllerMvcTest {
             eq(Measure.class),
             eq(ActionType.VERSION_REVERT),
             eq(TEST_USER_ID),
-            eq(String.format("Reverted from version %s to %s", inCorrectVersion, correctVersion)));
+            eq(
+                String.format(
+                    "Reverted from version %s to %s by MADiE Admin",
+                    inCorrectVersion, draftVersion)));
   }
 
   @Test
@@ -1792,6 +1795,87 @@ public class AdminControllerMvcTest {
     assertThat(result.getResponse(), is(notNullValue()));
     verify(exportService, times(1))
         .getSharedAccessReportForMeasures(any(), anyString(), anyString());
+  }
+
+  @Test
+  public void bulkExportMeasuresForUsersReturnsMeasuresForRequestedUsers() throws Exception {
+    List<String> harpIds = List.of("harp1", "harp2");
+    MeasureListDTO ownedMeasure =
+        MeasureListDTO.builder()
+            .measureName("Owned Measure")
+            .model(String.valueOf(ModelType.QI_CORE))
+            .ownerDisplayName("Alice Owner")
+            .build();
+    MeasureListDTO sharedMeasure =
+        MeasureListDTO.builder()
+            .measureName("Shared Measure")
+            .model(String.valueOf(ModelType.QI_CORE))
+            .build();
+    Map<String, UserMeasuresDTO> serviceResponse =
+        Map.of("harp1", new UserMeasuresDTO(List.of(ownedMeasure), List.of(sharedMeasure)));
+    when(userMeasureExportService.getMeasuresForUsers(anyList())).thenReturn(serviceResponse);
+
+    mockMvc
+        .perform(
+            put("/admin/measures/bulk-fetch-for-users")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .header(HttpHeaders.AUTHORIZATION, "test-okta")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(toJsonString(harpIds)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.harp1.ownedMeasures[0].measureName").value("Owned Measure"))
+        .andExpect(jsonPath("$.harp1.ownedMeasures[0].ownerDisplayName").value("Alice Owner"))
+        .andExpect(jsonPath("$.harp1.sharedMeasures[0].measureName").value("Shared Measure"));
+
+    ArgumentCaptor<List<String>> harpIdsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(userMeasureExportService, times(1)).getMeasuresForUsers(harpIdsCaptor.capture());
+    assertEquals(harpIds, harpIdsCaptor.getValue());
+  }
+
+  @Test
+  public void bulkExportMeasuresForUsersRequestsAllUsersWhenNoBodyProvided() throws Exception {
+    when(userMeasureExportService.getMeasuresForUsers(any())).thenReturn(Map.of());
+
+    MvcResult result =
+        mockMvc
+            .perform(
+                put("/admin/measures/bulk-fetch-for-users")
+                    .with(csrf())
+                    .with(
+                        jwt()
+                            .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                            .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                    .header(HttpHeaders.AUTHORIZATION, "test-okta"))
+            .andExpect(status().isOk())
+            .andReturn();
+
+    assertEquals("{}", result.getResponse().getContentAsString());
+    // when no body is provided the controller forwards null so the service returns every user
+    ArgumentCaptor<List<String>> harpIdsCaptor = ArgumentCaptor.forClass(List.class);
+    verify(userMeasureExportService, times(1)).getMeasuresForUsers(harpIdsCaptor.capture());
+    assertNull(harpIdsCaptor.getValue());
+  }
+
+  @Test
+  public void bulkExportMeasuresForUsersReturnsForbiddenWhenNotAdmin() throws Exception {
+    mockMvc
+        .perform(
+            put("/admin/measures/bulk-export")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_SOME_OTHER_ROLE")))
+                .header(HttpHeaders.AUTHORIZATION, "test-okta")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content(toJsonString(List.of("harp1"))))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(userMeasureExportService);
   }
 
   @Test

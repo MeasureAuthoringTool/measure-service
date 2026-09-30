@@ -396,6 +396,63 @@ class BundleServiceTest implements ResourceUtil {
     verify(mongoGridFsService, times(1)).findById("id1");
   }
 
+  /**
+   * Simulates an included (not the primary) CQL library whose version contains "-ballot", e.g.
+   * "2.0.0-ballot". Previously, packaging-utility attempted to convert every FHIR Library resource
+   * into a MADiE CqlLibrary object, whose version enforced MADiE's major.minor.patch format and
+   * blew up on ballot versions. After the fix, packaging-utility uses a plain-string-version DTO,
+   * so export generation should succeed.
+   */
+  @Test
+  void testExportWithElmWarningsBundleMeasureForVersionedMeasureWithBallotIncludedLibrary()
+      throws IOException {
+    // given
+    final String json =
+        gov.cms.madie.packaging.utils.JsonBits.BUNDLE.replace(
+            "      \"version\": \"1.0.000\",\n"
+                + "      \"name\": \"TestCreateNewLibrary\",\n"
+                + "      \"title\": \"TestCreateNewLibrary\",\n",
+            "      \"version\": \"2.0.0-ballot\",\n"
+                + "      \"name\": \"TestCreateNewLibrary\",\n"
+                + "      \"title\": \"TestCreateNewLibrary\",\n");
+    measure.getMeasureMetaData().setDraft(false);
+
+    Export export =
+        Export.builder()
+            .measureId(measure.getId())
+            .measureBundleGridFsId("id1")
+            .measureBundleWithoutWarningsGridFsId("id2")
+            .build();
+    measure.setMeasureMetaData(
+        MeasureMetaData.builder()
+            .draft(false)
+            .steward(Organization.builder().name("SemanticBits").build())
+            .description("This is a description")
+            .developers(List.of(Organization.builder().name("ICF").build()))
+            .build());
+    measure.setModel("QI-Core v4.1.1");
+    when(exportRepository.findByMeasureId(anyString())).thenReturn(Optional.of(export));
+    when(mongoGridFsService.findById("id1")).thenReturn(json);
+
+    // when
+    PackageDto output = bundleService.getMeasureExport(measure, "Info", "******");
+
+    // then
+    assertNotNull(output);
+    assertNotNull(output.getExportPackage());
+    boolean foundBallotCqlEntry = false;
+    ZipInputStream z = new ZipInputStream(new ByteArrayInputStream(output.getExportPackage()));
+    ZipEntry entry;
+    while ((entry = z.getNextEntry()) != null) {
+      if ("cql/TestCreateNewLibrary-2.0.0-ballot.cql".equals(entry.getName())) {
+        foundBallotCqlEntry = true;
+        break;
+      }
+    }
+    assertTrue(foundBallotCqlEntry);
+    verify(mongoGridFsService, times(1)).findById("id1");
+  }
+
   @Test
   void testExportWithElmWarningsWhenBundleIsNotAvailableInGridFsButIsStoredAsBundleJson() {
     final String json = gov.cms.madie.packaging.utils.JsonBits.BUNDLE;

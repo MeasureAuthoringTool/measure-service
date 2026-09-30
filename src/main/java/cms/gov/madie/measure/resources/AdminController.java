@@ -7,6 +7,7 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReport;
 import cms.gov.madie.measure.dto.MeasureTestCaseValidationReportSummary;
 import cms.gov.madie.measure.dto.TestCaseValidationReport;
+import cms.gov.madie.measure.dto.UserMeasuresDTO;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
@@ -68,6 +69,7 @@ public class AdminController extends AbstractMeasureController {
   private final MeasureLockService measureLockService;
   private final TestCaseLockService testCaseLockService;
   private final AdminService adminService;
+  private final UserMeasureExportService userMeasureExportService;
   private final AppConfigService appConfigService;
   private final CacheManager cacheManager;
   private final CompositeRelationshipService compositeRelationshipService;
@@ -356,7 +358,6 @@ public class AdminController extends AbstractMeasureController {
       Principal principal,
       @PathVariable String id,
       @RequestParam String inCorrectVersion,
-      @RequestParam String correctVersion,
       @RequestParam String draftVersion) {
     Measure measureToCorrectVersion = measureService.findMeasureById(id);
     if (measureToCorrectVersion == null
@@ -386,17 +387,17 @@ public class AdminController extends AbstractMeasureController {
           measureToCorrectVersion.getId(), "Only one draft is permitted per measure.");
     }
 
-    // check if the draftVersion is less than correctVersion
-    if (!isLessThan(correctVersion, draftVersion)) {
-      throw new InvalidRequestException("Draft version should be always less than correct version");
+    // check if the draftVersion is less than current version
+    if (!isLessThan(inCorrectVersion, draftVersion)) {
+      throw new InvalidRequestException(
+          "New version # must be lower than the intended final version number");
     }
 
     // check if the given version is already associated
     if (!checkIfVersionIsAlreadyAssociated(
-        measureToCorrectVersion.getMeasureSetId(), correctVersion, draftVersion)) {
+        measureToCorrectVersion.getMeasureSetId(), draftVersion)) {
       throw new InvalidResourceStateException(
-          "Version number cannot be corrected. "
-              + "The given draft or correct version number is already associated");
+          "New version # must not be one that has been used previously for this measure");
     }
 
     Version newDraftVersion = Version.parse(draftVersion);
@@ -423,7 +424,8 @@ public class AdminController extends AbstractMeasureController {
         Measure.class,
         ActionType.VERSION_REVERT,
         principal.getName().toLowerCase(),
-        String.format("Reverted from version %s to %s", inCorrectVersion, correctVersion));
+        String.format(
+            "Reverted from version %s to %s by MADiE Admin", inCorrectVersion, draftVersion));
 
     return ResponseEntity.ok(correctedVersionMeasure);
   }
@@ -538,16 +540,12 @@ public class AdminController extends AbstractMeasureController {
     }
   }
 
-  private boolean checkIfVersionIsAlreadyAssociated(
-      String measureSetId, String correctVersion, String draftVersion) {
+  private boolean checkIfVersionIsAlreadyAssociated(String measureSetId, String draftVersion) {
     List<Measure> allByMeasureSetIdAndActive =
         measureRepository.findAllByMeasureSetIdAndActive(measureSetId, true);
     List<Measure> measureStream =
         allByMeasureSetIdAndActive.stream()
-            .filter(
-                measure ->
-                    measure.getVersion().toString().equals(correctVersion)
-                        || measure.getVersion().toString().equals(draftVersion))
+            .filter(measure -> measure.getVersion().toString().equals(draftVersion))
             .toList();
     return CollectionUtils.isEmpty(measureStream);
   }
@@ -713,5 +711,23 @@ public class AdminController extends AbstractMeasureController {
     Page<MeasureListDTO> measures =
         measureService.getMeasuresByCriteria(searchCriteria, ownershipTypes, pageReq, username);
     return ResponseEntity.ok(measures);
+  }
+
+  /**
+   * Bulk variant of {@link #searchMeasuresForUser} for the Full User Export: returns the owned and
+   * shared measures (latest per family) for many users in a single request, so the export does not
+   * have to make two search calls per user.
+   *
+   * @param harpIds the users to include; when null/empty, every user with measures is returned
+   * @return map of lower-cased HARP id -&gt; owned/shared measure lists
+   */
+  @PutMapping("/measures/bulk-fetch-for-users")
+  public ResponseEntity<Map<String, UserMeasuresDTO>> bulkExportMeasuresForUsers(
+      @RequestBody(required = false) List<String> harpIds, Principal principal) {
+    log.info(
+        "Admin [{}] requested bulk measure export for {} user(s)",
+        principal != null ? principal.getName() : "unknown",
+        CollectionUtils.isEmpty(harpIds) ? "all" : harpIds.size());
+    return ResponseEntity.ok(userMeasureExportService.getMeasuresForUsers(harpIds));
   }
 }
