@@ -14,4 +14,6 @@ public interface MeasureSetRepository
   Optional<MeasureSet> findByMeasureSetId(String measureSetId);
 
   List<MeasureSet> findAllByOwnerIn(Collection<String> owners);
+
+  List<MeasureSet> findAllByMeasureSetIdIn(Collection<String> measureSetIds);
 }

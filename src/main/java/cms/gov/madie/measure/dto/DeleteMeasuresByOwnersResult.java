@@ -16,6 +16,13 @@ public class DeleteMeasuresByOwnersResult {
   private List<String> harpIds = new ArrayList<>();
   private int measureSetCount;
   private int measureCount;
+
+  /**
+   * How many of those measures were reached only by matching createdBy - i.e. had no measure set
+   * row pointing at them. A non-zero value here is orphaned data the measure set pass would miss.
+   */
+  private int createdByOnlyMeasureCount;
+
   private int exportCount;
   private int exportGridFsFileCount;
   private long measureActionLogCount;

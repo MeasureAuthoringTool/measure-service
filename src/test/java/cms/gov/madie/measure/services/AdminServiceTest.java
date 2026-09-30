@@ -233,6 +233,8 @@ class AdminServiceTest {
 
     when(measureSetRepository.findAllByOwnerIn(List.of("testuser1", "testuser2")))
         .thenReturn(List.of(setOne, setTwo));
+    when(measureRepository.findByCreatedByIn(List.of("testuser1", "testuser2")))
+        .thenReturn(List.of());
     when(measureRepository.findByMeasureSetIdIn(List.of("set-1", "set-2")))
         .thenReturn(List.of(measureOne, measureTwo));
     when(exportRepository.findAllByMeasureIdIn(List.of("measure-1", "measure-2")))
@@ -251,6 +253,7 @@ class AdminServiceTest {
 
     assertThat(result.getMeasureSetCount(), is(2));
     assertThat(result.getMeasureCount(), is(2));
+    assertThat(result.getCreatedByOnlyMeasureCount(), is(0));
     assertThat(result.getExportCount(), is(1));
     assertThat(result.getExportGridFsFileCount(), is(2));
     assertThat(result.getMeasureActionLogCount(), is(2L));
@@ -276,6 +279,7 @@ class AdminServiceTest {
         .thenReturn(List.of(measureSet("set-1", "testuser1")));
     when(measureRepository.findByMeasureSetIdIn(List.of("set-1")))
         .thenReturn(List.of(measureIn("set-1", "measure-1", "tc-1", "tc-2")));
+    when(measureRepository.findByCreatedByIn(List.of("testuser1"))).thenReturn(List.of());
     when(exportRepository.findAllByMeasureIdIn(List.of("measure-1"))).thenReturn(List.of());
 
     adminService.deleteMeasuresByOwners(List.of("testuser1"), "admin");
@@ -286,7 +290,7 @@ class AdminServiceTest {
 
     verify(actionLogRepository)
         .deleteActionLogsByTargetIds(targetIds.capture(), eq(MeasureSet.class));
-    assertThat(targetIds.getValue(), is(List.of("set-1")));
+    assertThat(List.copyOf(targetIds.getValue()), is(List.of("set-1")));
 
     verify(actionLogRepository)
         .deleteActionLogsByTargetIds(targetIds.capture(), eq(TestCase.class));
@@ -296,6 +300,7 @@ class AdminServiceTest {
   @Test
   void deleteMeasuresByOwnersNormalizesHarpIds() {
     when(measureSetRepository.findAllByOwnerIn(List.of("testuser1"))).thenReturn(List.of());
+    when(measureRepository.findByCreatedByIn(List.of("testuser1"))).thenReturn(List.of());
 
     DeleteMeasuresByOwnersResult result =
         adminService.deleteMeasuresByOwners(List.of("  TestUser1 ", "testuser1"), "admin");
@@ -318,5 +323,60 @@ class AdminServiceTest {
     assertThrows(
         InvalidRequestException.class,
         () -> adminService.deleteMeasuresByOwners(List.of("  ", ""), "admin"));
+  }
+
+  @Test
+  void deleteMeasuresByOwnersPicksUpOrphanedMeasuresByCreatedBy() {
+    // measure-2 has no measure set row, so only the createdBy pass can reach it
+    Measure viaSet = measureIn("set-1", "measure-1", "tc-1");
+    Measure orphan = measureIn("set-gone", "measure-2", "tc-2");
+
+    when(measureSetRepository.findAllByOwnerIn(List.of("testuser1")))
+        .thenReturn(List.of(measureSet("set-1", "testuser1")));
+    when(measureRepository.findByMeasureSetIdIn(List.of("set-1"))).thenReturn(List.of(viaSet));
+    when(measureRepository.findByCreatedByIn(List.of("testuser1")))
+        .thenReturn(List.of(viaSet, orphan));
+    // "set-gone" has no MeasureSet row, so its action logs are orphans too
+    when(measureSetRepository.findAllByMeasureSetIdIn(anyCollection())).thenReturn(List.of());
+    when(exportRepository.findAllByMeasureIdIn(List.of("measure-1", "measure-2")))
+        .thenReturn(List.of());
+
+    DeleteMeasuresByOwnersResult result =
+        adminService.deleteMeasuresByOwners(List.of("testuser1"), "admin");
+
+    // viaSet is not double counted despite being returned by both queries
+    assertThat(result.getMeasureCount(), is(2));
+    assertThat(result.getCreatedByOnlyMeasureCount(), is(1));
+    assertThat(result.getMeasureIds(), is(List.of("measure-1", "measure-2")));
+
+    verify(measureRepository).deleteAll(List.of(viaSet, orphan));
+    // only the owned set is deleted; "set-gone" has no row to delete
+    verify(measureSetRepository).deleteAll(List.of(measureSet("set-1", "testuser1")));
+
+    ArgumentCaptor<Collection<String>> setLogIds = ArgumentCaptor.forClass(Collection.class);
+    verify(actionLogRepository)
+        .deleteActionLogsByTargetIds(setLogIds.capture(), eq(MeasureSet.class));
+    assertThat(List.copyOf(setLogIds.getValue()), is(List.of("set-1", "set-gone")));
+  }
+
+  @Test
+  void deleteMeasuresByOwnersKeepsActionLogsOfSetsThatStillExist() {
+    Measure orphan = measureIn("set-live", "measure-2", "tc-2");
+
+    when(measureSetRepository.findAllByOwnerIn(List.of("testuser1"))).thenReturn(List.of());
+    when(measureRepository.findByCreatedByIn(List.of("testuser1"))).thenReturn(List.of(orphan));
+    // set-live still exists and belongs to someone else, so its history must survive
+    when(measureSetRepository.findAllByMeasureSetIdIn(anyCollection()))
+        .thenReturn(List.of(measureSet("set-live", "someoneelse")));
+    when(exportRepository.findAllByMeasureIdIn(List.of("measure-2"))).thenReturn(List.of());
+
+    adminService.deleteMeasuresByOwners(List.of("testuser1"), "admin");
+
+    ArgumentCaptor<Collection<String>> setLogIds = ArgumentCaptor.forClass(Collection.class);
+    verify(actionLogRepository)
+        .deleteActionLogsByTargetIds(setLogIds.capture(), eq(MeasureSet.class));
+    assertThat(List.copyOf(setLogIds.getValue()), is(List.of()));
+
+    verify(measureRepository).deleteAll(List.of(orphan));
   }
 }

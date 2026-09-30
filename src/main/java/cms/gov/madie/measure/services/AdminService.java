@@ -20,10 +20,15 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Slf4j
@@ -65,13 +70,30 @@ public class AdminService {
     log.info("Admin [{}] is hard deleting all measures owned by {}", username, owners);
 
     List<MeasureSet> measureSets = measureSetRepository.findAllByOwnerIn(owners);
-    if (CollectionUtils.isEmpty(measureSets)) {
-      log.info("No measure sets found for owners {}; nothing to delete", owners);
+    List<String> measureSetIds = measureSets.stream().map(MeasureSet::getMeasureSetId).toList();
+
+    // Measures are resolved two ways and merged. The measure set pass is the normal path; the
+    // createdBy pass reaches measures whose measureSet row is missing, which the first pass
+    // cannot see - without it those measures and their exports, logs and locks survive the purge.
+    Map<String, Measure> measuresById = new LinkedHashMap<>();
+    if (CollectionUtils.isNotEmpty(measureSetIds)) {
+      measureRepository
+          .findByMeasureSetIdIn(measureSetIds)
+          .forEach(measure -> measuresById.put(measure.getId(), measure));
+    }
+    int viaMeasureSetCount = measuresById.size();
+    measureRepository
+        .findByCreatedByIn(owners)
+        .forEach(measure -> measuresById.putIfAbsent(measure.getId(), measure));
+
+    List<Measure> measures = List.copyOf(measuresById.values());
+    int createdByOnlyMeasureCount = measures.size() - viaMeasureSetCount;
+
+    if (measures.isEmpty() && measureSets.isEmpty()) {
+      log.info("No measures or measure sets found for owners {}; nothing to delete", owners);
       return DeleteMeasuresByOwnersResult.builder().harpIds(owners).build();
     }
 
-    List<String> measureSetIds = measureSets.stream().map(MeasureSet::getMeasureSetId).toList();
-    List<Measure> measures = measureRepository.findByMeasureSetIdIn(measureSetIds);
     List<String> measureIds = measures.stream().map(Measure::getId).toList();
     // Test cases ids to clear the separate testCaseActionLog collection.
     List<String> testCaseIds =
@@ -96,11 +118,29 @@ public class AdminService {
             .distinct()
             .toList();
 
+    // A measure reached only through createdBy may name a measure set that no longer exists. Its
+    // measureSetActionLog rows are leftovers as well, so fold those ids in - but only after
+    // confirming the set really is gone, so a set still owned by somebody else keeps its history.
+    Set<String> actionLogSetIds = new LinkedHashSet<>(measureSetIds);
+    Set<String> danglingSetIds =
+        measures.stream()
+            .map(Measure::getMeasureSetId)
+            .filter(StringUtils::isNotBlank)
+            .filter(setId -> !actionLogSetIds.contains(setId))
+            .collect(Collectors.toCollection(LinkedHashSet::new));
+    if (!danglingSetIds.isEmpty()) {
+      measureSetRepository.findAllByMeasureSetIdIn(danglingSetIds).stream()
+          .map(MeasureSet::getMeasureSetId)
+          .forEach(danglingSetIds::remove);
+      actionLogSetIds.addAll(danglingSetIds);
+    }
+
     DeleteMeasuresByOwnersResult.DeleteMeasuresByOwnersResultBuilder result =
         DeleteMeasuresByOwnersResult.builder()
             .harpIds(owners)
             .measureSetCount(measureSets.size())
             .measureCount(measures.size())
+            .createdByOnlyMeasureCount(createdByOnlyMeasureCount)
             .exportCount(exports.size())
             .exportGridFsFileCount(gridFsIds.size())
             .measureSetIds(measureSetIds)
@@ -114,7 +154,7 @@ public class AdminService {
     long measureActionLogCount =
         actionLogRepository.deleteActionLogsByTargetIds(measureIds, Measure.class);
     long measureSetActionLogCount =
-        actionLogRepository.deleteActionLogsByTargetIds(measureSetIds, MeasureSet.class);
+        actionLogRepository.deleteActionLogsByTargetIds(actionLogSetIds, MeasureSet.class);
     long testCaseActionLogCount =
         actionLogRepository.deleteActionLogsByTargetIds(testCaseIds, TestCase.class);
 
@@ -131,14 +171,15 @@ public class AdminService {
     measureSetRepository.deleteAll(measureSets);
 
     log.info(
-        "Admin [{}] hard deleted for owners {}: {} measure set(s), {} measure(s), "
-            + "{} export(s), {} GridFS file(s), {} measure action log(s), {} measure set action "
-            + "log(s), {} test case action log(s), {} measure lock(s), {} test case lock(s). "
-            + "Measure ids: {}",
+        "Admin [{}] hard deleted for owners {}: {} measure set(s), {} measure(s) ({} found only "
+            + "by createdBy), {} export(s), {} GridFS file(s), {} measure action log(s), {} measure "
+            + "set action log(s), {} test case action log(s), {} measure lock(s), {} test case "
+            + "lock(s). Measure ids: {}",
         username,
         owners,
         measureSets.size(),
         measures.size(),
+        createdByOnlyMeasureCount,
         exports.size(),
         gridFsIds.size(),
         measureActionLogCount,

@@ -65,4 +65,13 @@ public interface MeasureRepository
       String setId, Collection<String> model, boolean draft);
 
   List<Measure> findByMeasureSetIdIn(Collection<String> measureSetIds);
+
+  /**
+   * Finds measures directly by their creator, regardless of measure set. Used by the admin owner
+   * purge to reach measures whose measureSet row is missing, which a measureSetId lookup cannot
+   * find. createdBy is stored lower-cased, so callers must pass lower-cased ids.
+   *
+   * @param createdBy lower-cased HARP ids
+   */
+  List<Measure> findByCreatedByIn(Collection<String> createdBy);
 }
