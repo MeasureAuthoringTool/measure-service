@@ -299,7 +299,7 @@ public class MeasureSearchServiceImplTest {
   @Test
   public void testFastPathTotalIsZeroWhenCountFacetIsNull() {
     FacetDTO facetDTO =
-        FacetDTO.builder().queryResults(Collections.emptyList()).count(null).build();
+        FacetDTO.builder().queryResults(Collections.emptyList()).countFacet(null).build();
     when(mongoTemplate.aggregate(
             any(Aggregation.class),
             ArgumentMatchers.eq(Measure.class),
@@ -312,6 +312,86 @@ public class MeasureSearchServiceImplTest {
 
     assertEquals(0, page.getTotalElements());
     assertTrue(page.getContent().isEmpty());
+  }
+
+  @Test
+  public void testFastPathTotalReflectsCountFacetAndIsNotClampedByPageImpl() {
+    MeasureListDTO m1 =
+        MeasureListDTO.builder().id("1").measureName("m1").measureSetId("set1").build();
+    MeasureListDTO m2 =
+        MeasureListDTO.builder().id("2").measureName("m2").measureSetId("set2").build();
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(List.of(m1, m2))
+            .countFacet(List.of(new FacetDTO.TotalCountDTO(1220)))
+            .build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    assertEquals(1220, page.getTotalElements());
+    assertEquals(2, page.getContent().size());
+  }
+
+  @Test
+  public void testFastPathCountFacetUsesCountStageNotSortByCount() {
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(List.of(measure1))
+            .countFacet(List.of(new FacetDTO.TotalCountDTO(5)))
+            .build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    measureAclRepository.searchMeasuresByCriteria(
+        "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+
+    String facetStage =
+        captor.getValue().toPipeline(Aggregation.DEFAULT_CONTEXT).stream()
+            .map(Object::toString)
+            .filter(stage -> stage.contains("$facet"))
+            .findFirst()
+            .orElse("");
+
+    assertTrue(facetStage.contains("countFacet"), "fast path must expose a countFacet");
+    assertTrue(
+        facetStage.contains("$count"),
+        "countFacet must use a $count stage for a reliable total, got: " + facetStage);
+    assertTrue(
+        facetStage.contains("total"),
+        "the $count stage must alias its result as 'total' to map onto TotalCountDTO");
+    assertFalse(
+        facetStage.contains("$sortByCount"),
+        "countFacet must NOT use $sortByCount - it yields an unreliable total after "
+            + "group/replaceRoot reshape the documents");
+  }
+
+  @Test
+  public void testFacetDtoTotalCountFieldNameMatchesCountAlias() throws NoSuchFieldException {
+    // The $count stage aliases its result as "total" (count().as("total")); Spring Data maps that
+    // field onto FacetDTO.TotalCountDTO purely by name. This pins the two together so a rename on
+    // either side (pipeline alias or DTO field) fails fast instead of silently producing a 0 total.
+    java.lang.reflect.Field totalField = FacetDTO.TotalCountDTO.class.getDeclaredField("total");
+    assertEquals(long.class, totalField.getType(), "TotalCountDTO.total must stay a long");
+
+    FacetDTO.TotalCountDTO dto = new FacetDTO.TotalCountDTO(1220);
+    assertEquals(1220L, dto.getTotal());
   }
 
   @Test
