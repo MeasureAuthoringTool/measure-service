@@ -469,14 +469,7 @@ public class VersionService {
     if (ModelType.QI_CORE.getValue().equals(measure.getModel())) {
       List<Measure> measures =
           measureRepository.findByMeasureSetIdAndModelInAndMeasureMetaDataDraft(
-              measure.getMeasureSetId(),
-              List.of(ModelType.QI_CORE_6_0_0.getValue(), ModelType.QI_CORE_7_0_0.getValue()),
-              false);
-      return CollectionUtils.isEmpty(measures);
-    } else if (ModelType.QI_CORE_6_0_0.getValue().equals(measure.getModel())) {
-      List<Measure> measures =
-          measureRepository.findByMeasureSetIdAndModelInAndMeasureMetaDataDraft(
-              measure.getMeasureSetId(), List.of(ModelType.QI_CORE_7_0_0.getValue()), false);
+              measure.getMeasureSetId(), List.of(ModelType.QI_CORE_6_0_0.getValue()), false);
       return CollectionUtils.isEmpty(measures);
     }
     return true;
@@ -487,10 +480,6 @@ public class VersionService {
     boolean valid = true;
     if (ModelType.QI_CORE_6_0_0.getValue().equals(measure.getModel())
         && ModelType.QI_CORE.getValue().equals(model)) {
-      valid = false;
-    } else if (ModelType.QI_CORE_7_0_0.getValue().equals(measure.getModel())
-        && (ModelType.QI_CORE_6_0_0.getValue().equals(model)
-            || ModelType.QI_CORE.getValue().equals(model))) {
       valid = false;
     }
     return valid;
