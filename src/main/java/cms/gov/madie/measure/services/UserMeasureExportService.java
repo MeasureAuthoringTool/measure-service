@@ -33,9 +33,9 @@ import org.springframework.stereotype.Service;
  *
  * <p>Instead of the export making two search calls per user (OWNED + SHARED) - i.e. hundreds of
  * HTTP round-trips, each with its own aggregation and its own user-service lookup - this service
- * runs <b>one</b> aggregation over the measure collection to get the latest measure per family,
- * groups them into per-user owned/shared buckets in memory, and resolves every owner display name
- * with a <b>single</b> user-service call.
+ * runs <b>one</b> aggregation over the measure collection to get all measure versions, groups them
+ * into per-user owned/shared buckets in memory, and resolves every owner display name with a
+ * <b>single</b> user-service call.
  */
 @Slf4j
 @Service
@@ -46,8 +46,7 @@ public class UserMeasureExportService {
   private final UserServiceClient userServiceClient;
 
   /**
-   * Returns, for each requested HARP id, the latest measure per family the user owns or is shared
-   * on.
+   * Returns, for each requested HARP id, all measure versions the user owns or is shared on.
    *
    * @param harpIds users to include; when null/empty, every user that owns/shares a measure is
    *     returned
@@ -62,11 +61,11 @@ public class UserMeasureExportService {
                 .map(String::toLowerCase)
                 .collect(Collectors.toSet());
 
-    List<MeasureListDTO> latestPerFamily = findLatestMeasurePerFamily();
+    List<MeasureListDTO> allMeasures = findAllMeasureVersions();
 
     // Resolve every owner's display name in one user-service call.
     List<String> ownerIds =
-        latestPerFamily.stream()
+        allMeasures.stream()
             .map(
                 measure ->
                     measure.getMeasureSet() == null ? null : measure.getMeasureSet().getOwner())
@@ -78,7 +77,7 @@ public class UserMeasureExportService {
         ownerIds.isEmpty() ? Map.of() : userServiceClient.getBulkUserDetails(ownerIds);
 
     Map<String, UserMeasuresDTO> byUser = new HashMap<>();
-    for (MeasureListDTO measure : latestPerFamily) {
+    for (MeasureListDTO measure : allMeasures) {
       MeasureSet measureSet = measure.getMeasureSet();
       if (measureSet == null) {
         continue;
@@ -106,9 +105,9 @@ public class UserMeasureExportService {
       }
     }
     log.info(
-        "Bulk export assembled measures for {} user(s) from {} measure families",
+        "Bulk export assembled measures for {} user(s) from {} measure versions",
         byUser.size(),
-        latestPerFamily.size());
+        allMeasures.size());
     return byUser;
   }
 
@@ -128,11 +127,11 @@ public class UserMeasureExportService {
   }
 
   /**
-   * One aggregation: keep active measures, drop the heavy fields before the join, look up the
-   * measureSet, then pick the latest measure per family (active &gt; draft &gt; version, DESC) -
-   * matching the selection the UI/search uses.
+   * Aggregation: keep active measures, drop the heavy fields before the join, look up the
+   * measureSet, then return all measure versions sorted by measureSetId (to group same measures
+   * together), then by draft status and version (DESC).
    */
-  private List<MeasureListDTO> findLatestMeasurePerFamily() {
+  private List<MeasureListDTO> findAllMeasureVersions() {
     LookupOperation lookup =
         LookupOperation.newLookup()
             .from("measureSet")
@@ -145,9 +144,12 @@ public class UserMeasureExportService {
             project().andExclude("cql", "elmJson", "testCases"),
             lookup,
             unwind("measureSet"),
-            sort(Sort.by(Sort.Direction.DESC, "active", "measureMetaData.draft", "version")),
-            group("measureSetId").first("$$ROOT").as("selectedDoc"),
-            replaceRoot("selectedDoc"));
+            sort(
+                Sort.by(
+                    Sort.Order.asc("measureSetId"),
+                    Sort.Order.desc("active"),
+                    Sort.Order.desc("measureMetaData.draft"),
+                    Sort.Order.desc("version"))));
     return mongoTemplate
         .aggregate(aggregation, Measure.class, MeasureListDTO.class)
         .getMappedResults();
