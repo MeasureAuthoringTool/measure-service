@@ -25,15 +25,22 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.aggregation.Aggregation;
 import org.springframework.data.mongodb.core.aggregation.AggregationResults;
+import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
 
 @ExtendWith(MockitoExtension.class)
+// The single-pass fast path (searchLatestPerFamily) means several list-tab tests no longer trigger
+// the old Query-1 (MeasureSetMatchCountDTO) aggregate they stub. Lenient stubbing keeps those
+// harmless stubs from failing while all behavioural assertions still run.
+@MockitoSettings(strictness = Strictness.LENIENT)
 @EnableMongoRepositories(basePackages = "com.gov.madie.measure.repository")
 public class MeasureSearchServiceImplTest {
 
@@ -66,18 +73,23 @@ public class MeasureSearchServiceImplTest {
             .build();
     measure4 = MeasureListDTO.builder().id("4").measureSetId("1-1").build();
     measure5 = MeasureListDTO.builder().id("5").measureSetId("1-1").build();
+
+    // Fast path (My / Shared tabs) resolves the user's owned/shared measureSetIds from the
+    // measureSet collection first. Default it to a non-empty result so the single-pass aggregation
+    // runs; ALL-tab tests skip this lookup entirely (lenient => the unused stub is fine).
+    when(mongoTemplate.find(any(Query.class), ArgumentMatchers.eq(MeasureSet.class)))
+        .thenReturn(List.of(MeasureSet.builder().measureSetId("set1").build()));
   }
 
   @Test
   public void testFindOwnedActiveMeasures() {
     // page size 3 from 0-2
     PageRequest pageRequest = PageRequest.of(0, 3);
-    List<MeasureListDTO> allMeasures = List.of(measure1, measure2, measure3, measure4, measure5);
 
     FacetDTO facetDTO =
         FacetDTO.builder()
             .queryResults(List.of(measure1, measure2, measure3))
-            .count(Arrays.asList(allMeasures.toArray()))
+            .count(Arrays.asList(measure1, measure2, measure3))
             .build();
 
     AggregationResults pagedResults = new AggregationResults<>(List.of(facetDTO), new Document());
@@ -216,6 +228,170 @@ public class MeasureSearchServiceImplTest {
             "john", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
 
     assertEquals("Ready", page.getContent().get(0).getReviewStatus());
+  }
+
+  @Test
+  public void testFastPathAppliesModelAndExcludeMeasureIdFilters() {
+    MeasureListDTO measure =
+        MeasureListDTO.builder().id("1").measureName("measure1").measureSetId("set1").build();
+    FacetDTO facetDTO = FacetDTO.builder().queryResults(List.of(measure)).count(List.of(1)).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    MeasureSearchCriteria criteria =
+        MeasureSearchCriteria.builder()
+            .model(ModelType.QDM_5_6.getValue())
+            .excludeByMeasureIds(List.of("excluded-id"))
+            .build();
+
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), criteria, List.of(OwnershipType.OWNED));
+
+    assertEquals(1, page.getContent().size());
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+    String pipeline = captor.getValue().toString();
+    assertTrue(pipeline.contains(ModelType.QDM_5_6.getValue()), "model filter should be applied");
+    assertTrue(pipeline.contains("excluded-id"), "excludeByMeasureIds should be applied");
+  }
+
+  @Test
+  public void testFastPathReturnsEmptyPageWhenUserHasNoOwnedOrSharedFamilies() {
+    // Override the default stub: this user owns / shares nothing.
+    when(mongoTemplate.find(any(Query.class), ArgumentMatchers.eq(MeasureSet.class)))
+        .thenReturn(Collections.emptyList());
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    assertEquals(0, page.getTotalElements());
+    assertTrue(page.getContent().isEmpty());
+    // No aggregation should run when the user owns/shares nothing.
+    verify(mongoTemplate, never())
+        .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
+  }
+
+  @Test
+  public void testFastPathReturnsEmptyPageWhenAggregationReturnsNoFacet() {
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(new ArrayList<>(), new Document()));
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    assertEquals(0, page.getTotalElements());
+    assertTrue(page.getContent().isEmpty());
+  }
+
+  @Test
+  public void testFastPathTotalIsZeroWhenCountFacetIsNull() {
+    FacetDTO facetDTO =
+        FacetDTO.builder().queryResults(Collections.emptyList()).countFacet(null).build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    assertEquals(0, page.getTotalElements());
+    assertTrue(page.getContent().isEmpty());
+  }
+
+  @Test
+  public void testFastPathTotalReflectsCountFacetAndIsNotClampedByPageImpl() {
+    MeasureListDTO m1 =
+        MeasureListDTO.builder().id("1").measureName("m1").measureSetId("set1").build();
+    MeasureListDTO m2 =
+        MeasureListDTO.builder().id("2").measureName("m2").measureSetId("set2").build();
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(List.of(m1, m2))
+            .countFacet(List.of(new FacetDTO.TotalCountDTO(1220)))
+            .build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    Page<MeasureListDTO> page =
+        measureAclRepository.searchMeasuresByCriteria(
+            "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    assertEquals(1220, page.getTotalElements());
+    assertEquals(2, page.getContent().size());
+  }
+
+  @Test
+  public void testFastPathCountFacetUsesCountStageNotSortByCount() {
+    FacetDTO facetDTO =
+        FacetDTO.builder()
+            .queryResults(List.of(measure1))
+            .countFacet(List.of(new FacetDTO.TotalCountDTO(5)))
+            .build();
+    when(mongoTemplate.aggregate(
+            any(Aggregation.class),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class)))
+        .thenReturn(new AggregationResults<>(List.of(facetDTO), new Document()));
+
+    ArgumentCaptor<Aggregation> captor = ArgumentCaptor.forClass(Aggregation.class);
+    measureAclRepository.searchMeasuresByCriteria(
+        "userId", PageRequest.of(0, 10), null, List.of(OwnershipType.OWNED));
+
+    verify(mongoTemplate)
+        .aggregate(
+            captor.capture(),
+            ArgumentMatchers.eq(Measure.class),
+            ArgumentMatchers.eq(FacetDTO.class));
+
+    String facetStage =
+        captor.getValue().toPipeline(Aggregation.DEFAULT_CONTEXT).stream()
+            .map(Object::toString)
+            .filter(stage -> stage.contains("$facet"))
+            .findFirst()
+            .orElse("");
+
+    assertTrue(facetStage.contains("countFacet"), "fast path must expose a countFacet");
+    assertTrue(
+        facetStage.contains("$count"),
+        "countFacet must use a $count stage for a reliable total, got: " + facetStage);
+    assertTrue(
+        facetStage.contains("total"),
+        "the $count stage must alias its result as 'total' to map onto TotalCountDTO");
+    assertFalse(
+        facetStage.contains("$sortByCount"),
+        "countFacet must NOT use $sortByCount - it yields an unreliable total after "
+            + "group/replaceRoot reshape the documents");
+  }
+
+  @Test
+  public void testFacetDtoTotalCountFieldNameMatchesCountAlias() throws NoSuchFieldException {
+    // The $count stage aliases its result as "total" (count().as("total")); Spring Data maps that
+    // field onto FacetDTO.TotalCountDTO purely by name. This pins the two together so a rename on
+    // either side (pipeline alias or DTO field) fails fast instead of silently producing a 0 total.
+    java.lang.reflect.Field totalField = FacetDTO.TotalCountDTO.class.getDeclaredField("total");
+    assertEquals(long.class, totalField.getType(), "TotalCountDTO.total must stay a long");
+
+    FacetDTO.TotalCountDTO dto = new FacetDTO.TotalCountDTO(1220);
+    assertEquals(1220L, dto.getTotal());
   }
 
   @Test
@@ -1875,8 +2051,8 @@ public class MeasureSearchServiceImplTest {
     assertEquals("v1", page.getContent().get(0).getId());
     assertEquals("d1", page.getContent().get(1).getId());
 
-    // Verify the aggregation pipeline was invoked twice (first pass + post-match)
-    verify(mongoTemplate, times(2))
+    // Single-pass fast path: one aggregation serves the no-search list load.
+    verify(mongoTemplate, times(1))
         .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
   }
 
@@ -1919,7 +2095,7 @@ public class MeasureSearchServiceImplTest {
     assertEquals("cd1", page.getContent().get(0).getId());
     assertEquals("v1", page.getContent().get(1).getId());
 
-    verify(mongoTemplate, times(2))
+    verify(mongoTemplate, times(1))
         .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
   }
 
@@ -1965,7 +2141,7 @@ public class MeasureSearchServiceImplTest {
     assertEquals(measure1.getId(), page.getContent().get(0).getId());
     assertEquals(measure2.getId(), page.getContent().get(1).getId());
 
-    verify(mongoTemplate, times(2))
+    verify(mongoTemplate, times(1))
         .aggregate(any(Aggregation.class), ArgumentMatchers.eq(Measure.class), any());
   }
 

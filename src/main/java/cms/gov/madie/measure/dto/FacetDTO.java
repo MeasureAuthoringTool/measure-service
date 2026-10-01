@@ -14,5 +14,19 @@ import java.util.List;
 public class FacetDTO {
 
   List<Object> count;
+  List<TotalCountDTO> countFacet;
   List<MeasureListDTO> queryResults;
+
+  /**
+   * Holds the result of a {@code $count} facet sub-pipeline (i.e. {@code [{ total: <n> }]}). Used
+   * to obtain a reliable total document count that does not depend on aggregation field-name
+   * mapping (unlike {@code sortByCount}).
+   */
+  @Data
+  @Builder(toBuilder = true)
+  @NoArgsConstructor
+  @AllArgsConstructor
+  public static class TotalCountDTO {
+    private long total;
+  }
 }
