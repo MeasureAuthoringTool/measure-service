@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.config.security.AdminOnly;
+import cms.gov.madie.measure.dto.DeleteMeasuresByOwnersResult;
 import cms.gov.madie.measure.dto.ImpactedMeasureValidationReport;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
@@ -320,6 +321,22 @@ public class AdminController extends AbstractMeasureController {
       return ResponseEntity.ok(measureToDelete);
     }
     throw new ResourceNotFoundException(id);
+  }
+
+  /**
+   * Hard deletes every measure owned by the given HARP ids, along with their test cases (embedded
+   * in the measure), measure sets, exports (including the GridFS blobs those exports reference) and
+   * the measure/measure set/test case action logs for exactly those records.
+   */
+  @DeleteMapping("/measures/owners")
+  public ResponseEntity<DeleteMeasuresByOwnersResult> deleteMeasuresByOwners(
+      Principal principal, @RequestBody List<String> harpIds) {
+    final String username = principal.getName().toLowerCase();
+    log.info(
+        "Admin [{}] is attempting to HARD DELETE all measures for {} owner(s)",
+        username,
+        CollectionUtils.isEmpty(harpIds) ? 0 : harpIds.size());
+    return ResponseEntity.ok(adminService.deleteMeasuresByOwners(harpIds, username));
   }
 
   @GetMapping("/measures/sharedWith")

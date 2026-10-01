@@ -1,16 +1,26 @@
 package cms.gov.madie.measure.services;
 
+import cms.gov.madie.measure.dto.DeleteMeasuresByOwnersResult;
 import cms.gov.madie.measure.exceptions.*;
+import cms.gov.madie.measure.repositories.ActionLogRepositoryImpl;
+import cms.gov.madie.measure.repositories.ExportRepository;
+import cms.gov.madie.measure.repositories.MeasureLockRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
+import cms.gov.madie.measure.repositories.MeasureSetRepository;
+import cms.gov.madie.measure.repositories.TestCaseLockRepository;
 import gov.cms.madie.models.common.ModelType;
+import gov.cms.madie.models.measure.Export;
 import gov.cms.madie.models.measure.Measure;
+import gov.cms.madie.models.measure.MeasureSet;
 import gov.cms.madie.models.measure.TestCase;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 
@@ -25,6 +35,12 @@ class AdminServiceTest {
 
   @Mock private MeasureService measureService;
   @Mock private MeasureRepository measureRepository;
+  @Mock private MeasureSetRepository measureSetRepository;
+  @Mock private ExportRepository exportRepository;
+  @Mock private ActionLogRepositoryImpl actionLogRepository;
+  @Mock private MongoGridFsService mongoGridFsService;
+  @Mock private MeasureLockRepository measureLockRepository;
+  @Mock private TestCaseLockRepository testCaseLockRepository;
   @InjectMocks private AdminService adminService;
 
   private final String incorrectCodeSystemValue =
@@ -184,5 +200,123 @@ class AdminServiceTest {
     assertThat(tc1.getTestCaseSetId(), is(notNullValue()));
     assertThat(tc2.getTestCaseSetId(), is(notNullValue()));
     verify(measureRepository, times(1)).save(measure);
+  }
+
+  private MeasureSet measureSet(String setId, String owner) {
+    return MeasureSet.builder().id(setId + "-doc").measureSetId(setId).owner(owner).build();
+  }
+
+  private Measure measureIn(String setId, String measureId, String... testCaseIds) {
+    return Measure.builder()
+        .id(measureId)
+        .measureSetId(setId)
+        .testCases(
+            java.util.Arrays.stream(testCaseIds)
+                .map(tcId -> TestCase.builder().id(tcId).build())
+                .toList())
+        .build();
+  }
+
+  @Test
+  void deleteMeasuresByOwnersDeletesEverythingForTheOwners() {
+    MeasureSet setOne = measureSet("set-1", "testuser1");
+    MeasureSet setTwo = measureSet("set-2", "testuser2");
+    Measure measureOne = measureIn("set-1", "measure-1", "tc-1", "tc-2");
+    Measure measureTwo = measureIn("set-2", "measure-2", "tc-3");
+    Export export =
+        Export.builder()
+            .id("export-1")
+            .measureId("measure-1")
+            .measureBundleGridFsId("grid-1")
+            .measureBundleWithoutWarningsGridFsId("grid-2")
+            .build();
+
+    when(measureSetRepository.findAllByOwnerIn(List.of("testuser1", "testuser2")))
+        .thenReturn(List.of(setOne, setTwo));
+    when(measureRepository.findByMeasureSetIdIn(List.of("set-1", "set-2")))
+        .thenReturn(List.of(measureOne, measureTwo));
+    when(exportRepository.findAllByMeasureIdIn(List.of("measure-1", "measure-2")))
+        .thenReturn(List.of(export));
+    when(actionLogRepository.deleteActionLogsByTargetIds(anyCollection(), eq(Measure.class)))
+        .thenReturn(2L);
+    when(actionLogRepository.deleteActionLogsByTargetIds(anyCollection(), eq(MeasureSet.class)))
+        .thenReturn(2L);
+    when(actionLogRepository.deleteActionLogsByTargetIds(anyCollection(), eq(TestCase.class)))
+        .thenReturn(3L);
+    when(measureLockRepository.deleteByMeasureIdIn(anyCollection())).thenReturn(1L);
+    when(testCaseLockRepository.deleteByMeasureIdIn(anyCollection())).thenReturn(4L);
+
+    DeleteMeasuresByOwnersResult result =
+        adminService.deleteMeasuresByOwners(List.of("testuser1", "testuser2"), "admin");
+
+    assertThat(result.getMeasureSetCount(), is(2));
+    assertThat(result.getMeasureCount(), is(2));
+    assertThat(result.getExportCount(), is(1));
+    assertThat(result.getExportGridFsFileCount(), is(2));
+    assertThat(result.getMeasureActionLogCount(), is(2L));
+    assertThat(result.getMeasureSetActionLogCount(), is(2L));
+    assertThat(result.getTestCaseActionLogCount(), is(3L));
+    assertThat(result.getMeasureLockCount(), is(1L));
+    assertThat(result.getTestCaseLockCount(), is(4L));
+    assertThat(result.getMeasureIds(), is(List.of("measure-1", "measure-2")));
+    assertThat(result.getMeasureSetIds(), is(List.of("set-1", "set-2")));
+
+    verify(mongoGridFsService).deleteById("grid-1");
+    verify(mongoGridFsService).deleteById("grid-2");
+    verify(exportRepository).deleteAll(List.of(export));
+    verify(measureRepository).deleteAll(List.of(measureOne, measureTwo));
+    verify(measureSetRepository).deleteAll(List.of(setOne, setTwo));
+    verify(measureLockRepository).deleteByMeasureIdIn(List.of("measure-1", "measure-2"));
+    verify(testCaseLockRepository).deleteByMeasureIdIn(List.of("measure-1", "measure-2"));
+  }
+
+  @Test
+  void deleteMeasuresByOwnersScopesActionLogsToTheDeletedRecords() {
+    when(measureSetRepository.findAllByOwnerIn(List.of("testuser1")))
+        .thenReturn(List.of(measureSet("set-1", "testuser1")));
+    when(measureRepository.findByMeasureSetIdIn(List.of("set-1")))
+        .thenReturn(List.of(measureIn("set-1", "measure-1", "tc-1", "tc-2")));
+    when(exportRepository.findAllByMeasureIdIn(List.of("measure-1"))).thenReturn(List.of());
+
+    adminService.deleteMeasuresByOwners(List.of("testuser1"), "admin");
+
+    ArgumentCaptor<Collection<String>> targetIds = ArgumentCaptor.forClass(Collection.class);
+    verify(actionLogRepository).deleteActionLogsByTargetIds(targetIds.capture(), eq(Measure.class));
+    assertThat(targetIds.getValue(), is(List.of("measure-1")));
+
+    verify(actionLogRepository)
+        .deleteActionLogsByTargetIds(targetIds.capture(), eq(MeasureSet.class));
+    assertThat(targetIds.getValue(), is(List.of("set-1")));
+
+    verify(actionLogRepository)
+        .deleteActionLogsByTargetIds(targetIds.capture(), eq(TestCase.class));
+    assertThat(targetIds.getValue(), is(List.of("tc-1", "tc-2")));
+  }
+
+  @Test
+  void deleteMeasuresByOwnersNormalizesHarpIds() {
+    when(measureSetRepository.findAllByOwnerIn(List.of("testuser1"))).thenReturn(List.of());
+
+    DeleteMeasuresByOwnersResult result =
+        adminService.deleteMeasuresByOwners(List.of("  TestUser1 ", "testuser1"), "admin");
+
+    assertThat(result.getHarpIds(), is(List.of("testuser1")));
+    assertThat(result.getMeasureSetCount(), is(0));
+    verify(measureRepository, never()).findByMeasureSetIdIn(any());
+    verify(measureSetRepository, never()).deleteAll(any());
+    verify(measureLockRepository, never()).deleteByMeasureIdIn(any());
+    verify(testCaseLockRepository, never()).deleteByMeasureIdIn(any());
+  }
+
+  @Test
+  void deleteMeasuresByOwnersThrowsWhenNoHarpIdsGiven() {
+    assertThrows(
+        InvalidRequestException.class,
+        () -> adminService.deleteMeasuresByOwners(List.of(), "admin"));
+    assertThrows(
+        InvalidRequestException.class, () -> adminService.deleteMeasuresByOwners(null, "admin"));
+    assertThrows(
+        InvalidRequestException.class,
+        () -> adminService.deleteMeasuresByOwners(List.of("  ", ""), "admin"));
   }
 }

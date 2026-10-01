@@ -41,4 +41,11 @@ public class MongoGridFsService {
   public ObjectId save(ByteArrayInputStream inputStream, String filename, String contentType) {
     return operations.store(inputStream, filename, contentType);
   }
+
+  public void deleteById(String gridFsId) {
+    if (gridFsId == null || gridFsId.isEmpty()) {
+      return;
+    }
+    operations.delete(Query.query(Criteria.where("_id").is(new ObjectId(gridFsId))));
+  }
 }
