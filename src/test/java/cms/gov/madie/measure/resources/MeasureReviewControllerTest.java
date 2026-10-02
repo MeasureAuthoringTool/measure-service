@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.services.MeasureReviewService;
+import gov.cms.madie.models.common.Comment;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.MeasureReview;
@@ -55,7 +56,7 @@ class MeasureReviewControllerTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment("Looks good")
+            .comment(List.of(Comment.builder().content("Looks good").build()))
             .build();
   }
 
