@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.repositories;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -12,4 +13,6 @@ public interface MeasureLockRepository extends MongoRepository<MeasureLock, Stri
   void deleteByMeasureId(String measureId);
 
   List<MeasureLock> findAllByLockedBy(String lockedBy);
+
+  long deleteByMeasureIdIn(Collection<String> measureIds);
 }

@@ -2,6 +2,8 @@ package cms.gov.madie.measure.repositories;
 
 import gov.cms.madie.models.measure.MeasureSet;
 import org.springframework.data.mongodb.repository.MongoRepository;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface MeasureSetRepository
@@ -10,4 +12,6 @@ public interface MeasureSetRepository
   boolean existsByMeasureSetId(String measureSetId);
 
   Optional<MeasureSet> findByMeasureSetId(String measureSetId);
+
+  List<MeasureSet> findAllByOwnerIn(Collection<String> owners);
 }

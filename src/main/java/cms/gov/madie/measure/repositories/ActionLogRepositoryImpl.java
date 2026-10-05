@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.repositories;
 
+import com.mongodb.client.result.DeleteResult;
 import com.mongodb.client.result.UpdateResult;
 
 import cms.gov.madie.measure.utils.ActionLogCollectionType;
@@ -67,6 +68,23 @@ public class ActionLogRepositoryImpl implements ActionLogRepository {
 
     Query emptyActionsQuery = new Query(Criteria.where("actions").size(0));
     mongoTemplate.remove(emptyActionsQuery, collection);
+  }
+
+  @Override
+  @Transactional
+  public long deleteActionLogsByTargetIds(Collection<String> targetIds, Class<?> targetClass) {
+    if (targetIds == null || targetIds.isEmpty()) {
+      return 0L;
+    }
+    final String collection = ActionLogCollectionType.getCollectionNameForClazz(targetClass);
+    DeleteResult result =
+        mongoTemplate.remove(new Query(Criteria.where("targetId").in(targetIds)), collection);
+    log.info(
+        "deleteActionLogsByTargetIds: removed {} document(s) from collection [{}] for {} target(s)",
+        result.getDeletedCount(),
+        collection,
+        targetIds.size());
+    return result.getDeletedCount();
   }
 
   @Override
