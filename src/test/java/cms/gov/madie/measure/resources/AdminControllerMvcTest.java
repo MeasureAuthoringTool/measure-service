@@ -2132,7 +2132,7 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            MockMvcRequestBuilders.delete("/admin/measures/owners")
+            MockMvcRequestBuilders.delete("/admin/measures/by-owners")
                 .with(csrf())
                 .with(
                     jwt()

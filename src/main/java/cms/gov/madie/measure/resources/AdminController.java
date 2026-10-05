@@ -328,7 +328,7 @@ public class AdminController extends AbstractMeasureController {
    * in the measure), measure sets, exports (including the GridFS blobs those exports reference) and
    * the measure/measure set/test case action logs for exactly those records.
    */
-  @DeleteMapping("/measures/owners")
+  @DeleteMapping("/measures/by-owners")
   public ResponseEntity<DeleteMeasuresByOwnersResult> deleteMeasuresByOwners(
       Principal principal, @RequestBody List<String> harpIds) {
     final String username = principal.getName().toLowerCase();
