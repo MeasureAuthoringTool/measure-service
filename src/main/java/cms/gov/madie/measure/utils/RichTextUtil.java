@@ -132,6 +132,9 @@ public class RichTextUtil {
       measureMetaData.setClinicalRecommendation(
           toHtml(measureMetaData.getClinicalRecommendation()));
     }
+    if (StringUtils.isNotBlank(measureMetaData.getLimitations())) {
+      measureMetaData.setLimitations(toHtml(measureMetaData.getLimitations()));
+    }
     if (StringUtils.isNotBlank(measureMetaData.getCopyright())) {
       measureMetaData.setCopyright(toHtml(measureMetaData.getCopyright()));
     }
