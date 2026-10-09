@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,6 +23,7 @@ import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -85,6 +87,128 @@ class MeasureReviewServiceTest {
     assertNull(reviewCaptor.getValue().getId(), "id should be cleared before save");
     verify(actionLogService, times(1))
         .logAction("m1", Measure.class, ActionType.READY_FOR_REVIEW, USERNAME);
+  }
+
+  @Test
+  void createReviewStampsReadyForReviewUser() {
+    when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    measureReviewService.createReview(review, USERNAME);
+
+    verify(measureReviewRepository).save(reviewCaptor.capture());
+    assertEquals(USERNAME, reviewCaptor.getValue().getReadyForReviewBy());
+    assertNotNull(reviewCaptor.getValue().getReadyForReviewAt());
+  }
+
+  @Test
+  void createReviewIgnoresClientSuppliedReadyForReviewStamp() {
+    Instant forged = Instant.parse("2000-01-01T00:00:00Z");
+    review.setStatus(ReviewStatus.IN_PROGRESS);
+    review.setReadyForReviewBy("someone.else");
+    review.setReadyForReviewAt(forged);
+    when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    measureReviewService.createReview(review, USERNAME);
+
+    verify(measureReviewRepository).save(reviewCaptor.capture());
+    assertNull(reviewCaptor.getValue().getReadyForReviewBy());
+    assertNull(reviewCaptor.getValue().getReadyForReviewAt());
+  }
+
+  @Test
+  void updateReviewStampsReadyForReviewUserOnFirstTransition() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.NOT_READY_FOR_REVIEW)
+            .build();
+    MeasureReview update = MeasureReview.builder().status(ReviewStatus.READY_FOR_REVIEW).build();
+
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals(USERNAME, result.getReadyForReviewBy());
+    assertNotNull(result.getReadyForReviewAt());
+  }
+
+  @Test
+  void updateReviewKeepsOriginalStampWhenMovingThroughReviewStatuses() {
+    Instant originallyReadyAt = Instant.parse("2026-08-12T09:00:00Z");
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .readyForReviewBy("original.user")
+            .readyForReviewAt(originallyReadyAt)
+            .build();
+    MeasureReview update = MeasureReview.builder().status(ReviewStatus.IN_PROGRESS).build();
+
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals("original.user", result.getReadyForReviewBy());
+    assertEquals(originallyReadyAt, result.getReadyForReviewAt());
+  }
+
+  @Test
+  void updateReviewClearsStampWhenMarkedNotReadyForReview() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .readyForReviewBy("original.user")
+            .readyForReviewAt(Instant.parse("2026-08-12T09:00:00Z"))
+            .build();
+    MeasureReview update =
+        MeasureReview.builder().status(ReviewStatus.NOT_READY_FOR_REVIEW).build();
+
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertNull(result.getReadyForReviewBy());
+    assertNull(result.getReadyForReviewAt());
+  }
+
+  @Test
+  void updateReviewLeavesStampAloneOnCommentOnlyUpdate() {
+    Instant originallyReadyAt = Instant.parse("2026-08-12T09:00:00Z");
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .readyForReviewBy("original.user")
+            .readyForReviewAt(originallyReadyAt)
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comment(List.of(Comment.builder().content("just a comment").build()))
+            .build();
+
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals("original.user", result.getReadyForReviewBy());
+    assertEquals(originallyReadyAt, result.getReadyForReviewAt());
   }
 
   @Test

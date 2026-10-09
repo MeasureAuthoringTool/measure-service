@@ -9,6 +9,7 @@ import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
+import java.time.Instant;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -42,6 +43,9 @@ public class MeasureReviewService {
     }
     // Ensure a new document is created rather than overwriting an existing one.
     review.setId(null);
+    boolean readyOnCreate = review.getStatus() == ReviewStatus.READY_FOR_REVIEW;
+    review.setReadyForReviewBy(readyOnCreate ? username : null);
+    review.setReadyForReviewAt(readyOnCreate ? Instant.now() : null);
     MeasureReview saved = measureReviewRepository.save(review);
     log.info("Created review [{}] for Measure [{}]", saved.getId(), measureId);
     logReviewAction(measureId, saved.getStatus(), username);
@@ -73,6 +77,7 @@ public class MeasureReviewService {
     }
     existing.setComment(review.getComment());
     existing.setReviewers(review.getReviewers());
+    applyReadyForReviewStamp(existing, previousStatus, newStatus, username);
 
     MeasureReview saved = measureReviewRepository.save(existing);
     log.info("Updated review [{}] for Measure [{}]", saved.getId(), measureId);
@@ -130,6 +135,20 @@ public class MeasureReviewService {
       Pageable pageReq,
       String username) {
     return measureService.getMeasuresInReview(searchCriteria, ownershipTypes, pageReq, username);
+  }
+
+  private void applyReadyForReviewStamp(
+      MeasureReview review, ReviewStatus previousStatus, ReviewStatus newStatus, String username) {
+    if (newStatus == null || newStatus == previousStatus) {
+      return;
+    }
+    if (newStatus == ReviewStatus.NOT_READY_FOR_REVIEW) {
+      review.setReadyForReviewBy(null);
+      review.setReadyForReviewAt(null);
+    } else if (newStatus == ReviewStatus.READY_FOR_REVIEW && review.getReadyForReviewAt() == null) {
+      review.setReadyForReviewBy(username);
+      review.setReadyForReviewAt(Instant.now());
+    }
   }
 
   /**
