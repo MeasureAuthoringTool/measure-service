@@ -50,14 +50,14 @@ public class UserDisplayNameUtils {
   }
 
   public static Map<String, String> toDisplayNamesByHarpId(
-          List<String> harpIds, Map<String, UserDetailsDto> userDetailsMap) {
+      List<String> harpIds, Map<String, UserDetailsDto> userDetailsMap) {
     if (CollectionUtils.isEmpty(harpIds)) {
       return Map.of();
     }
     return harpIds.stream()
-            .filter(StringUtils::isNotBlank)
-            .distinct()
-            .collect(
-                    Collectors.toMap(harpId -> harpId, harpId -> toDisplayName(harpId, userDetailsMap)));
+        .filter(StringUtils::isNotBlank)
+        .distinct()
+        .collect(
+            Collectors.toMap(harpId -> harpId, harpId -> toDisplayName(harpId, userDetailsMap)));
   }
 }
