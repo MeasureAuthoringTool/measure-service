@@ -11,8 +11,10 @@ import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ public class MeasureReviewService {
   private final MeasureReviewRepository measureReviewRepository;
   private final ActionLogService actionLogService;
   private final MeasureService measureService;
+  private final UserNameService userNameService;
 
   /**
    * Creates a new review document for the given measure. Enforces the one-review-per-measure
@@ -102,9 +105,12 @@ public class MeasureReviewService {
    * @return the review for the measure
    */
   public MeasureReview getReviewByMeasureId(String measureId) {
-    return measureReviewRepository
-        .findByMeasureId(measureId)
-        .orElseThrow(() -> new ResourceNotFoundException("Measure Review", measureId));
+    MeasureReview review =
+        measureReviewRepository
+            .findByMeasureId(measureId)
+            .orElseThrow(() -> new ResourceNotFoundException("Measure Review", measureId));
+    review.setReadyForReviewBy(userNameService.getUserDisplayName(review.getReadyForReviewBy()));
+    return review;
   }
 
   /**
@@ -115,7 +121,18 @@ public class MeasureReviewService {
    * @return the list of reviews under the measure set
    */
   public List<MeasureReview> getReviewsByMeasureSetId(String measureSetId) {
-    return measureReviewRepository.findAllByMeasureSetId(measureSetId);
+    List<MeasureReview> reviews = measureReviewRepository.findAllByMeasureSetId(measureSetId);
+    Map<String, String> displayNames =
+        userNameService.getUsersDisplayNames(
+            reviews.stream().map(MeasureReview::getReadyForReviewBy).toList());
+    reviews.stream()
+        .filter(review -> StringUtils.isNotBlank(review.getReadyForReviewBy()))
+        .forEach(
+            review ->
+                review.setReadyForReviewBy(
+                    displayNames.getOrDefault(
+                        review.getReadyForReviewBy(), review.getReadyForReviewBy())));
+    return reviews;
   }
 
   /**

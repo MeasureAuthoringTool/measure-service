@@ -3,6 +3,7 @@ package cms.gov.madie.measure.utils;
 import gov.cms.madie.models.dto.UserDetailsDto;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
@@ -38,5 +39,25 @@ public class UserDisplayNameUtils {
               return StringUtils.isNotBlank(displayName) ? displayName : harpId;
             })
         .toList();
+  }
+
+  public static String toDisplayName(String harpId, Map<String, UserDetailsDto> userDetailsMap) {
+    if (StringUtils.isBlank(harpId)) {
+      return harpId;
+    }
+    String fullName = getFullName(userDetailsMap == null ? null : userDetailsMap.get(harpId));
+    return StringUtils.isNotBlank(fullName) ? fullName : harpId;
+  }
+
+  public static Map<String, String> toDisplayNamesByHarpId(
+          List<String> harpIds, Map<String, UserDetailsDto> userDetailsMap) {
+    if (CollectionUtils.isEmpty(harpIds)) {
+      return Map.of();
+    }
+    return harpIds.stream()
+            .filter(StringUtils::isNotBlank)
+            .distinct()
+            .collect(
+                    Collectors.toMap(harpId -> harpId, harpId -> toDisplayName(harpId, userDetailsMap)));
   }
 }

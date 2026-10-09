@@ -5,8 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -25,7 +27,9 @@ import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -49,6 +53,8 @@ class MeasureReviewServiceTest {
 
   @Mock private MeasureService measureService;
 
+  @Mock private UserNameService userNameService;
+
   @InjectMocks private MeasureReviewService measureReviewService;
 
   @Captor private ArgumentCaptor<MeasureReview> reviewCaptor;
@@ -57,6 +63,13 @@ class MeasureReviewServiceTest {
 
   @BeforeEach
   void setUp() {
+    // Resolving display names is covered by ReviewDisplayNameServiceTest; here it
+    // just has to hand the review back untouched.
+    lenient()
+        .when(userNameService.getUserDisplayName(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    lenient().when(userNameService.getUsersDisplayNames(anyList())).thenReturn(Map.of());
+
     review =
         MeasureReview.builder()
             .id("review-1")
@@ -209,6 +222,21 @@ class MeasureReviewServiceTest {
 
     assertEquals("original.user", result.getReadyForReviewBy());
     assertEquals(originallyReadyAt, result.getReadyForReviewAt());
+  }
+
+  @Test
+  void createReviewKeepsTheHarpIdOnTheSavedAndReturnedReview() {
+    when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.createReview(review, USERNAME);
+
+    verify(measureReviewRepository).save(reviewCaptor.capture());
+    assertEquals(USERNAME, reviewCaptor.getValue().getReadyForReviewBy());
+    // Saving never resolves a display name, so nothing can leak one back into the document.
+    assertEquals(USERNAME, result.getReadyForReviewBy());
+    verify(userNameService, never()).getUserDisplayName(any());
   }
 
   @Test
