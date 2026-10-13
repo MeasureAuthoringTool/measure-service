@@ -7,6 +7,7 @@ import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.*;
+import cms.gov.madie.measure.utils.MeasureServiceUtil;
 import cms.gov.madie.measure.utils.RichTextUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import gov.cms.madie.models.common.ActionType;
@@ -199,8 +200,10 @@ public class VersionService {
           upversionedMeasure
               .getCql()
               .replace(
-                  generateLibraryContentLine(upversionedMeasure.getCqlLibraryName(), oldVersion),
-                  generateLibraryContentLine(upversionedMeasure.getCqlLibraryName(), newVersion));
+                  MeasureServiceUtil.generateLibraryContentLine(
+                      upversionedMeasure.getCqlLibraryName(), oldVersion),
+                  MeasureServiceUtil.generateLibraryContentLine(
+                      upversionedMeasure.getCqlLibraryName(), newVersion));
       upversionedMeasure.setCql(newCql);
     }
 
@@ -566,10 +569,6 @@ public class VersionService {
     }
 
     return new Version();
-  }
-
-  public String generateLibraryContentLine(String cqlLibraryName, Version version) {
-    return "library " + cqlLibraryName + " version " + "'" + version + "'";
   }
 
   public Export saveExport(

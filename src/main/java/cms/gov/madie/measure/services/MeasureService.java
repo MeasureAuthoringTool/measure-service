@@ -162,34 +162,44 @@ public class MeasureService extends BaseMeasureService {
       measureCopy.setMeasureMetaData(metaData);
     }
     if (addDefaultCQL) {
+      // default CQL replaces any CQL sent in the request since addDefaultCQL is true
+      measureCopy.setCql(null);
+
       if (ModelType.QI_CORE.getValue().equalsIgnoreCase(measure.getModel())) {
-        measureCopy.setCql(
-            cqlTemplateConfigService.getQicore411CqlTemplate() != null
-                ? cqlTemplateConfigService
-                    .getQicore411CqlTemplate()
-                    .replace("CYBTest3", measureCopy.getCqlLibraryName())
-                : "");
+        if (cqlTemplateConfigService.getQicore411CqlTemplate() != null) {
+          measureCopy.setCql(
+              cqlTemplateConfigService
+                  .getQicore411CqlTemplate()
+                  .replace("CYBTest3", measureCopy.getCqlLibraryName()));
+        }
       } else if (ModelType.QDM_5_6.getValue().equalsIgnoreCase(measure.getModel())) {
-        measureCopy.setCql(
-            cqlTemplateConfigService.getQdm56CqlTemplate() != null
-                ? cqlTemplateConfigService
-                    .getQdm56CqlTemplate()
-                    .replace("CYBTestQDMMeasure3", measureCopy.getCqlLibraryName())
-                : "");
+        if (cqlTemplateConfigService.getQdm56CqlTemplate() != null) {
+          measureCopy.setCql(
+              cqlTemplateConfigService
+                  .getQdm56CqlTemplate()
+                  .replace("CYBTestQDMMeasure3", measureCopy.getCqlLibraryName()));
+        }
       } else if (ModelType.QI_CORE_6_0_0.getValue().equalsIgnoreCase(measure.getModel())) {
-        measureCopy.setCql(
-            cqlTemplateConfigService.getQicore600CqlTemplate() != null
-                ? cqlTemplateConfigService
-                    .getQicore600CqlTemplate()
-                    .replace("libraryName", measureCopy.getCqlLibraryName())
-                : "");
+        if (cqlTemplateConfigService.getQicore600CqlTemplate() != null) {
+          measureCopy.setCql(
+              cqlTemplateConfigService
+                  .getQicore600CqlTemplate()
+                  .replace("libraryName", measureCopy.getCqlLibraryName()));
+        }
       } else if (ModelType.US_QUALITY_CORE_0_5_0.getValue().equalsIgnoreCase(measure.getModel())) {
+        if (cqlTemplateConfigService.getUsqc050CqlTemplate() != null) {
+          measureCopy.setCql(
+              cqlTemplateConfigService
+                  .getUsqc050CqlTemplate()
+                  .replace("libraryName", measureCopy.getCqlLibraryName()));
+        }
+      }
+
+      // no template available for the model, so default to just the library statement
+      if (StringUtils.isBlank(measureCopy.getCql())) {
         measureCopy.setCql(
-            cqlTemplateConfigService.getUsqc050CqlTemplate() != null
-                ? cqlTemplateConfigService
-                    .getUsqc050CqlTemplate()
-                    .replace("libraryName", measureCopy.getCqlLibraryName())
-                : "");
+            MeasureServiceUtil.generateLibraryContentLine(
+                measureCopy.getCqlLibraryName(), measureCopy.getVersion()));
       }
     }
     Measure savedMeasure = measureRepository.save(measureCopy);
