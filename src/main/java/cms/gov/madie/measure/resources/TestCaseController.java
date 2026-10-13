@@ -1,8 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.dto.BulkTestCaseResult;
 import cms.gov.madie.measure.dto.CopyTestCaseResult;
-import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.services.AppConfigService;
@@ -55,44 +53,6 @@ public class TestCaseController {
         .body(
             testCaseService.persistTestCase(
                 testCase, measureId, principal.getName().toLowerCase(), accessToken));
-  }
-
-  @PostMapping(ControllerUtil.TEST_CASES + "/list")
-  public ResponseEntity<BulkTestCaseResult> addTestCases(
-      @RequestBody @Validated(TestCase.ValidationSequence.class) ValidList<TestCase> testCases,
-      @PathVariable String measureId,
-      @RequestHeader("Authorization") String accessToken,
-      Principal principal) {
-    final String username = principal.getName().toLowerCase();
-    Measure measure = measureService.findMeasureById(measureId);
-    if (measure == null) {
-      throw new ResourceNotFoundException("Measure", measureId);
-    }
-    measureService.verifyAuthorization(username, measure);
-
-    // Filter out locked test cases
-    List<TestCase> unlocked = new ArrayList<>();
-    List<String> failed = new ArrayList<>();
-
-    for (TestCase tc : testCases) {
-      if (tc.getId() != null) {
-        var lock = testCaseLockService.findByTestCaseId(tc.getId());
-        if (lock != null && !lock.getLockedBy().equals(username)) {
-          failed.add(tc.getId());
-          continue;
-        }
-      }
-      unlocked.add(tc);
-    }
-
-    List<TestCase> saved =
-        testCaseService.persistTestCases(
-            ValidList.<TestCase>builder().list(unlocked).build(), measureId, username, accessToken);
-
-    BulkTestCaseResult result =
-        BulkTestCaseResult.builder().testCases(saved).failed(failed).build();
-
-    return ResponseEntity.status(HttpStatus.CREATED).body(result);
   }
 
   @GetMapping(ControllerUtil.TEST_CASES)

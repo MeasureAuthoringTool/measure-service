@@ -139,40 +139,6 @@ public class TestCaseService {
     return enrichedTestCase;
   }
 
-  public List<TestCase> persistTestCases(
-      List<TestCase> newTestCases, String measureId, String username, String accessToken) {
-    if (newTestCases == null || newTestCases.isEmpty()) {
-      return newTestCases;
-    }
-    final Measure measure = measureService.findActiveMeasureById(measureId);
-    List<TestCase> enrichedTestCases = new ArrayList<>(newTestCases.size());
-    boolean lenientPatientRefs = MeasureUtil.isInvalidTestCaseExecutionEnabled(measure);
-    for (TestCase testCase : newTestCases) {
-      TestCaseServiceUtil.checkTestCaseSpecialCharacters(testCase);
-      TestCase enriched = enrichNewTestCase(testCase, username, measureId, measure.getModel());
-      enriched =
-          testCaseValidationService.validateTestCaseAsResource(
-              enriched, ModelType.valueOfName(measure.getModel()), accessToken, lenientPatientRefs);
-      if (enriched != null && !measure.getMeasureMetaData().isDraft()) {
-        enriched.setCreatedBeforeVersioning(false);
-      }
-      enrichedTestCases.add(enriched);
-      actionLogService.logAction(enriched.getId(), TestCase.class, ActionType.IMPORTED, username);
-    }
-    if (measure.getTestCases() == null) {
-      measure.setTestCases(enrichedTestCases);
-    } else {
-      measure.getTestCases().addAll(enrichedTestCases);
-    }
-    measureRepository.save(measure);
-    log.info(
-        "User [{}] successfully imported [{}] test cases to the measure with ID[{}] ",
-        username,
-        enrichedTestCases.size(),
-        measureId);
-    return enrichedTestCases;
-  }
-
   public MeasureTestCaseValidationReport updateTestCaseValidResourcesWithReport(
       final String measureId, final String accessToken) {
     log.info(
