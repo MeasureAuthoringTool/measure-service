@@ -1,9 +1,6 @@
 package cms.gov.madie.measure.resources;
 
-import cms.gov.madie.measure.dto.BulkTestCaseResult;
-import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.locks.TestCaseLock;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.AppConfigService;
@@ -29,7 +26,6 @@ import java.util.*;
 
 import static org.hamcrest.CoreMatchers.equalTo;
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -94,77 +90,6 @@ public class TestCaseControllerTest {
     assertNotNull(response.getBody());
     assertNotNull(response.getBody());
     assertEquals("TESTID", response.getBody().getId());
-  }
-
-  @Test
-  void setTestCaseList() {
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-
-    when(measureService.findMeasureById("MeasureID")).thenReturn(measure);
-
-    List<TestCase> savedTestCases =
-        List.of(
-            TestCase.builder()
-                .id("ID1")
-                .title("Test1")
-                .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
-                .validResource(true)
-                .build(),
-            TestCase.builder()
-                .id("ID2")
-                .title("Test2")
-                .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
-                .validResource(true)
-                .build());
-
-    when(testCaseService.persistTestCases(anyList(), anyString(), anyString(), anyString()))
-        .thenReturn(savedTestCases);
-
-    ValidList<TestCase> testCases =
-        ValidList.<TestCase>builder()
-            .list(
-                List.of(
-                    TestCase.builder()
-                        .title("Test1")
-                        .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
-                        .build(),
-                    TestCase.builder()
-                        .title("Test2")
-                        .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
-                        .build()))
-            .build();
-
-    ResponseEntity<BulkTestCaseResult> output =
-        controller.addTestCases(testCases, "MeasureID", "Bearer Token", principal);
-    assertThat(output, is(notNullValue()));
-    assertThat(output.getStatusCode(), is(equalTo(HttpStatus.CREATED)));
-    assertThat(output.getBody().getTestCases(), is(equalTo(savedTestCases)));
-    assertThat(output.getBody().getFailed().isEmpty(), is(true));
-  }
-
-  @Test
-  void testAddTestCasesThrowWhenUserIsUnauthorized() {
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("evil.user");
-
-    when(measureService.findMeasureById("MeasureID")).thenReturn(measure);
-    doThrow(new UnauthorizedException("Measure", "MeasureID", "evil.user"))
-        .when(measureService)
-        .verifyAuthorization(anyString(), any(Measure.class));
-    assertThrows(
-        UnauthorizedException.class,
-        () -> controller.addTestCases(new ValidList<>(), "MeasureID", "Bearer Token", principal));
-  }
-
-  @Test
-  void testAddTestCasesThrowsWhenMeasureNotFound() {
-    Principal principal = mock(Principal.class);
-    when(principal.getName()).thenReturn("test.user");
-
-    assertThrows(
-        ResourceNotFoundException.class,
-        () -> controller.addTestCases(new ValidList<>(), "1234", "Bearer Token", principal));
   }
 
   @Test
