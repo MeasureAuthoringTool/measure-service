@@ -9,8 +9,10 @@ import cms.gov.madie.measure.exceptions.BundleOperationException;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.measure.Export;
+import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureMetaData;
+import gov.cms.madie.models.measure.Population;
 import gov.cms.madie.packaging.utils.PackagingUtilityFactory;
 import gov.cms.madie.packaging.utils.qicore411.PackagingUtilityImpl;
 import org.junit.jupiter.api.AfterAll;
@@ -22,6 +24,7 @@ import org.mockito.*;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 import java.util.Optional;
 
 import static org.hamcrest.CoreMatchers.*;
@@ -208,6 +211,39 @@ public class QicorePackageServiceTest {
     String result =
         qicorePackageService.getHumanReadable(existingMeasure, TEST_USER, TEST_ACCESS_TOKEN);
     assertEquals(result, TEST_HUMAN_READABLE);
+  }
+
+  @Test
+  public void testGetHumanReadableSanitizesMeasureBeforeGeneratingBundle() {
+    MeasureMetaData meta =
+        MeasureMetaData.builder()
+            .draft(true)
+            .description("<script>alert(1)</script>description")
+            .build();
+    existingMeasure.setMeasureMetaData(meta);
+    Population population = new Population();
+    population.setDescription("<img src=x onerror=alert(1)>population");
+    Group group = new Group();
+    group.setGroupDescription("<b>group</b><script>alert(1)</script>");
+    group.setPopulations(List.of(population));
+    existingMeasure.setGroups(List.of(group));
+
+    when(fhirServicesClient.getMeasureBundle(any(), anyString(), anyString(), anyString()))
+        .thenReturn(MEASURE_BUNDLE_JSON);
+    PackagingUtilityImpl utility = mock(PackagingUtilityImpl.class);
+    factory.when(() -> PackagingUtilityFactory.getInstance(MODEL_QI_CORE)).thenReturn(utility);
+    when(utility.getHumanReadableWithCSS(anyString())).thenReturn(TEST_HUMAN_READABLE);
+
+    qicorePackageService.getHumanReadable(existingMeasure, TEST_USER, TEST_ACCESS_TOKEN);
+
+    ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
+    verify(fhirServicesClient)
+        .getMeasureBundle(measureCaptor.capture(), anyString(), anyString(), anyString());
+    Measure bundledMeasure = measureCaptor.getValue();
+    assertEquals("description", bundledMeasure.getMeasureMetaData().getDescription());
+    assertEquals("<b>group</b>", bundledMeasure.getGroups().get(0).getGroupDescription());
+    assertEquals(
+        "population", bundledMeasure.getGroups().get(0).getPopulations().get(0).getDescription());
   }
 
   @Test

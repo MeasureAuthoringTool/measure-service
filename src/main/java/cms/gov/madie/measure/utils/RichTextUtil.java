@@ -8,19 +8,10 @@ import org.apache.commons.lang3.StringUtils;
 import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
-import org.jsoup.Jsoup;
-import org.jsoup.safety.Safelist;
 
 public class RichTextUtil {
   private static final Parser PARSER = Parser.builder().build();
   private static final HtmlRenderer HTML_RENDERER = HtmlRenderer.builder().build();
-  private static final Safelist RICH_TEXT_SAFE_LIST =
-      Safelist.basic()
-          .addTags("s", "br", "table", "tbody", "td", "th", "thead", "tr", "col", "colgroup", "del")
-          .addAttributes("table", "style", "class", "id")
-          .addAttributes("th", "rowspan", "colspan", "style", "colwidth")
-          .addAttributes("td", "rowspan", "colspan", "style", "colwidth")
-          .addAttributes("col", "style");
 
   public static void htmlifyMeasureRichTextContents(Measure measure) {
     if (measure == null) {
@@ -190,15 +181,6 @@ public class RichTextUtil {
 
     Node document = PARSER.parse(text);
     // Sanitize HTML content
-    return sanitizeText(HTML_RENDERER.render(document)).replace("\n", "");
-  }
-
-  private static String sanitizeText(String val) {
-    if (StringUtils.isBlank(val)) {
-      return val;
-    }
-    String safeHtml = Jsoup.clean(val, RICH_TEXT_SAFE_LIST);
-    // col tags are not self-closing in html, so we need to close them to make them well-formed
-    return safeHtml.replaceAll("<col ([^/>]*)>", "<col $1 />");
+    return HtmlSanitizerUtil.sanitize(HTML_RENDERER.render(document)).replace("\n", "");
   }
 }

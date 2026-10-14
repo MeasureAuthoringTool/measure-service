@@ -6,6 +6,7 @@ import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
 import cms.gov.madie.measure.repositories.ExportRepository;
+import cms.gov.madie.measure.utils.HtmlSanitizerUtil;
 import gov.cms.madie.models.measure.Export;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.packaging.utils.PackagingUtility;
@@ -43,6 +44,7 @@ public class QicorePackageService implements PackageService {
 
   @Override
   public String getHumanReadable(Measure measure, String username, String accessToken) {
+    HtmlSanitizerUtil.sanitizeMeasure(measure);
     String measureBundle =
         fhirServicesClient.getMeasureBundle(measure, accessToken, EXPORT, "Info");
 
