@@ -135,6 +135,9 @@ public class RichTextUtil {
     if (StringUtils.isNotBlank(measureMetaData.getLimitations())) {
       measureMetaData.setLimitations(toHtml(measureMetaData.getLimitations()));
     }
+    if (StringUtils.isNotBlank(measureMetaData.getTrendingIssues())) {
+      measureMetaData.setTrendingIssues(toHtml(measureMetaData.getTrendingIssues()));
+    }
     if (StringUtils.isNotBlank(measureMetaData.getCopyright())) {
       measureMetaData.setCopyright(toHtml(measureMetaData.getCopyright()));
     }
