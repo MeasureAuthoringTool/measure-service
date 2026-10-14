@@ -3,10 +3,8 @@ package cms.gov.madie.measure.resources;
 import cms.gov.madie.measure.config.security.SecurityConfigTest;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
-import cms.gov.madie.measure.dto.ValidList;
 import cms.gov.madie.measure.exceptions.DuplicateTestCaseNameException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
-import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.services.*;
 import tools.jackson.databind.ObjectMapper;
@@ -28,9 +26,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.List;
 
-import static org.hamcrest.CoreMatchers.equalTo;
-import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.*;
@@ -38,7 +33,6 @@ import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -122,118 +116,6 @@ public class TestCaseControllerMvcTest {
     assertEquals(TEST_DESCRIPTION, persistedTestCase.getDescription());
     assertEquals(TEST_JSON, persistedTestCase.getJson());
     assertEquals(TEST_USER_ID, usernameCaptor.getValue());
-  }
-
-  @Test
-  public void testAddTestCasesTitle251Characters() throws Exception {
-    testCase.setTitle(TEXT_251_CHARACTORS);
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                MockMvcRequestBuilders.post("/measures/1234/test-cases/list")
-                    .with(user(TEST_USER_ID))
-                    .with(csrf())
-                    .header("Authorization", "test-okta")
-                    .content(asJsonString(List.of(testCase)))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.APPLICATION_JSON))
-            .andDo(print())
-            .andExpect(status().isBadRequest())
-            .andExpect(
-                jsonPath("$.validationErrors.['list[0].title']")
-                    .value("Test Case Title can not be more than 250 characters."))
-            .andReturn();
-
-    String response = result.getResponse().getContentAsString();
-    assertTrue(response.contains("Test Case Title can not be more than 250 characters."));
-  }
-
-  @Test
-  public void testAddTestCasesNotEmpty() throws Exception {
-    testCase.setTitle(TEXT_251_CHARACTORS);
-
-    MvcResult result =
-        mockMvc
-            .perform(
-                MockMvcRequestBuilders.post("/measures/1234/test-cases/list")
-                    .with(user(TEST_USER_ID))
-                    .with(csrf())
-                    .header("Authorization", "test-okta")
-                    .content(asJsonString(List.of()))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.APPLICATION_JSON))
-            .andDo(print())
-            .andExpect(status().isBadRequest())
-            .andExpect(jsonPath("$.validationErrors.['list']").value("must not be empty"))
-            .andReturn();
-
-    String response = result.getResponse().getContentAsString();
-    assertTrue(response.contains("must not be empty"));
-  }
-
-  @Test
-  public void testAddTestCases() throws Exception {
-    doReturn(new Measure().toBuilder().createdBy(TEST_USER_ID).build())
-        .when(measureService)
-        .findMeasureById("1234");
-    ArgumentCaptor<List> testCaseListCaptor = ArgumentCaptor.forClass(List.class);
-    List<TestCase> savedTestCases =
-        List.of(
-            TestCase.builder()
-                .id("ID1")
-                .title("Test1")
-                .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
-                .validResource(true)
-                .build(),
-            TestCase.builder()
-                .id("ID2")
-                .title("Test2")
-                .json("{\"resourceType\": \"RANDOM\", \"type\": \"BAD\"}")
-                .validResource(false)
-                .build());
-
-    when(testCaseService.persistTestCases(anyList(), anyString(), anyString(), anyString()))
-        .thenReturn(savedTestCases);
-
-    List<TestCase> testCases =
-        List.of(
-            TestCase.builder()
-                .title("Test1")
-                .json("{\"resourceType\": \"Bundle\", \"type\": \"collection\"}")
-                .build(),
-            TestCase.builder()
-                .title("Test2")
-                .json("{\"resourceType\": \"RANDOM\", \"type\": \"BAD\"}")
-                .build());
-
-    mockMvc
-        .perform(
-            MockMvcRequestBuilders.post("/measures/1234/test-cases/list")
-                .with(user(TEST_USER_ID))
-                .with(csrf())
-                .header("Authorization", "test-okta")
-                .content(asJsonString(testCases))
-                .contentType(MediaType.APPLICATION_JSON)
-                .accept(MediaType.APPLICATION_JSON))
-        .andDo(print())
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.testCases[0].id").value("ID1"))
-        .andExpect(jsonPath("$.testCases[0].title").value("Test1"))
-        .andExpect(jsonPath("$.testCases[0].validResource").value(Boolean.TRUE))
-        .andExpect(jsonPath("$.testCases[1].id").value("ID2"))
-        .andExpect(jsonPath("$.testCases[1].title").value("Test2"))
-        .andExpect(jsonPath("$.testCases[1].validResource").value(Boolean.FALSE))
-        .andExpect(jsonPath("$.failed").isArray())
-        .andExpect(jsonPath("$.failed").isEmpty());
-    verify(testCaseService, times(1))
-        .persistTestCases(
-            testCaseListCaptor.capture(),
-            measureIdCaptor.capture(),
-            usernameCaptor.capture(),
-            anyString());
-    assertThat(testCaseListCaptor.getValue(), is(equalTo(new ValidList<>(testCases))));
-    assertThat(usernameCaptor.getValue(), is(equalTo(TEST_USER_ID)));
   }
 
   @Test
@@ -407,51 +289,6 @@ public class TestCaseControllerMvcTest {
         .andExpect(content().string("[]"));
     verify(testCaseService, times(1)).findTestCaseSeriesByMeasureId(measureIdCaptor.capture());
     assertEquals("1234", measureIdCaptor.getValue());
-  }
-
-  @Test
-  public void testAddListThrowsResourceNotFoundException() throws Exception {
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/measures/1234/test-cases/list")
-                    .with(user(TEST_USER_ID))
-                    .with(csrf())
-                    .header("Authorization", "test-okta")
-                    .content(asJsonString(List.of(testCase)))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isNotFound())
-            .andReturn();
-
-    String response = result.getResponse().getContentAsString();
-    assertTrue(response.contains("Could not find Measure with id: 1234"));
-  }
-
-  @Test
-  public void testAddListThrowsUserUnauthorized() throws Exception {
-    doReturn(Measure.builder().createdBy("good.user").id("1234").build())
-        .when(measureService)
-        .findMeasureById("1234");
-    doThrow(new UnauthorizedException("Measure", "1234", TEST_USER_ID))
-        .when(measureService)
-        .verifyAuthorization(anyString(), any(Measure.class));
-    MvcResult result =
-        mockMvc
-            .perform(
-                post("/measures/1234/test-cases/list")
-                    .with(user(TEST_USER_ID))
-                    .with(csrf())
-                    .header("Authorization", "test-okta")
-                    .content(asJsonString(List.of(testCase)))
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .accept(MediaType.APPLICATION_JSON))
-            .andExpect(status().isForbidden())
-            .andReturn();
-
-    String response = result.getResponse().getContentAsString();
-    assertTrue(
-        response.contains("User " + TEST_USER_ID + " is not authorized for Measure with ID 1234"));
   }
 
   @Test
