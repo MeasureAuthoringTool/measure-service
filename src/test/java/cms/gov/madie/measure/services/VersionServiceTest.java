@@ -15,6 +15,7 @@ import cms.gov.madie.measure.repositories.CqmMeasureRepository;
 import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
+import cms.gov.madie.measure.validations.CompositeMeasureValidationService;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.cqm.CqmMeasure;
@@ -77,6 +78,8 @@ public class VersionServiceTest {
   @Mock private MeasureLockService measureLockService;
 
   @Mock private BundleService bundleService;
+
+  @Mock private CompositeMeasureValidationService compositeMeasureValidationService;
 
   @Captor private ArgumentCaptor<Measure> measureCaptor;
   @Captor private ArgumentCaptor<CqmMeasure> cqmMeasureCaptor;
@@ -522,6 +525,7 @@ public class VersionServiceTest {
     var validationResult =
         versionService.checkValidVersioning("testMeasureId", "MAJOR", "testUser", "accesstoken");
     assertEquals(VALID, validationResult);
+    verify(compositeMeasureValidationService, never()).validate(any(Measure.class));
   }
 
   @Test
@@ -802,6 +806,81 @@ public class VersionServiceTest {
                 versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
     assertTrue(ex.getMessage().contains("Population Criteria"));
     verify(bundleService, never()).buildCompositeVersionArtifacts(any(Measure.class), anyString());
+  }
+
+  private FhirMeasure buildDraftCompositeMeasure() {
+    FhirMeasure existingMeasure =
+        FhirMeasure.builder()
+            .id("testMeasureId")
+            .measureSetId("testMeasureSetId")
+            .createdBy("testUser")
+            .cql(null)
+            .groups(List.of(cvGroup.toBuilder().id(ObjectId.get().toString()).build()))
+            .model(ModelType.QI_CORE.getValue())
+            .measureSet(measureSet)
+            .build();
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    metaData.setComposite(true);
+    existingMeasure.setMeasureMetaData(metaData);
+    existingMeasure.setVersion(Version.builder().major(1).minor(0).revisionNumber(0).build());
+    return existingMeasure;
+  }
+
+  @Test
+  public void testCreateVersionCompositeMeasureFailsCompositeValidation() {
+    FhirMeasure existingMeasure = buildDraftCompositeMeasure();
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+    when(compositeMeasureValidationService.validate(existingMeasure))
+        .thenReturn(
+            List.of(
+                CompositeMeasureValidationService.TWO_COMPONENTS_REQUIRED,
+                CompositeMeasureValidationService.COMPONENT_MEASURE_TYPES_INVALID));
+
+    BadVersionRequestException ex =
+        assertThrows(
+            BadVersionRequestException.class,
+            () ->
+                versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
+    assertThat(
+        ex.getMessage(),
+        is(
+            equalTo(
+                "User testUser cannot version Measure with ID testMeasureId. "
+                    + "Two component measures must be selected, "
+                    + "The measure type of the component measure(s) is invalid")));
+    verify(measureLockService, never())
+        .checkMeasureAndTestCaseLock(anyString(), any(Measure.class), anyString());
+    verify(bundleService, never()).buildCompositeVersionArtifacts(any(Measure.class), anyString());
+    verify(measureRepository, never()).save(any(Measure.class));
+  }
+
+  @Test
+  public void testCheckValidVersioningCompositeMeasureFailsCompositeValidation() {
+    FhirMeasure existingMeasure = buildDraftCompositeMeasure();
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+    when(compositeMeasureValidationService.validate(existingMeasure))
+        .thenReturn(List.of(CompositeMeasureValidationService.COMPOSITE_SCORING_REQUIRED));
+
+    BadVersionRequestException ex =
+        assertThrows(
+            BadVersionRequestException.class,
+            () ->
+                versionService.checkValidVersioning(
+                    "testMeasureId", "MAJOR", "testUser", "accesstoken"));
+    assertTrue(ex.getMessage().endsWith("Composite measure score is required"));
+  }
+
+  @Test
+  public void testCheckValidVersioningCompositeMeasurePassesCompositeValidation() {
+    FhirMeasure existingMeasure = buildDraftCompositeMeasure();
+    when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
+    when(compositeMeasureValidationService.validate(existingMeasure)).thenReturn(List.of());
+
+    var validationResult =
+        versionService.checkValidVersioning("testMeasureId", "MAJOR", "testUser", "accesstoken");
+    assertEquals(VALID, validationResult);
+    verify(elmTranslatorClient, never()).getElmJson(anyString(), anyString());
   }
 
   @Test
