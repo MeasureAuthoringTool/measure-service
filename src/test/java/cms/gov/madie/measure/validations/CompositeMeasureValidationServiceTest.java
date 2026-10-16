@@ -302,8 +302,7 @@ class CompositeMeasureValidationServiceTest {
         contains(COMPONENT_MEASURE_TYPES_INVALID));
   }
 
-  // ordered by the order the user must fix them in: composite scoring gates the
-  // Select Components button, so it is reported before the component checks
+  // ordered by the order the user must fix them in
   @Test
   void returnsEveryFailureInTheOrderTheUserMustFixThem() {
     List<String> errors =
