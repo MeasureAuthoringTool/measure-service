@@ -86,7 +86,6 @@ public class AdminControllerMvcTest {
   @MockitoBean private TestCaseService testCaseService;
   @MockitoBean private TestCaseValidationService testCaseValidationService;
   @MockitoBean private ActionLogService actionLogService;
-  @MockitoBean private VersionService versionService;
 
   @MockitoBean private MeasureRepository measureRepository;
   @MockitoBean private ExportRepository exportRepository;
@@ -928,12 +927,6 @@ public class AdminControllerMvcTest {
     doReturn(List.of(testMsr))
         .when(measureRepository)
         .findAllByMeasureSetIdAndActive("ms-123", true);
-    when(versionService.generateLibraryContentLine(
-            "Test", Version.builder().major(3).minor(0).revisionNumber(0).build()))
-        .thenReturn("library Test version '3.0.000'");
-    when(versionService.generateLibraryContentLine(
-            "Test", Version.builder().major(1).minor(0).revisionNumber(0).build()))
-        .thenReturn("library Test version '1.0.000'");
 
     mockMvc
         .perform(
@@ -981,13 +974,6 @@ public class AdminControllerMvcTest {
     when(measureRepository.findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(
             anyList(), anyBoolean(), anyBoolean()))
         .thenReturn(Collections.emptyList());
-    when(versionService.generateLibraryContentLine(anyString(), any(Version.class)))
-        .thenAnswer(
-            invocation -> {
-              String libName = invocation.getArgument(0);
-              Version version = invocation.getArgument(1);
-              return "library " + libName + " version '" + version + "'";
-            });
 
     // Capture the Measure object passed to save
     ArgumentCaptor<Measure> measureCaptor = ArgumentCaptor.forClass(Measure.class);
@@ -1013,8 +999,6 @@ public class AdminControllerMvcTest {
     verify(measureRepository)
         .findAllByMeasureSetIdInAndActiveAndMeasureMetaDataDraft(
             eq(List.of(measure.getMeasureSetId())), eq(true), eq(true));
-    verify(versionService)
-        .generateLibraryContentLine(eq(measure.getCqlLibraryName()), eq(measure.getVersion()));
     verify(measureRepository).save(any(Measure.class));
 
     // Assert that the measure was updated correctly

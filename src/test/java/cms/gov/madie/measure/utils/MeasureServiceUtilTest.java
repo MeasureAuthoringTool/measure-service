@@ -5,6 +5,7 @@ import cms.gov.madie.measure.exceptions.InvalidVersionIdException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import gov.cms.madie.models.access.AclSpecification;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.MeasureSet;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -182,5 +183,12 @@ class MeasureServiceUtilTest {
     } catch (Exception e) {
       fail("Should not throw unexpected exception");
     }
+  }
+
+  @Test
+  void shouldGenerateLibraryContentLine() {
+    assertEquals(
+        "library TestLib version '1.2.003'",
+        MeasureServiceUtil.generateLibraryContentLine("TestLib", new Version(1, 2, 3)));
   }
 }

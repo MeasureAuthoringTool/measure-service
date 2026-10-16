@@ -546,19 +546,16 @@ public class MeasureServiceTest implements ResourceUtil {
             .cql("")
             .elmJson(null)
             .measureMetaData(null)
-            .cql(cqlTemplate)
             .createdBy(usr)
             .model(ModelType.QDM_5_6.getValue())
             .build();
     doNothing()
         .when(measureSetService)
-        .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
-        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
-    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
-    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
     when(cqlTemplateConfigService.getQdm56CqlTemplate()).thenReturn(cqlTemplate);
 
@@ -572,7 +569,7 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
-  public void testCreateMeasureSuccessfullyWithNoCqlQDM() throws Exception {
+  public void testCreateMeasureDefaultsLibraryStatementWhenNoTemplateQDM() throws Exception {
     String usr = "john rao";
     Measure measureToSave =
         measure1.toBuilder()
@@ -588,10 +585,11 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
     doNothing()
         .when(measureSetService)
-        .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
 
-    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
     when(cqlTemplateConfigService.getQdm56CqlTemplate()).thenReturn(null);
 
@@ -601,7 +599,7 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
     assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
     assertThat(savedMeasure.getErrors(), is(emptySet()));
-    assertThat(savedMeasure.getCql(), is(equalTo("")));
+    assertThat(savedMeasure.getCql(), is(equalTo("library VTE version '0.0.000'")));
   }
 
   @Test
@@ -619,19 +617,16 @@ public class MeasureServiceTest implements ResourceUtil {
             .cql("")
             .elmJson(null)
             .measureMetaData(null)
-            .cql(cqlTemplate)
             .createdBy(usr)
             .model(ModelType.QI_CORE.getValue())
             .build();
     doNothing()
         .when(measureSetService)
-        .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
-        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
-    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
-    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
     when(cqlTemplateConfigService.getQicore411CqlTemplate()).thenReturn(cqlTemplate);
 
@@ -641,11 +636,11 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
     assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
     assertThat(savedMeasure.getErrors(), is(emptySet()));
-    assertThat(savedMeasure.getCql(), is(equalTo(cqlTemplate)));
+    assertThat(savedMeasure.getCql(), is(equalTo(cqlTemplate.replace("CYBTest3", "VTE"))));
   }
 
   @Test
-  public void testCreateMeasureSuccessfullyWithNoCqlQICore() throws Exception {
+  public void testCreateMeasureDefaultsLibraryStatementWhenNoTemplateQICore() throws Exception {
     String usr = "john rao";
     Measure measureToSave =
         measure1.toBuilder()
@@ -661,10 +656,11 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
     doNothing()
         .when(measureSetService)
-        .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
 
-    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
     when(cqlTemplateConfigService.getQicore411CqlTemplate()).thenReturn(null);
 
@@ -674,7 +670,7 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
     assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
     assertThat(savedMeasure.getErrors(), is(emptySet()));
-    assertThat(savedMeasure.getCql(), is(equalTo("")));
+    assertThat(savedMeasure.getCql(), is(equalTo("library VTE version '0.0.000'")));
   }
 
   @Test
@@ -692,19 +688,16 @@ public class MeasureServiceTest implements ResourceUtil {
             .cql("")
             .elmJson(null)
             .measureMetaData(null)
-            .cql(cqlTemplate)
             .createdBy(usr)
             .model(ModelType.QI_CORE_6_0_0.getValue())
             .build();
     doNothing()
         .when(measureSetService)
-        .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
-        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
-    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
-    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
     when(cqlTemplateConfigService.getQicore600CqlTemplate()).thenReturn(cqlTemplate);
 
@@ -714,11 +707,11 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
     assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
     assertThat(savedMeasure.getErrors(), is(emptySet()));
-    assertThat(savedMeasure.getCql(), is(equalTo(cqlTemplate)));
+    assertThat(savedMeasure.getCql(), is(equalTo(cqlTemplate.replace("libraryName", "VTE"))));
   }
 
   @Test
-  public void testCreateMeasureSuccessfullyWithNoCqlQICore600() throws Exception {
+  public void testCreateMeasureDefaultsLibraryStatementWhenNoTemplateQICore600() throws Exception {
     String usr = "john rao";
     Measure measureToSave =
         measure1.toBuilder()
@@ -734,10 +727,11 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
     doNothing()
         .when(measureSetService)
-        .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
 
-    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
     when(cqlTemplateConfigService.getQicore600CqlTemplate()).thenReturn(null);
 
@@ -747,7 +741,7 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
     assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
     assertThat(savedMeasure.getErrors(), is(emptySet()));
-    assertThat(savedMeasure.getCql(), is(equalTo("")));
+    assertThat(savedMeasure.getCql(), is(equalTo("library VTE version '0.0.000'")));
   }
 
   @Test
@@ -766,19 +760,16 @@ public class MeasureServiceTest implements ResourceUtil {
             .cql("")
             .elmJson(null)
             .measureMetaData(null)
-            .cql(cqlTemplate)
             .createdBy(usr)
             .model(ModelType.US_QUALITY_CORE_0_5_0.getValue())
             .build();
     doNothing()
         .when(measureSetService)
-        .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
-    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
-        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
-    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
 
-    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
     when(cqlTemplateConfigService.getUsqc050CqlTemplate()).thenReturn(cqlTemplate);
 
@@ -788,11 +779,11 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
     assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
     assertThat(savedMeasure.getErrors(), is(emptySet()));
-    assertThat(savedMeasure.getCql(), is(equalTo(cqlTemplate)));
+    assertThat(savedMeasure.getCql(), is(equalTo(cqlTemplate.replace("libraryName", "VTE"))));
   }
 
   @Test
-  public void testCreateMeasureSuccessfullyWithNoCqlUSQC050() throws Exception {
+  public void testCreateMeasureDefaultsLibraryStatementWhenNoTemplateUSQC050() throws Exception {
     String usr = "john rao";
     Measure measureToSave =
         measure1.toBuilder()
@@ -808,10 +799,11 @@ public class MeasureServiceTest implements ResourceUtil {
             .build();
     doNothing()
         .when(measureSetService)
-        .createMeasureSet(anyString(), anyString(), anyString(), any());
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
     when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
 
-    when(measureRepository.save(any(Measure.class))).thenReturn(measureToSave);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
     when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
     when(cqlTemplateConfigService.getUsqc050CqlTemplate()).thenReturn(null);
 
@@ -821,7 +813,93 @@ public class MeasureServiceTest implements ResourceUtil {
     assertThat(savedMeasure.getCreatedBy(), is(equalTo(usr)));
     assertThat(savedMeasure.isCqlErrors(), is(equalTo(false)));
     assertThat(savedMeasure.getErrors(), is(emptySet()));
+    assertThat(savedMeasure.getCql(), is(equalTo("library VTE version '0.0.000'")));
+  }
+
+  @Test
+  public void testCreateMeasureDefaultsLibraryStatementWhenModelHasNoTemplate() {
+    String usr = "john rao";
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .createdBy(usr)
+            .model(ModelType.US_CORE_6_1_0.getValue())
+            .build();
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+
+    Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
+    assertThat(savedMeasure.getCql(), is(equalTo("library VTE version '0.0.000'")));
+  }
+
+  @Test
+  public void testCreateMeasureReplacesRequestCqlWithLibraryStatementWhenNoTemplate() {
+    String usr = "john rao";
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("some cql")
+            .elmJson(null)
+            .measureMetaData(null)
+            .createdBy(usr)
+            .model(ModelType.US_QUALITY_CORE_0_5_0.getValue())
+            .build();
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+    when(cqlTemplateConfigService.getUsqc050CqlTemplate()).thenReturn(null);
+
+    Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", true);
+    assertThat(savedMeasure.getCql(), is(equalTo("library VTE version '0.0.000'")));
+  }
+
+  @Test
+  public void testCreateMeasureDoesNotDefaultCqlWhenAddDefaultCqlIsFalse() {
+    String usr = "john rao";
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(38, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(11, ChronoUnit.DAYS)))
+            .measureSetId("msid-1")
+            .cqlLibraryName("VTE")
+            .cql("")
+            .elmJson(null)
+            .measureMetaData(null)
+            .createdBy(usr)
+            .model(ModelType.US_QUALITY_CORE_0_5_0.getValue())
+            .build();
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+
+    Measure savedMeasure = measureService.createMeasure(measureToSave, usr, "token", false);
     assertThat(savedMeasure.getCql(), is(equalTo("")));
+    verifyNoInteractions(cqlTemplateConfigService);
   }
 
   @Test

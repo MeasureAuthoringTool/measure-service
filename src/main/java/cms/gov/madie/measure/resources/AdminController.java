@@ -15,6 +15,7 @@ import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.repositories.OrganizationRepository;
 import cms.gov.madie.measure.services.*;
+import cms.gov.madie.measure.utils.MeasureServiceUtil;
 import cms.gov.madie.measure.utils.MeasureUtil;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
@@ -59,7 +60,6 @@ public class AdminController extends AbstractMeasureController {
   private final TestCaseValidationService testCaseValidationService;
   private final MeasureSetService measureSetService;
   private final ActionLogService actionLogService;
-  private final VersionService versionService;
   private final ExportService exportService;
 
   private final MeasureRepository measureRepository;
@@ -422,10 +422,10 @@ public class AdminController extends AbstractMeasureController {
         measureToCorrectVersion
             .getCql()
             .replace(
-                versionService.generateLibraryContentLine(
+                MeasureServiceUtil.generateLibraryContentLine(
                     measureToCorrectVersion.getCqlLibraryName(),
                     measureToCorrectVersion.getVersion()),
-                versionService.generateLibraryContentLine(
+                MeasureServiceUtil.generateLibraryContentLine(
                     measureToCorrectVersion.getCqlLibraryName(), newDraftVersion));
 
     measureToCorrectVersion.setCql(newCql);
