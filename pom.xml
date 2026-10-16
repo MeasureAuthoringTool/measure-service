@@ -14,7 +14,6 @@
   <name>Measure Service</name>
   <description>Measure Service for MADiE</description>
   <properties>
-    <cqframework.version>3.27.0</cqframework.version>
     <java.version>17</java.version>
     <mvn.checkstyle.file>madie-checkstyle.xml</mvn.checkstyle.file>
     <mvn.checkstyle.version>3.1.2</mvn.checkstyle.version>
@@ -161,11 +160,6 @@
       <groupId>gov.cms.madie</groupId>
       <artifactId>madie-rest-commons</artifactId>
       <version>1.1.1-SNAPSHOT</version>
-    </dependency>
-    <dependency>
-      <groupId>info.cqframework</groupId>
-      <artifactId>cql-to-elm</artifactId>
-      <version>${cqframework.version}</version>
     </dependency>
     <dependency>
       <groupId>io.mongock</groupId>
