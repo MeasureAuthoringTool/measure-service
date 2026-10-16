@@ -48,6 +48,39 @@ class RichTextUtilTest {
   }
 
   @Test
+  void htmlifiesPlainTextTrendingIssues() {
+    Measure measure = htmlify(MeasureMetaData.builder().trendingIssues("some issue").build());
+
+    assertThat(measure.getMeasureMetaData().getTrendingIssues()).isEqualTo("<p>some issue</p>");
+  }
+
+  @Test
+  void htmlifiesMarkdownTrendingIssues() {
+    Measure measure = htmlify(MeasureMetaData.builder().trendingIssues("**bold** issue").build());
+
+    assertThat(measure.getMeasureMetaData().getTrendingIssues())
+        .isEqualTo("<p><strong>bold</strong> issue</p>");
+  }
+
+  @Test
+  void sanitizesUnsafeHtmlInTrendingIssues() {
+    Measure measure =
+        htmlify(
+            MeasureMetaData.builder()
+                .trendingIssues("issue <script>alert('xss')</script>")
+                .build());
+
+    assertThat(measure.getMeasureMetaData().getTrendingIssues()).doesNotContain("script");
+  }
+
+  @Test
+  void leavesNullTrendingIssuesUnchanged() {
+    Measure measure = htmlify(MeasureMetaData.builder().trendingIssues(null).build());
+
+    assertThat(measure.getMeasureMetaData().getTrendingIssues()).isNull();
+  }
+
+  @Test
   void leavesNullLimitationsUnchanged() {
     Measure measure = htmlify(MeasureMetaData.builder().limitations(null).build());
 
