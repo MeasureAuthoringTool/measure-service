@@ -1,5 +1,6 @@
 package cms.gov.madie.measure.validations;
 
+import cms.gov.madie.measure.exceptions.InvalidCompositeMeasureException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.measure.Component;
 import gov.cms.madie.models.measure.CompositeMeasureScoring;
@@ -7,12 +8,14 @@ import gov.cms.madie.models.measure.Group;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureScoring;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -20,9 +23,8 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-/**
- * Composite validations shared by measure export and versioning.
- */
+/** Composite validations shared by measure export and versioning. */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class CompositeMeasureValidationService {
@@ -36,16 +38,17 @@ public class CompositeMeasureValidationService {
   public static final String COMPONENT_POPULATION_BASIS_INVALID =
       "The population basis for the component measure(s) is inaccurate";
 
-  // The component scoring types each composite scoring method allows
+  // The component scoring types each composite scoring method allows. EnumSet so an unknown
+  // component scoring (null) is simply not contained rather than throwing
   private static final Map<CompositeMeasureScoring, Set<MeasureScoring>> ALLOWED_COMPONENT_SCORING =
       new EnumMap<>(
           Map.of(
               CompositeMeasureScoring.OPPORTUNITY,
-              Set.of(MeasureScoring.PROPORTION, MeasureScoring.RATIO),
+              EnumSet.of(MeasureScoring.PROPORTION, MeasureScoring.RATIO),
               CompositeMeasureScoring.ALL_OR_NOTHING,
-              Set.of(MeasureScoring.PROPORTION, MeasureScoring.RATIO),
+              EnumSet.of(MeasureScoring.PROPORTION, MeasureScoring.RATIO),
               CompositeMeasureScoring.LINEAR,
-              Set.of(
+              EnumSet.of(
                   MeasureScoring.PROPORTION,
                   MeasureScoring.RATIO,
                   MeasureScoring.CONTINUOUS_VARIABLE)));
@@ -55,14 +58,16 @@ public class CompositeMeasureValidationService {
   private final MeasureRepository measureRepository;
 
   /**
-   * Returns the user facing failure messages for a composite measure, empty when the measure is
-   * valid or is not composite.
+   * Rejects a composite measure that fails any composite validation, listing every failure. Does
+   * nothing when the measure is valid or is not composite.
+   *
+   * @throws InvalidCompositeMeasureException with the user facing failure messages
    */
-  public List<String> validate(Measure measure) {
+  public void validate(Measure measure) {
     if (measure == null
         || measure.getMeasureMetaData() == null
         || !measure.getMeasureMetaData().isComposite()) {
-      return List.of();
+      return;
     }
 
     List<String> errors = new ArrayList<>();
@@ -93,44 +98,46 @@ public class CompositeMeasureValidationService {
       errors.add(TWO_COMPONENTS_REQUIRED);
     }
 
-    // allowed component scoring is derived from the composite scoring method
-    if (allowedScoringTypes == null || components.isEmpty()) {
-      return errors;
+    // allowed component scoring is derived from the composite scoring method, so the components
+    // can only be checked once it is known
+    if (allowedScoringTypes != null && !components.isEmpty()) {
+      Map<String, Measure> componentMeasuresById =
+          measureRepository
+              .findAllById(componentMeasureIds.stream().filter(Objects::nonNull).toList())
+              .stream()
+              .collect(Collectors.toMap(Measure::getId, Function.identity()));
+      List<Group> componentGroups =
+          components.stream()
+              .map(component -> findComponentGroup(component, componentMeasuresById))
+              .toList();
+
+      // an unresolvable component cannot be proven valid
+      boolean hasInvalidScoring =
+          componentGroups.stream()
+              .anyMatch(
+                  group ->
+                      group == null
+                          || !allowedScoringTypes.contains(
+                              MeasureScoring.valueOfText(group.getScoring())));
+
+      boolean hasInvalidPopulationBasis =
+          isPatientBased(compositeGroup)
+              && componentGroups.stream()
+                  .filter(Objects::nonNull)
+                  .anyMatch(group -> !isPatientBased(group));
+
+      if (hasInvalidScoring) {
+        errors.add(COMPONENT_MEASURE_TYPES_INVALID);
+      }
+      if (hasInvalidPopulationBasis) {
+        errors.add(COMPONENT_POPULATION_BASIS_INVALID);
+      }
     }
 
-    Map<String, Measure> componentMeasuresById =
-        measureRepository
-            .findAllById(componentMeasureIds.stream().filter(Objects::nonNull).toList())
-            .stream()
-            .collect(Collectors.toMap(Measure::getId, Function.identity()));
-    List<Group> componentGroups =
-        components.stream()
-            .map(component -> findComponentGroup(component, componentMeasuresById))
-            .toList();
-
-    // an unresolvable component cannot be proven valid
-    boolean hasInvalidScoring =
-        componentGroups.stream()
-            .anyMatch(
-                group ->
-                    group == null
-                        || !allowedScoringTypes.contains(
-                            MeasureScoring.valueOfText(group.getScoring())));
-
-    boolean hasInvalidPopulationBasis =
-        isPatientBased(compositeGroup)
-            && componentGroups.stream()
-                .filter(Objects::nonNull)
-                .anyMatch(group -> !isPatientBased(group));
-
-    if (hasInvalidScoring) {
-      errors.add(COMPONENT_MEASURE_TYPES_INVALID);
+    if (!errors.isEmpty()) {
+      log.error("Composite measure [{}] failed validation: {}", measure.getId(), errors);
+      throw new InvalidCompositeMeasureException(measure.getId(), errors);
     }
-    if (hasInvalidPopulationBasis) {
-      errors.add(COMPONENT_POPULATION_BASIS_INVALID);
-    }
-
-    return errors;
   }
 
   // Components live on the group whose scoring is COMPOSITE.

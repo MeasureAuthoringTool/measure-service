@@ -8,6 +8,7 @@ import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.BadVersionRequestException;
 import cms.gov.madie.measure.exceptions.BundleOperationException;
 import cms.gov.madie.measure.exceptions.CqlElmTranslationErrorException;
+import cms.gov.madie.measure.exceptions.InvalidCompositeMeasureException;
 import cms.gov.madie.measure.exceptions.MeasureNotDraftableException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
@@ -831,24 +832,20 @@ public class VersionServiceTest {
   public void testCreateVersionCompositeMeasureFailsCompositeValidation() {
     FhirMeasure existingMeasure = buildDraftCompositeMeasure();
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
-    when(compositeMeasureValidationService.validate(existingMeasure))
-        .thenReturn(
+    InvalidCompositeMeasureException compositeException =
+        new InvalidCompositeMeasureException(
+            "testMeasureId",
             List.of(
                 CompositeMeasureValidationService.TWO_COMPONENTS_REQUIRED,
                 CompositeMeasureValidationService.COMPONENT_MEASURE_TYPES_INVALID));
+    doThrow(compositeException).when(compositeMeasureValidationService).validate(existingMeasure);
 
-    BadVersionRequestException ex =
+    InvalidCompositeMeasureException ex =
         assertThrows(
-            BadVersionRequestException.class,
+            InvalidCompositeMeasureException.class,
             () ->
                 versionService.createVersion("testMeasureId", "MAJOR", "testUser", "accesstoken"));
-    assertThat(
-        ex.getMessage(),
-        is(
-            equalTo(
-                "User testUser cannot version Measure with ID testMeasureId. "
-                    + "Two component measures must be selected, "
-                    + "The measure type of the component measure(s) is invalid")));
+    assertThat(ex, is(sameInstance(compositeException)));
     verify(measureLockService, never())
         .checkMeasureAndTestCaseLock(anyString(), any(Measure.class), anyString());
     verify(bundleService, never()).buildCompositeVersionArtifacts(any(Measure.class), anyString());
@@ -859,12 +856,16 @@ public class VersionServiceTest {
   public void testCheckValidVersioningCompositeMeasureFailsCompositeValidation() {
     FhirMeasure existingMeasure = buildDraftCompositeMeasure();
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
-    when(compositeMeasureValidationService.validate(existingMeasure))
-        .thenReturn(List.of(CompositeMeasureValidationService.COMPOSITE_SCORING_REQUIRED));
+    doThrow(
+            new InvalidCompositeMeasureException(
+                "testMeasureId",
+                List.of(CompositeMeasureValidationService.COMPOSITE_SCORING_REQUIRED)))
+        .when(compositeMeasureValidationService)
+        .validate(existingMeasure);
 
-    BadVersionRequestException ex =
+    InvalidCompositeMeasureException ex =
         assertThrows(
-            BadVersionRequestException.class,
+            InvalidCompositeMeasureException.class,
             () ->
                 versionService.checkValidVersioning(
                     "testMeasureId", "MAJOR", "testUser", "accesstoken"));
@@ -875,11 +876,11 @@ public class VersionServiceTest {
   public void testCheckValidVersioningCompositeMeasurePassesCompositeValidation() {
     FhirMeasure existingMeasure = buildDraftCompositeMeasure();
     when(measureService.findMeasureById(anyString())).thenReturn(existingMeasure);
-    when(compositeMeasureValidationService.validate(existingMeasure)).thenReturn(List.of());
 
     var validationResult =
         versionService.checkValidVersioning("testMeasureId", "MAJOR", "testUser", "accesstoken");
     assertEquals(VALID, validationResult);
+    verify(compositeMeasureValidationService).validate(existingMeasure);
     verify(elmTranslatorClient, never()).getElmJson(anyString(), anyString());
   }
 

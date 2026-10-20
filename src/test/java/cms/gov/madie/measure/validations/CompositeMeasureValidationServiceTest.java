@@ -8,13 +8,16 @@ import static cms.gov.madie.measure.validations.CompositeMeasureValidationServic
 import static cms.gov.madie.measure.validations.CompositeMeasureValidationService.TWO_COMPONENTS_REQUIRED;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.contains;
-import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import cms.gov.madie.measure.exceptions.InvalidCompositeMeasureException;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import gov.cms.madie.models.measure.Component;
 import gov.cms.madie.models.measure.Group;
@@ -89,7 +92,7 @@ class CompositeMeasureValidationServiceTest {
   }
 
   @Test
-  void returnsNoErrorsAndNeverQueriesForNonCompositeMeasure() {
+  void acceptsANonCompositeMeasureWithoutQueryingComponents() {
     Measure measure =
         Measure.builder()
             .id("1")
@@ -97,33 +100,36 @@ class CompositeMeasureValidationServiceTest {
             .groups(List.of(Group.builder().id("g1").scoring(PROPORTION).build()))
             .build();
 
-    assertThat(compositeMeasureValidationService.validate(measure), empty());
+    assertDoesNotThrow(() -> compositeMeasureValidationService.validate(measure));
     verify(measureRepository, never()).findAllById(any());
   }
 
   @Test
-  void returnsNoErrorsForMeasureWithoutMetadata() {
-    assertThat(
-        compositeMeasureValidationService.validate(Measure.builder().id("1").build()), empty());
+  void acceptsAMeasureWithoutMetadata() {
+    assertDoesNotThrow(
+        () -> compositeMeasureValidationService.validate(Measure.builder().id("1").build()));
     verify(measureRepository, never()).findAllById(any());
   }
 
   @Test
-  void returnsNoErrorsForValidCompositeMeasure() {
+  void acceptsAValidCompositeMeasure() {
     stubComponentMeasures(
         componentMeasure("m1", "g1", PROPORTION, PATIENT),
         componentMeasure("m2", "g2", RATIO, PATIENT));
 
-    assertThat(compositeMeasureValidationService.validate(compositeMeasure()), empty());
+    assertDoesNotThrow(() -> compositeMeasureValidationService.validate(compositeMeasure()));
   }
 
   @Test
   void requiresTwoComponentsWhenNoComponentsAreSelected() {
-    List<String> errors =
-        compositeMeasureValidationService.validate(
-            compositeMeasure(COMPOSITE, "Opportunity", List.of(), PATIENT));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(COMPOSITE, "Opportunity", List.of(), PATIENT)));
 
-    assertThat(errors, contains(TWO_COMPONENTS_REQUIRED));
+    assertThat(ex.getErrors(), contains(TWO_COMPONENTS_REQUIRED));
     verify(measureRepository, never()).findAllById(any());
   }
 
@@ -132,11 +138,15 @@ class CompositeMeasureValidationServiceTest {
     when(measureRepository.findAllById(List.of("m1")))
         .thenReturn(List.of(componentMeasure("m1", "g1", PROPORTION, PATIENT)));
 
-    List<String> errors =
-        compositeMeasureValidationService.validate(
-            compositeMeasure(COMPOSITE, "Opportunity", List.of(component("m1", "g1")), PATIENT));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(
+                        COMPOSITE, "Opportunity", List.of(component("m1", "g1")), PATIENT)));
 
-    assertThat(errors, contains(TWO_COMPONENTS_REQUIRED));
+    assertThat(ex.getErrors(), contains(TWO_COMPONENTS_REQUIRED));
   }
 
   @Test
@@ -152,15 +162,18 @@ class CompositeMeasureValidationServiceTest {
     // the same measure id is only fetched once
     when(measureRepository.findAllById(List.of("m1"))).thenReturn(List.of(m1));
 
-    List<String> errors =
-        compositeMeasureValidationService.validate(
-            compositeMeasure(
-                COMPOSITE,
-                "Opportunity",
-                List.of(component("m1", "g1"), component("m1", "g2")),
-                PATIENT));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(
+                        COMPOSITE,
+                        "Opportunity",
+                        List.of(component("m1", "g1"), component("m1", "g2")),
+                        PATIENT)));
 
-    assertThat(errors, contains(TWO_COMPONENTS_REQUIRED));
+    assertThat(ex.getErrors(), contains(TWO_COMPONENTS_REQUIRED));
   }
 
   @Test
@@ -168,15 +181,18 @@ class CompositeMeasureValidationServiceTest {
     when(measureRepository.findAllById(List.of("m1")))
         .thenReturn(List.of(componentMeasure("m1", "g1", PROPORTION, PATIENT)));
 
-    List<String> errors =
-        compositeMeasureValidationService.validate(
-            compositeMeasure(
-                COMPOSITE,
-                "Opportunity",
-                List.of(component("m1", "g1"), component("m1", "g1")),
-                PATIENT));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(
+                        COMPOSITE,
+                        "Opportunity",
+                        List.of(component("m1", "g1"), component("m1", "g1")),
+                        PATIENT)));
 
-    assertThat(errors, contains(TWO_COMPONENTS_REQUIRED));
+    assertThat(ex.getErrors(), contains(TWO_COMPONENTS_REQUIRED));
   }
 
   @Test
@@ -185,31 +201,40 @@ class CompositeMeasureValidationServiceTest {
         componentMeasure("m1", "g1", PROPORTION, PATIENT),
         componentMeasure("m2", "g2", RATIO, PATIENT));
 
-    List<String> errors =
-        compositeMeasureValidationService.validate(
-            compositeMeasure(PROPORTION, "Opportunity", TWO_COMPONENTS, PATIENT));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(PROPORTION, "Opportunity", TWO_COMPONENTS, PATIENT)));
 
-    assertThat(errors, hasItem(SCORING_MUST_BE_COMPOSITE));
+    assertThat(ex.getErrors(), hasItem(SCORING_MUST_BE_COMPOSITE));
   }
 
   @Test
   void requiresACompositeScoringMethod() {
-    List<String> errors =
-        compositeMeasureValidationService.validate(
-            compositeMeasure(COMPOSITE, null, TWO_COMPONENTS, PATIENT));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(COMPOSITE, null, TWO_COMPONENTS, PATIENT)));
 
-    assertThat(errors, contains(COMPOSITE_SCORING_REQUIRED));
+    assertThat(ex.getErrors(), contains(COMPOSITE_SCORING_REQUIRED));
     // components are not validated without a composite scoring method
     verify(measureRepository, never()).findAllById(any());
   }
 
   @Test
   void rejectsAnUnsupportedCompositeScoringMethod() {
-    List<String> errors =
-        compositeMeasureValidationService.validate(
-            compositeMeasure(COMPOSITE, "Component-level", TWO_COMPONENTS, PATIENT));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(COMPOSITE, "Component-level", TWO_COMPONENTS, PATIENT)));
 
-    assertThat(errors, contains(COMPOSITE_SCORING_INVALID));
+    assertThat(ex.getErrors(), contains(COMPOSITE_SCORING_INVALID));
     verify(measureRepository, never()).findAllById(any());
   }
 
@@ -219,9 +244,12 @@ class CompositeMeasureValidationServiceTest {
         componentMeasure("m1", "g1", PROPORTION, PATIENT),
         componentMeasure("m2", "g2", CONTINUOUS_VARIABLE, PATIENT));
 
-    assertThat(
-        compositeMeasureValidationService.validate(compositeMeasure()),
-        contains(COMPONENT_MEASURE_TYPES_INVALID));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () -> compositeMeasureValidationService.validate(compositeMeasure()));
+
+    assertThat(ex.getErrors(), contains(COMPONENT_MEASURE_TYPES_INVALID));
   }
 
   @Test
@@ -230,10 +258,14 @@ class CompositeMeasureValidationServiceTest {
         componentMeasure("m1", "g1", PROPORTION, PATIENT),
         componentMeasure("m2", "g2", CONTINUOUS_VARIABLE, PATIENT));
 
-    assertThat(
-        compositeMeasureValidationService.validate(
-            compositeMeasure(COMPOSITE, "All-or-nothing", TWO_COMPONENTS, PATIENT)),
-        contains(COMPONENT_MEASURE_TYPES_INVALID));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(COMPOSITE, "All-or-nothing", TWO_COMPONENTS, PATIENT)));
+
+    assertThat(ex.getErrors(), contains(COMPONENT_MEASURE_TYPES_INVALID));
   }
 
   @Test
@@ -242,10 +274,10 @@ class CompositeMeasureValidationServiceTest {
         componentMeasure("m1", "g1", PROPORTION, PATIENT),
         componentMeasure("m2", "g2", CONTINUOUS_VARIABLE, PATIENT));
 
-    assertThat(
-        compositeMeasureValidationService.validate(
-            compositeMeasure(COMPOSITE, "Linear", TWO_COMPONENTS, PATIENT)),
-        empty());
+    assertDoesNotThrow(
+        () ->
+            compositeMeasureValidationService.validate(
+                compositeMeasure(COMPOSITE, "Linear", TWO_COMPONENTS, PATIENT)));
   }
 
   @Test
@@ -254,9 +286,12 @@ class CompositeMeasureValidationServiceTest {
         componentMeasure("m1", "g1", COHORT, PATIENT),
         componentMeasure("m2", "g2", COHORT, PATIENT));
 
-    assertThat(
-        compositeMeasureValidationService.validate(compositeMeasure()),
-        contains(COMPONENT_MEASURE_TYPES_INVALID));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () -> compositeMeasureValidationService.validate(compositeMeasure()));
+
+    assertThat(ex.getErrors(), contains(COMPONENT_MEASURE_TYPES_INVALID));
   }
 
   @Test
@@ -265,9 +300,12 @@ class CompositeMeasureValidationServiceTest {
         componentMeasure("m1", "g1", PROPORTION, PATIENT),
         componentMeasure("m2", "g2", RATIO, "Encounter"));
 
-    assertThat(
-        compositeMeasureValidationService.validate(compositeMeasure()),
-        contains(COMPONENT_POPULATION_BASIS_INVALID));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () -> compositeMeasureValidationService.validate(compositeMeasure()));
+
+    assertThat(ex.getErrors(), contains(COMPONENT_POPULATION_BASIS_INVALID));
   }
 
   @Test
@@ -276,19 +314,36 @@ class CompositeMeasureValidationServiceTest {
         componentMeasure("m1", "g1", PROPORTION, "Encounter"),
         componentMeasure("m2", "g2", RATIO, "Encounter"));
 
-    assertThat(
-        compositeMeasureValidationService.validate(
-            compositeMeasure(COMPOSITE, "Opportunity", TWO_COMPONENTS, "Encounter")),
-        empty());
+    assertDoesNotThrow(
+        () ->
+            compositeMeasureValidationService.validate(
+                compositeMeasure(COMPOSITE, "Opportunity", TWO_COMPONENTS, "Encounter")));
   }
 
   @Test
   void flagsAComponentWhoseMeasureCannotBeResolved() {
     stubComponentMeasures(componentMeasure("m1", "g1", PROPORTION, PATIENT));
 
-    assertThat(
-        compositeMeasureValidationService.validate(compositeMeasure()),
-        contains(COMPONENT_MEASURE_TYPES_INVALID));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () -> compositeMeasureValidationService.validate(compositeMeasure()));
+
+    assertThat(ex.getErrors(), contains(COMPONENT_MEASURE_TYPES_INVALID));
+  }
+
+  @Test
+  void flagsAComponentWithNoOrAnUnknownScoring() {
+    stubComponentMeasures(
+        componentMeasure("m1", "g1", null, PATIENT),
+        componentMeasure("m2", "g2", "Bogus", PATIENT));
+
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () -> compositeMeasureValidationService.validate(compositeMeasure()));
+
+    assertThat(ex.getErrors(), contains(COMPONENT_MEASURE_TYPES_INVALID));
   }
 
   @Test
@@ -297,31 +352,45 @@ class CompositeMeasureValidationServiceTest {
         componentMeasure("m1", "g1", PROPORTION, PATIENT),
         componentMeasure("m2", "other-group", RATIO, PATIENT));
 
-    assertThat(
-        compositeMeasureValidationService.validate(compositeMeasure()),
-        contains(COMPONENT_MEASURE_TYPES_INVALID));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () -> compositeMeasureValidationService.validate(compositeMeasure()));
+
+    assertThat(ex.getErrors(), contains(COMPONENT_MEASURE_TYPES_INVALID));
   }
 
   // ordered by the order the user must fix them in
   @Test
-  void returnsEveryFailureInTheOrderTheUserMustFixThem() {
-    List<String> errors =
-        compositeMeasureValidationService.validate(
-            compositeMeasure(PROPORTION, null, List.of(), PATIENT));
+  void rejectsWithEveryFailureInTheOrderTheUserMustFixThem() {
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(PROPORTION, null, List.of(), PATIENT)));
 
     assertThat(
-        errors,
+        ex.getErrors(),
         contains(SCORING_MUST_BE_COMPOSITE, COMPOSITE_SCORING_REQUIRED, TWO_COMPONENTS_REQUIRED));
+    assertThat(
+        ex.getMessage(),
+        is(
+            "Composite measure with ID composite-1 is invalid: Measure score must be Composite, "
+                + "Composite measure score is required, Two component measures must be selected"));
   }
 
   @Test
   void stillReportsTheComponentCountWhenTheCompositeScoringIsUnusable() {
-    List<String> errors =
-        compositeMeasureValidationService.validate(
-            compositeMeasure(
-                COMPOSITE, "Component-level", List.of(component("m1", "g1")), PATIENT));
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () ->
+                compositeMeasureValidationService.validate(
+                    compositeMeasure(
+                        COMPOSITE, "Component-level", List.of(component("m1", "g1")), PATIENT)));
 
-    assertThat(errors, contains(COMPOSITE_SCORING_INVALID, TWO_COMPONENTS_REQUIRED));
+    assertThat(ex.getErrors(), contains(COMPOSITE_SCORING_INVALID, TWO_COMPONENTS_REQUIRED));
     verify(measureRepository, never()).findAllById(any());
   }
 
@@ -331,8 +400,13 @@ class CompositeMeasureValidationServiceTest {
         componentMeasure("m1", "g1", PROPORTION, PATIENT),
         componentMeasure("m2", "g2", CONTINUOUS_VARIABLE, "Encounter"));
 
+    InvalidCompositeMeasureException ex =
+        assertThrows(
+            InvalidCompositeMeasureException.class,
+            () -> compositeMeasureValidationService.validate(compositeMeasure()));
+
     assertThat(
-        compositeMeasureValidationService.validate(compositeMeasure()),
+        ex.getErrors(),
         contains(COMPONENT_MEASURE_TYPES_INVALID, COMPONENT_POPULATION_BASIS_INVALID));
   }
 }

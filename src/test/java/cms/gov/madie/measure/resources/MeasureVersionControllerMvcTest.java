@@ -4,6 +4,7 @@ import cms.gov.madie.measure.config.security.SecurityConfigTest;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
 import cms.gov.madie.measure.exceptions.BadVersionRequestException;
+import cms.gov.madie.measure.exceptions.InvalidCompositeMeasureException;
 import cms.gov.madie.measure.exceptions.MeasureNotDraftableException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
@@ -28,6 +29,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.List;
+
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.mockito.ArgumentMatchers.*;
@@ -38,8 +41,10 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -131,6 +136,33 @@ public class MeasureVersionControllerMvcTest {
             eq("NOTVALIDVERSIONTYPE"),
             eq(TEST_USER_ID),
             eq("test-okta-token"));
+  }
+
+  @Test
+  public void testCheckValidVersionReturnsUnprocessableContentForInvalidCompositeMeasure()
+      throws Exception {
+    doThrow(
+            new InvalidCompositeMeasureException(
+                "testMeasureId",
+                List.of(
+                    "Two component measures must be selected",
+                    "The measure type of the component measure(s) is invalid")))
+        .when(versionService)
+        .checkValidVersioning(anyString(), anyString(), anyString(), anyString());
+
+    mockMvc
+        .perform(
+            get("/measures/testMeasureId/version?versionType=MAJOR")
+                .with(user(TEST_USER_ID))
+                .with(csrf())
+                .header("Authorization", "test-okta-token"))
+        .andExpect(status().isUnprocessableContent())
+        .andExpect(
+            jsonPath("$.message")
+                .value(
+                    "Composite measure with ID testMeasureId is invalid: "
+                        + "Two component measures must be selected, "
+                        + "The measure type of the component measure(s) is invalid"));
   }
 
   @Test

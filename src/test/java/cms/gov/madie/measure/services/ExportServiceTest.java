@@ -7,6 +7,7 @@ import cms.gov.madie.measure.dto.MeasureListDTO;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.dto.excel.MeasureAccessReportDTO;
 import cms.gov.madie.measure.dto.qrda.QrdaRequestDTO;
+import cms.gov.madie.measure.exceptions.InvalidCompositeMeasureException;
 import cms.gov.madie.measure.exceptions.InvalidRequestException;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.factories.ModelValidatorFactory;
@@ -39,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -145,21 +147,19 @@ class ExportServiceTest {
     when(modelValidatorFactory.getModelValidator(any())).thenReturn(qicoreModelValidator);
     when(measureUtil.validateAllMeasureDependencies(any(Measure.class)))
         .thenAnswer((invocationOnMock) -> invocationOnMock.getArgument(0));
-    when(compositeMeasureValidationService.validate(measure))
-        .thenReturn(
+    InvalidCompositeMeasureException compositeException =
+        new InvalidCompositeMeasureException(
+            "measure-id",
             List.of(
                 CompositeMeasureValidationService.TWO_COMPONENTS_REQUIRED,
                 CompositeMeasureValidationService.COMPONENT_MEASURE_TYPES_INVALID));
+    doThrow(compositeException).when(compositeMeasureValidationService).validate(measure);
 
-    InvalidResourceStateException ex =
+    InvalidCompositeMeasureException ex =
         assertThrows(
-            InvalidResourceStateException.class,
+            InvalidCompositeMeasureException.class,
             () -> exportService.getMeasureExport(measure, token, "Info"));
-    assertEquals(
-        "Response could not be completed for Measure with ID measure-id, "
-            + "Two component measures must be selected, "
-            + "The measure type of the component measure(s) is invalid",
-        ex.getMessage());
+    assertEquals(compositeException, ex);
     // composite failures are reported before the metadata and group checks
     verify(qicoreModelValidator, never()).validateMetadata(any(Measure.class));
     verify(packageServiceFactory, never()).getPackageService(any());

@@ -47,11 +47,7 @@ public class ExportService {
         modelValidatorFactory.getModelValidator(ModelType.valueOfName(measure.getModel()));
     measure = measureUtil.validateAllMeasureDependencies(measure);
 
-    List<String> compositeErrors = compositeMeasureValidationService.validate(measure);
-    if (!compositeErrors.isEmpty()) {
-      throw new InvalidResourceStateException(
-          "Measure", measure.getId(), String.join(", ", compositeErrors));
-    }
+    compositeMeasureValidationService.validate(measure);
 
     modelValidator.validateMetadata(measure);
     modelValidator.validateGroups(measure);

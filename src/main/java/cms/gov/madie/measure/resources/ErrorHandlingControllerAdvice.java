@@ -199,6 +199,13 @@ public class ErrorHandlingControllerAdvice {
     return getErrorAttributes(request, HttpStatus.BAD_REQUEST);
   }
 
+  @ExceptionHandler(InvalidCompositeMeasureException.class)
+  @ResponseStatus(HttpStatus.UNPROCESSABLE_CONTENT)
+  @ResponseBody
+  Map<String, Object> onInvalidCompositeMeasureException(WebRequest request) {
+    return getErrorAttributes(request, HttpStatus.UNPROCESSABLE_CONTENT);
+  }
+
   @ExceptionHandler(BadVersionRequestException.class)
   @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ResponseBody

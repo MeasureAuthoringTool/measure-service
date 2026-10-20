@@ -539,17 +539,7 @@ public class VersionService {
         throw new CqlElmTranslationErrorException(measure.getMeasureName());
       }
     } else {
-      List<String> compositeErrors = compositeMeasureValidationService.validate(measure);
-      if (!compositeErrors.isEmpty()) {
-        log.error(
-            "User [{}] attempted to version composite measure with id [{}] which failed "
-                + "composite validation: {}",
-            username,
-            measure.getId(),
-            compositeErrors);
-        throw new BadVersionRequestException(
-            "Measure", measure.getId(), username, String.join(", ", compositeErrors));
-      }
+      compositeMeasureValidationService.validate(measure);
     }
   }
 
