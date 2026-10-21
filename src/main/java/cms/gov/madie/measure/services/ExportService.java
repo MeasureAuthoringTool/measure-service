@@ -13,6 +13,7 @@ import cms.gov.madie.measure.factories.ModelValidatorFactory;
 import cms.gov.madie.measure.factories.PackageServiceFactory;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.MeasureUtil;
+import cms.gov.madie.measure.validations.CompositeMeasureValidationService;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureSet;
@@ -34,6 +35,7 @@ public class ExportService {
   private final MeasureRepository measureRepository;
   private final MeasureSetService measureSetService;
   private final MeasureUtil measureUtil;
+  private final CompositeMeasureValidationService compositeMeasureValidationService;
 
   public PackageDto getMeasureExport(Measure measure, String accessToken, String elmErrorSeverity) {
     return getMeasureExport(measure, accessToken, EXPORT, elmErrorSeverity);
@@ -44,6 +46,9 @@ public class ExportService {
     ModelValidator modelValidator =
         modelValidatorFactory.getModelValidator(ModelType.valueOfName(measure.getModel()));
     measure = measureUtil.validateAllMeasureDependencies(measure);
+
+    compositeMeasureValidationService.validate(measure);
+
     modelValidator.validateMetadata(measure);
     modelValidator.validateGroups(measure);
     modelValidator.validateCqlErrors(measure);
