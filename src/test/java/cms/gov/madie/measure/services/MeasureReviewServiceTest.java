@@ -573,4 +573,46 @@ class MeasureReviewServiceTest {
     verify(measureService, times(1))
         .getMeasuresInReview(searchCriteria, List.of(OwnershipType.OWNED), pageRequest, USERNAME);
   }
+
+  @Test
+  void createReviewAssignsIdsToCommentsWithoutOne() {
+    review.setComment(
+        List.of(
+            Comment.builder().content("no id yet").build(),
+            Comment.builder().id("c-existing").content("already has one").build()));
+    when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.createReview(review, USERNAME);
+
+    assertNotNull(
+        result.getComment().get(0).getId(), "embedded comments need a service-assigned id");
+    assertEquals("c-existing", result.getComment().get(1).getId());
+  }
+
+  @Test
+  void updateReviewAssignsIdsOnlyToCommentsWithoutOne() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comment(
+                List.of(
+                    Comment.builder().id("c1").content("kept").build(),
+                    Comment.builder().content("new").build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals("c1", result.getComment().get(0).getId());
+    assertNotNull(result.getComment().get(1).getId());
+  }
 }
