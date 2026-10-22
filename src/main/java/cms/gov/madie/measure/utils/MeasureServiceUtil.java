@@ -4,6 +4,7 @@ import cms.gov.madie.measure.exceptions.InvalidMeasurementPeriodException;
 import cms.gov.madie.measure.exceptions.InvalidVersionIdException;
 import cms.gov.madie.measure.exceptions.UnauthorizedException;
 import gov.cms.madie.models.access.RoleEnum;
+import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.measure.MeasureSet;
 import lombok.experimental.UtilityClass;
 import lombok.extern.slf4j.Slf4j;
@@ -68,5 +69,9 @@ public class MeasureServiceUtil {
         && !changedVersionId.equalsIgnoreCase(originalVersionId)) {
       throw new InvalidVersionIdException(changedVersionId);
     }
+  }
+
+  public String generateLibraryContentLine(String cqlLibraryName, Version version) {
+    return "library " + cqlLibraryName + " version " + "'" + version + "'";
   }
 }

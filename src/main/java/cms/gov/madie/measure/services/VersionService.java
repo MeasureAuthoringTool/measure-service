@@ -7,8 +7,10 @@ import cms.gov.madie.measure.dto.CompositeVersionArtifacts;
 import cms.gov.madie.measure.dto.PackageDto;
 import cms.gov.madie.measure.exceptions.*;
 import cms.gov.madie.measure.repositories.*;
+import cms.gov.madie.measure.utils.MeasureServiceUtil;
 import cms.gov.madie.measure.utils.RichTextUtil;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
+import cms.gov.madie.measure.validations.CompositeMeasureValidationService;
 import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
@@ -54,6 +56,7 @@ public class VersionService {
   private final TestCaseValidationService testCaseValidationService;
   private final MeasureLockService measureLockService;
   private final BundleService bundleService;
+  private final CompositeMeasureValidationService compositeMeasureValidationService;
   private static final String USCORE_PATTERN = "using USCore version '6.1.0-derived'";
   private static final String FHIR_PATTERN = "using FHIR version '4.0.1'";
 
@@ -199,8 +202,10 @@ public class VersionService {
           upversionedMeasure
               .getCql()
               .replace(
-                  generateLibraryContentLine(upversionedMeasure.getCqlLibraryName(), oldVersion),
-                  generateLibraryContentLine(upversionedMeasure.getCqlLibraryName(), newVersion));
+                  MeasureServiceUtil.generateLibraryContentLine(
+                      upversionedMeasure.getCqlLibraryName(), oldVersion),
+                  MeasureServiceUtil.generateLibraryContentLine(
+                      upversionedMeasure.getCqlLibraryName(), newVersion));
       upversionedMeasure.setCql(newCql);
     }
 
@@ -533,6 +538,8 @@ public class VersionService {
       if (elmTranslatorClient.hasErrors(elmJson)) {
         throw new CqlElmTranslationErrorException(measure.getMeasureName());
       }
+    } else {
+      compositeMeasureValidationService.validate(measure);
     }
   }
 
@@ -566,10 +573,6 @@ public class VersionService {
     }
 
     return new Version();
-  }
-
-  public String generateLibraryContentLine(String cqlLibraryName, Version version) {
-    return "library " + cqlLibraryName + " version " + "'" + version + "'";
   }
 
   public Export saveExport(
