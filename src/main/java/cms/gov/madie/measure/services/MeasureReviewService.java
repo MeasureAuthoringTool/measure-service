@@ -163,6 +163,7 @@ public class MeasureReviewService {
           .filter(comment -> comment.getId() == null || comment.getId().isBlank())
           .forEach(comment -> comment.setId(ObjectId.get().toString()));
     }
+
     return comments;
   }
 
