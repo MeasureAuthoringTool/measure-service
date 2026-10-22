@@ -5,6 +5,7 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
+import gov.cms.madie.models.common.Comment;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.Measure;
@@ -14,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -46,6 +48,7 @@ public class MeasureReviewService {
     }
     // Ensure a new document is created rather than overwriting an existing one.
     review.setId(null);
+    review.setComment(withCommentIds(review.getComment()));
     boolean readyOnCreate = review.getStatus() == ReviewStatus.READY_FOR_REVIEW;
     review.setReadyForReviewBy(readyOnCreate ? username : null);
     review.setReadyForReviewAt(readyOnCreate ? Instant.now() : null);
@@ -78,7 +81,7 @@ public class MeasureReviewService {
     if (newStatus != null) {
       existing.setStatus(newStatus);
     }
-    existing.setComment(review.getComment());
+    existing.setComment(withCommentIds(review.getComment()));
     existing.setReviewers(review.getReviewers());
     applyReadyForReviewStamp(existing, previousStatus, newStatus, username);
 
@@ -152,6 +155,15 @@ public class MeasureReviewService {
       Pageable pageReq,
       String username) {
     return measureService.getMeasuresInReview(searchCriteria, ownershipTypes, pageReq, username);
+  }
+
+  private static List<Comment> withCommentIds(List<Comment> comments) {
+    if (comments != null) {
+      comments.stream()
+          .filter(comment -> comment.getId() == null || comment.getId().isBlank())
+          .forEach(comment -> comment.setId(ObjectId.get().toString()));
+    }
+    return comments;
   }
 
   private void applyReadyForReviewStamp(
