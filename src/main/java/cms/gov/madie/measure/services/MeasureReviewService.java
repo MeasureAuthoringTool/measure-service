@@ -5,6 +5,7 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
+import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.Comment;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.ReviewStatus;
@@ -13,6 +14,10 @@ import gov.cms.madie.models.measure.MeasureReview;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bson.types.ObjectId;
@@ -25,6 +30,9 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class MeasureReviewService {
+
+  // prefix on the logged message so a comment event can be traced to its comment
+  private static final String RELATED_COMMENT_MESSAGE_PREFIX = "relatedCommentId: ";
 
   private final MeasureReviewRepository measureReviewRepository;
   private final ActionLogService actionLogService;
@@ -50,11 +58,12 @@ public class MeasureReviewService {
     review.setId(null);
     review.setComment(withCommentIds(review.getComment()));
     boolean readyOnCreate = review.getStatus() == ReviewStatus.READY_FOR_REVIEW;
-    review.setReadyForReviewBy(readyOnCreate ? username : null);
-    review.setReadyForReviewAt(readyOnCreate ? Instant.now() : null);
+    review.setMarkedForReviewBy(readyOnCreate ? username : null);
+    review.setMarkedForReviewAt(readyOnCreate ? Instant.now() : null);
     MeasureReview saved = measureReviewRepository.save(review);
     log.info("Created review [{}] for Measure [{}]", saved.getId(), measureId);
     logReviewAction(measureId, saved.getStatus(), username);
+    logCommentActions(measureId, ActionType.COMMENT_ADDED, saved.getComment(), username);
     return saved;
   }
 
@@ -81,9 +90,10 @@ public class MeasureReviewService {
     if (newStatus != null) {
       existing.setStatus(newStatus);
     }
+    CommentChanges commentChanges = diffComments(existing.getComment(), review.getComment());
     existing.setComment(withCommentIds(review.getComment()));
     existing.setReviewers(review.getReviewers());
-    applyReadyForReviewStamp(existing, previousStatus, newStatus, username);
+    applyMarkedForReviewStamp(existing, previousStatus, newStatus, username);
 
     MeasureReview saved = measureReviewRepository.save(existing);
     log.info("Updated review [{}] for Measure [{}]", saved.getId(), measureId);
@@ -98,6 +108,9 @@ public class MeasureReviewService {
           newStatus,
           measureId);
     }
+    logCommentActions(measureId, ActionType.COMMENT_ADDED, commentChanges.added(), username);
+    logCommentActions(measureId, ActionType.COMMENT_EDITED, commentChanges.edited(), username);
+    logCommentActions(measureId, ActionType.COMMENT_DELETED, commentChanges.deleted(), username);
     return saved;
   }
 
@@ -112,7 +125,7 @@ public class MeasureReviewService {
         measureReviewRepository
             .findByMeasureId(measureId)
             .orElseThrow(() -> new ResourceNotFoundException("Measure Review", measureId));
-    review.setReadyForReviewBy(userNameService.getUserDisplayName(review.getReadyForReviewBy()));
+    review.setMarkedForReviewBy(userNameService.getUserDisplayName(review.getMarkedForReviewBy()));
     return review;
   }
 
@@ -127,14 +140,14 @@ public class MeasureReviewService {
     List<MeasureReview> reviews = measureReviewRepository.findAllByMeasureSetId(measureSetId);
     Map<String, String> displayNames =
         userNameService.getUsersDisplayNames(
-            reviews.stream().map(MeasureReview::getReadyForReviewBy).toList());
+            reviews.stream().map(MeasureReview::getMarkedForReviewBy).toList());
     reviews.stream()
-        .filter(review -> StringUtils.isNotBlank(review.getReadyForReviewBy()))
+        .filter(review -> StringUtils.isNotBlank(review.getMarkedForReviewBy()))
         .forEach(
             review ->
-                review.setReadyForReviewBy(
+                review.setMarkedForReviewBy(
                     displayNames.getOrDefault(
-                        review.getReadyForReviewBy(), review.getReadyForReviewBy())));
+                        review.getMarkedForReviewBy(), review.getMarkedForReviewBy())));
     return reviews;
   }
 
@@ -167,17 +180,67 @@ public class MeasureReviewService {
     return comments;
   }
 
-  private void applyReadyForReviewStamp(
+  private record CommentChanges(List<Comment> added, List<Comment> edited, List<Comment> deleted) {}
+
+  private static CommentChanges diffComments(List<Comment> stored, List<Comment> incoming) {
+    List<Comment> before = stored == null ? List.of() : stored;
+    List<Comment> after = incoming == null ? List.of() : incoming;
+    Map<String, Comment> storedById =
+        before.stream()
+            .filter(comment -> comment.getId() != null)
+            .collect(Collectors.toMap(Comment::getId, Function.identity(), (a, b) -> a));
+    Set<String> incomingIds =
+        after.stream().map(Comment::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+
+    List<Comment> added =
+        after.stream().filter(c -> c.getId() == null || c.getId().isBlank()).toList();
+    List<Comment> edited =
+        after.stream()
+            .filter(c -> c.getId() != null && storedById.containsKey(c.getId()))
+            .filter(c -> !Objects.equals(c.getContent(), storedById.get(c.getId()).getContent()))
+            .toList();
+    List<Comment> deleted =
+        before.stream().filter(c -> c.getId() != null && !incomingIds.contains(c.getId())).toList();
+    return new CommentChanges(added, edited, deleted);
+  }
+
+  /**
+   * Records a comment event in the review log collection, keyed by the measure id (the key every
+   * caller already has) rather than the review document's own id. Measure history is built from the
+   * measure's own log, so these never appear there. The message carries the comment id so an event
+   * can be traced back to its comment.
+   */
+  private void logCommentActions(
+      String measureId, ActionType actionType, List<Comment> comments, String username) {
+    if (comments == null) {
+      return;
+    }
+    comments.forEach(
+        comment ->
+            actionLogService.logAction(
+                measureId,
+                MeasureReview.class,
+                actionType,
+                username,
+                relatedCommentMessage(comment)));
+  }
+
+  static String relatedCommentMessage(Comment comment) {
+    return RELATED_COMMENT_MESSAGE_PREFIX + comment.getId();
+  }
+
+  private void applyMarkedForReviewStamp(
       MeasureReview review, ReviewStatus previousStatus, ReviewStatus newStatus, String username) {
     if (newStatus == null || newStatus == previousStatus) {
       return;
     }
     if (newStatus == ReviewStatus.NOT_READY_FOR_REVIEW) {
-      review.setReadyForReviewBy(null);
-      review.setReadyForReviewAt(null);
-    } else if (newStatus == ReviewStatus.READY_FOR_REVIEW && review.getReadyForReviewAt() == null) {
-      review.setReadyForReviewBy(username);
-      review.setReadyForReviewAt(Instant.now());
+      review.setMarkedForReviewBy(null);
+      review.setMarkedForReviewAt(null);
+    } else if (newStatus == ReviewStatus.READY_FOR_REVIEW
+        && review.getMarkedForReviewAt() == null) {
+      review.setMarkedForReviewBy(username);
+      review.setMarkedForReviewAt(Instant.now());
     }
   }
 
