@@ -91,7 +91,7 @@ public class MeasureReviewService {
     if (newStatus != null) {
       existing.setStatus(newStatus);
     }
-    // a request without a comment list (e.g. a status-only save) keeps the stored comments
+   
     List<Comment> comments =
         review.getComments() != null ? review.getComments() : existing.getComments();
     Map<ActionType, List<Comment>> commentChanges = diffComments(existing.getComments(), comments);
