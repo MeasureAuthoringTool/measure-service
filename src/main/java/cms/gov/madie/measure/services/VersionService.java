@@ -321,16 +321,7 @@ public class VersionService {
 
     // need to generate sequence AFTER measure is created with the new measure id
     if (!CollectionUtils.isEmpty(savedDraft.getTestCases())) {
-      if (!checkCaseNumberExists(measure.getTestCases())) {
-        savedDraft.setTestCases(
-            assignCaseNumbersWhenCaseNumbersNotExist(
-                savedDraft.getTestCases(), savedDraft.getId()));
-        savedDraft = measureRepository.save(savedDraft);
-      } else {
-        sequenceService.setSequence(
-            savedDraft.getId(),
-            findHighestCaseNumberWhenCaseNumbersExist(savedDraft.getTestCases()));
-      }
+      savedDraft = initCaseNumbering(savedDraft, measure.getTestCases());
 
       // any time when a QICORE measure is drafted to QICORE_6.0.0,
       // e.g. QICORE_4.1.1 to QICORE_6.0.0, or QICORE_6.0.0 to QICORE_6.0.0.
@@ -655,6 +646,23 @@ public class VersionService {
         "User [{}] successfully saved versioned measure's export data with ID [{}]",
         username,
         savedExport.getId());
+  }
+
+  /**
+   * Continues case numbering for a newly saved measure whose test cases were copied. If the source
+   * test cases had no case numbers, the copies are numbered and the measure is saved again.
+   */
+  public Measure initCaseNumbering(Measure savedMeasure, List<TestCase> sourceTestCases) {
+    if (!checkCaseNumberExists(sourceTestCases)) {
+      savedMeasure.setTestCases(
+          assignCaseNumbersWhenCaseNumbersNotExist(
+              savedMeasure.getTestCases(), savedMeasure.getId()));
+      return measureRepository.save(savedMeasure);
+    }
+    sequenceService.setSequence(
+        savedMeasure.getId(),
+        findHighestCaseNumberWhenCaseNumbersExist(savedMeasure.getTestCases()));
+    return savedMeasure;
   }
 
   private boolean checkCaseNumberExists(List<TestCase> testCases) {

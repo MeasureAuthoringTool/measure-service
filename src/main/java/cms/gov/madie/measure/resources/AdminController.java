@@ -74,6 +74,7 @@ public class AdminController extends AbstractMeasureController {
   private final AppConfigService appConfigService;
   private final CacheManager cacheManager;
   private final CompositeRelationshipService compositeRelationshipService;
+  private final MeasureCloneService measureCloneService;
 
   @Override
   protected AppConfigService getAppConfigService() {
@@ -445,6 +446,12 @@ public class AdminController extends AbstractMeasureController {
             "Reverted from version %s to %s by MADiE Admin", inCorrectVersion, draftVersion));
 
     return ResponseEntity.ok(correctedVersionMeasure);
+  }
+
+  @PostMapping("/measures/{id}/clone")
+  public ResponseEntity<Measure> cloneMeasure(@PathVariable String id, Principal principal) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(measureCloneService.cloneMeasure(id, principal.getName().toLowerCase()));
   }
 
   @PutMapping("/measures/{id}")

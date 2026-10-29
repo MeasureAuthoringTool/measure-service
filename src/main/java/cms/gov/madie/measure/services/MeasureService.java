@@ -317,23 +317,7 @@ public class MeasureService extends BaseMeasureService {
     if (measureUtil.isMeasureCqlChanged(existingMeasure, updatingMeasure)
         || measureUtil.isSupplementalDataChanged(existingMeasure, updatingMeasure)
         || measureUtil.isRiskAdjustmentChanged(existingMeasure, updatingMeasure)) {
-      try {
-        outputMeasure = measureUtil.validateAllMeasureDependencies(updateElm(updatingMeasure));
-        // remove this condition when we validate for terminology service errors in backend
-        if (!outputMeasure.isCqlErrors()) {
-          outputMeasure.setCqlErrors(updatingMeasure.isCqlErrors());
-        }
-        // no errors were encountered so remove the ELM JSON error
-        // TODO: remove this when backend validations for CQL/ELM are enhanced
-        outputMeasure.setErrors(
-            measureUtil.removeError(outputMeasure.getErrors(), MeasureErrorType.ERRORS_ELM_JSON));
-      } catch (CqlElmTranslationErrorException ex) {
-        outputMeasure =
-            updatingMeasure.toBuilder()
-                .cqlErrors(true)
-                .error(MeasureErrorType.ERRORS_ELM_JSON)
-                .build();
-      }
+      outputMeasure = revalidateCqlDependencies(updatingMeasure);
     } else {
       // prevent users from manually clearing errors!
       outputMeasure.setErrors(existingMeasure.getErrors());
@@ -349,6 +333,27 @@ public class MeasureService extends BaseMeasureService {
     outputMeasure.setVersionId(existingMeasure.getVersionId());
     outputMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
     return measureRepository.findAndModify(outputMeasure);
+  }
+
+  /**
+   * Re-translates the CQL to ELM and re-runs the validations that depend on it. Returns a new
+   * instance; the argument is not modified.
+   */
+  public Measure revalidateCqlDependencies(Measure measure) {
+    try {
+      Measure outputMeasure = measureUtil.validateAllMeasureDependencies(updateElm(measure));
+      // remove this condition when we validate for terminology service errors in backend
+      if (!outputMeasure.isCqlErrors()) {
+        outputMeasure.setCqlErrors(measure.isCqlErrors());
+      }
+      // no errors were encountered so remove the ELM JSON error
+      // TODO: remove this when backend validations for CQL/ELM are enhanced
+      outputMeasure.setErrors(
+          measureUtil.removeError(outputMeasure.getErrors(), MeasureErrorType.ERRORS_ELM_JSON));
+      return outputMeasure;
+    } catch (CqlElmTranslationErrorException ex) {
+      return measure.toBuilder().cqlErrors(true).error(MeasureErrorType.ERRORS_ELM_JSON).build();
+    }
   }
 
   void validateCodeSuffixes(CqlTextParser parser, String measureId) {
