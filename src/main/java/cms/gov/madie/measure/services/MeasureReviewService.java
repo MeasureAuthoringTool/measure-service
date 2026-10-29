@@ -201,6 +201,7 @@ public class MeasureReviewService {
             .filter(c -> c.getId() != null && storedById.containsKey(c.getId()))
             .filter(c -> !Objects.equals(c.getContent(), storedById.get(c.getId()).getContent()))
             .toList();
+
     List<Comment> deleted =
         before.stream().filter(c -> c.getId() != null && !incomingIds.contains(c.getId())).toList();
     return Map.of(
