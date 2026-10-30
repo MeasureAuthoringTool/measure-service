@@ -76,7 +76,7 @@ class MeasureReviewServiceTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("Looks good").build()))
+            .comments(List.of(Comment.builder().content("Looks good").build()))
             .build();
   }
 
@@ -88,7 +88,7 @@ class MeasureReviewServiceTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("Looks good").build()))
+            .comments(List.of(Comment.builder().content("Looks good").build()))
             .build();
     when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
     when(measureReviewRepository.save(any(MeasureReview.class))).thenReturn(persisted);
@@ -111,16 +111,16 @@ class MeasureReviewServiceTest {
     measureReviewService.createReview(review, USERNAME);
 
     verify(measureReviewRepository).save(reviewCaptor.capture());
-    assertEquals(USERNAME, reviewCaptor.getValue().getReadyForReviewBy());
-    assertNotNull(reviewCaptor.getValue().getReadyForReviewAt());
+    assertEquals(USERNAME, reviewCaptor.getValue().getMarkedForReviewBy());
+    assertNotNull(reviewCaptor.getValue().getMarkedForReviewAt());
   }
 
   @Test
-  void createReviewIgnoresClientSuppliedReadyForReviewStamp() {
+  void createReviewIgnoresClientSuppliedMarkedForReviewStamp() {
     Instant forged = Instant.parse("2000-01-01T00:00:00Z");
     review.setStatus(ReviewStatus.IN_PROGRESS);
-    review.setReadyForReviewBy("someone.else");
-    review.setReadyForReviewAt(forged);
+    review.setMarkedForReviewBy("someone.else");
+    review.setMarkedForReviewAt(forged);
     when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
     when(measureReviewRepository.save(any(MeasureReview.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
@@ -128,8 +128,8 @@ class MeasureReviewServiceTest {
     measureReviewService.createReview(review, USERNAME);
 
     verify(measureReviewRepository).save(reviewCaptor.capture());
-    assertNull(reviewCaptor.getValue().getReadyForReviewBy());
-    assertNull(reviewCaptor.getValue().getReadyForReviewAt());
+    assertNull(reviewCaptor.getValue().getMarkedForReviewBy());
+    assertNull(reviewCaptor.getValue().getMarkedForReviewAt());
   }
 
   @Test
@@ -148,8 +148,8 @@ class MeasureReviewServiceTest {
 
     MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
 
-    assertEquals(USERNAME, result.getReadyForReviewBy());
-    assertNotNull(result.getReadyForReviewAt());
+    assertEquals(USERNAME, result.getMarkedForReviewBy());
+    assertNotNull(result.getMarkedForReviewAt());
   }
 
   @Test
@@ -160,8 +160,8 @@ class MeasureReviewServiceTest {
             .id("review-1")
             .measureId("m1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .readyForReviewBy("original.user")
-            .readyForReviewAt(originallyReadyAt)
+            .markedForReviewBy("original.user")
+            .markedForReviewAt(originallyReadyAt)
             .build();
     MeasureReview update = MeasureReview.builder().status(ReviewStatus.IN_PROGRESS).build();
 
@@ -171,8 +171,8 @@ class MeasureReviewServiceTest {
 
     MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
 
-    assertEquals("original.user", result.getReadyForReviewBy());
-    assertEquals(originallyReadyAt, result.getReadyForReviewAt());
+    assertEquals("original.user", result.getMarkedForReviewBy());
+    assertEquals(originallyReadyAt, result.getMarkedForReviewAt());
   }
 
   @Test
@@ -182,8 +182,8 @@ class MeasureReviewServiceTest {
             .id("review-1")
             .measureId("m1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .readyForReviewBy("original.user")
-            .readyForReviewAt(Instant.parse("2026-08-12T09:00:00Z"))
+            .markedForReviewBy("original.user")
+            .markedForReviewAt(Instant.parse("2026-08-12T09:00:00Z"))
             .build();
     MeasureReview update =
         MeasureReview.builder().status(ReviewStatus.NOT_READY_FOR_REVIEW).build();
@@ -194,8 +194,8 @@ class MeasureReviewServiceTest {
 
     MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
 
-    assertNull(result.getReadyForReviewBy());
-    assertNull(result.getReadyForReviewAt());
+    assertNull(result.getMarkedForReviewBy());
+    assertNull(result.getMarkedForReviewAt());
   }
 
   @Test
@@ -206,12 +206,12 @@ class MeasureReviewServiceTest {
             .id("review-1")
             .measureId("m1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .readyForReviewBy("original.user")
-            .readyForReviewAt(originallyReadyAt)
+            .markedForReviewBy("original.user")
+            .markedForReviewAt(originallyReadyAt)
             .build();
     MeasureReview update =
         MeasureReview.builder()
-            .comment(List.of(Comment.builder().content("just a comment").build()))
+            .comments(List.of(Comment.builder().content("just a comment").build()))
             .build();
 
     when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
@@ -220,8 +220,8 @@ class MeasureReviewServiceTest {
 
     MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
 
-    assertEquals("original.user", result.getReadyForReviewBy());
-    assertEquals(originallyReadyAt, result.getReadyForReviewAt());
+    assertEquals("original.user", result.getMarkedForReviewBy());
+    assertEquals(originallyReadyAt, result.getMarkedForReviewAt());
   }
 
   @Test
@@ -233,9 +233,9 @@ class MeasureReviewServiceTest {
     MeasureReview result = measureReviewService.createReview(review, USERNAME);
 
     verify(measureReviewRepository).save(reviewCaptor.capture());
-    assertEquals(USERNAME, reviewCaptor.getValue().getReadyForReviewBy());
+    assertEquals(USERNAME, reviewCaptor.getValue().getMarkedForReviewBy());
     // Saving never resolves a display name, so nothing can leak one back into the document.
-    assertEquals(USERNAME, result.getReadyForReviewBy());
+    assertEquals(USERNAME, result.getMarkedForReviewBy());
     verify(userNameService, never()).getUserDisplayName(any());
   }
 
@@ -260,13 +260,13 @@ class MeasureReviewServiceTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.NOT_READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("old").build()))
+            .comments(List.of(Comment.builder().content("old").build()))
             .build();
 
     MeasureReview update =
         MeasureReview.builder()
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("updated").build()))
+            .comments(List.of(Comment.builder().content("updated").build()))
             .measureSetId("set-2")
             .build();
 
@@ -278,8 +278,8 @@ class MeasureReviewServiceTest {
 
     assertEquals("review-1", result.getId());
     assertEquals(ReviewStatus.READY_FOR_REVIEW, result.getStatus());
-    assertEquals(1, result.getComment().size());
-    assertEquals("updated", result.getComment().get(0).getContent());
+    assertEquals(1, result.getComments().size());
+    assertEquals("updated", result.getComments().get(0).getContent());
     assertEquals("set-1", result.getMeasureSetId());
     verify(actionLogService, times(1))
         .logAction("m1", Measure.class, ActionType.READY_FOR_REVIEW, USERNAME);
@@ -293,13 +293,13 @@ class MeasureReviewServiceTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("old").build()))
+            .comments(List.of(Comment.builder().content("old").build()))
             .build();
 
     MeasureReview update =
         MeasureReview.builder()
             .status(ReviewStatus.NOT_READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("needs work").build()))
+            .comments(List.of(Comment.builder().content("needs work").build()))
             .build();
 
     when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
@@ -438,14 +438,14 @@ class MeasureReviewServiceTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("old").build()))
+            .comments(List.of(Comment.builder().content("old").build()))
             .build();
 
     // Payload attempts to change measureSetId; it must be ignored.
     MeasureReview update =
         MeasureReview.builder()
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("updated").build()))
+            .comments(List.of(Comment.builder().content("updated").build()))
             .measureSetId("hacked-set")
             .build();
 
@@ -466,14 +466,14 @@ class MeasureReviewServiceTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("original comment").build()))
+            .comments(List.of(Comment.builder().content("original comment").build()))
             .build();
 
     // Same status, only the comment changes.
     MeasureReview update =
         MeasureReview.builder()
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("updated comment").build()))
+            .comments(List.of(Comment.builder().content("updated comment").build()))
             .build();
 
     when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
@@ -482,8 +482,8 @@ class MeasureReviewServiceTest {
 
     MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
 
-    assertEquals(1, result.getComment().size());
-    assertEquals("updated comment", result.getComment().get(0).getContent());
+    assertEquals(1, result.getComments().size());
+    assertEquals("updated comment", result.getComments().get(0).getContent());
     verify(actionLogService, never())
         .logAction(anyString(), any(), any(ActionType.class), anyString());
   }
@@ -572,5 +572,175 @@ class MeasureReviewServiceTest {
     assertEquals("m1", measures.getContent().get(0).getId());
     verify(measureService, times(1))
         .getMeasuresInReview(searchCriteria, List.of(OwnershipType.OWNED), pageRequest, USERNAME);
+  }
+
+  @Test
+  void createReviewAssignsIdsToCommentsWithoutOne() {
+    review.setComments(
+        List.of(
+            Comment.builder().content("no id yet").build(),
+            Comment.builder().id("c-existing").content("already has one").build()));
+    when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.createReview(review, USERNAME);
+
+    assertNotNull(
+        result.getComments().get(0).getId(), "embedded comments need a service-assigned id");
+    assertEquals("c-existing", result.getComments().get(1).getId());
+  }
+
+  @Test
+  void updateReviewAssignsIdsOnlyToCommentsWithoutOne() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(
+                List.of(
+                    Comment.builder().id("c1").content("kept").build(),
+                    Comment.builder().content("new").build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals("c1", result.getComments().get(0).getId());
+    assertNotNull(result.getComments().get(1).getId());
+  }
+
+  @Test
+  void updateReviewLogsAddedEditedAndDeletedCommentsAgainstTheReview() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(
+                List.of(
+                    Comment.builder().id("c1").content("old text").build(),
+                    Comment.builder().id("c2").content("to be removed").build(),
+                    Comment.builder().id("c3").content("untouched").build()))
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(
+                List.of(
+                    Comment.builder().id("c1").content("new text").build(),
+                    Comment.builder().id("c3").content("untouched").build(),
+                    Comment.builder().content("brand new").build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    String newCommentId = result.getComments().get(2).getId();
+    assertNotNull(newCommentId);
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_ADDED,
+            USERNAME,
+            "relatedCommentId: " + newCommentId);
+    verify(actionLogService)
+        .logAction(
+            "m1", MeasureReview.class, ActionType.COMMENT_EDITED, USERNAME, "relatedCommentId: c1");
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_DELETED,
+            USERNAME,
+            "relatedCommentId: c2");
+    verify(actionLogService, never())
+        .logAction(
+            anyString(), any(), any(ActionType.class), anyString(), eq("relatedCommentId: c3"));
+    verify(actionLogService, never())
+        .logAction(anyString(), eq(Measure.class), any(ActionType.class), anyString());
+  }
+
+  @Test
+  void updateReviewDoesNotLogCommentsThatDidNotChange() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(List.of(Comment.builder().id("c1").content("same").build()))
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .reviewers(List.of("someone"))
+            .comments(List.of(Comment.builder().id("c1").content("same").build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    measureReviewService.updateReview("m1", update, USERNAME);
+
+    verify(actionLogService, never())
+        .logAction(anyString(), eq(MeasureReview.class), any(ActionType.class), anyString(), any());
+  }
+
+  @Test
+  void updateReviewKeepsStoredCommentsWhenNoneAreSent() {
+    Comment stored = Comment.builder().id("c1").content("keep me").build();
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(List.of(stored))
+            .build();
+    MeasureReview update =
+        MeasureReview.builder().status(ReviewStatus.NOT_READY_FOR_REVIEW).build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview saved = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals(List.of(stored), saved.getComments());
+    verify(actionLogService, never())
+        .logAction(
+            anyString(),
+            eq(MeasureReview.class),
+            eq(ActionType.COMMENT_DELETED),
+            anyString(),
+            any());
+  }
+
+  @Test
+  void createReviewLogsCommentsItIsCreatedWith() {
+    review.setComments(List.of(Comment.builder().content("first").build()));
+    when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(
+            invocation -> {
+              MeasureReview toSave = invocation.getArgument(0);
+              toSave.setId("review-1");
+              return toSave;
+            });
+
+    MeasureReview result = measureReviewService.createReview(review, USERNAME);
+
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_ADDED,
+            USERNAME,
+            "relatedCommentId: " + result.getComments().get(0).getId());
   }
 }

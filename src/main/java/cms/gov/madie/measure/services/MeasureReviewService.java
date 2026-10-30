@@ -5,6 +5,8 @@ import cms.gov.madie.measure.dto.MeasureSearchCriteria;
 import cms.gov.madie.measure.exceptions.InvalidResourceStateException;
 import cms.gov.madie.measure.exceptions.ResourceNotFoundException;
 import cms.gov.madie.measure.repositories.MeasureReviewRepository;
+import gov.cms.madie.models.common.ActionType;
+import gov.cms.madie.models.common.Comment;
 import gov.cms.madie.models.common.OwnershipType;
 import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.Measure;
@@ -12,8 +14,13 @@ import gov.cms.madie.models.measure.MeasureReview;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.bson.types.ObjectId;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +30,9 @@ import org.springframework.stereotype.Service;
 @Service
 @RequiredArgsConstructor
 public class MeasureReviewService {
+
+  // prefix on the logged message so a comment event can be traced to its comment
+  private static final String RELATED_COMMENT_MESSAGE_PREFIX = "relatedCommentId: ";
 
   private final MeasureReviewRepository measureReviewRepository;
   private final ActionLogService actionLogService;
@@ -46,12 +56,15 @@ public class MeasureReviewService {
     }
     // Ensure a new document is created rather than overwriting an existing one.
     review.setId(null);
-    boolean readyOnCreate = review.getStatus() == ReviewStatus.READY_FOR_REVIEW;
-    review.setReadyForReviewBy(readyOnCreate ? username : null);
-    review.setReadyForReviewAt(readyOnCreate ? Instant.now() : null);
+    review.setComments(assignIdsToNewComments(review.getComments()));
+    boolean isReadyForReviewOnCreate = review.getStatus() == ReviewStatus.READY_FOR_REVIEW;
+    review.setMarkedForReviewBy(isReadyForReviewOnCreate ? username : null);
+    review.setMarkedForReviewAt(isReadyForReviewOnCreate ? Instant.now() : null);
     MeasureReview saved = measureReviewRepository.save(review);
     log.info("Created review [{}] for Measure [{}]", saved.getId(), measureId);
     logReviewAction(measureId, saved.getStatus(), username);
+    List<Comment> addedComments = Objects.requireNonNullElse(saved.getComments(), List.of());
+    logCommentActions(measureId, Map.of(ActionType.COMMENT_ADDED, addedComments), username);
     return saved;
   }
 
@@ -78,9 +91,13 @@ public class MeasureReviewService {
     if (newStatus != null) {
       existing.setStatus(newStatus);
     }
-    existing.setComment(review.getComment());
+
+    List<Comment> comments =
+        review.getComments() != null ? review.getComments() : existing.getComments();
+    Map<ActionType, List<Comment>> commentChanges = diffComments(existing.getComments(), comments);
+    existing.setComments(assignIdsToNewComments(comments));
     existing.setReviewers(review.getReviewers());
-    applyReadyForReviewStamp(existing, previousStatus, newStatus, username);
+    applyMarkedForReviewStamp(existing, previousStatus, newStatus, username);
 
     MeasureReview saved = measureReviewRepository.save(existing);
     log.info("Updated review [{}] for Measure [{}]", saved.getId(), measureId);
@@ -95,6 +112,7 @@ public class MeasureReviewService {
           newStatus,
           measureId);
     }
+    logCommentActions(measureId, commentChanges, username);
     return saved;
   }
 
@@ -109,7 +127,7 @@ public class MeasureReviewService {
         measureReviewRepository
             .findByMeasureId(measureId)
             .orElseThrow(() -> new ResourceNotFoundException("Measure Review", measureId));
-    review.setReadyForReviewBy(userNameService.getUserDisplayName(review.getReadyForReviewBy()));
+    review.setMarkedForReviewBy(userNameService.getUserDisplayName(review.getMarkedForReviewBy()));
     return review;
   }
 
@@ -124,14 +142,14 @@ public class MeasureReviewService {
     List<MeasureReview> reviews = measureReviewRepository.findAllByMeasureSetId(measureSetId);
     Map<String, String> displayNames =
         userNameService.getUsersDisplayNames(
-            reviews.stream().map(MeasureReview::getReadyForReviewBy).toList());
+            reviews.stream().map(MeasureReview::getMarkedForReviewBy).toList());
     reviews.stream()
-        .filter(review -> StringUtils.isNotBlank(review.getReadyForReviewBy()))
+        .filter(review -> StringUtils.isNotBlank(review.getMarkedForReviewBy()))
         .forEach(
             review ->
-                review.setReadyForReviewBy(
+                review.setMarkedForReviewBy(
                     displayNames.getOrDefault(
-                        review.getReadyForReviewBy(), review.getReadyForReviewBy())));
+                        review.getMarkedForReviewBy(), review.getMarkedForReviewBy())));
     return reviews;
   }
 
@@ -154,17 +172,84 @@ public class MeasureReviewService {
     return measureService.getMeasuresInReview(searchCriteria, ownershipTypes, pageReq, username);
   }
 
-  private void applyReadyForReviewStamp(
+  private static List<Comment> assignIdsToNewComments(List<Comment> comments) {
+    if (comments != null) {
+      comments.stream()
+          .filter(comment -> comment.getId() == null || comment.getId().isBlank())
+          .forEach(comment -> comment.setId(ObjectId.get().toString()));
+    }
+
+    return comments;
+  }
+
+  // comments that changed between the stored and incoming review, keyed by the action to log
+  private static Map<ActionType, List<Comment>> diffComments(
+      List<Comment> storedComments, List<Comment> incomingComments) {
+    List<Comment> stored = storedComments == null ? List.of() : storedComments;
+    List<Comment> incoming = incomingComments == null ? List.of() : incomingComments;
+    Map<String, Comment> storedCommentsById =
+        stored.stream()
+            .filter(comment -> comment.getId() != null)
+            .collect(Collectors.toMap(Comment::getId, Function.identity(), (a, b) -> a));
+    Set<String> incomingCommentIds =
+        incoming.stream().map(Comment::getId).filter(Objects::nonNull).collect(Collectors.toSet());
+
+    List<Comment> addedComments =
+        incoming.stream()
+            .filter(comment -> comment.getId() == null || comment.getId().isBlank())
+            .toList();
+    List<Comment> editedComments =
+        incoming.stream()
+            .filter(
+                comment ->
+                    comment.getId() != null && storedCommentsById.containsKey(comment.getId()))
+            .filter(
+                comment ->
+                    !Objects.equals(
+                        comment.getContent(), storedCommentsById.get(comment.getId()).getContent()))
+            .toList();
+
+    List<Comment> deletedComments =
+        stored.stream()
+            .filter(
+                comment -> comment.getId() != null && !incomingCommentIds.contains(comment.getId()))
+            .toList();
+    return Map.of(
+        ActionType.COMMENT_ADDED, addedComments,
+        ActionType.COMMENT_EDITED, editedComments,
+        ActionType.COMMENT_DELETED, deletedComments);
+  }
+
+  private void logCommentActions(
+      String measureId, Map<ActionType, List<Comment>> commentsByAction, String username) {
+    commentsByAction.forEach(
+        (actionType, comments) ->
+            comments.forEach(
+                comment ->
+                    actionLogService.logAction(
+                        measureId,
+                        MeasureReview.class,
+                        actionType,
+                        username,
+                        relatedCommentLogMessage(comment))));
+  }
+
+  static String relatedCommentLogMessage(Comment comment) {
+    return RELATED_COMMENT_MESSAGE_PREFIX + comment.getId();
+  }
+
+  private void applyMarkedForReviewStamp(
       MeasureReview review, ReviewStatus previousStatus, ReviewStatus newStatus, String username) {
     if (newStatus == null || newStatus == previousStatus) {
       return;
     }
     if (newStatus == ReviewStatus.NOT_READY_FOR_REVIEW) {
-      review.setReadyForReviewBy(null);
-      review.setReadyForReviewAt(null);
-    } else if (newStatus == ReviewStatus.READY_FOR_REVIEW && review.getReadyForReviewAt() == null) {
-      review.setReadyForReviewBy(username);
-      review.setReadyForReviewAt(Instant.now());
+      review.setMarkedForReviewBy(null);
+      review.setMarkedForReviewAt(null);
+    } else if (newStatus == ReviewStatus.READY_FOR_REVIEW
+        && review.getMarkedForReviewAt() == null) {
+      review.setMarkedForReviewBy(username);
+      review.setMarkedForReviewAt(Instant.now());
     }
   }
 
