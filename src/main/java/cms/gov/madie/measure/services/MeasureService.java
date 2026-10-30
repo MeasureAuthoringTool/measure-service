@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Strings;
+import org.bson.types.ObjectId;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -154,6 +155,8 @@ public class MeasureService extends BaseMeasureService {
     measureCopy.setVersionId(UUID.randomUUID().toString());
     measureCopy.setMeasureSetId(UUID.randomUUID().toString());
     measureCopy.setTestCaseConfiguration(TestCaseConfiguration.builder().ravIncluded(true).build());
+    assignDefDescPairIds(measureCopy.getSupplementalData());
+    assignDefDescPairIds(measureCopy.getRiskAdjustments());
     if (measureCopy.getMeasureMetaData() != null) {
       measureCopy.getMeasureMetaData().setDraft(true);
     } else {
@@ -348,6 +351,8 @@ public class MeasureService extends BaseMeasureService {
     // prevent users from overwriting versionId and measureSetId
     outputMeasure.setVersionId(existingMeasure.getVersionId());
     outputMeasure.setMeasureSetId(existingMeasure.getMeasureSetId());
+    assignDefDescPairIds(outputMeasure.getSupplementalData());
+    assignDefDescPairIds(outputMeasure.getRiskAdjustments());
     return measureRepository.findAndModify(outputMeasure);
   }
 
@@ -765,6 +770,23 @@ public class MeasureService extends BaseMeasureService {
       List<Reference> references =
           metaData.getReferences().stream().map(this::updateReference).toList();
       metaData.setReferences(references);
+    }
+  }
+
+  // adding IDs to SDE and RAV
+  protected void assignDefDescPairIds(List<DefDescPair> defDescPairs) {
+    if (CollectionUtils.isEmpty(defDescPairs)) {
+      return;
+    }
+    Set<String> assignedIds = new HashSet<>();
+    for (DefDescPair defDescPair : defDescPairs) {
+      if (defDescPair == null) {
+        continue;
+      }
+      if (StringUtils.isBlank(defDescPair.getId()) || !assignedIds.add(defDescPair.getId())) {
+        defDescPair.setId(ObjectId.get().toString());
+        assignedIds.add(defDescPair.getId());
+      }
     }
   }
 
