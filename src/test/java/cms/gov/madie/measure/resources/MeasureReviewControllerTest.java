@@ -56,7 +56,7 @@ class MeasureReviewControllerTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comment(List.of(Comment.builder().content("Looks good").build()))
+            .comments(List.of(Comment.builder().content("Looks good").build()))
             .build();
   }
 
