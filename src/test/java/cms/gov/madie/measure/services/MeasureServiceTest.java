@@ -1052,6 +1052,124 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  public void testCreateMeasureAssignsIdsToSupplementalDataAndRiskAdjustments() {
+    Measure measureToSave =
+        measure1.toBuilder()
+            .measurementPeriodStart(Date.from(Instant.now().minus(40, ChronoUnit.DAYS)))
+            .measurementPeriodEnd(Date.from(Instant.now().minus(10, ChronoUnit.DAYS)))
+            .cqlLibraryName("UniqueLibNameForSdeRavIds")
+            .supplementalData(
+                List.of(
+                    DefDescPair.builder().definition("SDE Ethnicity").build(),
+                    DefDescPair.builder().definition("SDE Sex").build()))
+            .riskAdjustments(List.of(DefDescPair.builder().definition("Risk Age").build()))
+            .build();
+
+    when(measureRepository.findAllByCqlLibraryName(anyString())).thenReturn(new ArrayList<>());
+    when(elmTranslatorClient.getElmJson(anyString(), anyString()))
+        .thenReturn(ElmJson.builder().json("{\"library\": {}}").xml("<library></library>").build());
+    when(elmTranslatorClient.hasErrors(any(ElmJson.class))).thenReturn(false);
+    doNothing().when(terminologyValidationService).validateTerminology(anyString(), anyString());
+    doNothing()
+        .when(measureSetService)
+        .createMeasureSet(anyString(), nullable(String.class), anyString(), any());
+    when(actionLogService.logAction(any(), any(), any(), any())).thenReturn(true);
+    when(measureRepository.save(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    Measure saved = measureService.createMeasure(measureToSave, "author.user", "token", false);
+
+    String sdeId1 = saved.getSupplementalData().get(0).getId();
+    String sdeId2 = saved.getSupplementalData().get(1).getId();
+    assertNotNull(sdeId1);
+    assertNotNull(sdeId2);
+    assertNotEquals(sdeId1, sdeId2);
+    assertNotNull(saved.getRiskAdjustments().get(0).getId());
+  }
+
+  @Test
+  public void testUpdateMeasureRetainsExistingSdeAndRavIdsAndAssignsNewIds() {
+    Measure original =
+        Measure.builder()
+            .measureName("Measure1")
+            .measureSetId("MeasureSetId")
+            .versionId("VersionId")
+            .model(ModelType.QI_CORE.getValue())
+            .cqlLibraryName("CqlLibraryName")
+            .cql("cql")
+            .measureMetaData(draftMeasureMetaData)
+            .supplementalData(
+                List.of(DefDescPair.builder().id("sde-1").definition("SDE Ethnicity").build()))
+            .riskAdjustments(
+                List.of(DefDescPair.builder().id("rav-1").definition("Risk Age").build()))
+            .build();
+
+    Measure updated =
+        original.toBuilder()
+            .supplementalData(
+                List.of(
+                    DefDescPair.builder()
+                        .id("sde-1")
+                        .definition("SDE Ethnicity")
+                        .description("updated")
+                        .build(),
+                    DefDescPair.builder().definition("SDE Sex").build()))
+            .riskAdjustments(
+                List.of(
+                    DefDescPair.builder().id("rav-1").definition("Risk Age").build(),
+                    DefDescPair.builder().definition("Risk Payer").build()))
+            .build();
+
+    when(measureUtil.isCqlLibraryNameChanged(any(Measure.class), any(Measure.class)))
+        .thenReturn(false);
+    when(measureUtil.isMeasurementPeriodChanged(any(Measure.class), any(Measure.class)))
+        .thenReturn(false);
+    when(measureUtil.isMeasureCqlChanged(any(Measure.class), any(Measure.class))).thenReturn(false);
+    when(measureUtil.isSupplementalDataChanged(any(Measure.class), any(Measure.class)))
+        .thenReturn(false);
+    when(measureUtil.isRiskAdjustmentChanged(any(Measure.class), any(Measure.class)))
+        .thenReturn(false);
+    when(measureRepository.findAndModify(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    measureService.updateMeasure(original, "User1", updated);
+
+    verify(measureRepository, times(1)).findAndModify(measureArgumentCaptor.capture());
+    Measure persisted = measureArgumentCaptor.getValue();
+    List<DefDescPair> sdes = persisted.getSupplementalData();
+    assertEquals("sde-1", sdes.get(0).getId());
+    assertNotNull(sdes.get(1).getId());
+    assertNotEquals("sde-1", sdes.get(1).getId());
+    List<DefDescPair> ravs = persisted.getRiskAdjustments();
+    assertEquals("rav-1", ravs.get(0).getId());
+    assertNotNull(ravs.get(1).getId());
+    assertNotEquals("rav-1", ravs.get(1).getId());
+  }
+
+  @Test
+  public void testAssignDefDescPairIdsReplacesDuplicateIds() {
+    List<DefDescPair> defDescPairs =
+        List.of(
+            DefDescPair.builder().id("dup").definition("SDE Ethnicity").build(),
+            DefDescPair.builder().id("dup").definition("SDE Sex").build(),
+            DefDescPair.builder().id("unique").definition("SDE Race").build());
+
+    measureService.assignDefDescPairIds(defDescPairs);
+
+    assertEquals("dup", defDescPairs.get(0).getId());
+    assertNotNull(defDescPairs.get(1).getId());
+    assertNotEquals("dup", defDescPairs.get(1).getId());
+    assertNotEquals("unique", defDescPairs.get(1).getId());
+    assertEquals("unique", defDescPairs.get(2).getId());
+  }
+
+  @Test
+  public void testAssignDefDescPairIdsHandlesNullAndEmptyLists() {
+    assertDoesNotThrow(() -> measureService.assignDefDescPairIds(null));
+    assertDoesNotThrow(() -> measureService.assignDefDescPairIds(new ArrayList<>()));
+  }
+
+  @Test
   public void testUpdateMeasureThrowsExceptionForDuplicateLibraryName() {
     Measure original =
         Measure.builder()
