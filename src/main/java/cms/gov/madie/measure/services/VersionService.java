@@ -290,7 +290,8 @@ public class VersionService {
     measureDraft.setId(null);
     measureDraft.setVersionId(UUID.randomUUID().toString());
     measureDraft.setMeasureName(measureName);
-    if (!model.equals(measure.getModel())) {
+    boolean modelChanged = !model.equals(measure.getModel());
+    if (modelChanged) {
       measureDraft.setModel(model);
       measureDraft.setCql(updateUsingStatement(model, measure.getCql()));
     }
@@ -343,12 +344,12 @@ public class VersionService {
       }
     }
 
+    String draftMessage = String.format("Draft created from version %s", measure.getVersion());
+    if (modelChanged) {
+      draftMessage += String.format("; model changed from %s to %s", measure.getModel(), model);
+    }
     actionLogService.logAction(
-        savedDraft.getId(),
-        Measure.class,
-        ActionType.DRAFTED,
-        username,
-        String.format("Draft created from version %s", measure.getVersion()));
+        savedDraft.getId(), Measure.class, ActionType.DRAFTED, username, draftMessage);
 
     return savedDraft;
   }
