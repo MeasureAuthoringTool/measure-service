@@ -25,6 +25,10 @@ public interface MeasureRepository
 
   Optional<Measure> findByIdAndActive(String id, Boolean active);
 
+  boolean existsByMeasureNameAndActive(String measureName, boolean active);
+
+  boolean existsByCqlLibraryNameAndActive(String cqlLibraryName, boolean active);
+
   Page<MeasureListDTO> findAllByActive(Boolean active, Pageable page);
 
   @Aggregation(

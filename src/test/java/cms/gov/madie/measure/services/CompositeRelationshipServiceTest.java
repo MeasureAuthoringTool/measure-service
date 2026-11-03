@@ -308,4 +308,61 @@ public class CompositeRelationshipServiceTest {
     verifyNoInteractions(measureRepository);
     verifyNoInteractions(actionLogService);
   }
+
+  @Test
+  void testAddCompositeRelationshipsAttachesComponents() {
+    String componentMeasureId = "component-measure-id";
+    Measure componentMeasure =
+        Measure.builder()
+            .id(componentMeasureId)
+            .measureName("Component Measure")
+            .compositeMeasureIds(new ArrayList<>(List.of("other-composite-id")))
+            .build();
+
+    Group compositeGroup =
+        Group.builder()
+            .id("composite-group-id")
+            .scoring(MeasureScoring.COMPOSITE.toString())
+            .components(List.of(Component.builder().measureId(componentMeasureId).build()))
+            .build();
+
+    Measure compositeMeasure =
+        Measure.builder()
+            .id("cloned-composite-id")
+            .measureName("CLONE Composite Measure")
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(true).build())
+            .groups(new ArrayList<>(List.of(compositeGroup)))
+            .build();
+
+    when(measureRepository.findAllById(anyCollection())).thenReturn(List.of(componentMeasure));
+
+    compositeRelationshipService.addCompositeRelationships(compositeMeasure, "test.user");
+
+    verify(measureRepository).saveAll(anyCollection());
+    assertEquals(
+        List.of("other-composite-id", "cloned-composite-id"),
+        componentMeasure.getCompositeMeasureIds());
+    verify(actionLogService)
+        .logAction(
+            eq(componentMeasureId),
+            eq(Measure.class),
+            eq(ActionType.ADDED_TO_COMPOSITE),
+            eq("test.user"),
+            eq("Added to Composite measure CLONE Composite Measure"));
+  }
+
+  @Test
+  void testAddCompositeRelationshipsNoOpForNonComposite() {
+    Measure nonComposite =
+        Measure.builder()
+            .id("measure-id")
+            .measureMetaData(MeasureMetaData.builder().draft(true).composite(false).build())
+            .groups(new ArrayList<>())
+            .build();
+
+    compositeRelationshipService.addCompositeRelationships(nonComposite, "test.user");
+
+    verifyNoInteractions(measureRepository);
+    verifyNoInteractions(actionLogService);
+  }
 }
