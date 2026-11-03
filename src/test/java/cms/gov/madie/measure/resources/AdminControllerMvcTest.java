@@ -2164,7 +2164,9 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            post("/admin/measures/{id}/clone", "12345")
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"measureId\": \"12345\"}")
                 .with(csrf())
                 .with(
                     jwt()
@@ -2185,7 +2187,9 @@ public class AdminControllerMvcTest {
 
     mockMvc
         .perform(
-            post("/admin/measures/{id}/clone", "12345")
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"measureId\": \"12345\"}")
                 .with(csrf())
                 .with(
                     jwt()
@@ -2196,10 +2200,48 @@ public class AdminControllerMvcTest {
   }
 
   @Test
+  public void testCloneMeasureReturnsBadRequestWhenMeasureIdIsMissing() throws Exception {
+    mockMvc
+        .perform(
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.validationErrors.measureId").value("Measure ID is required."));
+
+    verifyNoInteractions(measureCloneService);
+  }
+
+  @Test
+  public void testCloneMeasureReturnsBadRequestWhenBodyIsMissing() throws Exception {
+    mockMvc
+        .perform(
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(measureCloneService);
+  }
+
+  @Test
   public void testCloneMeasureForbiddenForNonAdmin() throws Exception {
     mockMvc
         .perform(
-            post("/admin/measures/{id}/clone", "12345")
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"measureId\": \"12345\"}")
                 .with(csrf())
                 .with(
                     jwt()
