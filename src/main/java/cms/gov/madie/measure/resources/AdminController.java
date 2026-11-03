@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.resources;
 
 import cms.gov.madie.measure.config.security.AdminOnly;
+import cms.gov.madie.measure.dto.CloneMeasureRequest;
 import cms.gov.madie.measure.dto.DeleteMeasuresByOwnersResult;
 import cms.gov.madie.measure.dto.ImpactedMeasureValidationReport;
 import cms.gov.madie.measure.dto.MeasureListDTO;
@@ -74,6 +75,7 @@ public class AdminController extends AbstractMeasureController {
   private final AppConfigService appConfigService;
   private final CacheManager cacheManager;
   private final CompositeRelationshipService compositeRelationshipService;
+  private final MeasureCloneService measureCloneService;
 
   @Override
   protected AppConfigService getAppConfigService() {
@@ -445,6 +447,15 @@ public class AdminController extends AbstractMeasureController {
             "Reverted from version %s to %s by MADiE Admin", inCorrectVersion, draftVersion));
 
     return ResponseEntity.ok(correctedVersionMeasure);
+  }
+
+  @PostMapping("/measures/clone")
+  public ResponseEntity<Measure> cloneMeasure(
+      @RequestBody @Valid CloneMeasureRequest request, Principal principal) {
+    return ResponseEntity.status(HttpStatus.CREATED)
+        .body(
+            measureCloneService.cloneMeasure(
+                request.getMeasureId(), principal.getName().toLowerCase()));
   }
 
   @PutMapping("/measures/{id}")

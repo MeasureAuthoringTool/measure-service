@@ -127,18 +127,33 @@ public class CompositeRelationshipService {
    * composite that no longer exists.
    */
   public void removeCompositeRelationships(Measure compositeMeasure, String username) {
-    if (compositeMeasure.getMeasureMetaData() != null
-        && compositeMeasure.getMeasureMetaData().isComposite()
-        && !CollectionUtils.isEmpty(compositeMeasure.getGroups())) {
-      List<Component> allComponents =
-          compositeMeasure.getGroups().stream()
-              .filter(g -> MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(g.getScoring()))
-              .filter(g -> !CollectionUtils.isEmpty(g.getComponents()))
-              .flatMap(g -> g.getComponents().stream())
-              .toList();
-      if (!allComponents.isEmpty()) {
-        syncComponents(allComponents, List.of(), compositeMeasure, username);
-      }
+    List<Component> allComponents = getAllComponents(compositeMeasure);
+    if (!allComponents.isEmpty()) {
+      syncComponents(allComponents, List.of(), compositeMeasure, username);
     }
+  }
+
+  /**
+   * Adds {@code compositeMeasure} to the {@code compositeMeasureIds} of each of its component
+   * measures
+   */
+  public void addCompositeRelationships(Measure compositeMeasure, String username) {
+    List<Component> allComponents = getAllComponents(compositeMeasure);
+    if (!allComponents.isEmpty()) {
+      syncComponents(List.of(), allComponents, compositeMeasure, username);
+    }
+  }
+
+  private List<Component> getAllComponents(Measure compositeMeasure) {
+    if (compositeMeasure.getMeasureMetaData() == null
+        || !compositeMeasure.getMeasureMetaData().isComposite()
+        || CollectionUtils.isEmpty(compositeMeasure.getGroups())) {
+      return List.of();
+    }
+    return compositeMeasure.getGroups().stream()
+        .filter(g -> MeasureScoring.COMPOSITE.toString().equalsIgnoreCase(g.getScoring()))
+        .filter(g -> !CollectionUtils.isEmpty(g.getComponents()))
+        .flatMap(g -> g.getComponents().stream())
+        .toList();
   }
 }
