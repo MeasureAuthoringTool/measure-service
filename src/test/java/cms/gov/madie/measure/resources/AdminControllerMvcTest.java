@@ -102,6 +102,7 @@ public class AdminControllerMvcTest {
   @MockitoBean private CacheManager cacheManager;
   @MockitoBean private CompositeRelationshipService compositeRelationshipService;
   @MockitoBean private UserMeasureExportService userMeasureExportService;
+  @MockitoBean private MeasureCloneService measureCloneService;
 
   @Autowired private MockMvc mockMvc;
 
@@ -2154,5 +2155,101 @@ public class AdminControllerMvcTest {
         .andExpect(status().isForbidden());
 
     verifyNoInteractions(adminService);
+  }
+
+  @Test
+  public void testCloneMeasureReturnsCreatedClone() throws Exception {
+    when(measureCloneService.cloneMeasure("12345", TEST_USER_ID))
+        .thenReturn(Measure.builder().id("clone-id").measureName("CLONE Measure").build());
+
+    mockMvc
+        .perform(
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"measureId\": \"12345\"}")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value("clone-id"))
+        .andExpect(jsonPath("$.measureName").value("CLONE Measure"));
+
+    verify(measureCloneService).cloneMeasure("12345", TEST_USER_ID);
+  }
+
+  @Test
+  public void testCloneMeasureReturnsNotFoundForMissingMeasure() throws Exception {
+    when(measureCloneService.cloneMeasure(anyString(), anyString()))
+        .thenThrow(new ResourceNotFoundException("Measure", "12345"));
+
+    mockMvc
+        .perform(
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"measureId\": \"12345\"}")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isNotFound());
+  }
+
+  @Test
+  public void testCloneMeasureReturnsBadRequestWhenMeasureIdIsMissing() throws Exception {
+    mockMvc
+        .perform(
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{}")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.validationErrors.measureId").value("Measure ID is required."));
+
+    verifyNoInteractions(measureCloneService);
+  }
+
+  @Test
+  public void testCloneMeasureReturnsBadRequestWhenBodyIsMissing() throws Exception {
+    mockMvc
+        .perform(
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-ADMIN")))
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isBadRequest());
+
+    verifyNoInteractions(measureCloneService);
+  }
+
+  @Test
+  public void testCloneMeasureForbiddenForNonAdmin() throws Exception {
+    mockMvc
+        .perform(
+            post("/admin/measures/clone")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"measureId\": \"12345\"}")
+                .with(csrf())
+                .with(
+                    jwt()
+                        .jwt(jwt -> jwt.claim("sub", TEST_USER_ID))
+                        .authorities(createAuthorityList("ROLE_MADIE-USER")))
+                .header("Authorization", "test-okta"))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(measureCloneService);
   }
 }
