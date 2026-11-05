@@ -48,6 +48,7 @@ import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
@@ -92,7 +93,12 @@ class ExportControllerTest {
         exportController.getZip(principal, "test_id", "Info", EXPORT, "Bearer TOKEN");
     assertEquals(HttpStatus.CREATED, output.getStatusCode());
     verify(actionLogService, times(1))
-        .logAction("test_id", Measure.class, ActionType.EXPORTED_MEASURE, "test.user");
+        .logAction(
+            "test_id",
+            Measure.class,
+            ActionType.EXPORTED_MEASURE,
+            "test.user",
+            "Executable Export");
   }
 
   @Test
@@ -115,7 +121,12 @@ class ExportControllerTest {
         exportController.getZip(principal, "test_id", "Info", EXPORT, "Bearer TOKEN");
     assertEquals(HttpStatus.OK, output.getStatusCode());
     verify(actionLogService, times(1))
-        .logAction("test_id", Measure.class, ActionType.EXPORTED_MEASURE, "test.user");
+        .logAction(
+            "test_id",
+            Measure.class,
+            ActionType.EXPORTED_MEASURE,
+            "test.user",
+            "Executable Export");
   }
 
   @Test
@@ -131,6 +142,13 @@ class ExportControllerTest {
     exportController.getZip(principal, "test_id", "Error", PUBLISH, "token");
 
     verify(exportService).getMeasureExport(measure, "token", PUBLISH, "Error");
+    verify(actionLogService)
+        .logAction(
+            "test_id",
+            Measure.class,
+            ActionType.EXPORTED_MEASURE,
+            "test.user",
+            "Publishable Export");
   }
 
   @Test
@@ -171,7 +189,11 @@ class ExportControllerTest {
     assertEquals(HttpStatus.CREATED, output.getStatusCode());
     verify(actionLogService, times(1))
         .logAction(
-            "test_id", Measure.class, ActionType.EXPORTED_MEASURE, "test.user", "by MADiE Admin");
+            "test_id",
+            Measure.class,
+            ActionType.EXPORTED_MEASURE,
+            "test.user",
+            "Executable Export by MADiE Admin");
   }
 
   @Test
@@ -208,6 +230,38 @@ class ExportControllerTest {
   }
 
   @Test
+  void getTestCaseExportTransactionBundleLogsTransactionBundle() {
+    Principal principal = mock(Principal.class);
+    when(principal.getName()).thenReturn("test.user");
+    final Measure measure =
+        Measure.builder()
+            .ecqmTitle("test_ecqm_title")
+            .version(new Version(0, 0, 0))
+            .model("QiCore 4.1.1")
+            .createdBy("test.user")
+            .build();
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(measure));
+    when(fhirServicesClient.getTestCaseExports(
+            any(Measure.class), anyString(), anyList(), eq("TRANSACTION")))
+        .thenReturn(new ResponseEntity<byte[]>(HttpStatus.OK));
+    ResponseEntity<byte[]> output =
+        exportController.getTestCaseExport(
+            principal,
+            "access-token",
+            "example-measure-id",
+            Optional.of("TRANSACTION"),
+            asList("example-test-case-id-1", "example-test-case-id-2"));
+    assertEquals(HttpStatus.OK, output.getStatusCode());
+    verify(actionLogService, times(1))
+        .logAction(
+            "example-measure-id",
+            Measure.class,
+            ActionType.EXPORTED_TESTCASES,
+            "test.user",
+            "Transaction Bundle");
+  }
+
+  @Test
   void getTestCaseExportByAdminAddsAdminActionMessage() throws IOException {
     Principal principal = mock(Principal.class);
     when(principal.getName()).thenReturn("test.user");
@@ -238,7 +292,7 @@ class ExportControllerTest {
             Measure.class,
             ActionType.EXPORTED_TESTCASES,
             "test.user",
-            "by MADiE Admin");
+            "Collection Bundle by MADiE Admin");
   }
 
   @Test
@@ -370,7 +424,7 @@ class ExportControllerTest {
             "Bearer TOKEN");
     assertEquals(HttpStatus.OK, output.getStatusCode());
     verify(actionLogService, times(1))
-        .logAction("test_id", Measure.class, ActionType.EXPORTED_TESTCASES, "test.user");
+        .logAction("test_id", Measure.class, ActionType.EXPORTED_TESTCASES, "test.user", "QRDA");
   }
 
   @Test
@@ -398,8 +452,7 @@ class ExportControllerTest {
             () -> exportController.getQRDA(principal, "test_id", requestDTO, "Bearer TOKEN"));
 
     assertEquals("Export failed", thrown.getMessage());
-    verify(actionLogService, times(0))
-        .logAction("test_id", Measure.class, ActionType.EXPORTED_TESTCASES, "test.user");
+    verifyNoInteractions(actionLogService);
   }
 
   @Test
@@ -440,7 +493,8 @@ class ExportControllerTest {
     assertEquals(response.getBody(), excelBytes);
 
     verify(actionLogService, times(1))
-        .logAction("measure-id", Measure.class, ActionType.EXPORTED_TESTCASES, "test.user");
+        .logAction(
+            "measure-id", Measure.class, ActionType.EXPORTED_TESTCASES, "test.user", "Excel");
   }
 
   @Test
@@ -460,7 +514,6 @@ class ExportControllerTest {
 
     assertEquals("Excel export failed", thrown.getMessage());
 
-    verify(actionLogService, times(0))
-        .logAction("measure-id", Measure.class, ActionType.EXPORTED_TESTCASES, "test.user");
+    verifyNoInteractions(actionLogService);
   }
 }
