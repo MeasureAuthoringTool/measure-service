@@ -17,6 +17,7 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.data.util.Pair;
+import org.springframework.util.CollectionUtils;
 
 /**
  * Assigns a unique identifier to every existing SDE (supplementalData) and RAV (riskAdjustments)
@@ -121,7 +122,7 @@ public class AddSdeAndRavIdsChangeUnit {
       Criteria rollbackCriteria,
       Update rollbackUpdate) {
     List<?> elements = measure.get(field, List.class);
-    if (elements == null) {
+    if (CollectionUtils.isEmpty(elements)) {
       return 0;
     }
     int count = 0;
