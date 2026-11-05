@@ -11,6 +11,8 @@ import tools.jackson.databind.ObjectMapper;
 import gov.cms.madie.models.measure.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -84,8 +86,10 @@ public class TestCaseControllerMvcTest {
     testCase.setValidResource(false);
   }
 
-  @Test
-  public void testNewTestCase() throws Exception {
+  @ParameterizedTest
+  @ValueSource(ints = {0, 16, 250, 251, 3999, 4000})
+  public void testNewTestCase(int descriptionLength) throws Exception {
+    testCase.setDescription("a".repeat(descriptionLength));
     when(testCaseService.persistTestCase(
             any(TestCase.class), any(String.class), any(String.class), anyString()))
         .thenReturn(testCase);
@@ -113,7 +117,7 @@ public class TestCaseControllerMvcTest {
             usernameCaptor.capture(),
             anyString());
     TestCase persistedTestCase = testCaseCaptor.getValue();
-    assertEquals(TEST_DESCRIPTION, persistedTestCase.getDescription());
+    assertEquals(testCase.getDescription(), persistedTestCase.getDescription());
     assertEquals(TEST_JSON, persistedTestCase.getJson());
     assertEquals(TEST_USER_ID, usernameCaptor.getValue());
   }
@@ -211,9 +215,10 @@ public class TestCaseControllerMvcTest {
     assertEquals("TESTID", testCaseIdCaptor.getValue());
   }
 
-  @Test
-  public void updateTestCase() throws Exception {
-    String modifiedDescription = "New Description";
+  @ParameterizedTest
+  @ValueSource(ints = {0, 16, 250, 251, 3999, 4000})
+  public void updateTestCase(int descriptionLength) throws Exception {
+    String modifiedDescription = "a".repeat(descriptionLength);
     testCase.setDescription(modifiedDescription);
     testCase.setJson("{\"new\":\"json\"}");
     when(testCaseService.updateTestCase(
@@ -304,8 +309,8 @@ public class TestCaseControllerMvcTest {
   }
 
   @Test
-  public void testNewTestCaseDescription251Characters() throws Exception {
-    testCase.setDescription(TEXT_251_CHARACTORS);
+  public void testNewTestCaseDescription4001Characters() throws Exception {
+    testCase.setDescription("a".repeat(4001));
 
     MvcResult result =
         mockMvc
@@ -320,11 +325,12 @@ public class TestCaseControllerMvcTest {
             .andExpect(status().isBadRequest())
             .andExpect(
                 jsonPath("$.validationErrors.description")
-                    .value("Test Case Description can not be more than 250 characters."))
+                    .value("Test Case Description cannot be more than 4000 characters."))
             .andReturn();
 
     String response = result.getResponse().getContentAsString();
-    assertTrue(response.contains("Test Case Description can not be more than 250 characters."));
+    assertTrue(response.contains("Test Case Description cannot be more than 4000 characters."));
+    verifyNoInteractions(testCaseService);
   }
 
   @Test
@@ -449,8 +455,8 @@ public class TestCaseControllerMvcTest {
   }
 
   @Test
-  public void testUpdateTestCaseDescription251Characters() throws Exception {
-    testCase.setDescription(TEXT_251_CHARACTORS);
+  public void testUpdateTestCaseDescription4001Characters() throws Exception {
+    testCase.setDescription("a".repeat(4001));
 
     MvcResult result =
         mockMvc
@@ -465,11 +471,12 @@ public class TestCaseControllerMvcTest {
             .andExpect(status().isBadRequest())
             .andExpect(
                 jsonPath("$.validationErrors.description")
-                    .value("Test Case Description can not be more than 250 characters."))
+                    .value("Test Case Description cannot be more than 4000 characters."))
             .andReturn();
 
     String response = result.getResponse().getContentAsString();
-    assertTrue(response.contains("Test Case Description can not be more than 250 characters."));
+    assertTrue(response.contains("Test Case Description cannot be more than 4000 characters."));
+    verifyNoInteractions(testCaseService);
   }
 
   @Test
