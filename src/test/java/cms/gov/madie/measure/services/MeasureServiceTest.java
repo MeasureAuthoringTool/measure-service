@@ -44,6 +44,7 @@ import gov.cms.madie.models.dto.UserDetailsDto;
 import gov.cms.madie.models.measure.*;
 import gov.cms.mat.cql.CqlTextParser;
 
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.time.Clock;
@@ -95,6 +96,31 @@ public class MeasureServiceTest implements ResourceUtil {
   private Measure measure2;
   private MeasureListDTO measureList;
   private List<Organization> organizationList;
+
+  @Test
+  void updateMeasurePersistsReportingTiming() {
+    ReportingTiming timing =
+        ReportingTiming.builder()
+            .repeat(
+                ReportingTiming.Repeat.builder()
+                    .frequency(2)
+                    .period(new BigDecimal("1.5"))
+                    .periodUnit("d")
+                    .timeOfDay(List.of("08:30:00"))
+                    .build())
+            .build();
+    Measure updated = measure1.deepCopy();
+    updated.getMeasureMetaData().setReportingTiming(timing);
+    when(measureRepository.findAndModify(any(Measure.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    Measure result = measureService.updateMeasure(measure1, "user", updated);
+
+    verify(measureRepository).findAndModify(measureArgumentCaptor.capture());
+    assertEquals(
+        timing, measureArgumentCaptor.getValue().getMeasureMetaData().getReportingTiming());
+    assertEquals(timing, result.getMeasureMetaData().getReportingTiming());
+  }
 
   @BeforeEach
   public void setUp() {
