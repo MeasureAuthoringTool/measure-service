@@ -17,6 +17,7 @@ import cms.gov.madie.measure.repositories.ExportRepository;
 import cms.gov.madie.measure.repositories.MeasureRepository;
 import cms.gov.madie.measure.utils.TestCaseServiceUtil;
 import cms.gov.madie.measure.validations.CompositeMeasureValidationService;
+import gov.cms.madie.models.common.ActionType;
 import gov.cms.madie.models.common.ModelType;
 import gov.cms.madie.models.common.Version;
 import gov.cms.madie.models.cqm.CqmMeasure;
@@ -1170,6 +1171,7 @@ public class VersionServiceTest {
     assertTrue(draft.getTestCases().get(0).getHapiOperationOutcome().isSuccessful());
     assertTrue(draft.getTestCases().get(0).getJson().contains("2024-10-11T01:30:10.123+00:00"));
     assertTrue(draft.getTestCases().get(0).getJson().contains("2024-10-10T01:31:20.456+00:00"));
+    verifyDraftActionLogged("Draft created from version 2.3.001");
   }
 
   @Test
@@ -1211,7 +1213,11 @@ public class VersionServiceTest {
 
     Measure draft =
         versionService.createDraft(
-            versionedMeasure.getId(), "Test", MODEL_QI_CORE, "test-user", TEST_ACCESS_TOKEN);
+            versionedMeasure.getId(),
+            "Test",
+            ModelType.QDM_5_6.getValue(),
+            "test-user",
+            TEST_ACCESS_TOKEN);
 
     assertThat(draft.getMeasureName(), is(equalTo("Test")));
     // draft flag to true
@@ -1227,6 +1233,7 @@ public class VersionServiceTest {
     assertThat(
         draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(),
         is(equalTo("clonedGroupId1")));
+    verifyDraftActionLogged("Draft created from version 2.3.001");
   }
 
   @Test
@@ -1289,6 +1296,8 @@ public class VersionServiceTest {
         draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(), notNullValue());
     assertThat(draft.getModel(), is(equalTo(ModelType.QI_CORE_6_0_0.getValue())));
     assertThat(draft.getCql(), containsStringIgnoringCase("using QICore version '6.0.0'"));
+    verifyDraftActionLogged(
+        "Draft created from version 2.3.001; model changed from QI-Core v4.1.1 to QI-Core v6.0.0");
   }
 
   @Test
@@ -1351,6 +1360,44 @@ public class VersionServiceTest {
         draft.getTestCases().get(0).getGroupPopulations().get(0).getGroupId(), notNullValue());
     assertThat(draft.getModel(), is(equalTo(ModelType.US_QUALITY_CORE_0_5_0.getValue())));
     assertThat(draft.getCql(), containsStringIgnoringCase("using USQualityCore version '0.5.0'"));
+    verifyDraftActionLogged(
+        "Draft created from version 2.3.001; model changed from QI-Core v4.1.1 to"
+            + " US Quality Core v0.5.0");
+  }
+
+  @Test
+  public void testCreateDraftLogsModelChangeFromQiCore6ToUsQualityCore() {
+    Measure versionedMeasure = buildBasicMeasure();
+    versionedMeasure.setModel(ModelType.QI_CORE_6_0_0.getValue());
+    versionedMeasure.setCql("library TestCQLLib version '2.3.001'\nusing QICore version '6.0.0'\n");
+    MeasureMetaData metaData = new MeasureMetaData();
+    metaData.setDraft(true);
+    Measure versionedCopy =
+        versionedMeasure.toBuilder()
+            .id("2")
+            .versionId("13-13-13-13")
+            .measureName("Test")
+            .measureMetaData(metaData)
+            .model(ModelType.US_QUALITY_CORE_0_5_0.getValue())
+            .build();
+
+    when(measureRepository.findById(anyString())).thenReturn(Optional.of(versionedMeasure));
+    when(measureRepository.existsByMeasureSetIdAndActiveAndMeasureMetaDataDraft(
+            anyString(), anyBoolean(), anyBoolean()))
+        .thenReturn(false);
+    when(measureRepository.testCaseSetIdExistsInSet(anyString())).thenReturn(true);
+    when(measureRepository.save(any(Measure.class))).thenReturn(versionedCopy);
+
+    versionService.createDraft(
+        versionedMeasure.getId(),
+        "Test",
+        ModelType.US_QUALITY_CORE_0_5_0.getValue(),
+        "test-user",
+        TEST_ACCESS_TOKEN);
+
+    verifyDraftActionLogged(
+        "Draft created from version 2.3.001; model changed from QI-Core v6.0.0 to"
+            + " US Quality Core v0.5.0");
   }
 
   @Test
@@ -1567,6 +1614,16 @@ public class VersionServiceTest {
         .reviewMetaData(
             new ReviewMetaData().toBuilder().lastReviewDate(today).approvalDate(today).build())
         .build();
+  }
+
+  private void verifyDraftActionLogged(String additionalInfo) {
+    verify(actionLogService, times(1))
+        .logAction(
+            anyString(),
+            eq(Measure.class),
+            eq(ActionType.DRAFTED),
+            eq("test-user"),
+            eq(additionalInfo));
   }
 
   @Test
