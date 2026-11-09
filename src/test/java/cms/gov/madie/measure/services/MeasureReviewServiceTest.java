@@ -29,7 +29,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -742,5 +741,151 @@ class MeasureReviewServiceTest {
             ActionType.COMMENT_ADDED,
             USERNAME,
             "relatedCommentId: " + result.getComments().get(0).getId());
+  }
+
+  @Test
+  void updateReviewAssignsIdsToNewReplies() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(List.of(Comment.builder().id("c1").content("parent").build()))
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(
+                List.of(
+                    Comment.builder()
+                        .id("c1")
+                        .content("parent")
+                        .replies(
+                            List.of(
+                                Comment.builder().id("r1").content("kept").build(),
+                                Comment.builder().content("new").build()))
+                        .build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    List<Comment> replies = result.getComments().get(0).getReplies();
+    assertEquals("r1", replies.get(0).getId());
+    assertNotNull(replies.get(1).getId(), "a reply needs an id to be edited or deleted");
+  }
+
+  @Test
+  void updateReviewLogsAddedEditedAndDeletedRepliesWithTheirParent() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(
+                List.of(
+                    Comment.builder()
+                        .id("c1")
+                        .content("parent")
+                        .replies(
+                            List.of(
+                                Comment.builder().id("r1").content("old text").build(),
+                                Comment.builder().id("r2").content("to be removed").build(),
+                                Comment.builder().id("r3").content("untouched").build()))
+                        .build()))
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(
+                List.of(
+                    Comment.builder()
+                        .id("c1")
+                        .content("parent")
+                        .replies(
+                            List.of(
+                                Comment.builder().id("r1").content("new text").build(),
+                                Comment.builder().id("r3").content("untouched").build(),
+                                Comment.builder().content("brand new").build()))
+                        .build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    String newReplyId = result.getComments().get(0).getReplies().get(2).getId();
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_ADDED,
+            USERNAME,
+            "relatedCommentId: " + newReplyId,
+            "parentCommentId: c1");
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_EDITED,
+            USERNAME,
+            "relatedCommentId: r1",
+            "parentCommentId: c1");
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_DELETED,
+            USERNAME,
+            "relatedCommentId: r2",
+            "parentCommentId: c1");
+    verify(actionLogService, never())
+        .logAction(
+            anyString(),
+            any(),
+            any(ActionType.class),
+            anyString(),
+            eq("relatedCommentId: r3"),
+            anyString());
+    // adding a reply is not an edit of the comment it replies to
+    verify(actionLogService, never())
+        .logAction(
+            anyString(), any(), any(ActionType.class), anyString(), eq("relatedCommentId: c1"));
+    verify(actionLogService, never())
+        .logAction(anyString(), eq(Measure.class), any(ActionType.class), anyString());
+  }
+
+  @Test
+  void updateReviewLogsOnlyTheCommentWhenACommentWithRepliesIsDeleted() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(
+                List.of(
+                    Comment.builder()
+                        .id("c1")
+                        .content("parent")
+                        .replies(List.of(Comment.builder().id("r1").content("reply").build()))
+                        .build()))
+            .build();
+    MeasureReview update = MeasureReview.builder().comments(List.of()).build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    measureReviewService.updateReview("m1", update, USERNAME);
+
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_DELETED,
+            USERNAME,
+            "relatedCommentId: c1");
+    verify(actionLogService, times(1))
+        .logAction(anyString(), any(), any(ActionType.class), anyString(), any());
   }
 }
