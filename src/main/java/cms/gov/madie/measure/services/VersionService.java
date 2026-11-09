@@ -290,9 +290,11 @@ public class VersionService {
     measureDraft.setId(null);
     measureDraft.setVersionId(UUID.randomUUID().toString());
     measureDraft.setMeasureName(measureName);
+    String draftMessage = String.format("Draft created from version %s", measure.getVersion());
     if (!model.equals(measure.getModel())) {
       measureDraft.setModel(model);
       measureDraft.setCql(updateUsingStatement(model, measure.getCql()));
+      draftMessage += String.format("; model changed from %s to %s", measure.getModel(), model);
     }
 
     measureDraft.getMeasureMetaData().setDraft(true);
@@ -335,11 +337,7 @@ public class VersionService {
     }
 
     actionLogService.logAction(
-        savedDraft.getId(),
-        Measure.class,
-        ActionType.DRAFTED,
-        username,
-        String.format("Draft created from version %s", measure.getVersion()));
+        savedDraft.getId(), Measure.class, ActionType.DRAFTED, username, draftMessage);
 
     return savedDraft;
   }
