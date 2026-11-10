@@ -301,6 +301,7 @@ public class MeasureReviewService {
             Collectors.toMap(Comment::getId, Function.identity(), (first, duplicate) -> first));
   }
 
+
   /**
    * Compares one level of entries, either the top-level comments or the replies of one comment, and
    * adds an added / edited / deleted change for each entry that differs.
