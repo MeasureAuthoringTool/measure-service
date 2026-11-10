@@ -26,6 +26,7 @@ import gov.cms.madie.models.common.ReviewStatus;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.MeasureReview;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -224,18 +225,56 @@ class MeasureReviewServiceTest {
   }
 
   @Test
-  void createReviewKeepsTheHarpIdOnTheSavedAndReturnedReview() {
+  void createReviewSavesTheHarpIdButReturnsTheDisplayName() {
+    List<String> markedForReviewByWhenSaved = new ArrayList<>();
     when(measureReviewRepository.existsByMeasureId("m1")).thenReturn(false);
     when(measureReviewRepository.save(any(MeasureReview.class)))
-        .thenAnswer(invocation -> invocation.getArgument(0));
+        .thenAnswer(
+            invocation -> {
+              MeasureReview toSave = invocation.getArgument(0);
+              markedForReviewByWhenSaved.add(toSave.getMarkedForReviewBy());
+              return toSave;
+            });
+    when(userNameService.getUserDisplayName(USERNAME)).thenReturn("Test User");
 
     MeasureReview result = measureReviewService.createReview(review, USERNAME);
 
-    verify(measureReviewRepository).save(reviewCaptor.capture());
-    assertEquals(USERNAME, reviewCaptor.getValue().getMarkedForReviewBy());
-    // Saving never resolves a display name, so nothing can leak one back into the document.
-    assertEquals(USERNAME, result.getMarkedForReviewBy());
-    verify(userNameService, never()).getUserDisplayName(any());
+    assertEquals(List.of(USERNAME), markedForReviewByWhenSaved);
+    assertEquals("Test User", result.getMarkedForReviewBy());
+  }
+
+  @Test
+  void updateReviewReturnsTheDisplayNameOfWhoMarkedItForReview() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .markedForReviewBy(USERNAME)
+            .comments(List.of())
+            .build();
+    // a comment-only save sends back the display name it was given; it is not stored
+    MeasureReview update =
+        MeasureReview.builder()
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .markedForReviewBy("Test User")
+            .comments(List.of(Comment.builder().content("new").build()))
+            .build();
+    List<String> markedForReviewByWhenSaved = new ArrayList<>();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(
+            invocation -> {
+              MeasureReview toSave = invocation.getArgument(0);
+              markedForReviewByWhenSaved.add(toSave.getMarkedForReviewBy());
+              return toSave;
+            });
+    when(userNameService.getUserDisplayName(USERNAME)).thenReturn("Test User");
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals(List.of(USERNAME), markedForReviewByWhenSaved);
+    assertEquals("Test User", result.getMarkedForReviewBy());
   }
 
   @Test
@@ -259,13 +298,13 @@ class MeasureReviewServiceTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.NOT_READY_FOR_REVIEW)
-            .comments(List.of(Comment.builder().content("old").build()))
+            .comments(List.of(Comment.builder().id("c1").harpId(USERNAME).content("old").build()))
             .build();
 
     MeasureReview update =
         MeasureReview.builder()
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comments(List.of(Comment.builder().content("updated").build()))
+            .comments(List.of(Comment.builder().id("c1").content("updated").build()))
             .measureSetId("set-2")
             .build();
 
@@ -465,14 +504,20 @@ class MeasureReviewServiceTest {
             .measureId("m1")
             .measureSetId("set-1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comments(List.of(Comment.builder().content("original comment").build()))
+            .comments(
+                List.of(
+                    Comment.builder()
+                        .id("c1")
+                        .harpId(USERNAME)
+                        .content("original comment")
+                        .build()))
             .build();
 
     // Same status, only the comment changes.
     MeasureReview update =
         MeasureReview.builder()
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comments(List.of(Comment.builder().content("updated comment").build()))
+            .comments(List.of(Comment.builder().id("c1").content("updated comment").build()))
             .build();
 
     when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
@@ -596,6 +641,7 @@ class MeasureReviewServiceTest {
         MeasureReview.builder()
             .id("review-1")
             .measureId("m1")
+            .comments(List.of(Comment.builder().id("c1").harpId(USERNAME).content("kept").build()))
             .status(ReviewStatus.READY_FOR_REVIEW)
             .build();
     MeasureReview update =
@@ -624,16 +670,16 @@ class MeasureReviewServiceTest {
             .status(ReviewStatus.READY_FOR_REVIEW)
             .comments(
                 List.of(
-                    Comment.builder().id("c1").content("old text").build(),
-                    Comment.builder().id("c2").content("to be removed").build(),
-                    Comment.builder().id("c3").content("untouched").build()))
+                    Comment.builder().harpId(USERNAME).id("c1").content("old text").build(),
+                    Comment.builder().harpId(USERNAME).id("c2").content("to be removed").build(),
+                    Comment.builder().harpId(USERNAME).id("c3").content("untouched").build()))
             .build();
     MeasureReview update =
         MeasureReview.builder()
             .comments(
                 List.of(
-                    Comment.builder().id("c1").content("new text").build(),
-                    Comment.builder().id("c3").content("untouched").build(),
+                    Comment.builder().harpId(USERNAME).id("c1").content("new text").build(),
+                    Comment.builder().harpId(USERNAME).id("c3").content("untouched").build(),
                     Comment.builder().content("brand new").build()))
             .build();
     when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
@@ -750,7 +796,20 @@ class MeasureReviewServiceTest {
             .id("review-1")
             .measureId("m1")
             .status(ReviewStatus.READY_FOR_REVIEW)
-            .comments(List.of(Comment.builder().id("c1").content("parent").build()))
+            .comments(
+                List.of(
+                    Comment.builder()
+                        .harpId(USERNAME)
+                        .id("c1")
+                        .content("parent")
+                        .replies(
+                            List.of(
+                                Comment.builder()
+                                    .harpId(USERNAME)
+                                    .id("r1")
+                                    .content("kept")
+                                    .build()))
+                        .build()))
             .build();
     MeasureReview update =
         MeasureReview.builder()
@@ -761,7 +820,7 @@ class MeasureReviewServiceTest {
                         .content("parent")
                         .replies(
                             List.of(
-                                Comment.builder().id("r1").content("kept").build(),
+                                Comment.builder().harpId(USERNAME).id("r1").content("kept").build(),
                                 Comment.builder().content("new").build()))
                         .build()))
             .build();
@@ -790,9 +849,21 @@ class MeasureReviewServiceTest {
                         .content("parent")
                         .replies(
                             List.of(
-                                Comment.builder().id("r1").content("old text").build(),
-                                Comment.builder().id("r2").content("to be removed").build(),
-                                Comment.builder().id("r3").content("untouched").build()))
+                                Comment.builder()
+                                    .harpId(USERNAME)
+                                    .id("r1")
+                                    .content("old text")
+                                    .build(),
+                                Comment.builder()
+                                    .harpId(USERNAME)
+                                    .id("r2")
+                                    .content("to be removed")
+                                    .build(),
+                                Comment.builder()
+                                    .harpId(USERNAME)
+                                    .id("r3")
+                                    .content("untouched")
+                                    .build()))
                         .build()))
             .build();
     MeasureReview update =
@@ -804,8 +875,16 @@ class MeasureReviewServiceTest {
                         .content("parent")
                         .replies(
                             List.of(
-                                Comment.builder().id("r1").content("new text").build(),
-                                Comment.builder().id("r3").content("untouched").build(),
+                                Comment.builder()
+                                    .harpId(USERNAME)
+                                    .id("r1")
+                                    .content("new text")
+                                    .build(),
+                                Comment.builder()
+                                    .harpId(USERNAME)
+                                    .id("r3")
+                                    .content("untouched")
+                                    .build(),
                                 Comment.builder().content("brand new").build()))
                         .build()))
             .build();
@@ -866,9 +945,16 @@ class MeasureReviewServiceTest {
             .comments(
                 List.of(
                     Comment.builder()
+                        .harpId(USERNAME)
                         .id("c1")
                         .content("parent")
-                        .replies(List.of(Comment.builder().id("r1").content("reply").build()))
+                        .replies(
+                            List.of(
+                                Comment.builder()
+                                    .harpId(USERNAME)
+                                    .id("r1")
+                                    .content("reply")
+                                    .build()))
                         .build()))
             .build();
     MeasureReview update = MeasureReview.builder().comments(List.of()).build();
@@ -887,5 +973,179 @@ class MeasureReviewServiceTest {
             "relatedCommentId: c1");
     verify(actionLogService, times(1))
         .logAction(anyString(), any(), any(ActionType.class), anyString(), any());
+  }
+
+  @Test
+  void updateReviewKeepsAnotherUsersCommentLeftOutOfAnOutdatedUpdate() {
+    Comment theirs = Comment.builder().id("c2").harpId("other.user").content("theirs").build();
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(
+                List.of(
+                    Comment.builder().id("c1").harpId(USERNAME).content("mine").build(), theirs))
+            .build();
+    // built from a copy loaded before the other user commented
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(
+                List.of(
+                    Comment.builder().id("c1").harpId(USERNAME).content("mine").build(),
+                    Comment.builder().content("new").build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals(
+        List.of("mine", "theirs", "new"),
+        result.getComments().stream().map(Comment::getContent).toList());
+    verify(actionLogService, never())
+        .logAction(
+            anyString(),
+            any(),
+            eq(ActionType.COMMENT_DELETED),
+            anyString(),
+            eq("relatedCommentId: c2"));
+  }
+
+  @Test
+  void updateReviewIgnoresChangesToAnotherUsersComment() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(
+                List.of(
+                    Comment.builder().id("c2").harpId("other.user").content("original").build()))
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(
+                List.of(Comment.builder().id("c2").harpId(USERNAME).content("changed").build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    Comment saved = result.getComments().get(0);
+    assertEquals("original", saved.getContent());
+    assertEquals("other.user", saved.getHarpId());
+    verify(actionLogService, never())
+        .logAction(anyString(), eq(MeasureReview.class), any(ActionType.class), anyString(), any());
+  }
+
+  @Test
+  void updateReviewKeepsAnotherUsersReplyLeftOutOfAnOutdatedUpdate() {
+    Comment theirReply =
+        Comment.builder().id("r1").harpId("other.user").content("their reply").build();
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(
+                List.of(
+                    Comment.builder()
+                        .id("c1")
+                        .harpId("other.user")
+                        .content("parent")
+                        .replies(List.of(theirReply))
+                        .build()))
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(
+                List.of(
+                    Comment.builder()
+                        .id("c1")
+                        .harpId("other.user")
+                        .content("parent")
+                        .replies(List.of(Comment.builder().content("my reply").build()))
+                        .build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    List<Comment> replies = result.getComments().get(0).getReplies();
+    assertEquals(
+        List.of("their reply", "my reply"), replies.stream().map(Comment::getContent).toList());
+    assertEquals(USERNAME, replies.get(1).getHarpId());
+  }
+
+  @Test
+  void updateReviewDropsACommentThatWasDeletedMeanwhile() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(List.of())
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(
+                List.of(Comment.builder().id("gone").harpId(USERNAME).content("deleted").build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals(List.of(), result.getComments());
+  }
+
+  @Test
+  void updateReviewStampsNewCommentsWithTheCallersHarpId() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .build();
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(List.of(Comment.builder().harpId("someone.else").content("new").build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals(USERNAME, result.getComments().get(0).getHarpId());
+  }
+
+  @Test
+  void updateReviewLetsTheAuthorDeleteAnOlderCommentWithoutAHarpId() {
+    MeasureReview existing =
+        MeasureReview.builder()
+            .id("review-1")
+            .measureId("m1")
+            .status(ReviewStatus.READY_FOR_REVIEW)
+            .comments(
+                List.of(
+                    Comment.builder().id("c1").authorName(USERNAME).content("mine").build(),
+                    Comment.builder().id("c2").authorName("Other User").content("theirs").build()))
+            .build();
+    MeasureReview update = MeasureReview.builder().comments(List.of()).build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview result = measureReviewService.updateReview("m1", update, USERNAME);
+
+    assertEquals(List.of("c2"), result.getComments().stream().map(Comment::getId).toList());
   }
 }
