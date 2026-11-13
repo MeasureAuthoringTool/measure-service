@@ -97,12 +97,16 @@ public class MeasureServiceApplication {
   public CacheManager cacheManager() {
     CaffeineCacheManager cacheManager =
         new CaffeineCacheManager("organizations", "populationBasisValues", "endorsements");
-    cacheManager.setCaffeine(Caffeine.newBuilder().maximumSize(500));
+    cacheManager.setCaffeine(Caffeine.newBuilder().maximumSize(500).recordStats());
 
     // translatorVersion: small, rarely-changing value — expire after 1 hour
     cacheManager.registerCustomCache(
         "translatorVersion",
-        Caffeine.newBuilder().maximumSize(1).expireAfterWrite(Duration.ofHours(1)).build());
+        Caffeine.newBuilder()
+            .maximumSize(1)
+            .expireAfterWrite(Duration.ofHours(1))
+            .recordStats()
+            .build());
 
     return cacheManager;
   }
