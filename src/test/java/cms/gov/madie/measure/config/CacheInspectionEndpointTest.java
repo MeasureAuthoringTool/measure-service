@@ -14,6 +14,8 @@ import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointAu
 import org.springframework.boot.actuate.endpoint.web.WebEndpointsSupplier;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.WebApplicationContextRunner;
+import org.springframework.boot.health.autoconfigure.actuate.endpoint.HealthEndpointAutoConfiguration;
+import org.springframework.boot.health.autoconfigure.registry.HealthContributorRegistryAutoConfiguration;
 import org.springframework.boot.http.converter.autoconfigure.HttpMessageConvertersAutoConfiguration;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.boot.webmvc.autoconfigure.WebMvcAutoConfiguration;
@@ -106,6 +108,8 @@ class CacheInspectionEndpointTest {
             AutoConfigurations.of(
                 EndpointAutoConfiguration.class,
                 WebEndpointAutoConfiguration.class,
+                HealthContributorRegistryAutoConfiguration.class,
+                HealthEndpointAutoConfiguration.class,
                 DispatcherServletAutoConfiguration.class,
                 WebMvcEndpointManagementContextConfiguration.class,
                 WebMvcAutoConfiguration.class,
@@ -122,8 +126,11 @@ class CacheInspectionEndpointTest {
               assertThat(context).hasNotFailed();
               assertThat(context.getBean(WebEndpointsSupplier.class).getEndpoints())
                   .anyMatch(
-                      endpoint -> endpoint.getEndpointId().toString().equals("cache-inspection"));
+                      endpoint -> endpoint.getEndpointId().toString().equals("cache-inspection"))
+                  .anyMatch(endpoint -> endpoint.getEndpointId().toString().equals("health"));
               var mvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
+              mvc.perform(get("/api/actuator/health").contextPath("/api"))
+                  .andExpect(status().isOk());
               mvc.perform(get("/api/actuator/cache-inspection").contextPath("/api"))
                   .andExpect(status().isOk())
                   .andExpect(jsonPath("$.organizations.statsEnabled").value(true))
