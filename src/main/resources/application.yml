@@ -80,8 +80,13 @@ madie:
 management:
   endpoints:
     enabled-by-default: false
+    web:
+      exposure:
+        include: health,cache-inspection
   endpoint:
     health:
+      enabled: true
+    cache-inspection:
       enabled: true
 
 okta:
