@@ -208,9 +208,11 @@ public class MeasureReviewService {
    * comments and replies the user wrote; everyone else's stay exactly as stored.
    *
    * <ul>
-   *   <li>A stored entry that is missing from the update is deleted only if the user wrote it.
+   *   <li>A missing entry written by the user is removed, or retained as a tombstone if it has
+   *       replies.
    *   <li>A stored entry whose text changed in the update takes the new text only if the user wrote
    *       it.
+   *   <li>A deleted entry cannot be restored by a stale update.
    *   <li>An entry in the update whose id is no longer stored (deleted meanwhile) is dropped.
    *   <li>An entry in the update without an id is new and is stamped with the user's HARP id.
    * </ul>
@@ -220,7 +222,7 @@ public class MeasureReviewService {
    * @param username the HARP id of the user saving the update
    * @return the entries to save
    */
-  private static List<Comment> mergeUserChangesIntoStoredComments(
+  private List<Comment> mergeUserChangesIntoStoredComments(
       List<Comment> storedEntries, List<Comment> incomingEntries, String username) {
     if (storedEntries == null && incomingEntries == null) {
       return null;
@@ -232,9 +234,33 @@ public class MeasureReviewService {
     for (Comment storedEntry : ListUtils.emptyIfNull(storedEntries)) {
       Comment incomingEntry = incomingEntriesById.get(storedEntry.getId());
       boolean writtenByUser = isWrittenByUser(storedEntry, username);
+      List<Comment> storedReplies = getRepliesOrEmpty(storedEntry);
       if (incomingEntry == null) {
+        if (storedEntry.getContent() == null) {
+          mergedEntries.add(storedEntry);
+        } else if (writtenByUser && !storedReplies.isEmpty()) {
+          mergedEntries.add(deletedComment(storedEntry, username));
+        } else if (!writtenByUser) {
+          mergedEntries.add(storedEntry);
+        }
+        continue;
+      }
+      if (storedEntry.getContent() == null) {
+        mergedEntries.add(
+            storedEntry.toBuilder()
+                .content(null)
+                .edited(false)
+                .replies(
+                    mergeUserChangesIntoStoredComments(
+                        storedEntry.getReplies(), incomingEntry.getReplies(), username))
+                .build());
+        continue;
+      }
+      if (incomingEntry.getContent() == null) {
         if (!writtenByUser) {
           mergedEntries.add(storedEntry);
+        } else if (!storedReplies.isEmpty()) {
+          mergedEntries.add(deletedComment(storedEntry, username));
         }
         continue;
       }
@@ -255,6 +281,14 @@ public class MeasureReviewService {
     return mergedEntries;
   }
 
+  private Comment deletedComment(Comment comment, String username) {
+    return comment.toBuilder()
+        .content(null)
+        .edited(false)
+        .authorName(userNameService.getCommentAuthorDisplayName(username))
+        .build();
+  }
+
   private static boolean isWrittenByUser(Comment entry, String username) {
     String author =
         StringUtils.isNotBlank(entry.getHarpId()) ? entry.getHarpId() : entry.getAuthorName();
@@ -263,8 +297,8 @@ public class MeasureReviewService {
 
   /**
    * Finds every comment and reply that was added, edited or deleted between the stored review and
-   * the incoming update. Replies are only compared for comments that still exist; when a comment is
-   * deleted its replies go with it and only the comment deletion is reported.
+   * the merged update. Deleted comments with replies remain in the update as tombstones, so changes
+   * to their replies continue to be tracked independently.
    */
   private static List<CommentChange> findChangedCommentsAndReplies(
       List<Comment> storedComments, List<Comment> incomingComments) {
@@ -301,7 +335,6 @@ public class MeasureReviewService {
             Collectors.toMap(Comment::getId, Function.identity(), (first, duplicate) -> first));
   }
 
-
   /**
    * Compares one level of entries, either the top-level comments or the replies of one comment, and
    * adds an added / edited / deleted change for each entry that differs.
@@ -317,6 +350,7 @@ public class MeasureReviewService {
       Comment parentComment,
       List<CommentChange> collectedChanges) {
     Map<String, Comment> storedEntriesById = mapCommentsById(storedEntries);
+    Map<String, Comment> incomingEntriesById = mapCommentsById(incomingEntries);
     Set<String> incomingEntryIds =
         incomingEntries.stream()
             .map(Comment::getId)
@@ -328,6 +362,7 @@ public class MeasureReviewService {
     List<Comment> editedEntries =
         incomingEntries.stream()
             .filter(entry -> entry.getId() != null && storedEntriesById.containsKey(entry.getId()))
+            .filter(entry -> entry.getContent() != null)
             .filter(
                 entry ->
                     !Objects.equals(
@@ -335,7 +370,17 @@ public class MeasureReviewService {
             .toList();
     List<Comment> deletedEntries =
         storedEntries.stream()
-            .filter(entry -> entry.getId() != null && !incomingEntryIds.contains(entry.getId()))
+            .filter(
+                entry -> {
+                  if (entry.getId() == null) {
+                    return false;
+                  }
+                  if (!incomingEntryIds.contains(entry.getId())) {
+                    return true;
+                  }
+                  Comment incomingEntry = incomingEntriesById.get(entry.getId());
+                  return entry.getContent() != null && incomingEntry.getContent() == null;
+                })
             .toList();
 
     addedEntries.forEach(

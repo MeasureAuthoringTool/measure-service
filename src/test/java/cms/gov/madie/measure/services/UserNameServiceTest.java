@@ -47,6 +47,32 @@ class UserNameServiceTest {
   }
 
   @Test
+  void commentAuthorUsesFullNameOnlyWhenBothNamesAreAvailable() {
+    when(userServiceClient.getBulkUserDetails(List.of("jjones")))
+        .thenReturn(
+            Map.of(
+                "jjones",
+                UserDetailsDto.builder().firstName(" Jonathan ").lastName(" Jones ").build()));
+
+    assertEquals("Jonathan Jones", userNameService.getCommentAuthorDisplayName("jjones"));
+  }
+
+  @Test
+  void commentAuthorFallsBackToHarpIdWhenEitherNameIsMissing() {
+    when(userServiceClient.getBulkUserDetails(List.of("jjones")))
+        .thenReturn(Map.of("jjones", UserDetailsDto.builder().firstName("Jonathan").build()));
+
+    assertEquals("jjones", userNameService.getCommentAuthorDisplayName("jjones"));
+  }
+
+  @Test
+  void commentAuthorFallsBackWhenNoUserDetailsAreAvailable() {
+    when(userServiceClient.getBulkUserDetails(List.of("jjones"))).thenReturn(Map.of());
+
+    assertEquals("jjones", userNameService.getCommentAuthorDisplayName("jjones"));
+  }
+
+  @Test
   void keepsTheHarpIdWhenTheUserServiceReturnsNothing() {
     when(userServiceClient.getBulkUserDetails(List.of("jjones"))).thenReturn(Map.of());
 

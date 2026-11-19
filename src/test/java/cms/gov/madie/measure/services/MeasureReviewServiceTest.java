@@ -1,6 +1,7 @@
 package cms.gov.madie.measure.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -67,6 +68,9 @@ class MeasureReviewServiceTest {
     // just has to hand the review back untouched.
     lenient()
         .when(userNameService.getUserDisplayName(any()))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+    lenient()
+        .when(userNameService.getCommentAuthorDisplayName(any()))
         .thenAnswer(invocation -> invocation.getArgument(0));
     lenient().when(userNameService.getUsersDisplayNames(anyList())).thenReturn(Map.of());
 
@@ -962,7 +966,13 @@ class MeasureReviewServiceTest {
     when(measureReviewRepository.save(any(MeasureReview.class)))
         .thenAnswer(invocation -> invocation.getArgument(0));
 
-    measureReviewService.updateReview("m1", update, USERNAME);
+    MeasureReview saved = measureReviewService.updateReview("m1", update, USERNAME);
+
+    Comment deleted = saved.getComments().get(0);
+    assertEquals("c1", deleted.getId());
+    assertNull(deleted.getContent());
+    assertEquals(USERNAME, deleted.getAuthorName());
+    assertEquals("reply", deleted.getReplies().get(0).getContent());
 
     verify(actionLogService)
         .logAction(
@@ -973,6 +983,153 @@ class MeasureReviewServiceTest {
             "relatedCommentId: c1");
     verify(actionLogService, times(1))
         .logAction(anyString(), any(), any(ActionType.class), anyString(), any());
+  }
+
+  @Test
+  void updateReviewSoftDeletesCommentWithRepliesAndLogsDeletionNotEdit() {
+    Comment reply = Comment.builder().id("r1").harpId("other.user").content("reply").build();
+    Comment parent =
+        Comment.builder()
+            .id("c1")
+            .harpId(USERNAME)
+            .authorName("Original Name")
+            .createdAt(Instant.parse("2026-08-12T09:00:00Z"))
+            .content("original")
+            .edited(true)
+            .replies(List.of(reply))
+            .build();
+    MeasureReview existing = review;
+    existing.setComments(List.of(parent));
+    MeasureReview update =
+        MeasureReview.builder()
+            .comments(List.of(parent.toBuilder().content(null).edited(false).build()))
+            .build();
+    when(userNameService.getCommentAuthorDisplayName(USERNAME)).thenReturn("Current Name");
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview saved = measureReviewService.updateReview("m1", update, USERNAME);
+
+    Comment deleted = saved.getComments().get(0);
+    assertEquals("c1", deleted.getId());
+    assertEquals(USERNAME, deleted.getHarpId());
+    assertEquals("Current Name", deleted.getAuthorName());
+    assertEquals(parent.getCreatedAt(), deleted.getCreatedAt());
+    assertNull(deleted.getContent());
+    assertFalse(deleted.isEdited());
+    assertEquals(List.of(reply), deleted.getReplies());
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_DELETED,
+            USERNAME,
+            "relatedCommentId: c1");
+    verify(actionLogService, never())
+        .logAction(
+            anyString(),
+            eq(MeasureReview.class),
+            eq(ActionType.COMMENT_EDITED),
+            anyString(),
+            any());
+    verify(actionLogService, never())
+        .logAction(anyString(), eq(Measure.class), any(ActionType.class), anyString());
+  }
+
+  @Test
+  void updateReviewKeepsDeletedCommentAndRepliesWhenAStaleUpdateContainsOldText() {
+    Comment reply = Comment.builder().id("r1").harpId(USERNAME).content("reply").build();
+    Comment deleted =
+        Comment.builder()
+            .id("c1")
+            .harpId(USERNAME)
+            .authorName("Current Name")
+            .content(null)
+            .replies(List.of(reply))
+            .build();
+    MeasureReview existing = review;
+    existing.setComments(List.of(deleted));
+    MeasureReview staleUpdate =
+        MeasureReview.builder()
+            .comments(List.of(deleted.toBuilder().content("old text").build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview saved = measureReviewService.updateReview("m1", staleUpdate, USERNAME);
+
+    assertNull(saved.getComments().get(0).getContent());
+    assertEquals("reply", saved.getComments().get(0).getReplies().get(0).getContent());
+    verify(actionLogService, never())
+        .logAction(anyString(), any(), any(ActionType.class), anyString(), any());
+  }
+
+  @Test
+  void updateReviewAllowsRepliesToDeletedCommentAndKeepsPlaceholderAfterLastReplyIsRemoved() {
+    Comment reply = Comment.builder().id("r1").harpId(USERNAME).content("existing reply").build();
+    Comment deleted =
+        Comment.builder()
+            .id("c1")
+            .harpId(USERNAME)
+            .authorName("Current Name")
+            .content(null)
+            .replies(List.of(reply))
+            .build();
+    MeasureReview existing = review;
+    existing.setComments(List.of(deleted));
+    Comment newReply = Comment.builder().content("new reply").build();
+    MeasureReview addReply =
+        MeasureReview.builder()
+            .comments(List.of(deleted.toBuilder().replies(List.of(reply, newReply)).build()))
+            .build();
+    when(measureReviewRepository.findByMeasureId("m1")).thenReturn(Optional.of(existing));
+    when(measureReviewRepository.save(any(MeasureReview.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    MeasureReview withReply = measureReviewService.updateReview("m1", addReply, USERNAME);
+
+    Comment savedParent = withReply.getComments().get(0);
+    assertNull(savedParent.getContent());
+    assertEquals("Current Name", savedParent.getAuthorName());
+    assertNotNull(savedParent.getReplies().get(1).getId());
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_ADDED,
+            USERNAME,
+            "relatedCommentId: " + savedParent.getReplies().get(1).getId(),
+            "parentCommentId: c1");
+    verify(actionLogService, never())
+        .logAction(
+            anyString(),
+            eq(MeasureReview.class),
+            any(ActionType.class),
+            anyString(),
+            eq("relatedCommentId: c1"));
+
+    Comment newSavedReply = savedParent.getReplies().get(1);
+    MeasureReview removeReply =
+        MeasureReview.builder()
+            .comments(List.of(savedParent.toBuilder().replies(List.of(reply)).build()))
+            .build();
+    MeasureReview withoutReply = measureReviewService.updateReview("m1", removeReply, USERNAME);
+
+    assertEquals(1, withoutReply.getComments().size());
+    assertNull(withoutReply.getComments().get(0).getContent());
+    assertEquals(List.of(reply), withoutReply.getComments().get(0).getReplies());
+    verify(actionLogService)
+        .logAction(
+            "m1",
+            MeasureReview.class,
+            ActionType.COMMENT_DELETED,
+            USERNAME,
+            "relatedCommentId: " + newSavedReply.getId(),
+            "parentCommentId: c1");
+    verify(actionLogService, never())
+        .logAction(anyString(), eq(Measure.class), any(ActionType.class), anyString());
   }
 
   @Test

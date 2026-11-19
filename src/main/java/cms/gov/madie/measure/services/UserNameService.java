@@ -2,6 +2,7 @@ package cms.gov.madie.measure.services;
 
 import cms.gov.madie.measure.clients.UserServiceClient;
 import cms.gov.madie.measure.utils.UserDisplayNameUtils;
+import gov.cms.madie.models.dto.UserDetailsDto;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -22,6 +23,20 @@ public class UserNameService {
     }
     return UserDisplayNameUtils.toDisplayName(
         harpId, userServiceClient.getBulkUserDetails(List.of(harpId)));
+  }
+
+  public String getCommentAuthorDisplayName(String harpId) {
+    if (StringUtils.isBlank(harpId)) {
+      return harpId;
+    }
+    Map<String, UserDetailsDto> users = userServiceClient.getBulkUserDetails(List.of(harpId));
+    UserDetailsDto user = users == null ? null : users.get(harpId);
+    if (user == null
+        || StringUtils.isBlank(user.getFirstName())
+        || StringUtils.isBlank(user.getLastName())) {
+      return harpId;
+    }
+    return user.getFirstName().trim() + " " + user.getLastName().trim();
   }
 
   public Map<String, String> getUsersDisplayNames(List<String> harpIds) {
