@@ -239,6 +239,13 @@ public class MeasureService extends BaseMeasureService {
     }
     final Measure existingMeasure = findActiveMeasureById(measureId);
     verifyAuthorization(username, existingMeasure);
+    // The draft value set override list is maintained by its own API, so a configuration update
+    // that does not carry the list leaves the persisted one alone rather than clearing it.
+    if (testCaseConfig.getDraftValueSetOverrides() == null
+        && existingMeasure.getTestCaseConfiguration() != null) {
+      testCaseConfig.setDraftValueSetOverrides(
+          existingMeasure.getTestCaseConfiguration().getDraftValueSetOverrides());
+    }
     Measure updatedMeasure =
         testCasePatchRepository.findAndModifyTestCaseConfig(testCaseConfig, measureId);
     // on execute invalid test case config change, trigger the test case validation
