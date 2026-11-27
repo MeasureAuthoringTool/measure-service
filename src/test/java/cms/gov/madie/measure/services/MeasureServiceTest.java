@@ -2401,6 +2401,44 @@ public class MeasureServiceTest implements ResourceUtil {
   }
 
   @Test
+  void updateMeasureTestCaseConfigurationPreservesDraftValueSetOverrides() {
+    String username = "testUser";
+    String measureId = "testMeasureId";
+    List<DraftValueSetOverride> overrides =
+        List.of(
+            DraftValueSetOverride.builder()
+                .oid("2.16.840.1.113883.3.666.5.1002")
+                .name("Hypertension")
+                .build());
+    Measure existingMeasure =
+        Measure.builder()
+            .id(measureId)
+            .measureMetaData(MeasureMetaData.builder().draft(true).build())
+            .testCaseConfiguration(
+                TestCaseConfiguration.builder().draftValueSetOverrides(overrides).build())
+            .build();
+    // the Expansion/SDE/RAV screens do not carry the override list on a configuration update
+    TestCaseConfiguration testCaseConfig =
+        TestCaseConfiguration.builder().sdeIncluded(true).build();
+
+    when(measureRepository.findByIdAndActive(measureId, true))
+        .thenReturn(Optional.of(existingMeasure));
+    doNothing().when(measureService).verifyAuthorization(username, existingMeasure);
+    when(testCasePatchRepository.findAndModifyTestCaseConfig(
+            any(TestCaseConfiguration.class), eq(measureId)))
+        .thenReturn(Measure.builder().id(measureId).build());
+
+    measureService.updateMeasureTestCaseConfiguration(
+        username, measureId, testCaseConfig, ACCESS_TOKEN);
+
+    ArgumentCaptor<TestCaseConfiguration> configCaptor =
+        ArgumentCaptor.forClass(TestCaseConfiguration.class);
+    verify(testCasePatchRepository)
+        .findAndModifyTestCaseConfig(configCaptor.capture(), eq(measureId));
+    assertEquals(overrides, configCaptor.getValue().getDraftValueSetOverrides());
+  }
+
+  @Test
   void triggerTestCaseValidationOnExecuteInvalidTestCasesChange() {
     String username = "testUser";
     String measureId = "testMeasureId";

@@ -1,11 +1,14 @@
 package cms.gov.madie.measure.repositories;
 
+import gov.cms.madie.models.measure.DraftValueSetOverride;
 import gov.cms.madie.models.measure.Measure;
 import gov.cms.madie.models.measure.TestCaseConfiguration;
 import org.springframework.data.mongodb.core.FindAndModifyOptions;
 import org.springframework.data.mongodb.core.MongoOperations;
 import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 import static org.springframework.data.mongodb.core.query.Criteria.where;
 import static org.springframework.data.mongodb.core.query.Query.query;
@@ -24,6 +27,24 @@ public class TestCasePatchRepositoryImpl implements TestCasePatchRepository {
       TestCaseConfiguration testCaseConfiguration, String measureId) {
     Update patchUpdate = new Update();
     patchUpdate.set("testCaseConfiguration", testCaseConfiguration);
+
+    return mongoOperations
+        .update(Measure.class)
+        .matching(query(where("_id").is(measureId)))
+        .apply(patchUpdate)
+        .withOptions(FindAndModifyOptions.options().returnNew(true))
+        .findAndModifyValue();
+  }
+
+  /**
+   * Patches only the draft value set override list, so the rest of the test case configuration is
+   * left untouched. The nested path is created when the measure has no test case configuration yet.
+   */
+  @Override
+  public Measure findAndModifyDraftValueSetOverrides(
+      List<DraftValueSetOverride> draftValueSetOverrides, String measureId) {
+    Update patchUpdate = new Update();
+    patchUpdate.set("testCaseConfiguration.draftValueSetOverrides", draftValueSetOverrides);
 
     return mongoOperations
         .update(Measure.class)
